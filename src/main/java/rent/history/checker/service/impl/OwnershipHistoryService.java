@@ -1,9 +1,7 @@
-package rent.history.checker.service;
+package rent.history.checker.service.impl;
 
 import jakarta.transaction.Transactional;
-import rent.history.checker.entity.Flat;
 import rent.history.checker.entity.OwnershipHistory;
-import rent.history.checker.entity.User;
 import rent.history.checker.repository.FlatRepository;
 import rent.history.checker.repository.OwnershipHistoryRepository;
 import rent.history.checker.repository.UserRepository;

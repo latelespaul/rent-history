@@ -1,4 +1,4 @@
-package rent.history.checker.service;
+package rent.history.checker.service.impl;
 
 
 import org.springframework.beans.factory.annotation.Autowired;

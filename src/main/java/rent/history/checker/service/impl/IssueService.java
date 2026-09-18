@@ -1,4 +1,4 @@
-package rent.history.checker.service;
+package rent.history.checker.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -6,7 +6,6 @@ import rent.history.checker.entity.Issue;
 import rent.history.checker.repository.IssueRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class IssueService {
