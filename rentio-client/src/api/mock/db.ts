@@ -1,0 +1,111 @@
+import type { Flat, Review, User } from "@/types"
+
+export const mockUsers: User[] = [
+  { id: 1, email: "tenant@rentio.test", name: "Aarav Sharma", role: "TENANT" },
+  { id: 2, email: "landlord@rentio.test", name: "Priya Verma", role: "LANDLORD" },
+  { id: 3, email: "admin@rentio.test", name: "Rentio Admin", role: "ADMIN" },
+]
+
+export const mockFlats: Flat[] = [
+  {
+    id: 1,
+    address: "12 MG Road, Indiranagar",
+    city: "Bangalore",
+    state: "Karnataka",
+    numberOfRooms: 2,
+    area: 950,
+    rent: 28000,
+    description: "Bright 2BHK near metro. Great ventilation, parking included.",
+    isAvailable: true,
+    averageRating: 8.2,
+    reviewCount: 14,
+  },
+  {
+    id: 2,
+    address: "45 Banjara Hills, Road No. 12",
+    city: "Hyderabad",
+    state: "Telangana",
+    numberOfRooms: 3,
+    area: 1450,
+    rent: 42000,
+    description: "Spacious 3BHK with balcony. Close to IT hub.",
+    isAvailable: true,
+    averageRating: 7.6,
+    reviewCount: 9,
+  },
+  {
+    id: 3,
+    address: "Sector 21, HSR Layout",
+    city: "Bangalore",
+    state: "Karnataka",
+    numberOfRooms: 1,
+    area: 520,
+    rent: 18000,
+    description: "Cozy 1BHK ideal for singles. Walkable to cafes.",
+    isAvailable: false,
+    averageRating: 6.9,
+    reviewCount: 5,
+  },
+  {
+    id: 4,
+    address: "88 Andheri West, Lokhandwala",
+    city: "Mumbai",
+    state: "Maharashtra",
+    numberOfRooms: 2,
+    area: 780,
+    rent: 55000,
+    description: "Premium 2BHK, sea-facing. Society with gym + pool.",
+    isAvailable: true,
+    averageRating: 9.1,
+    reviewCount: 22,
+  },
+  {
+    id: 5,
+    address: "22 Koramangala 5th Block",
+    city: "Bangalore",
+    state: "Karnataka",
+    numberOfRooms: 3,
+    area: 1600,
+    rent: 48000,
+    description: "Renovated 3BHK, semi-furnished. Quiet street.",
+    isAvailable: true,
+    averageRating: 8.5,
+    reviewCount: 11,
+  },
+]
+
+export const mockReviews: Review[] = [
+  {
+    id: 1,
+    userId: 1,
+    userName: "Aarav Sharma",
+    flatId: 1,
+    title: "Great location, noisy weekends",
+    content:
+      "The flat is well maintained and the landlord is responsive. Weekend traffic noise can be an issue if you are a light sleeper.",
+    rating: 8,
+    reviewDate: "2025-08-14",
+  },
+  {
+    id: 2,
+    userId: 1,
+    userName: "Aarav Sharma",
+    flatId: 4,
+    title: "Worth the rent",
+    content:
+      "Amenities are top notch and the society is very safe. Water supply has been consistent for the 6 months I lived here.",
+    rating: 9,
+    reviewDate: "2025-06-02",
+  },
+  {
+    id: 3,
+    userId: 2,
+    userName: "Priya Verma",
+    flatId: 1,
+    title: "Decent but parking is tight",
+    content:
+      "Overall good. Parking spots are limited, so if you have more than one vehicle it can get tricky.",
+    rating: 7,
+    reviewDate: "2025-05-20",
+  },
+]
