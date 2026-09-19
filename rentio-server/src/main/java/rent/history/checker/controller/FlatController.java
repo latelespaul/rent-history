@@ -10,7 +10,7 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/flats")
+@RequestMapping("/flats")
 public class FlatController {
 	
 	private final FlatServiceImpl flatServiceImpl;

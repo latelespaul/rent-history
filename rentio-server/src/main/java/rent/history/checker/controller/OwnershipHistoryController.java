@@ -1,7 +1,7 @@
 package rent.history.checker.controller;
 
 import rent.history.checker.entity.Flat;
-import rent.history.checker.entity.OwnershipHistory;
+import rent.history.checker.entity.RentHistory;
 import rent.history.checker.entity.User;
 import rent.history.checker.service.impl.OwnershipHistoryService;
 import rent.history.checker.repository.UserRepository;
@@ -29,36 +29,37 @@ public class OwnershipHistoryController {
     }
 
     @GetMapping
-    public List<OwnershipHistory> getAllOwnershipHistories() {
+    public List<RentHistory> getAllOwnershipHistories() {
         return ownershipHistoryService.getAllOwnershipHistories();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OwnershipHistory> getOwnershipHistoryById(@PathVariable Long id) {
+    public ResponseEntity<RentHistory> getOwnershipHistoryById(@PathVariable Long id) {
         return ownershipHistoryService.getOwnershipHistoryById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<OwnershipHistory> createOwnershipHistory(@RequestBody OwnershipHistory ownershipHistory) {
-        if (ownershipHistory.getOwner() == null || ownershipHistory.getFlat() == null) {
+    public ResponseEntity<RentHistory> createOwnershipHistory(@RequestBody RentHistory rentHistory) {
+        if (rentHistory.getOwner() == null || rentHistory.getFlat() == null) {
             return ResponseEntity.badRequest().body(null);
         }
 
         // Fetch related entities first
-        User owner = userRepository.findById(ownershipHistory.getOwner().getId()).orElseThrow(() -> new RuntimeException("User not found"));
-        Flat flat = flatRepository.findById(ownershipHistory.getFlat().getId()).orElseThrow(() -> new RuntimeException("Flat not found"));
+        User owner = userRepository.findById(rentHistory.getOwner().getId()).orElseThrow(() -> new RuntimeException("User not found"));
+        Flat flat = flatRepository.findById(rentHistory.getFlat().getId()).orElseThrow(() -> new RuntimeException("Flat not found"));
 
         // Set the fetched entities
-        ownershipHistory.setOwner(owner);
-        ownershipHistory.setFlat(flat);
+        rentHistory.setOwner(owner);
+        rentHistory.setFlat(flat);
 
         // Save the ownership history
-        OwnershipHistory savedOwnershipHistory = ownershipHistoryService.saveOwnershipHistory(ownershipHistory);
+        RentHistory savedRentHistory = ownershipHistoryService.saveOwnershipHistory(rentHistory);
 
         // Fetch the saved ownership history with fully loaded owner and flat
-        Optional<OwnershipHistory> fetchedOwnershipHistory = ownershipHistoryService.getOwnershipHistoryById(savedOwnershipHistory.getId());
+        Optional<RentHistory> fetchedOwnershipHistory = ownershipHistoryService.getOwnershipHistoryById(
+	        savedRentHistory.getId());
 
         // Return the fully loaded ownership history
         return fetchedOwnershipHistory
@@ -67,28 +68,29 @@ public class OwnershipHistoryController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OwnershipHistory> updateOwnershipHistory(@PathVariable Long id, @RequestBody OwnershipHistory ownershipHistory) {
-        OwnershipHistory existingOwnershipHistory = ownershipHistoryService.getOwnershipHistoryById(id).orElse(null);
-        if (existingOwnershipHistory != null) {
-            if (ownershipHistory.getOwner() == null || ownershipHistory.getFlat() == null) {
+    public ResponseEntity<RentHistory> updateOwnershipHistory(@PathVariable Long id, @RequestBody RentHistory rentHistory) {
+        RentHistory existingRentHistory = ownershipHistoryService.getOwnershipHistoryById(id).orElse(null);
+        if (existingRentHistory != null) {
+            if (rentHistory.getOwner() == null || rentHistory.getFlat() == null) {
                 return ResponseEntity.badRequest().body(null);
             }
 
             // Fetch related entities first
-            User owner = userRepository.findById(ownershipHistory.getOwner().getId()).orElseThrow(() -> new RuntimeException("User not found"));
-            Flat flat = flatRepository.findById(ownershipHistory.getFlat().getId()).orElseThrow(() -> new RuntimeException("Flat not found"));
+            User owner = userRepository.findById(rentHistory.getOwner().getId()).orElseThrow(() -> new RuntimeException("User not found"));
+            Flat flat = flatRepository.findById(rentHistory.getFlat().getId()).orElseThrow(() -> new RuntimeException("Flat not found"));
 
             // Set the fetched entities
-            existingOwnershipHistory.setOwner(owner);
-            existingOwnershipHistory.setFlat(flat);
-            existingOwnershipHistory.setOwnershipStartDate(ownershipHistory.getOwnershipStartDate());
-            existingOwnershipHistory.setOwnershipEndDate(ownershipHistory.getOwnershipEndDate());
+            existingRentHistory.setOwner(owner);
+            existingRentHistory.setFlat(flat);
+            existingRentHistory.setOwnershipStartDate(rentHistory.getOwnershipStartDate());
+            existingRentHistory.setOwnershipEndDate(rentHistory.getOwnershipEndDate());
 
             // Save the updated ownership history
-            OwnershipHistory updatedOwnershipHistory = ownershipHistoryService.saveOwnershipHistory(existingOwnershipHistory);
+            RentHistory updatedRentHistory = ownershipHistoryService.saveOwnershipHistory(existingRentHistory);
 
             // Fetch the updated ownership history with fully loaded owner and flat
-            Optional<OwnershipHistory> fetchedOwnershipHistory = ownershipHistoryService.getOwnershipHistoryById(updatedOwnershipHistory.getId());
+            Optional<RentHistory> fetchedOwnershipHistory = ownershipHistoryService.getOwnershipHistoryById(
+	            updatedRentHistory.getId());
 
             // Return the fully loaded ownership history
             return fetchedOwnershipHistory

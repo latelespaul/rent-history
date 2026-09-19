@@ -1,7 +1,7 @@
 package rent.history.checker.service.impl;
 
 import jakarta.transaction.Transactional;
-import rent.history.checker.entity.OwnershipHistory;
+import rent.history.checker.entity.RentHistory;
 import rent.history.checker.repository.FlatRepository;
 import rent.history.checker.repository.OwnershipHistoryRepository;
 import rent.history.checker.repository.UserRepository;
@@ -25,13 +25,13 @@ public class OwnershipHistoryService {
         this.flatRepository = flatRepository;
     }
 
-    public List<OwnershipHistory> getAllOwnershipHistories() {
+    public List<RentHistory> getAllOwnershipHistories() {
         return ownershipHistoryRepository.findAll();
     }
 
     @Transactional
-    public Optional<OwnershipHistory> getOwnershipHistoryById(Long id) {
-        Optional<OwnershipHistory> ownershipHistory = ownershipHistoryRepository.findById(id);
+    public Optional<RentHistory> getOwnershipHistoryById(Long id) {
+        Optional<RentHistory> ownershipHistory = ownershipHistoryRepository.findById(id);
         ownershipHistory.ifPresent(o -> {
             // Ensure the related entities are fully fetched
             o.getFlat().getAddress();  // Accessing fields to ensure they are loaded
@@ -40,8 +40,8 @@ public class OwnershipHistoryService {
         return ownershipHistory;
     }
 
-    public OwnershipHistory saveOwnershipHistory(OwnershipHistory ownershipHistory) {
-        return ownershipHistoryRepository.save(ownershipHistory);
+    public RentHistory saveOwnershipHistory(RentHistory rentHistory) {
+        return ownershipHistoryRepository.save(rentHistory);
     }
 
     public void deleteOwnershipHistory(Long id) {
