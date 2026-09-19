@@ -13,5 +13,6 @@ export const queryKeys = {
     byFlat: (flatId: number, page = 0, size = 10) =>
       ["reviews", "flat", flatId, { page, size }] as const,
     mine: ["reviews", "mine"] as const,
+    pending: ["reviews", "pending"] as const,
   },
 }

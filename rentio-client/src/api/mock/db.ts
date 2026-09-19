@@ -1,9 +1,9 @@
 import type { Flat, Review, User } from "@/types"
 
 export const mockUsers: User[] = [
-  { id: 1, email: "tenant@rentio.test", name: "Aarav Sharma", role: "TENANT" },
-  { id: 2, email: "landlord@rentio.test", name: "Priya Verma", role: "LANDLORD" },
-  { id: 3, email: "admin@rentio.test", name: "Rentio Admin", role: "ADMIN" },
+  { id: 1, email: "tenant@rentio.com", name: "Aarav Sharma", role: "TENANT" },
+  { id: 2, email: "landlord@rentio.com", name: "Priya Verma", role: "LANDLORD" },
+  { id: 3, email: "admin@rentio.com", name: "Rentio Admin", role: "ADMIN" },
 ]
 
 export const mockFlats: Flat[] = [
@@ -80,32 +80,65 @@ export const mockReviews: Review[] = [
     userId: 1,
     userName: "Aarav Sharma",
     flatId: 1,
+    flatAddress: "12 MG Road, Indiranagar",
     title: "Great location, noisy weekends",
     content:
       "The flat is well maintained and the landlord is responsive. Weekend traffic noise can be an issue if you are a light sleeper.",
     rating: 8,
     reviewDate: "2025-08-14",
+    status: "APPROVED",
   },
   {
     id: 2,
     userId: 1,
     userName: "Aarav Sharma",
     flatId: 4,
+    flatAddress: "88 Andheri West, Lokhandwala",
     title: "Worth the rent",
     content:
       "Amenities are top notch and the society is very safe. Water supply has been consistent for the 6 months I lived here.",
     rating: 9,
     reviewDate: "2025-06-02",
+    status: "APPROVED",
   },
   {
     id: 3,
     userId: 2,
     userName: "Priya Verma",
     flatId: 1,
+    flatAddress: "12 MG Road, Indiranagar",
     title: "Decent but parking is tight",
     content:
       "Overall good. Parking spots are limited, so if you have more than one vehicle it can get tricky.",
     rating: 7,
     reviewDate: "2025-05-20",
+    status: "APPROVED",
+  },
+  // Pending examples for admin moderation
+  {
+    id: 4,
+    userId: 2,
+    userName: "Priya Verma",
+    flatId: 2,
+    flatAddress: "45 Banjara Hills, Road No. 12",
+    title: "Spacious but old wiring",
+    content:
+      "Rooms are huge and the balcony is great. Wiring is old though, had to get a few sockets replaced.",
+    rating: 6,
+    reviewDate: "2025-09-10",
+    status: "PENDING",
+  },
+  {
+    id: 5,
+    userId: 1,
+    userName: "Aarav Sharma",
+    flatId: 5,
+    flatAddress: "22 Koramangala 5th Block",
+    title: "Nice renovation, poor water pressure",
+    content:
+      "Recently renovated and looks great. Water pressure on the top floor is weak, especially in the mornings.",
+    rating: 7,
+    reviewDate: "2025-09-15",
+    status: "PENDING",
   },
 ]

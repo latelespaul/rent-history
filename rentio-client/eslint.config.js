@@ -27,5 +27,12 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // shadcn-generated UI primitives export both components and variant configs
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
   prettier,
 )

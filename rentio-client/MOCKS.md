@@ -47,6 +47,8 @@ No component or hook changes required.
 | GET | /api/v1/flats/:id/reviews | page, size | Page<Review> |
 | POST | /api/v1/flats/:id/reviews | { title, content, rating } | Review |
 | GET | /api/v1/users/me/reviews | — | Page<Review> |
+| GET | /api/v1/admin/reviews | status=PENDING | Page<Review> |
+| PATCH | /api/v1/admin/reviews/:id | { status: APPROVED\|REJECTED } | Review |
 
 ## Data shapes
 
@@ -58,8 +60,16 @@ See `src/types/*.ts` — those interfaces are the contract.
       description, isAvailable, averageRating?, reviewCount? }
 
 ### Review
+    { id, userId, userName, flatId, flatAddress?, title, content,
+      rating, reviewDate, status }
 
-    { id, userId, userName, flatId, title, content, rating, reviewDate }
+### ReviewStatus
+    'PENDING' | 'APPROVED' | 'REJECTED'
+
+#### Note
+    Newly submitted reviews default to PENDING.
+    Only APPROVED reviews appear on the public flat detail page.
+    mockMyReviews returns all of the user's reviews regardless of status.
 
 ## CORS for Spring Boot (when ready)
 

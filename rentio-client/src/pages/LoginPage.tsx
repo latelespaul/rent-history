@@ -16,7 +16,7 @@ export default function LoginPage() {
 
       <div className="mt-8 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
         <p className="mb-1 font-medium">Mock credentials</p>
-        <p>tenant@rentio.test · landlord@rentio.test · admin@rentio.test</p>
+        <p>tenant@rentio.com or landlord@rentio.com or admin@rentio.com</p>
         <p>Any password with 6+ characters.</p>
       </div>
     </section>

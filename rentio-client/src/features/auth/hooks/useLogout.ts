@@ -10,7 +10,7 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: authApi.logout,
-    onSettled: () => {
+    onSettled: async () => {
       clearAuth()
       qc.clear()
       navigate("/login", { replace: true })

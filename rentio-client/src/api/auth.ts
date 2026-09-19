@@ -1,7 +1,7 @@
 import type { AuthResponse, LoginRequest, SignupRequest, User } from "@/types"
 import { api } from "./client"
 import { USE_MOCKS } from "./config"
-import { mockLogin, mockMe, mockRefresh, mockSignup } from "./mock/auth.mock"
+import { mockLogin, mockLogout, mockMe, mockRefresh, mockSignup } from "./mock/auth.mock"
 
 export const authApi = {
   login: (req: LoginRequest): Promise<AuthResponse> =>
@@ -16,5 +16,5 @@ export const authApi = {
     USE_MOCKS ? mockRefresh() : api.post("/auth/refresh").then((r) => r.data),
 
   logout: (): Promise<void> =>
-    USE_MOCKS ? Promise.resolve() : api.post("/auth/logout").then(() => undefined),
+    USE_MOCKS ? mockLogout() : api.post("/auth/logout").then(() => undefined),
 }
