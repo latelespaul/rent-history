@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import rent.history.checker.entity.RentHistory;
 
 @Repository
-public interface OwnershipHistoryRepository extends JpaRepository<RentHistory, Long> {
+public interface RentHistoryRepository extends JpaRepository<RentHistory, Long> {
 }
