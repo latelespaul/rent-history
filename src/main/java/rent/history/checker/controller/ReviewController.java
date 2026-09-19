@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rent.history.checker.entity.Review;
-import rent.history.checker.service.ReviewService;
+import rent.history.checker.service.impl.ReviewService;
 
 import java.util.List;
 

@@ -3,7 +3,7 @@ package rent.history.checker.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import rent.history.checker.entity.User;
-import rent.history.checker.service.UserService;
+import rent.history.checker.service.impl.UserService;
 
 import java.util.List;
 

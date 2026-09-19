@@ -1,19 +1,19 @@
 package rent.history.checker.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import rent.history.checker.entity.Flat;
-import rent.history.checker.repository.FlatRepository;
+import rent.history.checker.dto.FlatDto;
 
 import java.util.List;
 
 public interface FlatService {
 	
-	public List<Flat> getAllFlats();
+	List<FlatDto> getAllFlats();
 	
-	public Flat getFlatById(Long id);
+	FlatDto getFlatById(Long id);
 	
-	public Flat saveFlat(Flat flat);
+	String saveFlat(FlatDto flatDto);
 	
-	public void deleteFlat(Long id);
+	String updateFlat(Long id, FlatDto flatDto);
+	
+	String deleteFlat(Long id);
 	
 }

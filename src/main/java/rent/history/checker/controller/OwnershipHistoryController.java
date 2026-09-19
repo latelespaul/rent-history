@@ -3,7 +3,7 @@ package rent.history.checker.controller;
 import rent.history.checker.entity.Flat;
 import rent.history.checker.entity.OwnershipHistory;
 import rent.history.checker.entity.User;
-import rent.history.checker.service.OwnershipHistoryService;
+import rent.history.checker.service.impl.OwnershipHistoryService;
 import rent.history.checker.repository.UserRepository;
 import rent.history.checker.repository.FlatRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,4 +105,3 @@ public class OwnershipHistoryController {
         return ResponseEntity.noContent().build();
     }
 }
-

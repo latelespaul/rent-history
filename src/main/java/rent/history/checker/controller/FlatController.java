@@ -1,58 +1,50 @@
 package rent.history.checker.controller;
 
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import rent.history.checker.entity.Flat;
-import rent.history.checker.service.FlatService;
+import rent.history.checker.dto.FlatDto;
+import rent.history.checker.service.impl.FlatServiceImpl;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/flats")
 public class FlatController {
-
-    private final FlatService flatService;
-
-    @Autowired
-    public FlatController(FlatService flatService) {
-        this.flatService = flatService;
-    }
-
-    @GetMapping
-    public List<Flat> getAllFlats() {
-        return flatService.getAllFlats();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Flat> getFlatById(@PathVariable Long id) {
-        Flat flat = flatService.getFlatById(id);
-        return flat != null ? ResponseEntity.ok(flat) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<Flat> createFlat(@RequestBody Flat flat) {
-        Flat savedFlat = flatService.saveFlat(flat);
-        return ResponseEntity.status(201).body(savedFlat);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Flat> updateFlat(@PathVariable Long id, @RequestBody Flat flat) {
-        Flat existingFlat = flatService.getFlatById(id);
-        if (existingFlat != null) {
-            flat.setId(id);
-            Flat updatedFlat = flatService.saveFlat(flat);
-            return ResponseEntity.ok(updatedFlat);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFlat(@PathVariable Long id) {
-        flatService.deleteFlat(id);
-        return ResponseEntity.noContent().build();
-    }
+	
+	private final FlatServiceImpl flatServiceImpl;
+	
+	public FlatController(FlatServiceImpl flatServiceImpl) {
+		this.flatServiceImpl = flatServiceImpl;
+	}
+	
+	@GetMapping
+	public List<FlatDto> getAllFlats() {
+		return flatServiceImpl.getAllFlats();
+	}
+	
+	@GetMapping("/{id}")
+	public ResponseEntity<FlatDto> getFlatById(@PathVariable Long id) {
+		FlatDto flatDto = flatServiceImpl.getFlatById(id);
+		return ResponseEntity.ok(flatDto);
+	}
+	
+	@PostMapping
+	public ResponseEntity<String> createFlat(@RequestBody FlatDto flatDto) {
+		String msg = flatServiceImpl.saveFlat(flatDto);
+		return ResponseEntity.status(201).body(msg);
+	}
+	
+	@PutMapping("/{id}")
+	public ResponseEntity<String> updateFlat(@PathVariable Long id, @RequestBody FlatDto flatDto) {
+		String msg = flatServiceImpl.updateFlat(id, flatDto);
+		return ResponseEntity.ok(msg);
+		
+	}
+	
+	@DeleteMapping("/{id}")
+	public ResponseEntity<Void> deleteFlat(@PathVariable Long id) {
+		flatServiceImpl.deleteFlat(id);
+		return ResponseEntity.noContent().build();
+	}
+	
 }
-
