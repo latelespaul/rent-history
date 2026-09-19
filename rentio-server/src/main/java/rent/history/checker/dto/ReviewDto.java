@@ -12,7 +12,7 @@ public class ReviewDto {
 	public Long flatId;
 	public String title;
 	public String content;
-	public int rating;
+	public Integer rating;
 	public LocalDate reviewDate;
 	
 }

@@ -14,11 +14,11 @@ public class Review {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "flat_id", nullable = false)
 	private Flat flat;
 	
@@ -31,7 +31,7 @@ public class Review {
 	
 	@Min(1)
 	@Max(10)
-	private int rating;
+	private Integer rating;
 	
 	private LocalDate reviewDate;
 	
