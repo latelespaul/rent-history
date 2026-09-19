@@ -1,5 +1,6 @@
 package rent.history.checker.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import rent.history.checker.dto.FlatDto;
@@ -7,15 +8,12 @@ import rent.history.checker.service.impl.FlatServiceImpl;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/flats")
 public class FlatController {
 	
 	private final FlatServiceImpl flatServiceImpl;
-	
-	public FlatController(FlatServiceImpl flatServiceImpl) {
-		this.flatServiceImpl = flatServiceImpl;
-	}
 	
 	@GetMapping
 	public List<FlatDto> getAllFlats() {
