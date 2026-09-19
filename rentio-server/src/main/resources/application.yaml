@@ -1,6 +1,6 @@
 spring:
   application:
-    name: rent-history
+    name: rentio-server
   # -------------------- DATASOURCE (MySQL) --------------------
   datasource:
     # Connection URL with common parameters
