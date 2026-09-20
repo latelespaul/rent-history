@@ -21,5 +21,5 @@ public class Issue {
     private LocalDate reportedDate;
     private LocalDate resolvedDate;
 
-    private boolean isResolved;
+    private Boolean isResolved;
 }

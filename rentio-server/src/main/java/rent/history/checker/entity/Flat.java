@@ -17,12 +17,12 @@ public class Flat {
 	private String city;
 	private String state;
 	
-	private int numberOfRooms;
+	private Integer numberOfRooms;
 	private BigDecimal area; // in square meters
 	private BigDecimal rent; // in currency
 	
 	@Lob
 	private String description;
-	private boolean available;
+	private Boolean isAvailable;
 	
 }

@@ -36,17 +36,17 @@ public class ReviewController {
         return ResponseEntity.status(201).body(savedReview);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Review> updateReview(@PathVariable Long id, @RequestBody Review review) {
-        Review existingReview = reviewService.getReviewById(id);
-        if (existingReview != null) {
-            review.setId(id);
-            Review updatedReview = reviewService.saveReview(review);
-            return ResponseEntity.ok(updatedReview);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
+//    @PutMapping("/{id}")
+//    public ResponseEntity<Review> updateReview(@PathVariable Long id, @RequestBody Review review) {
+//        Review existingReview = reviewService.getReviewById(id);
+//        if (existingReview != null) {
+//            review.se(id);
+//            Review updatedReview = reviewService.saveReview(review);
+//            return ResponseEntity.ok(updatedReview);
+//        } else {
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteReview(@PathVariable Long id) {

@@ -10,11 +10,11 @@ public class FlatDto {
 	private String city;
 	private String state;
 	
-	private int numberOfRooms;
+	private Integer numberOfRooms;
 	private BigDecimal area;
 	private BigDecimal rent;
 	
 	private String description;
-	private boolean isAvailable;
+	private Boolean isAvailable;
 	
 }
