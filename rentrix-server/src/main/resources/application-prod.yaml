@@ -33,7 +33,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate              # 🔴 NEVER use update / create-drop in prod
+      ddl-auto: update              # 🔴 NEVER use update / create-drop in prod
     show-sql: false
     properties:
       hibernate:

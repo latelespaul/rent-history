@@ -31,9 +31,7 @@ spring:
   # ── CORS (Vite default + LAN testing) ────────────────────────────────────────
   app:
     cors:
-      allowed-origins:
-        - http://localhost:5173
-        - http://localhost:8080
+      allowed-origins: http://localhost:5173,http://localhost:8080/swagger-ui/index.html
 
 # ── Dev-only Actuator override ────────────────────────────────────────────────
 management:
