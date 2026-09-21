@@ -10,4 +10,4 @@ build
 coverage
 *.md
 .env
-.env.*
+.env.local

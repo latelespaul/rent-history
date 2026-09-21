@@ -17,7 +17,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   rentrix-server:
-    build: .
+    build: target/generated-sources/annotations
 
     container_name: rentrix-server
 
@@ -28,8 +28,8 @@ services:
       SPRING_PROFILES_ACTIVE: prod
 
       DB_URL: jdbc:postgresql://postgres:5432/rentrix
-      DB_USERNAME: postgres
-      DB_PASSWORD: admin
+      DB_USERNAME: rentrix
+      DB_PASSWORD: rentrix123
 
     ports:
       - "8080:8080"
