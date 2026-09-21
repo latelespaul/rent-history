@@ -22,7 +22,7 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:20}
       minimum-idle: ${DB_POOL_MIN:5}
@@ -37,30 +37,8 @@ spring:
     show-sql: false
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
-
-  # ── Mail (prod) ────────────────────────────────────────────────────────────
-  mail:
-    host: ${MAIL_HOST:smtp.sendgrid.net}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:apikey}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  h2:
-    console:
-      enabled: false   # explicit — belt-and-suspenders even though H2 isn't on the prod datasource path
-
-# ── JWT ──────────────────────────────────────────────────────────────────────
-jwt:
-  secret: ${JWT_SECRET}
-  access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}       # 15 min
-  refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}  # 7 days
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 cors:

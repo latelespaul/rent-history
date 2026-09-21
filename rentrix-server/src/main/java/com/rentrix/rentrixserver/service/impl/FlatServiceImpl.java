@@ -7,9 +7,9 @@ import com.rentrix.rentrixserver.repository.FlatRepository;
 import com.rentrix.rentrixserver.service.FlatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -20,12 +20,10 @@ public class FlatServiceImpl implements FlatService {
 	
 	private final FlatMapper flatMapper;
 	
-	public List<FlatDto> getAllFlats() {
+	public Page<FlatDto> getAllFlats(Pageable pageable) {
 		log.info("Get list of all flats");
-		return flatRepository.findAll()
-									.stream()
-									.map(flatMapper::toDto)
-									.toList();
+		return flatRepository.findAll(pageable)
+									.map(flatMapper::toDto);
 	}
 	
 	public FlatDto getFlatById(Long id) {

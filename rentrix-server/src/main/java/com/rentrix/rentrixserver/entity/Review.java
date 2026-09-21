@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.entity;
 
+import com.rentrix.rentrixserver.entity.constants.ReviewStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -36,5 +37,8 @@ public class Review {
 	private Integer rating;
 	
 	private LocalDate reviewDate;
+	
+	@Enumerated(EnumType.STRING)
+	private ReviewStatus status = ReviewStatus.PENDING;
 	
 }
