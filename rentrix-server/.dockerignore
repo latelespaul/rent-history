@@ -2,6 +2,7 @@ target
 .idea
 .git
 .gitignore
+.env
 
 *.iml
 

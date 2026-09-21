@@ -43,7 +43,7 @@ spring:
   # ── CORS (Vite default + LAN testing) ────────────────────────────────────────
   app:
     cors:
-      allowed-origins: ${CORS_ORIGINS:https://rentrix-sage.vercel.app,https://myrentrix.vercel.app}
+      allowed-origins: ${CORS_ORIGINS:https://myrentrix.vercel.app}
 
 
 # ── Swagger / OpenAPI (disabled in prod) ─────────────────────────────────────
