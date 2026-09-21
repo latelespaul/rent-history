@@ -40,11 +40,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
 
-  # ── CORS (Vite default + LAN testing) ────────────────────────────────────────
-  app:
-    cors:
-      allowed-origins: ${CORS_ORIGINS:https://myrentrix.vercel.app}
-
 
 # ── Swagger / OpenAPI (disabled in prod) ─────────────────────────────────────
 springdoc:
