@@ -1,0 +1,74 @@
+# =============================================================================
+# application-prod.yaml  —  PRODUCTION
+# =============================================================================
+# All secrets MUST be supplied via environment variables (Render, Railway,
+# Docker, K8s secrets, etc.). There are no hard-coded fallbacks.
+#
+# Required env vars:
+#   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET, MAIL_PASSWORD
+# Optional env vars:
+#   PORT, DB_POOL_MAX, DB_POOL_MIN, CORS_ORIGINS, JWT_ACCESS_EXPIRY,
+#   JWT_REFRESH_EXPIRY, MAIL_HOST, MAIL_PORT, MAIL_USERNAME
+# =============================================================================
+
+server:
+  tomcat:
+    threads:
+      max: 200
+    connection-timeout: 20000
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: 20000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000   # Log leaked connections after 60s
+
+  jpa:
+    hibernate:
+      ddl-auto: validate              # 🔴 NEVER use update / create-drop in prod
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # ── Mail (prod) ────────────────────────────────────────────────────────────
+  mail:
+    host: ${MAIL_HOST:smtp.sendgrid.net}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:apikey}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  h2:
+    console:
+      enabled: false   # explicit — belt-and-suspenders even though H2 isn't on the prod datasource path
+
+# ── JWT ──────────────────────────────────────────────────────────────────────
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry: ${JWT_ACCESS_EXPIRY:900000}       # 15 min
+  refresh-token-expiry: ${JWT_REFRESH_EXPIRY:604800000}  # 7 days
+
+# ── CORS ─────────────────────────────────────────────────────────────────────
+cors:
+  allowed-origins: ${CORS_ORIGINS}
+
+# ── Swagger / OpenAPI (disabled in prod) ─────────────────────────────────────
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

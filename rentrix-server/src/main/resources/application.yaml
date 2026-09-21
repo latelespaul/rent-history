@@ -1,0 +1,27 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: rentrix-server
+  profiles:
+    active: dev
+
+# ── Actuator (lightweight health & metrics) ──────────────────────────────────
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized   # safer default; overridden to 'always' in dev
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+logging:
+  level:
+    root: WARN
+    com.skooly: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
