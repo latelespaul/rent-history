@@ -3,10 +3,10 @@ package com.rentrix.rentrixserver.controller;
 import com.rentrix.rentrixserver.dto.FlatDto;
 import com.rentrix.rentrixserver.service.impl.FlatServiceImpl;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -16,8 +16,8 @@ public class FlatController {
 	private final FlatServiceImpl flatServiceImpl;
 	
 	@GetMapping
-	public Page<FlatDto> getAllFlats(Pageable pageable) {
-		return flatServiceImpl.getAllFlats(pageable);
+	public List<FlatDto> getAllFlats() {
+		return flatServiceImpl.getAllFlats();
 	}
 	
 	@GetMapping("/{id}")
