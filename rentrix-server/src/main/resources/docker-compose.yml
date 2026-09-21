@@ -1,0 +1,38 @@
+services:
+
+  postgres:
+    image: postgres:17
+
+    container_name: rentrix-postgres
+
+    environment:
+      POSTGRES_DB: rentrix
+      POSTGRES_USER: rentrix
+      POSTGRES_PASSWORD: rentrix123
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  rentrix-server:
+    build: .
+
+    container_name: rentrix-server
+
+    depends_on:
+      - postgres
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      DB_URL: jdbc:postgresql://postgres:5432/rentrix
+      DB_USERNAME: rentrix
+      DB_PASSWORD: rentrix123
+
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres-data:
