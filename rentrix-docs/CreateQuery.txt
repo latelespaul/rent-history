@@ -1,0 +1,72 @@
+CREATE TABLE flat (
+    id BIGSERIAL PRIMARY KEY,
+    address VARCHAR(255),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    number_of_rooms INTEGER,
+    area NUMERIC(10,2),
+    rent NUMERIC(10,2),
+    description TEXT,
+    is_available BOOLEAN
+);
+
+CREATE TYPE role AS ENUM (
+    'TENANT',
+    'LANDLORD',
+    'ADMIN'
+);
+
+CREATE TABLE users (
+	id BIGSERIAL PRIMARY KEY,
+	username VARCHAR(255) UNIQUE,
+	telephone VARCHAR(20) UNIQUE,
+	password VARCHAR(255) NOT NULL,
+	name VARCHAR(255) NOT NULL,
+	address VARCHAR(500),
+	email VARCHAR(255) NOT NULL UNIQUE,
+	date_of_birth DATE,
+	role VARCHAR(20) NOT NULL
+);
+
+CREATE TYPE review_status AS ENUM (
+    'PENDING',
+    'APPROVED',
+    'REJECTED'
+);
+
+CREATE TABLE review (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    flat_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 10),
+    review_date DATE,
+    status review_status DEFAULT 'PENDING',
+    CONSTRAINT fk_review_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_review_flat
+        FOREIGN KEY (flat_id)
+        REFERENCES flat(id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_review_user
+ON review(user_id);
+
+CREATE INDEX idx_review_flat
+ON review(flat_id);
+
+CREATE INDEX idx_review_status
+ON review(status);
+
+CREATE INDEX idx_flat_city
+ON flat(city);
+
+CREATE INDEX idx_flat_rent
+ON flat(rent);
+
+CREATE INDEX idx_flat_available
+ON flat(is_available);
