@@ -103,7 +103,7 @@ public class SecurityConfig {
 		config.setAllowedOriginPatterns(List.of(
 			"http://localhost:5173",
 			"https://myrentrix.vercel.app",
-			"https://*.vercel.app"
+			"https://*.vercel.app"          // ← covers every preview URL
 		));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
