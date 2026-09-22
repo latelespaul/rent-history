@@ -1,9 +1,9 @@
 package com.rentrix.rentrixserver.controller;
 
+import com.rentrix.rentrixserver.dto.PageResponse;
 import com.rentrix.rentrixserver.dto.ReviewDto;
 import com.rentrix.rentrixserver.service.ReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +21,7 @@ public class ReviewController {
 	}
 	
 	@GetMapping
-	public Page<ReviewDto> getAllReviews(@PageableDefault(sort = "reviewDate") Pageable pageable) {
+	public PageResponse<ReviewDto> getAllReviews(@PageableDefault(sort = "reviewDate") Pageable pageable) {
 		return reviewService.getAllReviews(pageable);
 	}
 	

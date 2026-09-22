@@ -1,12 +1,11 @@
 package com.rentrix.rentrixserver.service;
 
 import com.rentrix.rentrixserver.dto.FlatDto;
-import org.springframework.data.domain.Page;
+import com.rentrix.rentrixserver.dto.PageResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface FlatService {
-	
-	Page<FlatDto> getAllFlats(Pageable pageable);
+	PageResponse<FlatDto> getAllFlats(Pageable pageable);
 	
 	FlatDto getFlatById(Long id);
 	

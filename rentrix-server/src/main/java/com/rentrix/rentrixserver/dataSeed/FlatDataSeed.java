@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.repository.FlatRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -12,6 +13,7 @@ import java.util.Locale;
 import java.util.Random;
 
 @Component
+@Profile("dev")
 public class FlatDataSeed {
 	private final Faker faker = new Faker(Locale.of("en", "IN"));
 	private final Random random = new Random();

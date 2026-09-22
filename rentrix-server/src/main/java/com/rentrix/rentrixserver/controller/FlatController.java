@@ -1,9 +1,9 @@
 package com.rentrix.rentrixserver.controller;
 
 import com.rentrix.rentrixserver.dto.FlatDto;
+import com.rentrix.rentrixserver.dto.PageResponse;
 import com.rentrix.rentrixserver.service.FlatService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ public class FlatController {
 	private final FlatService flatService;
 	
 	@GetMapping
-	public Page<FlatDto> getAllFlats(@PageableDefault(size = 9, sort = "rent") Pageable pageable) {
+	public PageResponse<FlatDto> getAllFlats(@PageableDefault(size = 9, sort = "rent") Pageable pageable) {
 		return flatService.getAllFlats(pageable);
 	}
 	

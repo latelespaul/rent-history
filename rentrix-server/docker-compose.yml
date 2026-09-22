@@ -2,37 +2,39 @@ services:
 
   postgres:
     image: postgres:17
-
     container_name: rentrix-postgres
-
     environment:
       POSTGRES_DB: rentrix
       POSTGRES_USER: rentrix
       POSTGRES_PASSWORD: rentrix123
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rentrix -d rentrix" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   rentrix-server:
-    build: target/generated-sources/annotations
-
+    build: .
     container_name: rentrix-server
-
     depends_on:
-      - postgres
-
+      postgres:
+        condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-
-      DB_URL: jdbc:postgresql://postgres:5432/rentrix
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: rentrix
       DB_USERNAME: rentrix
       DB_PASSWORD: rentrix123
-
+      JWT_SECRET: local-dev-jwt-secret-32-chars-minimum-xxxxxxxx
     ports:
       - "8080:8080"
+    restart: unless-stopped
 
 volumes:
   postgres-data:

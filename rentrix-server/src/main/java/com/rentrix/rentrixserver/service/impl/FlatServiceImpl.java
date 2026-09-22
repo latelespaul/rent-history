@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.service.impl;
 
 import com.rentrix.rentrixserver.dto.FlatDto;
+import com.rentrix.rentrixserver.dto.PageResponse;
 import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.exception.ApiException;
 import com.rentrix.rentrixserver.mapper.FlatMapper;
@@ -8,7 +9,6 @@ import com.rentrix.rentrixserver.repository.FlatRepository;
 import com.rentrix.rentrixserver.service.FlatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -20,15 +20,15 @@ public class FlatServiceImpl implements FlatService {
 	private final FlatRepository flatRepository;
 	
 	@Override
-	public Page<FlatDto> getAllFlats(Pageable pageable) {
+	public PageResponse<FlatDto> getAllFlats(Pageable pageable) {
 		log.info("Get list of all flats");
-		return flatRepository.findAll(pageable).map(FlatMapper::toDto);
+		return PageResponse.from(flatRepository.findAll(pageable), FlatMapper::toDto);
 	}
 	
 	@Override
 	public FlatDto getFlatById(Long id) {
-		Flat flat = flatRepository.findById(id)
-										  .orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
+		Flat flat =
+			flatRepository.findById(id).orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
 		return FlatMapper.toDto(flat);
 	}
 	
@@ -42,8 +42,8 @@ public class FlatServiceImpl implements FlatService {
 	
 	@Override
 	public String updateFlat(Long id, FlatDto flatDto) {
-		Flat flat = flatRepository.findById(id)
-										  .orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
+		Flat flat =
+			flatRepository.findById(id).orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
 		FlatMapper.copyTo(flat, flatDto);
 		flatRepository.save(flat);
 		log.info("Update flat with id {}", id);
