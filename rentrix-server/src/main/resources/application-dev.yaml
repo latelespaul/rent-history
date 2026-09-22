@@ -24,15 +24,9 @@ spring:
     console:
       enabled: true
       path: /h2-console
-      settings:
-        web-allow-others: false  # Only localhost access
-        trace: false
-
-  app:
-    jwt:
-      secret: "UtSmryGfnnxJiVHWYYiyyizEOK92De7npIL16owOeaF"
-      access-token-expiry-ms: 900000        # 15 min
-      refresh-token-expiry-ms: 604800000    # 7 days
+    settings:
+      web-allow-others: false  # Only localhost access
+      trace: false
 
 # ── Dev-only Actuator override ────────────────────────────────────────────────
 management:

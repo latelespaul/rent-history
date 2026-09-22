@@ -29,9 +29,8 @@ logging:
     org.hibernate: WARN
 
 # will use later
-#app:
-#  cors:
-#    allowed-origins:
-#      - http://localhost:5173
-#      - https://rentrix-sage.vercel.app
-#      - https://myrentrix.vercel.app
+app:
+  jwt:
+    secret: "UtSmryGfnnxJiVHWYYiyyizEOK92De7npIL16owOeaF"
+    access-token-expiry-ms: 900000
+    refresh-token-expiry-ms: 604800000
