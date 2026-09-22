@@ -475,3 +475,11 @@ Prod uses `VITE_API_BASE_URL` pointing to Render + CORS on backend.
 Save this as `SETUP.md` in your `rentio-client` root. It's a complete, reusable template — next time you start a React + Vite + shadcn project, just run through it top to bottom.
 
 Ready for **Step 4: Types + Axios client + mock layer + `MOCKS.md`**? 🚀
+
+## Spring Boot 4 / Jackson 3 notes
+
+- Jackson 3 moved from `com.fasterxml.jackson.databind` → `tools.jackson.databind`
+- Annotations (`@JsonProperty`, `@JsonIgnore`) are UNCHANGED — still `com.fasterxml.jackson.annotation.*`
+- `JavaTimeModule` is no longer needed as a separate module — Java Time support is built into databind
+- JJWT 0.12.x still uses Jackson 2 internally — both libraries coexist, no action needed
+- When in doubt, search existing code for the correct import
