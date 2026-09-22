@@ -8,13 +8,11 @@ interface RetryConfig extends InternalAxiosRequestConfig {
 export const api = axios.create({
   baseURL: env.VITE_API_BASE_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  // 90s — Render free tier can take up to ~130s to cold start; this
+  // gives the request a fighting chance once the container wakes up.
+  timeout: 90000,
 })
 
-/**
- * Token storage — kept in module scope to avoid circular deps with Zustand.
- * Zustand store will set these on login/refresh, clear on logout.
- */
 let accessToken: string | null = null
 let refreshToken: string | null = null
 let onUnauthorized: (() => void) | null = null
@@ -39,7 +37,6 @@ export const tokenStore = {
   },
 }
 
-// Request interceptor — attach access token
 api.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
@@ -47,7 +44,6 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor — refresh on 401, retry once
 let refreshPromise: Promise<string> | null = null
 
 api.interceptors.response.use(
@@ -65,7 +61,6 @@ api.interceptors.response.use(
       original._retry = true
 
       try {
-        // De-dupe concurrent refreshes
         if (!refreshPromise) {
           refreshPromise = axios
             .post<{ accessToken: string }>(`${env.VITE_API_BASE_URL}/auth/refresh`, {

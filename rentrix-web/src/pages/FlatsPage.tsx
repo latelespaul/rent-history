@@ -7,8 +7,10 @@ import { useFiltersStore } from "@/features/flats/store"
 import { Button } from "@/components/ui/button"
 
 export default function FlatsPage() {
-  const { data, isLoading, isError, error, refetch, isFetching } = useFlats()
+  const { data, isLoading, isError, error, refetch, isFetching, isSlow } = useFlats()
   const filters = useFiltersStore((s) => s.filters)
+
+  const flats = data?.content ?? []
 
   return (
     <section className="container mx-auto px-4 py-8">
@@ -23,6 +25,13 @@ export default function FlatsPage() {
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         )}
       </div>
+
+      {isSlow && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-300/50 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Waking up the server — first request after inactivity can take 30–60 seconds. Please wait…
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
         <aside className="lg:sticky lg:top-20 lg:self-start">
@@ -51,20 +60,20 @@ export default function FlatsPage() {
             </div>
           )}
 
-          {!isLoading && !isError && data && data.content.length === 0 && (
+          {!isLoading && !isError && flats.length === 0 && (
             <div className="rounded-lg border py-16 text-center text-muted-foreground">
               No flats match your filters.
             </div>
           )}
 
-          {!isLoading && !isError && data && data.content.length > 0 && (
+          {!isLoading && !isError && flats.length > 0 && (
             <>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {data.content.map((flat) => (
+                {flats.map((flat) => (
                   <FlatCard key={flat.id} flat={flat} />
                 ))}
               </div>
-              <FlatPagination totalPages={data.totalPages} currentPage={filters.page ?? 0} />
+              <FlatPagination totalPages={data?.totalPages ?? 0} currentPage={filters.page ?? 0} />
             </>
           )}
         </div>
