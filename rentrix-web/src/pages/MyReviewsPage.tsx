@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
-import {EmptyState} from "@/components/common/EmptyState.tsx";
+import { EmptyState } from "@/components/common/EmptyState.tsx"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", {

@@ -11,7 +11,7 @@ import SignupPage from "@/pages/SignupPage"
 import MyReviewsPage from "@/pages/MyReviewsPage"
 import AdminPage from "@/pages/AdminPage"
 import NotFoundPage from "@/pages/NotFoundPage"
-import {RouteError} from "@/routes/RouteError.tsx";
+import { RouteError } from "@/routes/RouteError.tsx"
 
 export const router = createBrowserRouter([
   {
