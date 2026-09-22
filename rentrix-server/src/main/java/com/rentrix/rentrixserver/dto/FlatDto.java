@@ -15,6 +15,6 @@ public class FlatDto {
 	private BigDecimal rent;
 	
 	private String description;
-	private Boolean available;
+	private Boolean isAvailable;
 	
 }

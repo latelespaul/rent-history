@@ -1,5 +1,7 @@
 server:
   port: ${PORT:8080}
+  servlet:
+    context-path: /api/v1
 
 spring:
   application:
@@ -22,6 +24,14 @@ management:
 logging:
   level:
     root: WARN
-    com.skooly: INFO
+    com.rentrix: INFO
     org.springframework.security: WARN
     org.hibernate: WARN
+
+# will use later
+#app:
+#  cors:
+#    allowed-origins:
+#      - http://localhost:5173
+#      - https://rentrix-sage.vercel.app
+#      - https://myrentrix.vercel.app

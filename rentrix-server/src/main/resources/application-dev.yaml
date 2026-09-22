@@ -28,6 +28,12 @@ spring:
         web-allow-others: false  # Only localhost access
         trace: false
 
+  app:
+    jwt:
+      secret: "UtSmryGfnnxJiVHWYYiyyizEOK92De7npIL16owOeaF"
+      access-token-expiry-ms: 900000        # 15 min
+      refresh-token-expiry-ms: 604800000    # 7 days
+
 # ── Dev-only Actuator override ────────────────────────────────────────────────
 management:
   endpoint:

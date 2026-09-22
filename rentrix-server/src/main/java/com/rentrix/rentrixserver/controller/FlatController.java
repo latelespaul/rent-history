@@ -1,47 +1,45 @@
 package com.rentrix.rentrixserver.controller;
 
 import com.rentrix.rentrixserver.dto.FlatDto;
-import com.rentrix.rentrixserver.service.impl.FlatServiceImpl;
+import com.rentrix.rentrixserver.service.FlatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/v1/flats")
+@RequestMapping("/flats")
 public class FlatController {
 	
-	private final FlatServiceImpl flatServiceImpl;
+	private final FlatService flatService;
 	
 	@GetMapping
-	public List<FlatDto> getAllFlats() {
-		return flatServiceImpl.getAllFlats();
+	public Page<FlatDto> getAllFlats(@PageableDefault(size = 9, sort = "rent") Pageable pageable) {
+		return flatService.getAllFlats(pageable);
 	}
 	
 	@GetMapping("/{id}")
 	public ResponseEntity<FlatDto> getFlatById(@PathVariable Long id) {
-		FlatDto flatDto = flatServiceImpl.getFlatById(id);
-		return ResponseEntity.ok(flatDto);
+		return ResponseEntity.ok(flatService.getFlatById(id));
 	}
 	
 	@PostMapping
 	public ResponseEntity<String> createFlat(@RequestBody FlatDto flatDto) {
-		String msg = flatServiceImpl.saveFlat(flatDto);
-		return ResponseEntity.status(201).body(msg);
+		return ResponseEntity.status(201).body(flatService.saveFlat(flatDto));
 	}
 	
 	@PutMapping("/{id}")
 	public ResponseEntity<String> updateFlat(@PathVariable Long id, @RequestBody FlatDto flatDto) {
-		String msg = flatServiceImpl.updateFlat(id, flatDto);
-		return ResponseEntity.ok(msg);
+		return ResponseEntity.ok(flatService.updateFlat(id, flatDto));
 		
 	}
 	
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteFlat(@PathVariable Long id) {
-		flatServiceImpl.deleteFlat(id);
+		flatService.deleteFlat(id);
 		return ResponseEntity.noContent().build();
 	}
 	

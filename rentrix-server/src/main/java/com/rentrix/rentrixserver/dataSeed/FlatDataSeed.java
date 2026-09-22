@@ -34,7 +34,7 @@ public class FlatDataSeed {
 				flat.setArea(BigDecimal.valueOf(faker.number().numberBetween(500, 3000)));
 				flat.setRent(BigDecimal.valueOf(faker.number().numberBetween(8000, 50000)));
 				flat.setDescription(faker.lorem().paragraph());
-				flat.setAvailable(faker.bool().bool());
+				flat.setIsAvailable(faker.bool().bool());
 				flatRepository.save(flat);
 			}
 		};

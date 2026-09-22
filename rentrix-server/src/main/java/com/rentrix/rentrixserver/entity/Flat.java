@@ -23,6 +23,6 @@ public class Flat {
 	
 	@Lob
 	private String description;
-	private Boolean available;
+	private Boolean isAvailable;
 	
 }

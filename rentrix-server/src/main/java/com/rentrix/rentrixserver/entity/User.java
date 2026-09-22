@@ -40,6 +40,8 @@ public class User {
 	
 	@Nullable
 	private LocalDate dateOfBirth;
+	
+	@Enumerated(EnumType.STRING)
 	private Role role;
 	
 }

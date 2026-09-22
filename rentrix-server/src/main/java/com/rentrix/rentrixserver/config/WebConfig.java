@@ -15,8 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
 				  .allowedOrigins(
 					  "http://localhost:5173",
 					  "https://rentrix-sage.vercel.app",
-					  "https://myrentrix.vercel.app",
-					  "http://localhost:8080/swagger-ui"
+					  "https://myrentrix.vercel.app"
 				  )
 				  .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
 				  .allowedHeaders("*")

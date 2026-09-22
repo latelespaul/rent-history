@@ -6,13 +6,15 @@ import java.time.LocalDate;
 
 @Data
 public class ReviewDto {
-	public Long id;
-	public Long userId;
-	public String userName;
-	public Long flatId;
-	public String title;
-	public String content;
-	public Integer rating;
-	public LocalDate reviewDate;
+	private Long id;
+	private Long userId;
+	private String userName;
+	private Long flatId;
+	private String flatAddress;
+	private String title;
+	private String content;
+	private Integer rating;
+	private LocalDate reviewDate;
+	private String status;
 	
 }

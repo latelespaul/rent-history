@@ -1,16 +1,14 @@
 package com.rentrix.rentrixserver.service;
 
 import com.rentrix.rentrixserver.dto.ReviewDto;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ReviewService {
 	
-	List<ReviewDto> getAllReviews();
+	Page<ReviewDto> getAllReviews(Pageable pageable);
 	
 	ReviewDto getReviewById(Long id);
-	
-	ReviewDto createReview(ReviewDto reviewDto);
 	
 	String deleteReview(Long id);
 	
