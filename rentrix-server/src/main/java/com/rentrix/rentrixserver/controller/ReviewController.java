@@ -1,39 +1,45 @@
 package com.rentrix.rentrixserver.controller;
 
-import com.rentrix.rentrixserver.dto.PageResponse;
+import com.rentrix.rentrixserver.dto.CreateReviewRequest;
 import com.rentrix.rentrixserver.dto.ReviewDto;
+import com.rentrix.rentrixserver.security.CustomUserDetails;
 import com.rentrix.rentrixserver.service.ReviewService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/reviews")
+@RequestMapping("/flats/{flatId}/reviews")
+@RequiredArgsConstructor
 public class ReviewController {
 	
 	private final ReviewService reviewService;
 	
-	@Autowired
-	public ReviewController(ReviewService reviewService) {
-		this.reviewService = reviewService;
-	}
-	
+	/**
+	 * Public: list APPROVED reviews for a flat.
+	 * Returns Spring's Page JSON (content, totalElements, totalPages, number, size).
+	 */
 	@GetMapping
-	public PageResponse<ReviewDto> getAllReviews(@PageableDefault(sort = "reviewDate") Pageable pageable) {
-		return reviewService.getAllReviews(pageable);
+	public Page<ReviewDto> getFlatReviews(@PathVariable Long flatId,
+		@PageableDefault(size = 10, sort = "reviewDate") Pageable pageable) {
+		
+		return reviewService.getReviewsByFlat(flatId, pageable);
 	}
 	
-	@GetMapping("/{id}")
-	public ResponseEntity<ReviewDto> getReviewById(@PathVariable Long id) {
-		return ResponseEntity.ok(reviewService.getReviewById(id));
-	}
-	
-	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
-		reviewService.deleteReview(id);
-		return ResponseEntity.noContent().build();
+	/**
+	 * Authenticated: create a review for a flat. Status defaults to PENDING.
+	 */
+	@PostMapping
+	public ResponseEntity<ReviewDto> createReview(@PathVariable Long flatId,
+		@AuthenticationPrincipal CustomUserDetails principal, @Valid @RequestBody CreateReviewRequest req) {
+		
+		ReviewDto created = reviewService.createReview(flatId, principal.getId(), req);
+		return ResponseEntity.status(201).body(created);
 	}
 	
 }

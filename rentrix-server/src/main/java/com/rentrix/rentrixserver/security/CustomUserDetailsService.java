@@ -3,11 +3,13 @@ package com.rentrix.rentrixserver.security;
 import com.rentrix.rentrixserver.entity.User;
 import com.rentrix.rentrixserver.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+@NullMarked
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {

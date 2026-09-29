@@ -1,25 +1,25 @@
-# ── Git ──
+# --- Git ---
 .git
 .gitignore
 
-# ── Build artifacts ──
+# --- Build artifacts ---
 target
 
-# ── IDE ──
+# --- IDE ---
 .idea
 .vscode
 *.iml
 
-# ── Env ──
+# --- Env ---
 .env
 .env.*
 !.env.example
 
-# ── Docker ──
+# --- Docker ---
 Dockerfile
 docker-compose.yml
 .dockerignore
 
-# ── Docs ──
+# --- Docs ---
 *.md
 logs

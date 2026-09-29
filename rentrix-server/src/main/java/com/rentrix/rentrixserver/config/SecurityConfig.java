@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -54,41 +55,34 @@ public class SecurityConfig {
 	
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http
-			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-			.csrf(AbstractHttpConfigurer::disable)
-			.sessionManagement(session ->
-										 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.exceptionHandling(ex -> ex
-												 .authenticationEntryPoint(authenticationEntryPoint)
-												 .accessDeniedHandler(accessDeniedHandler))
-			.authorizeHttpRequests(auth -> auth
-														 // Public: auth
-														 .requestMatchers("/auth/signup", "/auth/login", "/auth/refresh").permitAll()
-														 
-														 // Public: browse flats + read reviews
-														 .requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
-														 .requestMatchers(HttpMethod.GET, "/reviews/**").permitAll()
-														 
-														 // Public: docs + H2 console (dev only — remove before prod!)
-														 .requestMatchers(
-															 "/v3/api-docs/**",
-															 "/swagger-ui/**",
-															 "/swagger-ui.html",
-															 "/h2-console/**"
-														 ).permitAll()
-														 .requestMatchers("/actuator/health").permitAll()
-														 
-														 // Admin-only
-														 .requestMatchers("/admin/**").hasRole("ADMIN")
-														 
-														 // Everything else requires auth
-														 .anyRequest().authenticated()
-			)
-			// H2 console uses frames — allow same-origin
-			.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
-			.authenticationProvider(authenticationProvider())
-			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+		http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+			 .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**")).csrf(AbstractHttpConfigurer::disable)
+			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+			 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			 .exceptionHandling(
+				 ex -> ex.authenticationEntryPoint(authenticationEntryPoint).accessDeniedHandler(accessDeniedHandler))
+			 .authorizeHttpRequests(auth -> auth
+														  // Public: auth
+														  .requestMatchers("/auth/signup", "/auth/login", "/auth/refresh").permitAll()
+														  
+														  // Public: browse flats + read reviews
+														  .requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
+														  .requestMatchers(HttpMethod.GET, "/reviews").permitAll()
+														  
+														  // Public: docs + H2 console (dev only — remove before prod!)
+														  .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+															  "/h2-console/**").permitAll().requestMatchers("/actuator/health")
+			                                   .permitAll()
+														  
+														  // Admin-only
+														  .requestMatchers("/admin/**").hasRole("ADMIN")
+														  
+														  // Everything else requires auth
+														  .anyRequest().authenticated())
+			 // H2 console uses frames — allow same-origin
+			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+			 .authenticationProvider(authenticationProvider())
+			 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		
 		return http.build();
 	}
@@ -100,9 +94,7 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOriginPatterns(List.of(
-			"http://localhost:5173",
-			"https://myrentrix.vercel.app",
+		config.setAllowedOriginPatterns(List.of("http://localhost:5173", "https://myrentrix.vercel.app",
 			"https://*.vercel.app"          // ← covers every preview URL
 		));
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

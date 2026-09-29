@@ -1,15 +1,9 @@
-# =============================================================================
-# application-prod.yaml  —  PRODUCTION
-# =============================================================================
-# All secrets MUST be supplied via environment variables (Render, Railway,
-# Docker, K8s secrets, etc.). There are no hard-coded fallbacks.
-#
 # Required env vars:
 #   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET, MAIL_PASSWORD
+
 # Optional env vars:
 #   PORT, DB_POOL_MAX, DB_POOL_MIN, CORS_ORIGINS, JWT_ACCESS_EXPIRY,
 #   JWT_REFRESH_EXPIRY, MAIL_HOST, MAIL_PORT, MAIL_USERNAME
-# =============================================================================
 
 server:
   tomcat:
@@ -33,7 +27,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update              # 🔴 NEVER use update / create-drop in prod
+      ddl-auto: update              # NEVER use update / create-drop in prod
     show-sql: false
     properties:
       hibernate:
@@ -41,9 +35,23 @@ spring:
         format_sql: false
 
 
-# ── Swagger / OpenAPI (disabled in prod) ─────────────────────────────────────
+# --- Swagger / OpenAPI (disabled in prod) --------------
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
+
+# --- Actuator ---------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized    # "always", will triggers auth check
+      show-components: when_authorized
+  health:
+    defaults:
+      enabled: true

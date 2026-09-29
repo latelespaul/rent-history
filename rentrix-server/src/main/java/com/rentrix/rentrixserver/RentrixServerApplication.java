@@ -11,7 +11,6 @@ public class RentrixServerApplication {
 		System.out.println("+----------------------------------+");
 		System.out.println("|     (•_•)   App Started...!!     |");
 		System.out.println("+----------------------------------+");
-		
 	}
 	
 }

@@ -29,21 +29,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private final ObjectMapper objectMapper;
 	
 	@Override
-	protected void doFilterInternal(
-		@NonNull HttpServletRequest request,
-		@NonNull HttpServletResponse response,
-		@NonNull FilterChain filterChain
-	) throws ServletException, IOException {
+	protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+		@NonNull FilterChain filterChain) throws ServletException, IOException {
 		
 		final String authHeader = request.getHeader("Authorization");
 		
-		// No header → anonymous request, let Security decide
+		// No header then anonymous request, let Security decide
 		if (authHeader == null || authHeader.isBlank()) {
 			filterChain.doFilter(request, response);
 			return;
 		}
 		
-		// Header present but not a Bearer scheme → reject (client tried to auth badly)
+		// Header present but not a Bearer scheme then reject (client tried to auth badly)
 		if (!authHeader.startsWith("Bearer")) {
 			writeUnauthorized(response, "Invalid Authorization header");
 			return;
@@ -51,7 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		
 		final String token = authHeader.substring("Bearer".length()).trim();
 		
-		// Header said Bearer but no token → reject
+		// Header said Bearer but no token then reject
 		if (token.isEmpty()) {
 			writeUnauthorized(response, "Missing bearer token");
 			return;
@@ -63,14 +60,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			return;
 		}
 		
-		// Ensure it's an access token, not a refresh token
+		// Ensuring if it's an access token, not a refresh token
 		String type = jwtService.extractType(token);
 		if (!"access".equals(type)) {
 			writeUnauthorized(response, "Invalid token type");
 			return;
 		}
 		
-		// If already authenticated (e.g. by another filter), don't overwrite
+		// If already authenticated don't overwrite
 		if (SecurityContextHolder.getContext().getAuthentication() != null) {
 			filterChain.doFilter(request, response);
 			return;

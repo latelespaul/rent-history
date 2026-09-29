@@ -51,13 +51,12 @@ public class FlatServiceImpl implements FlatService {
 	}
 	
 	@Override
-	public String deleteFlat(Long id) {
+	public void deleteFlat(Long id) {
 		if (!flatRepository.existsById(id)) {
 			throw ApiException.notFound("Flat not found with id: " + id);
 		}
 		log.info("Delete flat with id {}", id);
 		flatRepository.deleteById(id);
-		return "Flat deleted";
 	}
 	
 }

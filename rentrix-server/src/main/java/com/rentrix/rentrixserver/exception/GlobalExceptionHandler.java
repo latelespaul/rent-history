@@ -34,6 +34,7 @@ public class GlobalExceptionHandler {
 			fieldErrors.put(err.getField(), err.getDefaultMessage());
 		}
 		String message = fieldErrors.values().stream().findFirst().orElse("Validation failed");
+		log.error("Validation failed {} ", ex.getMessage());
 		return ResponseEntity
 					 .status(HttpStatus.BAD_REQUEST)
 					 .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), java.time.Instant.now(),
@@ -43,6 +44,7 @@ public class GlobalExceptionHandler {
 	// ---------- Security ----------
 	@ExceptionHandler(BadCredentialsException.class)
 	public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+		log.error("Invalid credentials {}", ex.getMessage());
 		return ResponseEntity
 					 .status(HttpStatus.UNAUTHORIZED)
 					 .body(new ErrorResponse("Invalid credentials", HttpStatus.UNAUTHORIZED.value()));
@@ -50,6 +52,7 @@ public class GlobalExceptionHandler {
 	
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+		log.error("Access Denied {}", ex.getMessage());
 		return ResponseEntity
 					 .status(HttpStatus.FORBIDDEN)
 					 .body(new ErrorResponse("Access denied", HttpStatus.FORBIDDEN.value()));

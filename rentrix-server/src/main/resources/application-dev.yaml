@@ -24,17 +24,17 @@ spring:
     console:
       enabled: true
       path: /h2-console
-    settings:
-      web-allow-others: false  # Only localhost access
-      trace: false
+      settings:
+        web-allow-others: false  # Only localhost access
+        trace: false
 
-# ── Dev-only Actuator override ────────────────────────────────────────────────
+# --- Dev-only Actuator override ----------------------------------------------
 management:
   endpoint:
     health:
       show-details: always
 
-# ── Swagger / OpenAPI (disabled in prod) ─────────────────────────────────────
+# --- Swagger / OpenAPI (disabled in prod) ------------------------------------
 springdoc:
   api-docs:
     path: /v3/api-docs

@@ -2,9 +2,9 @@ package com.rentrix.rentrixserver.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,6 +20,7 @@ public class JwtService {
 	@Value("${app.jwt.secret}")
 	private String secret;
 	
+	@Getter
 	@Value("${app.jwt.access-token-expiry-ms}")
 	private long accessTokenExpiryMs;
 	
@@ -55,7 +56,7 @@ public class JwtService {
 					  .claim("type", type)
 					  .issuedAt(now)
 					  .expiration(exp)
-					  .signWith(signingKey, SignatureAlgorithm.HS256)
+					  .signWith(signingKey, Jwts.SIG.HS256)
 					  .compact();
 	}
 	
@@ -91,10 +92,6 @@ public class JwtService {
 			log.debug("Invalid JWT: {}", ex.getMessage());
 			return false;
 		}
-	}
-	
-	public long getAccessTokenExpiryMs() {
-		return accessTokenExpiryMs;
 	}
 	
 }

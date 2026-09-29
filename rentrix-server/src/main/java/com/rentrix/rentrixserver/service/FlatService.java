@@ -13,6 +13,6 @@ public interface FlatService {
 	
 	String updateFlat(Long id, FlatDto flatDto);
 	
-	String deleteFlat(Long id);
+	void deleteFlat(Long id);
 	
 }

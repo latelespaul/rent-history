@@ -1,7 +1,6 @@
 package com.rentrix.rentrixserver.security;
 
 import com.rentrix.rentrixserver.entity.User;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -57,6 +56,11 @@ public class CustomUserDetails implements UserDetails {
 	@Override
 	public boolean isEnabled() {
 		return true;
+	}
+	
+	@Override
+	public String getPassword() {
+		return password;
 	}
 	
 }
