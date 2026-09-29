@@ -118,3 +118,31 @@ Zustand store (Step 5) will call `tokenStore.set(access, refresh)` on login and
 - `maybeFail(0.02)` in `flats.mock.ts` randomly fails 2% of requests to exercise error UI. Remove when annoying.
 - Mock DB is in-memory — refreshing the page resets everything.
 - `mockMe()` always returns user id 1 (Aarav). Change during auth work.
+
+## Status (updated YYYY-MM-DD)
+
+### ✅ Deployed and working
+- Frontend: https://myrentrix.vercel.app
+- Backend: https://rentrix-wj1j.onrender.com
+- Database: Aiven PostgreSQL
+
+### ✅ Endpoints live on backend
+- GET /api/v1/flats (paginated)
+- GET /api/v1/flats/:id
+- GET /api/v1/reviews
+- GET /api/v1/reviews/:id
+
+### 🔜 Endpoints still to build (Phase 2C)
+- POST /api/v1/auth/signup
+- POST /api/v1/auth/login
+- POST /api/v1/auth/refresh
+- GET  /api/v1/auth/me
+- POST /api/v1/auth/logout
+- POST /api/v1/flats/:id/reviews
+- GET  /api/v1/users/me/reviews
+- GET  /api/v1/admin/reviews
+- PATCH /api/v1/admin/reviews/:id
+
+### 🎭 Mocks currently in frontend
+- src/api/mock/ still exists but USE_MOCKS=false in prod
+- Delete the mock folder after Phase 2C ships
