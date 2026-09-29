@@ -10,12 +10,6 @@ CREATE TABLE flat (
     is_available BOOLEAN
 );
 
-CREATE TYPE role AS ENUM (
-    'TENANT',
-    'LANDLORD',
-    'ADMIN'
-);
-
 CREATE TABLE users (
 	id BIGSERIAL PRIMARY KEY,
 	username VARCHAR(255) UNIQUE,
@@ -26,12 +20,6 @@ CREATE TABLE users (
 	email VARCHAR(255) NOT NULL UNIQUE,
 	date_of_birth DATE,
 	role VARCHAR(20) NOT NULL
-);
-
-CREATE TYPE review_status AS ENUM (
-    'PENDING',
-    'APPROVED',
-    'REJECTED'
 );
 
 CREATE TABLE review (
@@ -51,6 +39,17 @@ CREATE TABLE review (
         FOREIGN KEY (flat_id)
         REFERENCES flat(id)
         ON DELETE CASCADE
+);
+CREATE TYPE review_status AS ENUM (
+    'PENDING',
+    'APPROVED',
+    'REJECTED'
+);
+
+CREATE TYPE role AS ENUM (
+    'TENANT',
+    'LANDLORD',
+    'ADMIN'
 );
 
 CREATE INDEX idx_review_user
