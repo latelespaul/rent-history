@@ -1,0 +1,57 @@
+# Required env vars:
+#   DB_URL, DB_USERNAME, DB_PASSWORD, JWT_SECRET, MAIL_PASSWORD
+
+# Optional env vars:
+#   PORT, DB_POOL_MAX, DB_POOL_MIN, CORS_ORIGINS, JWT_ACCESS_EXPIRY,
+#   JWT_REFRESH_EXPIRY, MAIL_HOST, MAIL_PORT, MAIL_USERNAME
+
+server:
+  tomcat:
+    threads:
+      max: 200
+    connection-timeout: 20000
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: 20000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000   # Log leaked connections after 60s
+
+  jpa:
+    hibernate:
+      ddl-auto: update              # NEVER use update / create-drop in prod
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+
+# --- Swagger / OpenAPI (disabled in prod) --------------
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# --- Actuator ---------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized    # "always", will triggers auth check
+      show-components: when_authorized
+  health:
+    defaults:
+      enabled: true

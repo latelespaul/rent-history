@@ -1,0 +1,36 @@
+server:
+  port: ${PORT:8080}
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: rentrix-server
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+# --- Actuator (lightweight health & metrics) -------------------------------
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized   # safer default; overridden to 'always' in dev
+
+# --- Logging -----------------------------------------------------------------
+logging:
+  level:
+    root: WARN
+    com.rentrix: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+
+# will use later
+app:
+  jwt:
+    secret: "RSPRuDXdSqPIeROd9NpaeZv79x802fwjbfUr2MO75EJ"
+    access-token-expiry-ms: 900000
+    refresh-token-expiry-ms: 604800000
