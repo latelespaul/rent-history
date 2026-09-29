@@ -1,7 +1,7 @@
 Here's the complete setup guide as a single reference file. Save it as `SETUP.md` in your repo root or keep it in your notes.
 
 ```markdown
-# Rentio Client — Project Setup Guide
+# rentrix Client — Project Setup Guide
 
 Stack: Vite + React + TypeScript + Tailwind v4 + shadcn/ui (radix-nova, zinc, lucide)
 State: Zustand | Server: TanStack Query + Axios | Forms: RHF + Zod | Router: React Router v7
@@ -18,8 +18,8 @@ State: Zustand | Server: TanStack Query + Axios | Forms: RHF + Zod | Router: Rea
 ## Step 1 — Create Vite project
 
 ```bash
-npm create vite@latest rentio-client -- --template react-ts
-cd rentio-client
+npm create vite@latest rentrix-client -- --template react-ts
+cd rentrix-client
 npm install
 npm run dev
 ```
@@ -286,7 +286,7 @@ Verify: `npm run lint` and `npm run format`.
 
 ```env
 VITE_API_BASE_URL=/api/v1
-VITE_APP_NAME=Rentio
+VITE_APP_NAME=rentrix
 VITE_ENABLE_MOCKS=true
 ```
 
@@ -383,7 +383,7 @@ Replace `src/App.tsx`:
 export default function App() {
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <h1 className="text-2xl font-bold">Rentio — setup in progress</h1>
+      <h1 className="text-2xl font-bold">rentrix — setup in progress</h1>
     </div>
   )
 }
@@ -472,7 +472,7 @@ Prod uses `VITE_API_BASE_URL` pointing to Render + CORS on backend.
 
 ---
 
-Save this as `SETUP.md` in your `rentio-client` root. It's a complete, reusable template — next time you start a React + Vite + shadcn project, just run through it top to bottom.
+Save this as `SETUP.md` in your `rentrix-client` root. It's a complete, reusable template — next time you start a React + Vite + shadcn project, just run through it top to bottom.
 
 Ready for **Step 4: Types + Axios client + mock layer + `MOCKS.md`**? 🚀
 

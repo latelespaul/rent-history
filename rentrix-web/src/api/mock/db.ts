@@ -1,10 +1,10 @@
 import type { Flat, Review, User } from "@/types"
 
 export const mockUsers: User[] = [
-  { id: 1, email: "tenant@rentio.com", name: "Aarav Sharma", role: "TENANT" },
-  { id: 4, email: "tenant2@rentio.com", name: "John Cena", role: "TENANT" },
-  { id: 2, email: "landlord@rentio.com", name: "Priya Verma", role: "LANDLORD" },
-  { id: 3, email: "admin@rentio.com", name: "Rentio Admin", role: "ADMIN" },
+  { id: 1, email: "tenant@rentrix.com", name: "Aarav Sharma", role: "TENANT" },
+  { id: 4, email: "tenant2@rentrix.com", name: "John Cena", role: "TENANT" },
+  { id: 2, email: "landlord@rentrix.com", name: "Priya Verma", role: "LANDLORD" },
+  { id: 3, email: "admin@rentrix.com", name: "rentrix Admin", role: "ADMIN" },
 ]
 
 export const mockFlats: Flat[] = [

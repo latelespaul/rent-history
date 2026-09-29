@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "rentio-auth",
+      name: "rentrix-auth",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,

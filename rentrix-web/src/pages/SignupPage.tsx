@@ -10,7 +10,7 @@ export default function SignupPage() {
       <div className="mb-6 space-y-1 text-center">
         <h1 className="text-2xl font-bold">Create your account</h1>
         <p className="text-sm text-muted-foreground">
-          Join Rentio to rate flats and share your experience
+          Join Rentrix to rate flats and share your experience
         </p>
       </div>
       <SignupForm />

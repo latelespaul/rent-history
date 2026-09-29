@@ -44,5 +44,5 @@ Rent History Checker is a web application for managing and reviewing rental prop
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/latelespaul/rent-history.git
-   cd rent-history
+   git clone https://github.com/latelespaul/rentrix.git
+   cd rentrix

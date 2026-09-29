@@ -109,9 +109,9 @@ Zustand store (Step 5) will call `tokenStore.set(access, refresh)` on login and
 
 | Email | Role | Password (any ≥4 chars) |
 |-------|------|--------------------------|
-| tenant@rentio.test | TENANT | anything |
-| landlord@rentio.test | LANDLORD | anything |
-| admin@rentio.test | ADMIN | anything |
+| tenant@rentrix.test | TENANT | anything |
+| landlord@rentrix.test | LANDLORD | anything |
+| admin@rentrix.test | ADMIN | anything |
 
 ## Gotchas
 
