@@ -51,3 +51,17 @@ even if no landlord has listed it.
 3. **Landlord verification is opt-in** — create incentive, don't gate participation
 4. **Moderation over prevention** — let users create, moderate afterward
 5. **Proof-of-living comes later** — trust signals compound over time
+
+## v0.1.2 — Tenant-created review targets
+
+### Proof of living
+When a tenant creates a flat to review, optionally allow them to upload proof:
+- Rent agreement (PDF/image)
+- Utility bill matching the address
+- Landlord reference contact
+
+Proof is:
+- Stored privately (not shown publicly)
+- Used to badge the review as "Verified stay"
+- Moderated alongside the review itself
+- Optional — reviews without proof still publish but show a subtler badge
