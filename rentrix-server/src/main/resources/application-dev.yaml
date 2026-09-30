@@ -47,6 +47,6 @@ springdoc:
 # will use later
 app:
   jwt:
-    secret: ${JWT_SECRET:rLFkch3sKX1BvtcT2C0Mmuj39WTpHAS0CTRepEYlaLE3J/i4hbMNPwhugSIF0KFb}
+    secret: ${JWT_SECRET}
     access-token-expiry-ms: 900000
     refresh-token-expiry-ms: 604800000
