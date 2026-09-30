@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { flatsApi } from "@/api/flats"
 import { queryKeys } from "@/api/queryKeys"
-import { useFiltersStore } from "../store"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
+import { useFiltersStore } from "../store"
 
 export function useFlats() {
   const filters = useFiltersStore((s) => s.filters)
@@ -17,7 +17,6 @@ export function useFlats() {
     placeholderData: (prev) => prev,
   })
 
-  // Detect slow loads (cold start)
   useEffect(() => {
     if (!query.isFetching) {
       setIsSlow(false)
