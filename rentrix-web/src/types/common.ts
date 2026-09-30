@@ -11,3 +11,11 @@ export interface ApiError {
   status: number
   timestamp?: string
 }
+
+export interface AddressDto {
+  addressLine?: string
+  street?: string
+  city?: string
+  state?: string
+  zipCode?: string
+}

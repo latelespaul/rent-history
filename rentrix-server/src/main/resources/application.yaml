@@ -27,10 +27,3 @@ logging:
     com.rentrix: INFO
     org.springframework.security: WARN
     org.hibernate: WARN
-
-# will use later
-app:
-  jwt:
-    secret: "RSPRuDXdSqPIeROd9NpaeZv79x802fwjbfUr2MO75EJ"
-    access-token-expiry-ms: 900000
-    refresh-token-expiry-ms: 604800000

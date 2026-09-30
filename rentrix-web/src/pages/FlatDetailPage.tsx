@@ -1,6 +1,18 @@
 import { Link, useParams } from "react-router-dom"
 import { useState } from "react"
-import { AlertCircle, ArrowLeft, BedDouble, Building2, MapPin, Ruler, Star } from "lucide-react"
+import {
+  AlertCircle,
+  ArrowLeft,
+  BedDouble,
+  Building2,
+  CalendarClock,
+  Car,
+  MapPin,
+  Ruler,
+  Sofa,
+  Star,
+  User,
+} from "lucide-react"
 import { useFlat } from "@/features/flats/hooks/useFlat"
 import { useReviews } from "@/features/reviews/hooks/useReviews"
 import { useAuthStore } from "@/features/auth/store"
@@ -9,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ReviewForm } from "@/features/reviews/components/ReviewForm"
 import { ReviewList } from "@/features/reviews/components/ReviewList"
+import type { PropertyType } from "@/types"
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -16,6 +29,15 @@ function formatCurrency(n: number) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(n)
+}
+
+const PROPERTY_LABEL: Record<PropertyType, string> = {
+  APARTMENT: "Apartment",
+  INDEPENDENT_HOUSE: "Independent House",
+  PG: "PG",
+  ROOM: "Room",
+  STUDIO: "Studio",
+  VILLA: "Villa",
 }
 
 export default function FlatDetailPage() {
@@ -48,6 +70,11 @@ export default function FlatDetailPage() {
     )
   }
 
+  const addressLine = [flat.address.addressLine, flat.address.street].filter(Boolean).join(", ")
+  const cityLine = [flat.address.city, flat.address.state, flat.address.zipCode]
+    .filter(Boolean)
+    .join(", ")
+
   return (
     <section className="container mx-auto px-4 py-8">
       <Button asChild variant="ghost" size="sm" className="mb-4">
@@ -57,51 +84,95 @@ export default function FlatDetailPage() {
       </Button>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-        {/* Left: flat details + reviews */}
         <div className="space-y-8">
           <div className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
-                <h1 className="text-3xl leading-tight font-bold">{flat.address}</h1>
+                <h1 className="text-3xl leading-tight font-bold">
+                  {addressLine || "Address not provided"}
+                </h1>
                 <p className="flex items-center gap-1 text-muted-foreground">
                   <MapPin className="h-4 w-4" />
-                  {flat.city}, {flat.state}
+                  {cityLine || "—"}
                 </p>
+                <p className="text-sm text-muted-foreground">{PROPERTY_LABEL[flat.propertyType]}</p>
               </div>
-              {flat.isAvailable ? (
+              {flat.available ? (
                 <Badge>Available</Badge>
               ) : (
                 <Badge variant="secondary">Currently occupied</Badge>
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-4 rounded-lg border bg-card p-4">
+            <div className="grid grid-cols-2 gap-4 rounded-lg border bg-card p-4 sm:grid-cols-4">
               <div className="space-y-1">
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <BedDouble className="h-3 w-3" /> Rooms
                 </p>
                 <p className="font-semibold">{flat.numberOfRooms} BHK</p>
               </div>
-              <div className="space-y-1">
-                <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Ruler className="h-3 w-3" /> Area
-                </p>
-                <p className="font-semibold">{flat.area} m²</p>
-              </div>
+              {flat.area != null && (
+                <div className="space-y-1">
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Ruler className="h-3 w-3" /> Area
+                  </p>
+                  <p className="font-semibold">{flat.area} m²</p>
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Building2 className="h-3 w-3" /> Rent
                 </p>
                 <p className="font-semibold">{formatCurrency(flat.rent)}</p>
               </div>
+              {flat.floorNumber != null && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Floor</p>
+                  <p className="font-semibold">
+                    {flat.floorNumber}
+                    {flat.totalFloors != null && ` / ${flat.totalFloors}`}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <h2 className="font-semibold">Description</h2>
-              <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                {flat.description}
-              </p>
-            </div>
+            {(flat.furnished || flat.parking || flat.bathrooms != null || flat.availableFrom) && (
+              <div className="flex flex-wrap gap-3 text-sm">
+                {flat.furnished && (
+                  <Badge variant="outline" className="gap-1">
+                    <Sofa className="h-3 w-3" /> Furnished
+                  </Badge>
+                )}
+                {flat.parking && (
+                  <Badge variant="outline" className="gap-1">
+                    <Car className="h-3 w-3" /> Parking
+                  </Badge>
+                )}
+                {flat.bathrooms != null && (
+                  <Badge variant="outline">{flat.bathrooms} bathrooms</Badge>
+                )}
+                {flat.availableFrom && (
+                  <Badge variant="outline" className="gap-1">
+                    <CalendarClock className="h-3 w-3" />
+                    Available from{" "}
+                    {new Date(flat.availableFrom).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {flat.description && (
+              <div className="space-y-2">
+                <h2 className="font-semibold">Description</h2>
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                  {flat.description}
+                </p>
+              </div>
+            )}
           </div>
 
           <Separator />
@@ -138,7 +209,6 @@ export default function FlatDetailPage() {
           </div>
         </div>
 
-        {/* Right: sticky summary */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <div className="space-y-4 rounded-lg border bg-card p-6">
             <div className="space-y-1">
@@ -165,10 +235,20 @@ export default function FlatDetailPage() {
               </>
             )}
 
+            {flat.ownerName && (
+              <>
+                <Separator />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  Listed by {flat.ownerName}
+                </div>
+              </>
+            )}
+
             <Separator />
 
-            <Button className="w-full" disabled={!flat.isAvailable}>
-              {flat.isAvailable ? "Contact landlord" : "Currently unavailable"}
+            <Button className="w-full" disabled={!flat.available}>
+              {flat.available ? "Contact landlord" : "Currently unavailable"}
             </Button>
             <p className="text-center text-xs text-muted-foreground">Contact feature coming soon</p>
           </div>

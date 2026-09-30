@@ -19,8 +19,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -64,7 +62,6 @@ public class ReviewServiceImpl implements ReviewService {
 		review.setTitle(req.getTitle());
 		review.setContent(req.getContent());
 		review.setRating(req.getRating());
-		review.setReviewDate(LocalDate.now());
 		review.setStatus(ReviewStatus.PENDING);
 		
 		Review saved = reviewRepository.save(review);

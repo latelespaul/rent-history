@@ -1,12 +1,18 @@
-import type { Flat, FlatFilters, Page } from "@/types"
+import type { CreateFlatRequest, Flat, FlatFilters, FlatSummary, UpdateFlatRequest } from "@/types"
+import type { Page } from "@/types"
 import { api } from "./client"
-import { USE_MOCKS } from "./config"
-import { mockGetFlat, mockListFlats } from "./mock/flats.mock"
 
 export const flatsApi = {
-  list: (filters: FlatFilters = {}): Promise<Page<Flat>> =>
-    USE_MOCKS ? mockListFlats(filters) : api.get("/flats", { params: filters }).then((r) => r.data),
+  list: (filters: FlatFilters = {}): Promise<Page<FlatSummary>> =>
+    api.get("/flats", { params: filters }).then((r) => r.data),
 
-  get: (id: number): Promise<Flat> =>
-    USE_MOCKS ? mockGetFlat(id) : api.get(`/flats/${id}`).then((r) => r.data),
+  get: (id: number): Promise<Flat> => api.get(`/flats/${id}`).then((r) => r.data),
+
+  create: (payload: CreateFlatRequest): Promise<Flat> =>
+    api.post("/flats", payload).then((r) => r.data),
+
+  update: (id: number, payload: UpdateFlatRequest): Promise<Flat> =>
+    api.patch(`/flats/${id}`, payload).then((r) => r.data),
+
+  remove: (id: number): Promise<void> => api.delete(`/flats/${id}`).then(() => undefined),
 }

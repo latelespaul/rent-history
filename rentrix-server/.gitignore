@@ -34,3 +34,6 @@ build/
 
 ### Env ###
 .env
+
+### SQL ###
+.sql

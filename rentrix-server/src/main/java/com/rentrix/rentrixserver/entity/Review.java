@@ -6,13 +6,13 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.time.LocalDate;
-
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
-@Table(name = "reviews")
-public class Review {
+@Table(name = "reviews", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "flat_id"})})
+public class Review extends BaseEntity {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -36,9 +36,8 @@ public class Review {
 	@Max(10)
 	private Integer rating;
 	
-	private LocalDate reviewDate;
-	
 	@Enumerated(EnumType.STRING)
 	private ReviewStatus status = ReviewStatus.PENDING;
+	private Boolean deleted = false;
 	
 }

@@ -1,4 +1,4 @@
-CREATE TABLE flat (
+CREATE TABLE flats (
     id BIGSERIAL PRIMARY KEY,
     address VARCHAR(255),
     city VARCHAR(100),
@@ -22,7 +22,7 @@ CREATE TABLE users (
 	role VARCHAR(20) NOT NULL
 );
 
-CREATE TABLE review (
+CREATE TABLE reviews (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     flat_id BIGINT NOT NULL,
@@ -53,19 +53,19 @@ CREATE TYPE role AS ENUM (
 );
 
 CREATE INDEX idx_review_user
-ON review(user_id);
+ON reviews(user_id);
 
 CREATE INDEX idx_review_flat
-ON review(flat_id);
+ON reviews(flat_id);
 
 CREATE INDEX idx_review_status
-ON review(status);
+ON reviews(status);
 
 CREATE INDEX idx_flat_city
-ON flat(city);
+ON flats(city);
 
 CREATE INDEX idx_flat_rent
-ON flat(rent);
+ON flats(rent);
 
 CREATE INDEX idx_flat_available
-ON flat(is_available);
+ON flats(is_available);

@@ -9,7 +9,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { X } from "lucide-react"
+import type { PropertyType } from "@/types"
 import { useFiltersStore } from "../store"
+
+const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
+  { value: "APARTMENT", label: "Apartment" },
+  { value: "INDEPENDENT_HOUSE", label: "Independent House" },
+  { value: "PG", label: "PG" },
+  { value: "ROOM", label: "Room" },
+  { value: "STUDIO", label: "Studio" },
+  { value: "VILLA", label: "Villa" },
+]
 
 export function FlatFilters() {
   const filters = useFiltersStore((s) => s.filters)
@@ -20,7 +30,11 @@ export function FlatFilters() {
     filters.city ||
     filters.minRent != null ||
     filters.maxRent != null ||
-    filters.numberOfRooms != null ||
+    filters.minRooms != null ||
+    filters.maxRooms != null ||
+    filters.furnished != null ||
+    filters.parking != null ||
+    filters.propertyType != null ||
     filters.available != null
 
   return (
@@ -74,8 +88,16 @@ export function FlatFilters() {
       <div className="space-y-2">
         <Label>Rooms</Label>
         <Select
-          value={filters.numberOfRooms != null ? String(filters.numberOfRooms) : "any"}
-          onValueChange={(v) => setFilter("numberOfRooms", v === "any" ? undefined : Number(v))}
+          value={filters.minRooms != null ? String(filters.minRooms) : "any"}
+          onValueChange={(v) => {
+            if (v === "any") {
+              setFilter("minRooms", undefined)
+              setFilter("maxRooms", undefined)
+            } else {
+              setFilter("minRooms", Number(v))
+              setFilter("maxRooms", Number(v))
+            }
+          }}
         >
           <SelectTrigger>
             <SelectValue />
@@ -85,7 +107,64 @@ export function FlatFilters() {
             <SelectItem value="1">1 BHK</SelectItem>
             <SelectItem value="2">2 BHK</SelectItem>
             <SelectItem value="3">3 BHK</SelectItem>
-            <SelectItem value="4">4+ BHK</SelectItem>
+            <SelectItem value="4">4 BHK</SelectItem>
+            <SelectItem value="5">5+ BHK</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Property type</Label>
+        <Select
+          value={filters.propertyType ?? "any"}
+          onValueChange={(v) =>
+            setFilter("propertyType", v === "any" ? undefined : (v as PropertyType))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any</SelectItem>
+            {PROPERTY_TYPES.map((p) => (
+              <SelectItem key={p.value} value={p.value}>
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Furnishing</Label>
+        <Select
+          value={filters.furnished == null ? "any" : filters.furnished ? "true" : "false"}
+          onValueChange={(v) => setFilter("furnished", v === "any" ? undefined : v === "true")}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any</SelectItem>
+            <SelectItem value="true">Furnished</SelectItem>
+            <SelectItem value="false">Unfurnished</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Parking</Label>
+        <Select
+          value={filters.parking == null ? "any" : filters.parking ? "true" : "false"}
+          onValueChange={(v) => setFilter("parking", v === "any" ? undefined : v === "true")}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any</SelectItem>
+            <SelectItem value="true">Yes</SelectItem>
+            <SelectItem value="false">No</SelectItem>
           </SelectContent>
         </Select>
       </div>
