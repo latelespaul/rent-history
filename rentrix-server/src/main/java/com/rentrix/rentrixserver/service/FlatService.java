@@ -1,18 +1,29 @@
 package com.rentrix.rentrixserver.service;
 
-import com.rentrix.rentrixserver.dto.FlatDto;
-import com.rentrix.rentrixserver.dto.PageResponse;
+import com.rentrix.rentrixserver.dto.filter.FlatFilterRequest;
+import com.rentrix.rentrixserver.dto.request.CreateFlatRequest;
+import com.rentrix.rentrixserver.dto.request.UpdateFlatRequest;
+import com.rentrix.rentrixserver.dto.response.FlatResponse;
+import com.rentrix.rentrixserver.dto.response.FlatSummaryResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface FlatService {
-	PageResponse<FlatDto> getAllFlats(Pageable pageable);
+	Page<FlatSummaryResponse> listFlats(FlatFilterRequest filter, Pageable pageable);
 	
-	FlatDto getFlatById(Long id);
+	FlatResponse getFlatById(Long id);
 	
-	String saveFlat(FlatDto flatDto);
+	FlatResponse createFlat(CreateFlatRequest createFlatRequest, Long ownerId);
 	
-	String updateFlat(Long id, FlatDto flatDto);
+	FlatResponse updateFlat(Long id, UpdateFlatRequest updateFlatRequest, Long requesterId, boolean isAdmin);
 	
-	void deleteFlat(Long id);
+	void deleteFlat(Long id, Long requesterId, boolean isAdmin);
 	
 }
+/*
+Design:
+- createFlat takes ownerId explicitly — derived from the JWT by the controller
+- updateFlat / deleteFlat take requesterId + isAdmin so the service can enforce
+ownership without knowing about Spring Security
+- List returns FlatSummaryResponse (lighter payload)
+ */

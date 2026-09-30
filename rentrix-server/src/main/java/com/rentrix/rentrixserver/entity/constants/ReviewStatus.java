@@ -5,5 +5,5 @@ public enum ReviewStatus {
 	APPROVED,
 	REJECTED,
 }
-// TODO: On your Spring Boot side, ReviewStatus enum will need to exist and ReviewDto will need status + flatAddress
+// TODO: On our Spring Boot side, ReviewStatus enum will need to exist and ReviewDto will need status + flatAddress
 //  (or flatId + flat projection). I'll update MOCKS.md at the end.

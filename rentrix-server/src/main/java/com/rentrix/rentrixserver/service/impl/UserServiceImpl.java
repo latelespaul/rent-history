@@ -26,14 +26,6 @@ public class UserServiceImpl {
 		return userRepository.findById(id).orElse(null);
 	}
 	
-	public Optional<User> getUserByUsername(String username) {
-		return userRepository.findByUsername(username);
-	}
-	
-	public Optional<User> getUserByTelephone(String telephone) {
-		return userRepository.findByTelephone(telephone);
-	}
-	
 	public Optional<User> getUserByEmail(String email) {
 		return userRepository.findByEmail(email);
 	}

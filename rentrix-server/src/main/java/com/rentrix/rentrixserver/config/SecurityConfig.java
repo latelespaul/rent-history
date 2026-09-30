@@ -56,29 +56,32 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-			 .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**")).csrf(AbstractHttpConfigurer::disable)
-			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+			 .csrf(AbstractHttpConfigurer::disable)
 			 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			 .exceptionHandling(
 				 ex -> ex.authenticationEntryPoint(authenticationEntryPoint).accessDeniedHandler(accessDeniedHandler))
-			 .authorizeHttpRequests(auth -> auth
-														  // Public: auth
-														  .requestMatchers("/auth/signup", "/auth/login", "/auth/refresh").permitAll()
-														  
-														  // Public: browse flats + read reviews
-														  .requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
-														  .requestMatchers(HttpMethod.GET, "/reviews").permitAll()
-														  
-														  // Public: docs + H2 console (dev only — remove before prod!)
-														  .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-															  "/h2-console/**").permitAll().requestMatchers("/actuator/health")
-			                                   .permitAll()
-														  
-														  // Admin-only
-														  .requestMatchers("/admin/**").hasRole("ADMIN")
-														  
-														  // Everything else requires auth
-														  .anyRequest().authenticated())
+			 .authorizeHttpRequests(
+				 auth -> auth
+								// Public: auth
+								.requestMatchers("/auth/signup", "/auth/login", "/auth/refresh").permitAll()
+								
+								// Public: browse flats + read reviews
+								.requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
+								.requestMatchers(HttpMethod.GET, "/reviews").permitAll()
+								
+								// Public: docs + H2 console (dev only — remove before prod!)
+								.requestMatchers("/v3/api-docs/**",
+									"/swagger-ui/**",
+									"/swagger-ui.html",
+									"/h2-console/**").permitAll()
+								.requestMatchers("/actuator/health").permitAll()
+								
+								// Admin-only
+								.requestMatchers("/admin/**").hasRole("ADMIN")
+								
+								// Everything else requires auth
+								.anyRequest().authenticated())
+			 
 			 // H2 console uses frames — allow same-origin
 			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 			 .authenticationProvider(authenticationProvider())

@@ -1,47 +1,81 @@
 package com.rentrix.rentrixserver.entity;
 
 import com.rentrix.rentrixserver.entity.constants.Role;
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 
-@Data
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "users")
-public class User {
+@Data
+public class User extends BaseEntity implements UserDetails {
+	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	
-	@Column(unique = true)
-	@Nullable
-	private String username;
-	
-	@Nullable
-	@Column(unique = true)
-	private String telephone;
-	
-	private String password;
-	
-	@NotBlank
-	private String name;
-	
-	@Nullable
-	private String address;
-	
-	@Email
-	@NotBlank
-	@Column(unique = true)
+	@Column(unique = true, nullable = false)
 	private String email;
 	
-	@Nullable
-	private LocalDate dateOfBirth;
+	@Column(nullable = false)
+	private String password;
 	
 	@Enumerated(EnumType.STRING)
 	private Role role;
+	
+	@OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	@EqualsAndHashCode.Exclude
+	@ToString.Exclude
+	private UserDetail userDetail;
+	
+	// UserDetails methods
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+	}
+	
+	@Override
+	public String getUsername() {
+		return email; // login via email
+	}
+	
+	@Column(nullable = false)
+	private Boolean deleted = false;
+	
+	@Override
+	public boolean isAccountNonExpired() {return true;}
+	
+	@Override
+	public boolean isAccountNonLocked() {return true;}
+	
+	@Override
+	public boolean isCredentialsNonExpired() {return true;}
+	
+	@Override
+	public boolean isEnabled() {
+		return !Boolean.TRUE.equals(deleted);
+	}
+	
+	// ── Display helpers ───────────────────────────────────────────────────
+	
+	/**
+	 * Best-effort display name for UI. Falls back to email if no user detail.
+	 * Never returns null.
+	 */
+	public String getDisplayName() {
+		if (userDetail == null) return email;
+		String first = userDetail.getFirstName() != null ? userDetail.getFirstName() : "";
+		String last = userDetail.getLastName() != null ? userDetail.getLastName() : "";
+		String full = (first + " " + last).trim();
+		return full.isEmpty() ? email : full;
+	}
 	
 }

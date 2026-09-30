@@ -13,16 +13,13 @@ public final class ReviewMapper {
 		dto.setTitle(review.getTitle());
 		dto.setContent(review.getContent());
 		dto.setRating(review.getRating());
-		dto.setReviewDate(review.getReviewDate());
 		dto.setStatus(review.getStatus() != null ? review.getStatus().name() : null);
 		
 		if (review.getUser() != null) {
 			dto.setUserId(review.getUser().getId());
-			dto.setUserName(review.getUser().getName());
 		}
 		if (review.getFlat() != null) {
 			dto.setFlatId(review.getFlat().getId());
-			dto.setFlatAddress(review.getFlat().getAddress());
 		}
 		return dto;
 	}
