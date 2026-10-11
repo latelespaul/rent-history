@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.exception.ApiException;
 import com.rentrix.rentrixserver.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -133,12 +134,16 @@ public class S3StorageService implements StorageService {
 	
 	// Returns an AWS credentials provider based on the configured access/secret keys,
 	// or the default provider chain if not set.
-	private AwsCredentialsProvider credentialsProvider() {
+	@Bean
+	public AwsCredentialsProvider awsCredentialsProvider() {
 		if (props.getAccessKey() != null && !props.getAccessKey().isBlank()
 				 && props.getSecretKey() != null && !props.getSecretKey().isBlank()) {
 			return StaticCredentialsProvider.create(
 				AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey()));
 		}
+		// Fallback for IAM roles (EC2/EKS/ECS) — but log loudly
+		log.warn("S3 credentials not configured — falling back to DefaultCredentialsProvider. "
+						+ "This will work only if running on infrastructure with an IAM role.");
 		return DefaultCredentialsProvider.builder().build();
 	}
 	

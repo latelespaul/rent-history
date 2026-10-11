@@ -10,15 +10,11 @@
 
 spring:
 
-  mvc:
-    problem-details:
-      enabled: true
-
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:rentrix}
+    url: jdbc:mysql://${DB_HOST:mysql}:${DB_PORT:3306}/${DB_NAME:rentrix}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USERNAME:rentrix}
     password: ${DB_PASSWORD:rentrix123}
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:
       pool-name: RentrixHikariPool
@@ -37,21 +33,14 @@ spring:
 
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
 
         jdbc:
           time_zone: UTC
 
-  servlet:
-    multipart:
-      max-file-size: 15MB
-      max-request-size: 50MB
-      file-size-threshold: 2MB
-
   jackson:
     time-zone: UTC
-
     default-property-inclusion: non_null
 
 # =============================================================================
@@ -77,7 +66,7 @@ app:
       access-key: ${AWS_ACCESS_KEY_ID:}
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
-      public-bucket: ${S3_PUBLIC_BUCKET:rentrix-public}
+      public-bucket: ${S3_PUBLIC_BUCKET:rentrix-media}
       private-bucket: ${S3_PRIVATE_BUCKET:rentrix-private}
 
       public-base-url: ${S3_PUBLIC_BASE_URL:}

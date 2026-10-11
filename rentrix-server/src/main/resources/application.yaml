@@ -31,11 +31,6 @@ spring:
     time-zone: UTC
     default-property-inclusion: non_null
 
-  # --- MVC configuration -------------------------------------------------------------
-  mvc:
-    problemDetails:
-      enabled: true
-
 
 # --- Actuator (lightweight health & metrics) -------------------------------
 management:
@@ -66,14 +61,14 @@ app:
   storage:
     s3:
       region: ${AWS_REGION}
-      access-key: ${AWS_ACCESS_KEY}
-      secret-key: ${AWS_SECRET_KEY}
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}
 
       public-bucket: ${AWS_BUCKET}
       private-bucket: ${AWS_PRIVATE_BUCKET}
 
       public-base-url: ${AWS_PUBLIC_URL}
-      max-image-size-bytes: 10485760       # 10 MB
+      max-image-size-bytes: 15728640        # 15 MB
 
       allowed-image-types:
         - image/jpeg

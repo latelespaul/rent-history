@@ -14,8 +14,7 @@
 # =============================================================================
 
 server:
-  # Bind to all interfaces so mobile devices on the same LAN can reach the API
-  address: 0.0.0.0
+  address: ${SERVER_BIND:127.0.0.1}
 
 
 # -------------------- Spring Boot --------------------------------------------
@@ -26,7 +25,7 @@ spring:
     # Connection URL with common parameters
     url: jdbc:mysql://localhost:3306/rentrix?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:admin}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       pool-name: MySQLHikariPool
@@ -58,7 +57,7 @@ spring:
 app:
   # --- JWT configuration --------------------------------
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:fpxdHFQKBBgwymhg83om6FhTJlvtvK6RjCQ7pvOre4G}
     access-token-expiry-ms: 900000                # 15 minutes
     refresh-token-expiry-ms: 604800000            # 7 days
     # 10 MB

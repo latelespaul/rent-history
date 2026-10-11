@@ -1,9 +1,15 @@
+# =============================================================================
+# application-test.yml
+# Test Profile — activated by @ActiveProfiles("test") in integration tests
+# =============================================================================
+
 spring:
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
     driver-class-name: org.h2.Driver
@@ -16,18 +22,20 @@ spring:
 
 app:
   jwt:
-    secret: 8E2WDlIRG1lX0QRqkJTgZiZLcF1sCAOjSFE2vDkULL8=
+    # Test-only placeholder. Must be ≥32 bytes for HS256.
+    # Do NOT use in production — this value is checked into git.
+    secret: test-only-secret-must-be-at-least-32-bytes-xxxxxxxxxx
     access-token-expiry-ms: 900000
     refresh-token-expiry-ms: 604800000
 
   storage:
     s3:
       region: ap-south-1
+      access-key: test-key
+      secret-key: test-secret
       public-bucket: test-public
       private-bucket: test-private
       public-base-url: https://test-public.s3.ap-south-1.amazonaws.com
-
-
 
 logging:
   level:
