@@ -20,6 +20,15 @@ app:
     access-token-expiry-ms: 900000
     refresh-token-expiry-ms: 604800000
 
+  storage:
+    s3:
+      region: ap-south-1
+      public-bucket: test-public
+      private-bucket: test-private
+      public-base-url: https://test-public.s3.ap-south-1.amazonaws.com
+
+
+
 logging:
   level:
     root: WARN

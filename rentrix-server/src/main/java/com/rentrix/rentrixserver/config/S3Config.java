@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -16,33 +17,45 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 public class S3Config {
 	
 	private final StorageProperties props;
-	private AwsCredentialsProvider credentials;
 	
 	@Bean
-	public S3Client s3Client() {
-		if (props.getAccessKey() != null &&
-				 !props.getAccessKey().isBlank() &&
-				 props.getSecretKey() != null &&
-				 !props.getSecretKey().isBlank()) {
+	public AwsCredentialsProvider awsCredentialsProvider() {
+		
+		if (props.getAccessKey() != null
+				 && !props.getAccessKey().isBlank()
+				 && props.getSecretKey() != null
+				 && !props.getSecretKey().isBlank()) {
 			
-			credentials = StaticCredentialsProvider
-								  .create(AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey()));
-		} else {
-			credentials = DefaultCredentialsProvider.builder().build();
+			return StaticCredentialsProvider.create(
+				AwsBasicCredentials.create(
+					props.getAccessKey(),
+					props.getSecretKey()
+				)
+			);
 		}
+		
+		return DefaultCredentialsProvider.builder().build();
+	}
+	
+	@Bean
+	@Profile("!test")
+	public S3Client s3Client(
+		AwsCredentialsProvider credentialsProvider) {
 		
 		return S3Client.builder()
 							.region(Region.of(props.getRegion()))
-							.credentialsProvider(credentials)
+							.credentialsProvider(credentialsProvider)
 							.build();
 	}
 	
 	@Bean
-	public S3Presigner s3Presigner() {
+	@Profile("!test")
+	public S3Presigner s3Presigner(
+		AwsCredentialsProvider credentialsProvider) {
 		
 		return S3Presigner.builder()
 								.region(Region.of(props.getRegion()))
-								.credentialsProvider(credentials)
+								.credentialsProvider(credentialsProvider)
 								.build();
 	}
 	
