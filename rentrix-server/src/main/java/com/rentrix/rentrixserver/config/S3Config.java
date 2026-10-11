@@ -9,17 +9,17 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
 @RequiredArgsConstructor
 public class S3Config {
 	
 	private final StorageProperties props;
+	private AwsCredentialsProvider credentials;
 	
 	@Bean
 	public S3Client s3Client() {
-		AwsCredentialsProvider credentials;
-		
 		if (props.getAccessKey() != null &&
 				 !props.getAccessKey().isBlank() &&
 				 props.getSecretKey() != null &&
@@ -35,6 +35,15 @@ public class S3Config {
 							.region(Region.of(props.getRegion()))
 							.credentialsProvider(credentials)
 							.build();
+	}
+	
+	@Bean
+	public S3Presigner s3Presigner() {
+		
+		return S3Presigner.builder()
+								.region(Region.of(props.getRegion()))
+								.credentialsProvider(credentials)
+								.build();
 	}
 	
 }

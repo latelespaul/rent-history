@@ -1,5 +1,7 @@
 package com.rentrix.rentrixserver.dto.response;
 
-public class RefreshResponse {
+public record RefreshResponse(
+	String accessToken
+) {
 
 }

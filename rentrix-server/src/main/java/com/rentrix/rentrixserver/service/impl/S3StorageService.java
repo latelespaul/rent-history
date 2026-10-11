@@ -10,15 +10,14 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.time.Duration;
 
@@ -29,6 +28,7 @@ public class S3StorageService implements StorageService {
 	
 	private final S3Client s3;
 	private final StorageProperties props;
+	private final S3Presigner s3Presigner;
 	
 	@Override
 	public String uploadPublicImage(String prefix, String filename, byte[] content, String contentType) {
@@ -44,8 +44,7 @@ public class S3StorageService implements StorageService {
 		String contentType, String originalFilename) {
 		String key = buildKey(prefix, filename);
 		upload(props.getPrivateBucket(), key, content, contentType, false);
-		log.info("Uploaded private file: key={}, original={}, size={}B",
-			key, originalFilename, content.length);
+		log.info("Uploaded private file: original={}, size={}B", originalFilename, content.length);
 		return key;
 	}
 	
@@ -71,27 +70,24 @@ public class S3StorageService implements StorageService {
 	
 	@Override
 	public String presignedPrivateUrl(String key, int expiryMinutes) {
+		GetObjectRequest getRequest = GetObjectRequest.builder()
+																	 .bucket(props.getPrivateBucket())
+																	 .key(key)
+																	 .build();
+		
+		GetObjectPresignRequest presignRequest = GetObjectPresignRequest
+																  .builder()
+																  .signatureDuration(Duration.ofMinutes(expiryMinutes))
+																  .getObjectRequest(getRequest)
+																  .build();
+		
 		try {
-			S3Presigner presigner = S3Presigner.builder()
-														  .region(Region.of(props.getRegion()))
-														  .credentialsProvider(credentialsProvider())
-														  .build();
+			return s3Presigner.presignGetObject(presignRequest)
+									.url()
+									.toString();
 			
-			GetObjectRequest getRequest = GetObjectRequest.builder()
-																		 .bucket(props.getPrivateBucket())
-																		 .key(key)
-																		 .build();
-			
-			GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-																								 .signatureDuration(
-																									 Duration.ofMinutes(expiryMinutes))
-																								 .getObjectRequest(getRequest)
-																								 .build();
-			
-			PresignedGetObjectRequest presigned = presigner.presignGetObject(presignRequest);
-			return presigned.url().toString();
-		} catch (Exception e) {
-			log.error("Failed to generate presigned URL for key={}", key, e);
+		} catch (SdkException ex) {
+			log.error("Failed to generate presigned URL for key={}", key, ex);
 			throw ApiException.badRequest("Failed to generate download link");
 		}
 	}
@@ -135,15 +131,15 @@ public class S3StorageService implements StorageService {
 		}
 	}
 	
-	// Returns an AWS credentials provider based on the configured access/secret keys, or the default provider chain if
-	// not set.
+	// Returns an AWS credentials provider based on the configured access/secret keys,
+	// or the default provider chain if not set.
 	private AwsCredentialsProvider credentialsProvider() {
 		if (props.getAccessKey() != null && !props.getAccessKey().isBlank()
 				 && props.getSecretKey() != null && !props.getSecretKey().isBlank()) {
 			return StaticCredentialsProvider.create(
 				AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey()));
 		}
-		return DefaultCredentialsProvider.create();
+		return DefaultCredentialsProvider.builder().build();
 	}
 	
 }

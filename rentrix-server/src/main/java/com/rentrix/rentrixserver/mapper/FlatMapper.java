@@ -88,7 +88,7 @@ public final class FlatMapper {
 		// Primary image URL for the card
 		String primaryImageUrl = null;
 		if (flat.getImages() != null) {
-			primaryImageUrl = flat.getImages().stream()
+			primaryImageUrl = flat.getImages().stream()// if flats are 1000+ then use @EntityGraph
 										 .filter(img -> !Boolean.TRUE.equals(img.getDeleted()))
 										 .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
 										 .findFirst()

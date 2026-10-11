@@ -45,7 +45,7 @@ public class ImageProcessingService {
 						 .outputQuality(JPEG_QUALITY).outputFormat("jpg").toOutputStream(out);
 			
 			byte[] processed = out.toByteArray();
-			log.info("Image processed: original={}B, processed={}B", original.length, processed.length);
+			log.debug("Image processed: original={}B, processed={}B", original.length, processed.length);
 			return processed;
 			
 		} catch (IOException e) {

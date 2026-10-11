@@ -7,6 +7,7 @@ import com.rentrix.rentrixserver.dto.response.FlatImageDto;
 import com.rentrix.rentrixserver.dto.response.FlatResponse;
 import com.rentrix.rentrixserver.dto.response.FlatSummaryResponse;
 import com.rentrix.rentrixserver.dto.response.PageResponse;
+import com.rentrix.rentrixserver.entity.constants.Role;
 import com.rentrix.rentrixserver.security.CustomUserDetails;
 import com.rentrix.rentrixserver.service.FlatImageService;
 import com.rentrix.rentrixserver.service.FlatService;
@@ -23,6 +24,23 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+/**
+ * Flat management APIs.
+ * <p>
+ * Responsibilities:
+ * - Public flat search
+ * - Flat detail retrieval
+ * - Flat creation
+ * - Flat updates
+ * - Flat deletion
+ * - Flat image management
+ * <p>
+ * Access Rules:
+ * - Listing and detail views are public
+ * - Creation requires authentication
+ * - Updates require owner, creator, or admin
+ * - Image management requires owner, creator, or admin
+ */
 @RestController
 @RequestMapping("/flats")
 @RequiredArgsConstructor
@@ -52,7 +70,6 @@ public class FlatController {
 	/** Public: flat detail. */
 	@GetMapping("/{id}")
 	public ResponseEntity<FlatResponse> getFlatById(@PathVariable Long id) {
-		
 		return ResponseEntity.ok(flatService.getFlatById(id));
 	}
 	
@@ -60,7 +77,8 @@ public class FlatController {
 	@PostMapping
 	public ResponseEntity<FlatResponse> createFlat(@Valid @RequestBody CreateFlatRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal) {
-		boolean isVerifiedCreator = principal.getRole().equals("LANDLORD") || principal.getRole().equals("ADMIN");
+		Role role = Role.valueOf(principal.getRole());
+		boolean isVerifiedCreator = role == Role.LANDLORD || role == Role.ADMIN;
 		FlatResponse created = flatService.createFlat(request, principal.getId(), isVerifiedCreator);
 		
 		return ResponseEntity.status(201).body(created);

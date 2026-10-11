@@ -49,7 +49,7 @@ public class DocumentProcessingService {
 						 .toOutputStream(out);
 			
 			byte[] processed = out.toByteArray();
-			log.info("Document (image) processed: original={}B, processed={}B",
+			log.debug("Document (image) processed: original={}B, processed={}B",
 				file.getSize(), processed.length);
 			return new ProcessedDocument(processed, "image/jpeg");
 			

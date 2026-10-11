@@ -24,6 +24,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	@EntityGraph(attributePaths = {"user", "user.userDetail", "flat", "flat.address", "proofs"})
 	Page<Review> findByStatus(ReviewStatus status, Pageable pageable);
 	
+	boolean existsByUserIdAndFlatId(Long userId, Long flatId);
+	
 	// use this method to fetch all reviews with relations for admin moderation, with pagination
 	// instead of findAll() which may cause N+1 problem
 	@EntityGraph(attributePaths = {"user", "user.userDetail", "flat", "flat.address", "proofs"})
@@ -38,12 +40,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	@Query("""
 		SELECT r.flat.id, AVG(r.rating), COUNT(r)
 		FROM Review r
-		WHERE r.flat.id IN :flatIds AND r.status = 'APPROVED'
+		WHERE r.flat.id IN :flatIds AND r.status = :status
 		GROUP BY r.flat.id
 		""")
-	List<Object[]> findRatingAggregates(@Param("flatIds") List<Long> flatIds);
-	/*
-	 Note: r.status = 'APPROVED' is a literal string in JPQL. If Hibernate complains, change to r.status = com.rentrix
-	 .rentrixserver.entity.constants.ReviewStatus.APPROVED (FQN enum literal) or pass it as a parameter.
-	 */
+	List<Object[]> findRatingAggregates(
+		@Param("flatIds") List<Long> flatIds,
+		@Param("status") ReviewStatus status
+	);
+	
 }
