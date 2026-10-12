@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.repository;
 import com.rentrix.rentrixserver.entity.Flat;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,6 +15,10 @@ import java.util.Optional;
 
 @Repository
 public interface FlatRepository extends JpaRepository<Flat, Long>, JpaSpecificationExecutor<Flat> {
+	
+	// we will use this to avoid N+1 issue
+	@EntityGraph(attributePaths = {"owner", "createdBy", "address"})
+	Page<Flat> findAll(Specification<Flat> spec, Pageable pageable);
 	
 	Page<Flat> findByCreatedById(Long userId, Pageable pageable);
 	

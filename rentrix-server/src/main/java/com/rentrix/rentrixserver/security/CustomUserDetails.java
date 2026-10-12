@@ -24,10 +24,12 @@ public class CustomUserDetails implements UserDetails {
 		this.password = user.getPassword();
 		this.name = user.getDisplayName();
 		this.role = user.getRole() != null ? user.getRole().name() : null;
+		
 	}
 	
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
+		if (role == null) return List.of();
 		return List.of(new SimpleGrantedAuthority("ROLE_" + role));
 	}
 	

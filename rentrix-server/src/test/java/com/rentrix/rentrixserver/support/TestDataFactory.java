@@ -63,11 +63,12 @@ public class TestDataFactory {
 	
 	public User createUser(String prefix, Role role) {
 		User user = new User();
+		user.setName(prefix);   // ← ADD
 		user.setEmail(prefix + "-" + System.nanoTime() + "@rentrix.test");
 		user.setPassword(passwordEncoder.encode(DEFAULT_PASSWORD));
 		user.setRole(role);
 		User saved = userRepository.save(user);
-		userRepository.flush();  // ✅ force INSERT
+		userRepository.flush();
 		return saved;
 	}
 	

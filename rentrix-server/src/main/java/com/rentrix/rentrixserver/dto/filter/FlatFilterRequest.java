@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.dto.filter;
 
 import com.rentrix.rentrixserver.entity.constants.PropertyType;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
@@ -29,7 +30,7 @@ public class FlatFilterRequest {
 	private PropertyType propertyType;
 	
 	private Boolean available;
-	
+	private Boolean verified;
 	// "available from" — flats available by this date
 	private LocalDate availableFrom;
 	
@@ -39,7 +40,7 @@ public class FlatFilterRequest {
 	// v0.1.2 — review-based filters
 	/** Minimum average rating (1–10). Null = no rating filter. */
 	@Min(1)
-	@Min(10)
+	@Max(10)
 	private Integer minRating;
 	
 	/** When true, only flats with at least one APPROVED review. */

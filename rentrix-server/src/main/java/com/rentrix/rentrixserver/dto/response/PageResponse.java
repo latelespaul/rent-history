@@ -16,6 +16,7 @@ import java.util.function.Function;
 @AllArgsConstructor
 public class PageResponse<T> {
 	
+	//TODO: we can delete @JsonProperty if app runs ok
 	@JsonProperty("content")
 	private List<T> content;
 	

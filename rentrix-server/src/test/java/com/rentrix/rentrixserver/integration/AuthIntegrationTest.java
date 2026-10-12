@@ -20,7 +20,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 	@Test
 	void signup_asTenant_returns201WithTokens() throws Exception {
 		SignupRequest req = new SignupRequest();
-//		req.setName("New Tenant");
+		req.setName("New Tenant");
 		req.setEmail("new-tenant@rentrix.test");
 		req.setPassword("password123");
 		req.setRole(Role.TENANT);
@@ -38,7 +38,7 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 	@Test
 	void signup_withAdminRole_returns400() throws Exception {
 		SignupRequest req = new SignupRequest();
-//		req.setName("Hacker");
+		req.setName("Hacker");
 		req.setEmail("hacker@rentrix.test");
 		req.setPassword("password123");
 		req.setRole(Role.ADMIN);
@@ -52,18 +52,13 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 	
 	@Test
 	void signup_withDuplicateEmail_returns409() throws Exception {
-		testData.createTenant();
+		User existing = testData.createTenant();
 		
 		SignupRequest req = new SignupRequest();
-//		req.setName("Dup");
-		req.setEmail(testData.createTenant().getEmail()); // reuse same email
+		req.setName("Dup");
+		req.setEmail(existing.getEmail());
 		req.setPassword("password123");
 		req.setRole(Role.TENANT);
-		
-		// NOTE: createTenant generates a unique email per call, so this needs
-		// to be done differently. Use a direct approach:
-		User existing = testData.createTenant();
-		req.setEmail(existing.getEmail());
 		
 		mockMvc.perform(post("/auth/signup")
 								 .contentType(MediaType.APPLICATION_JSON)

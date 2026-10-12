@@ -23,7 +23,7 @@ public interface ReviewService {
 	
 	PageResponse<ReviewDto> getMyReviews(Long userId, Pageable pageable);
 	
-	String deleteReview(Long id);
+	void deleteReview(Long id);
 	
 	/**
 	 * Batch fetch rating aggregates for a set of flat IDs.

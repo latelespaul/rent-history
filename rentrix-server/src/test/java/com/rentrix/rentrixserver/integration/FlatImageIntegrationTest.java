@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.integration;
 
+import com.rentrix.rentrixserver.config.StorageProperties;
 import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.entity.User;
 import com.rentrix.rentrixserver.repository.FlatImageRepository;
@@ -12,6 +13,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -24,19 +27,26 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 	@Autowired
 	private FlatImageRepository flatImageRepository;
 	
+	@Autowired
+	private StorageProperties props;
+	
 	@MockitoBean
 	private StorageService storageService;
 	
 	/** Minimal valid 1×1 JPEG (62 bytes). Thumbnailator will re-encode it. */
 	private static final byte[] MINIMAL_JPEG =
 		new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
-			0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, (byte) 0xFF, (byte) 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06,
+			0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, (byte) 0xFF, (byte) 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06,
+			0x06,
 			0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C,
 			0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20, 0x24, 0x2E, 0x27, 0x20,
 			0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D,
-			0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, (byte) 0xFF, (byte) 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00, 0x01,
-			0x01, 0x01, 0x11, 0x00, (byte) 0xFF, (byte) 0xC4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, (byte) 0xFF, (byte) 0xC4, 0x00, 0x14, 0x10,
+			0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, (byte) 0xFF, (byte) 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01, 0x00,
+			0x01,
+			0x01, 0x01, 0x11, 0x00, (byte) 0xFF, (byte) 0xC4, 0x00, 0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, (byte) 0xFF, (byte) 0xC4, 0x00, 0x14,
+			0x10,
 			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			(byte) 0xFF, (byte) 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00, 0x37, (byte) 0xFF, (byte) 0xD9};
 	
@@ -45,7 +55,6 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 	}
 	
 	// ── Upload ────────────────────────────────────────────────────────────
-	
 	@Test
 	void upload_asOwner_returns201AndPersists() throws Exception {
 		when(storageService.uploadPublicImage(anyString(), anyString(), any(), anyString())).thenReturn(
@@ -61,8 +70,7 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 				 .andExpect(jsonPath("$.url").isNotEmpty()).andExpect(jsonPath("$.isPrimary").value(true))
 				 .andExpect(jsonPath("$.displayOrder").value(0));
 		
-		long count = flatImageRepository.countByFlatIdAndDeletedFalse(flat.getId());
-		assert count == 1;
+		assertEquals(1L, flatImageRepository.countByFlatIdAndDeletedFalse(flat.getId()));
 	}
 	
 	@Test
@@ -94,7 +102,8 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 		MockMultipartFile txt = new MockMultipartFile("file", "notes.txt", "text/plain", "hello".getBytes());
 		
 		mockMvc.perform(
-					 multipart("/flats/{id}/images", flat.getId()).file(txt).header("Authorization", auth.bearer(landlord)))
+					 multipart("/flats/{id}/images", flat.getId()).file(txt).header("Authorization",
+						 auth.bearer(landlord)))
 				 .andExpect(status().isBadRequest());
 	}
 	
@@ -103,7 +112,7 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 		User landlord = testData.createLandlord();
 		Flat flat = testData.createVerifiedFlat(landlord);
 		
-		byte[] big = new byte[11 * 1024 * 1024];
+		byte[] big = new byte[(int) props.getMaxImageSizeBytes() + 1024];
 		MockMultipartFile file = new MockMultipartFile("file", "big.jpg", "image/jpeg", big);
 		
 		mockMvc.perform(
@@ -123,7 +132,8 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 		// Upload 10 images
 		for (int i = 0; i < 10; i++) {
 			mockMvc.perform(multipart("/flats/{id}/images", flat.getId()).file(jpegFile())
-																							 .header("Authorization", auth.bearer(landlord)))
+																							 .header("Authorization",
+																								 auth.bearer(landlord)))
 					 .andExpect(status().isCreated());
 		}
 		
@@ -165,7 +175,8 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 		Flat flat = testData.createVerifiedFlat(landlord);
 		
 		String response = mockMvc.perform(
-											 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header("Authorization"
+											 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header(
+												 "Authorization"
 												 , auth.bearer(landlord)))
 										 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		
@@ -176,11 +187,10 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 						 auth.bearer(landlord)))
 				 .andExpect(status().isNoContent());
 		
-		assert flatImageRepository.findByIdAndDeletedFalse(imageId).isEmpty();
+		assertTrue(flatImageRepository.findByIdAndDeletedFalse(imageId).isEmpty());
 	}
 	
 	// ── Set primary ───────────────────────────────────────────────────────
-	
 	@Test
 	void setPrimary_togglesCorrectly() throws Exception {
 		when(storageService.uploadPublicImage(anyString(), anyString(), any(), anyString())).thenReturn(
@@ -191,13 +201,15 @@ class FlatImageIntegrationTest extends BaseIntegrationTest {
 		
 		// Upload two images
 		String r1 = mockMvc.perform(
-									 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header("Authorization",
+									 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header(
+										 "Authorization",
 										 auth.bearer(landlord)))
 								 .andReturn().getResponse().getContentAsString();
 		Long id1 = Long.parseLong(r1.replaceAll(".*\"id\":(\\d+).*", "$1"));
 		
 		String r2 = mockMvc.perform(
-									 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header("Authorization",
+									 multipart("/flats/{id}/images", flat.getId()).file(jpegFile()).header(
+										 "Authorization",
 										 auth.bearer(landlord)))
 								 .andReturn().getResponse().getContentAsString();
 		Long id2 = Long.parseLong(r2.replaceAll(".*\"id\":(\\d+).*", "$1"));

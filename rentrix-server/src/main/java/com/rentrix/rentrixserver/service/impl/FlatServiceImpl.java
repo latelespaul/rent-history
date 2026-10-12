@@ -40,8 +40,8 @@ public class FlatServiceImpl implements FlatService {
 	public PageResponse<FlatSummaryResponse> listFlats(FlatFilterRequest filter, Pageable pageable) {
 		log.debug("Listing flats with filters={}", filter);
 		
-		Page<Flat> page = flatRepository.findAll(
-			FlatSpecification.visibleAndFiltered(filter), pageable);
+		Page<Flat> page = flatRepository
+									.findAll(FlatSpecification.visibleAndFiltered(filter), pageable);
 		
 		// Batch fetch ratings for the current page
 		return flatSummaryPageResponse(page);

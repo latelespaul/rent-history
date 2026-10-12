@@ -16,7 +16,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TenantFlatIntegrationTest extends BaseIntegrationTest {
 	
 	// ── Creation ────────────────────────────────────────────────────────────
-	
 	@Test
 	void tenant_createsFlat_verifiedFalse_visibleFalse() throws Exception {
 		User tenant = testData.createTenant();

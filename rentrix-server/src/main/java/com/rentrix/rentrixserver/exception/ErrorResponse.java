@@ -14,8 +14,7 @@ public class ErrorResponse {
 	private String message;
 	private int status;
 	private Instant timestamp;
-	private Map<String, String> fieldErrors; // nullable; only for validation errors
-	
+	private Map<String, String> fieldErrors;
 	public ErrorResponse(String message, int status) {
 		this(message, status, Instant.now(), null);
 	}

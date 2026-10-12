@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -107,13 +108,12 @@ public class ReviewServiceImpl implements ReviewService {
 	
 	@Override
 	@Transactional
-	public String deleteReview(Long id) {
-		if (!reviewRepository.existsById(id)) {
-			throw ApiException.notFound("Review not found with id: " + id);
-		}
+	public void deleteReview(Long id) {
+		Review review = reviewRepository.findById(id)
+												  .orElseThrow(() -> ApiException.notFound("Review not found with id: " + id));
+		reviewRepository.delete(review);
 		log.info("Review deleted. reviewId={}", id);
-		reviewRepository.deleteById(id);
-		return "Review with id: " + id + " has been deleted";
+		
 	}
 	
 	@Override
@@ -122,7 +122,7 @@ public class ReviewServiceImpl implements ReviewService {
 		if (flatIds == null || flatIds.isEmpty()) return Map.of();
 		
 		List<Object[]> rows = reviewRepository.findRatingAggregates(flatIds, ReviewStatus.APPROVED);
-		Map<Long, RatingAggregate> result = new java.util.HashMap<>();
+		Map<Long, RatingAggregate> result = new HashMap<>();
 		for (Object[] row : rows) {
 			Long flatId = ((Number) row[0]).longValue();
 			Double avg = row[1] != null ? ((Number) row[1]).doubleValue() : null;

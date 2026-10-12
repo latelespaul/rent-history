@@ -20,7 +20,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
 	private final ObjectMapper objectMapper;
 	
 	@Override
-	public void handle(@NonNull HttpServletRequest request, HttpServletResponse response,
+	public void handle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 		@NonNull AccessDeniedException accessDeniedException) throws IOException {
 		response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);

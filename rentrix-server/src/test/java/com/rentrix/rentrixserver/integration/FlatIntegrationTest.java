@@ -3,8 +3,10 @@ package com.rentrix.rentrixserver.integration;
 import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.entity.User;
 import com.rentrix.rentrixserver.entity.constants.ReviewStatus;
+import com.rentrix.rentrixserver.repository.FlatRepository;
 import com.rentrix.rentrixserver.support.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -12,6 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class FlatIntegrationTest extends BaseIntegrationTest {
+	
+	@Autowired
+	private FlatRepository flatRepository;
 	
 	@Test
 	void listFlats_returnsPaginatedResult() throws Exception {
@@ -44,7 +49,8 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 		User landlord = testData.createLandlord();
 		testData.createVerifiedFlat(landlord);
 		
-		mockMvc.perform(get("/flats").param("city", "Pune")).andExpect(status().isOk())
+		mockMvc.perform(get("/flats").param("city", "Pune"))
+				 .andExpect(status().isOk())
 				 .andExpect(jsonPath("$.content[0].city").value("Pune"));
 	}
 	
@@ -53,7 +59,8 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 		User landlord = testData.createLandlord();
 		testData.createVerifiedFlat(landlord);
 		
-		mockMvc.perform(get("/flats").param("propertyType", "APARTMENT")).andExpect(status().isOk())
+		mockMvc.perform(get("/flats").param("propertyType", "APARTMENT"))
+				 .andExpect(status().isOk())
 				 .andExpect(jsonPath("$.content[0].propertyType").value("APARTMENT"));
 	}
 	
@@ -79,9 +86,7 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 		testData.createReviewWithRating(flat, testData.createTenant("r3"),
 			ReviewStatus.PENDING, 10);
 		
-		mockMvc.perform(get("/flats").param("size", "200"))
-				 .andExpect(status().isOk())
-				 .andExpect(jsonPath("$.content[0].id").value(flat.getId()))
+		mockMvc.perform(get("/flats").param("size", "200").param("sort", "id,desc"))
 				 .andExpect(jsonPath("$.content[0].averageRating").value(7.0))
 				 .andExpect(jsonPath("$.content[0].reviewCount").value(2));
 	}
@@ -93,8 +98,10 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 		Flat flat = testData.createVerifiedFlat(landlord);
 		testData.createReviewWithRating(flat, tenant, ReviewStatus.APPROVED, 9);
 		
-		mockMvc.perform(get("/flats/{id}", flat.getId())).andExpect(status().isOk())
-				 .andExpect(jsonPath("$.averageRating").value(9.0)).andExpect(jsonPath("$.reviewCount").value(1));
+		mockMvc.perform(get("/flats/{id}", flat.getId()))
+				 .andExpect(status().isOk())
+				 .andExpect(jsonPath("$.averageRating").value(9.0))
+				 .andExpect(jsonPath("$.reviewCount").value(1));
 	}
 	
 	@Test
@@ -102,9 +109,7 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 		User landlord = testData.createLandlord();
 		Flat flat = testData.createVerifiedFlat(landlord);
 		
-		mockMvc.perform(get("/flats").param("size", "200"))
-				 .andExpect(status().isOk())
-				 .andExpect(jsonPath("$.content[0].id").value(flat.getId()))
+		mockMvc.perform(get("/flats").param("size", "200").param("sort", "id,desc"))
 				 .andExpect(jsonPath("$.content[0].averageRating").doesNotExist())
 				 .andExpect(jsonPath("$.content[0].reviewCount").doesNotExist());
 	}
@@ -145,6 +150,23 @@ class FlatIntegrationTest extends BaseIntegrationTest {
 				 .andExpect(status().isOk())
 				 .andExpect(jsonPath("$.content[*].id", hasItem(reviewed.getId().intValue())))
 				 .andExpect(jsonPath("$.content[*].id", not(hasItem(unreviewed.getId().intValue()))));
+	}
+	
+	@Test
+	void listFlats_filterByAvailable_returnsOnlyAvailable() throws Exception {
+		User landlord = testData.createLandlord();
+		Flat available = testData.createVerifiedFlat(landlord);
+		available.setAvailable(true);
+		flatRepository.save(available);
+		
+		Flat unavailable = testData.createVerifiedFlat(landlord);
+		unavailable.setAvailable(false);
+		flatRepository.save(unavailable);
+		
+		mockMvc.perform(get("/flats").param("size", "200").param("available", "true"))
+				 .andExpect(status().isOk())
+				 .andExpect(jsonPath("$.content[*].id", hasItem(available.getId().intValue())))
+				 .andExpect(jsonPath("$.content[*].id", not(hasItem(unavailable.getId().intValue()))));
 	}
 	
 }

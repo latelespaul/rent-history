@@ -78,7 +78,8 @@ public class FlatController {
 	public ResponseEntity<FlatResponse> createFlat(@Valid @RequestBody CreateFlatRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal) {
 		Role role = Role.valueOf(principal.getRole());
-		boolean isVerifiedCreator = role == Role.LANDLORD || role == Role.ADMIN;
+		boolean isVerifiedCreator = "LANDLORD".equals(principal.getRole())
+												 || "ADMIN".equals(principal.getRole());
 		FlatResponse created = flatService.createFlat(request, principal.getId(), isVerifiedCreator);
 		
 		return ResponseEntity.status(201).body(created);

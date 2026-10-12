@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -70,13 +69,13 @@ public class SecurityConfig {
 								// first
 								.requestMatchers(HttpMethod.GET, "/flats/*/reviews").permitAll()
 								.requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
-								.requestMatchers(HttpMethod.GET, "/reviews").permitAll()
-								.requestMatchers(HttpMethod.GET, "/reviews/*/proof-url")
-								.authenticated()   // explicit, defensive
 								
 								// Public: docs + H2 console (dev only — remove before prod!)
-								.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-									"/swagger-resources/**", "/webjars/**").permitAll()
+								.requestMatchers("/v3/api-docs/**",
+									"/swagger-ui/**",
+									"/swagger-ui.html",
+									"/swagger-resources/**",
+									"/webjars/**").permitAll()
 								
 								// Public: health check
 								.requestMatchers("/actuator/health").permitAll()
@@ -88,7 +87,7 @@ public class SecurityConfig {
 								.anyRequest().authenticated())
 			 
 			 // H2 console uses frames — allow same-origin
-			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+//			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 			 .authenticationProvider(authenticationProvider())
 			 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		

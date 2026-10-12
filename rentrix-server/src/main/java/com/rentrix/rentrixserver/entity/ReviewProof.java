@@ -4,12 +4,16 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Entity
 @Table(name = "review_proofs", indexes = {@Index(name = "idx_review_proofs_review", columnList = "review_id"),
 	@Index(name = "idx_review_proofs_order", columnList = "review_id, display_order")})
+@SQLDelete(sql = "UPDATE reviews SET deleted = TRUE WHERE id = ?")
+@SQLRestriction("deleted = false")
 public class ReviewProof extends BaseEntity {
 	
 	@Id

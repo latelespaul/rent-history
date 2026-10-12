@@ -1,6 +1,5 @@
 package com.rentrix.rentrixserver.service.impl;
 
-import com.rentrix.rentrixserver.config.StorageProperties;
 import com.rentrix.rentrixserver.dto.response.FlatImageDto;
 import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.entity.FlatImage;
@@ -32,13 +31,12 @@ public class FlatImageServiceImpl implements FlatImageService {
 	private final FlatImageRepository flatImageRepository;
 	private final ImageProcessingService imageProcessing;
 	private final StorageService storage;
-	private final StorageProperties props;
 	
 	@Override
 	@Transactional(readOnly = true)
 	public List<FlatImageDto> listImages(Long flatId) {
 		return FlatMapper.toImageDtos(
-			flatImageRepository.findByFlatIdAndDeletedFalseOrderByDisplayOrderAsc(flatId));
+			flatImageRepository.findByFlatIdOrderByDisplayOrderAsc(flatId));
 	}
 	
 	@Override
@@ -152,7 +150,7 @@ public class FlatImageServiceImpl implements FlatImageService {
 	
 	private void promoteNextAsPrimary(Long flatId) {
 		List<FlatImage> remaining =
-			flatImageRepository.findByFlatIdAndDeletedFalseOrderByDisplayOrderAsc(flatId);
+			flatImageRepository.findByFlatIdOrderByDisplayOrderAsc(flatId);
 		if (!remaining.isEmpty()) {
 			FlatImage next = remaining.get(0);
 			next.setIsPrimary(true);

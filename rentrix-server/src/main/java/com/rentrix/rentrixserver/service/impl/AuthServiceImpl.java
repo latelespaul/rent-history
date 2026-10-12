@@ -59,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
 		}
 		
 		User user = new User();
+		user.setName(request.getName());
 		user.setEmail(request.getEmail().trim().toLowerCase());
 		user.setPassword(passwordEncoder.encode(request.getPassword()));
 		user.setRole(request.getRole());
@@ -71,6 +72,7 @@ public class AuthServiceImpl implements AuthService {
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public AuthResponse login(LoginRequest request) {
 		User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
 										  .orElseThrow(() -> ApiException.unauthorized("Invalid credentials"));
@@ -85,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public String refresh(String refreshToken) {
 		log.debug("Refreshing access token");
 		if (!jwtService.isValid(refreshToken)) {
@@ -106,6 +109,7 @@ public class AuthServiceImpl implements AuthService {
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public UserDto me(Long userId) {
 		User user = userRepository.findById(userId)
 										  .orElseThrow(() -> ApiException.notFound("User not found"));
