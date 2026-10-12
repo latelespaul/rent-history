@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,14 +49,17 @@ public class ReviewServiceImpl implements ReviewService {
 	// ── Existing review methods (unchanged, only rebuild DTO with proofs) ──
 	
 	@Override
+	@Transactional(readOnly = true)
 	public PageResponse<ReviewDto> getAllReviews(Pageable pageable) {
 		return PageResponse.from(reviewRepository.findAll(pageable), ReviewMapper::toDto);
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public ReviewDto getReviewById(Long id) {
-		Review review =
-			reviewRepository.findById(id).orElseThrow(() -> ApiException.notFound("Review not found with id: " + id));
+		Review review = reviewRepository
+								 .findById(id)
+								 .orElseThrow(() -> ApiException.notFound("Review not found with id: " + id));
 		return ReviewMapper.toDto(review);
 	}
 	
@@ -69,10 +73,18 @@ public class ReviewServiceImpl implements ReviewService {
 	@Override
 	@Transactional
 	public ReviewDto createReview(Long flatId, Long userId, CreateReviewRequest req) {
-		Flat flat =
-			flatRepository.findById(flatId).orElseThrow(() -> ApiException.notFound("Flat not found with id: " + flatId));
+		Flat flat = flatRepository
+							.findById(flatId)
+							.orElseThrow(() -> ApiException.notFound("Flat not found with id: " + flatId));
 		
+		if (flat.getOwner() != null && flat.getOwner().getId().equals(userId)) {
+			throw ApiException.badRequest("You cannot review your own flat");
+		}
 		User user = userRepository.findById(userId).orElseThrow(() -> ApiException.notFound("User not found"));
+		
+		if (reviewRepository.existsByUserIdAndFlatId(userId, flatId)) {
+			throw ApiException.conflict("You have already reviewed this flat");
+		}
 		
 		Review review = new Review();
 		review.setFlat(flat);
@@ -83,7 +95,8 @@ public class ReviewServiceImpl implements ReviewService {
 		review.setStatus(ReviewStatus.PENDING);
 		
 		Review saved = reviewRepository.save(review);
-		log.info("Review created: {} for flat {} by user {}", saved.getId(), flatId, userId);
+		log.info("Review created. reviewId={}, flatId={}, userId={}, rating={}, status={}",
+			saved.getId(), flatId, userId, saved.getRating(), saved.getStatus());
 		return ReviewMapper.toDto(saved);
 	}
 	
@@ -95,20 +108,21 @@ public class ReviewServiceImpl implements ReviewService {
 	
 	@Override
 	@Transactional
-	public String deleteReview(Long id) {
-		if (!reviewRepository.existsById(id)) {
-			throw ApiException.notFound("Review not found with id: " + id);
-		}
-		reviewRepository.deleteById(id);
-		return "Review with id: " + id + " has been deleted";
+	public void deleteReview(Long id) {
+		Review review = reviewRepository.findById(id)
+												  .orElseThrow(() -> ApiException.notFound("Review not found with id: " + id));
+		reviewRepository.delete(review);
+		log.info("Review deleted. reviewId={}", id);
+		
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public Map<Long, RatingAggregate> getRatingAggregates(List<Long> flatIds) {
 		if (flatIds == null || flatIds.isEmpty()) return Map.of();
 		
-		List<Object[]> rows = reviewRepository.findRatingAggregates(flatIds);
-		Map<Long, RatingAggregate> result = new java.util.HashMap<>();
+		List<Object[]> rows = reviewRepository.findRatingAggregates(flatIds, ReviewStatus.APPROVED);
+		Map<Long, RatingAggregate> result = new HashMap<>();
 		for (Object[] row : rows) {
 			Long flatId = ((Number) row[0]).longValue();
 			Double avg = row[1] != null ? ((Number) row[1]).doubleValue() : null;
@@ -123,7 +137,9 @@ public class ReviewServiceImpl implements ReviewService {
 	@Override
 	@Transactional
 	public ReviewProofDto uploadProof(Long reviewId, MultipartFile file, Long requesterId) {
-		Review review = reviewRepository.findById(reviewId).orElseThrow(() -> ApiException.notFound("Review not found"));
+		Review review = reviewRepository
+								 .findById(reviewId)
+								 .orElseThrow(() -> ApiException.notFound("Review not found"));
 		
 		if (!review.getUser().getId().equals(requesterId)) {
 			throw ApiException.forbidden("You can only upload proof for your own reviews");
@@ -158,14 +174,17 @@ public class ReviewServiceImpl implements ReviewService {
 		proof.setVerified(false);
 		
 		ReviewProof saved = reviewProofRepository.save(proof);
-		log.info("Proof uploaded for review {}: id={}, key={}", reviewId, saved.getId(), key);
-		
+		log.info("Proof uploaded. reviewId={}, proofId={}, contentType={}, sizeBytes={}",
+			reviewId, saved.getId(), saved.getContentType(), saved.getSizeBytes());
 		return ReviewMapper.toProofDto(saved);
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public List<ReviewProofDto> listProofs(Long reviewId, Long requesterId, boolean isAdmin) {
-		Review review = reviewRepository.findById(reviewId).orElseThrow(() -> ApiException.notFound("Review not found"));
+		Review review = reviewRepository
+								 .findById(reviewId)
+								 .orElseThrow(() -> ApiException.notFound("Review not found"));
 		
 		boolean isOwner = review.getUser().getId().equals(requesterId);
 		if (!isAdmin && !isOwner) {
@@ -177,8 +196,11 @@ public class ReviewServiceImpl implements ReviewService {
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public String getProofUrl(Long reviewId, Long proofId, Long requesterId, boolean isAdmin) {
-		Review review = reviewRepository.findById(reviewId).orElseThrow(() -> ApiException.notFound("Review not found"));
+		Review review = reviewRepository
+								 .findById(reviewId)
+								 .orElseThrow(() -> ApiException.notFound("Review not found"));
 		
 		boolean isOwner = review.getUser().getId().equals(requesterId);
 		if (!isAdmin && !isOwner) {
@@ -191,14 +213,17 @@ public class ReviewServiceImpl implements ReviewService {
 		if (!proof.getReview().getId().equals(reviewId)) {
 			throw ApiException.notFound("Proof does not belong to this review");
 		}
-		
+		log.info("Proof URL generated. reviewId={}, proofId={}, requesterId={}",
+			reviewId, proofId, requesterId);
 		return storage.presignedPrivateUrl(proof.getStorageKey(), 15);
 	}
 	
 	@Override
 	@Transactional
 	public void deleteProof(Long reviewId, Long proofId, Long requesterId, boolean isAdmin) {
-		Review review = reviewRepository.findById(reviewId).orElseThrow(() -> ApiException.notFound("Review not found"));
+		Review review = reviewRepository
+								 .findById(reviewId)
+								 .orElseThrow(() -> ApiException.notFound("Review not found"));
 		
 		boolean isOwner = review.getUser().getId().equals(requesterId);
 		if (!isAdmin && !isOwner) {

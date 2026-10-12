@@ -27,17 +27,22 @@ public final class FlatSpecification {
 			
 			List<Predicate> predicates = new ArrayList<>();
 			
-			// Address city / state
-			if (filter.getCity() != null && !filter.getCity().isBlank()) {
-				String city = "%" + filter.getCity().toLowerCase().trim() + "%";
-				predicates.add(cb.like(cb.lower(root.get("address").get("city")), city));
-			}
-			if (filter.getState() != null && !filter.getState().isBlank()) {
-				String state = "%" + filter.getState().toLowerCase().trim() + "%";
-				predicates.add(cb.like(cb.lower(root.get("address").get("state")), state));
+			// ── Address city / state ─────────────────────────────────
+			String city = filter.getCity();
+			if (city != null && !city.isBlank()) {
+				predicates.add(cb.like(
+					cb.lower(root.get("address").get("city")),
+					"%" + city.toLowerCase().trim() + "%"));
 			}
 			
-			// Rent range
+			String state = filter.getState();
+			if (state != null && !state.isBlank()) {
+				predicates.add(cb.like(
+					cb.lower(root.get("address").get("state")),
+					"%" + state.toLowerCase().trim() + "%"));
+			}
+			
+			// ── Rent range ───────────────────────────────────────────
 			if (filter.getMinRent() != null) {
 				predicates.add(cb.greaterThanOrEqualTo(root.get("rent"), filter.getMinRent()));
 			}
@@ -45,7 +50,7 @@ public final class FlatSpecification {
 				predicates.add(cb.lessThanOrEqualTo(root.get("rent"), filter.getMaxRent()));
 			}
 			
-			// Rooms range
+			// ── Rooms range ──────────────────────────────────────────
 			if (filter.getMinRooms() != null) {
 				predicates.add(cb.greaterThanOrEqualTo(root.get("numberOfRooms"), filter.getMinRooms()));
 			}
@@ -53,7 +58,7 @@ public final class FlatSpecification {
 				predicates.add(cb.lessThanOrEqualTo(root.get("numberOfRooms"), filter.getMaxRooms()));
 			}
 			
-			// Booleans
+			// ── Booleans ─────────────────────────────────────────────
 			if (filter.getFurnished() != null) {
 				predicates.add(cb.equal(root.get("furnished"), filter.getFurnished()));
 			}
@@ -61,51 +66,56 @@ public final class FlatSpecification {
 				predicates.add(cb.equal(root.get("parking"), filter.getParking()));
 			}
 			if (filter.getAvailable() != null) {
-				predicates.add(cb.equal(root.get("isAvailable"), filter.getAvailable()));
+				predicates.add(cb.equal(root.get("available"), filter.getAvailable()));
 			}
 			
-			// Property type
+			// ── Property type ────────────────────────────────────────
 			if (filter.getPropertyType() != null) {
 				predicates.add(cb.equal(root.get("propertyType"), filter.getPropertyType()));
 			}
 			
-			// Available by date
+			// ── Available by date ────────────────────────────────────
 			if (filter.getAvailableFrom() != null) {
-				predicates.add(cb.lessThanOrEqualTo(
-					root.get("availableFrom"), filter.getAvailableFrom()));
+				predicates.add(cb.lessThanOrEqualTo(root.get("availableFrom"), filter.getAvailableFrom()));
 			}
 			
-			// Free-text search
-			if (filter.getQ() != null && !filter.getQ().isBlank()) {
-				String q = "%" + filter.getQ().toLowerCase().trim() + "%";
+			// ── Free-text search ─────────────────────────────────────
+			String q = filter.getQ();
+			if (q != null && !q.isBlank()) {
+				String pattern = "%" + q.toLowerCase().trim() + "%";
 				predicates.add(cb.or(
-					cb.like(cb.lower(root.get("address").get("addressLine")), q),
-					cb.like(cb.lower(root.get("description")), q)
+					cb.like(cb.lower(root.get("address").get("addressLine")), pattern),
+					cb.like(cb.lower(root.get("address").get("street")), pattern),
+					cb.like(cb.lower(root.get("address").get("city")), pattern),
+					cb.like(cb.lower(root.get("address").get("state")), pattern),
+					cb.like(cb.lower(root.get("description")), pattern)
 				));
 			}
 			
-			// ── Review-based filters ──────────────────────────────────────────
+			// ── Review-based filters ─────────────────────────────────
 			
-			// Min average rating — subquery on AVG(rating) for approved reviews
+			// Min average rating
 			if (filter.getMinRating() != null) {
 				Subquery<Double> avgSub = query.subquery(Double.class);
 				Root<Review> reviewRoot = avgSub.from(Review.class);
 				avgSub.select(cb.avg(reviewRoot.get("rating")))
 						.where(cb.and(
 							cb.equal(reviewRoot.get("flat"), root),
-							cb.equal(reviewRoot.get("status"), ReviewStatus.APPROVED)
+							cb.equal(reviewRoot.get("status"), ReviewStatus.APPROVED),
+							cb.equal(reviewRoot.get("deleted"), false)
 						));
 				predicates.add(cb.greaterThanOrEqualTo(avgSub, filter.getMinRating().doubleValue()));
 			}
 			
-			// Has reviews — subquery on COUNT > 0
+			// Has reviews
 			if (Boolean.TRUE.equals(filter.getHasReviews())) {
 				Subquery<Long> countSub = query.subquery(Long.class);
 				Root<Review> reviewRoot = countSub.from(Review.class);
 				countSub.select(cb.count(reviewRoot))
 						  .where(cb.and(
 							  cb.equal(reviewRoot.get("flat"), root),
-							  cb.equal(reviewRoot.get("status"), ReviewStatus.APPROVED)
+							  cb.equal(reviewRoot.get("status"), ReviewStatus.APPROVED),
+							  cb.equal(reviewRoot.get("deleted"), false)
 						  ));
 				predicates.add(cb.greaterThan(countSub, 0L));
 			}

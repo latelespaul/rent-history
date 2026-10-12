@@ -3,6 +3,8 @@ package com.rentrix.rentrixserver.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
@@ -14,6 +16,8 @@ import lombok.EqualsAndHashCode;
 		@Index(name = "idx_flat_images_order", columnList = "flat_id, display_order")
 	}
 )
+@SQLDelete(sql = "UPDATE reviews SET deleted = TRUE WHERE id = ?")
+@SQLRestriction("deleted = false")
 public class FlatImage extends BaseEntity {
 	
 	@Id

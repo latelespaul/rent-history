@@ -6,29 +6,29 @@
 # Required Environment Variables
 #
 # Database
-# DB_HOST
-# DB_PORT
-# DB_NAME
-# DB_USERNAME
-# DB_PASSWORD
+#   DB_HOST
+#   DB_PORT
+#   DB_NAME
+#   DB_USERNAME
+#   DB_PASSWORD
 #
 # JWT
-# JWT_SECRET
+#   JWT_SECRET
 #
 # AWS / S3
-# AWS_REGION
-# S3_PUBLIC_BUCKET
-# S3_PRIVATE_BUCKET
+#   AWS_REGION
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
+#   S3_PUBLIC_BUCKET
+#   S3_PRIVATE_BUCKET
 #
 # Optional Environment Variables
 #
-# DB_POOL_MAX
-# DB_POOL_MIN
-# JWT_ACCESS_TOKEN_EXPIRY_MS
-# JWT_REFRESH_TOKEN_EXPIRY_MS
-# AWS_ACCESS_KEY_ID
-# AWS_SECRET_ACCESS_KEY
-# S3_PUBLIC_BASE_URL
+#   DB_POOL_MAX
+#   DB_POOL_MIN
+#   JWT_ACCESS_TOKEN_EXPIRY_MS
+#   JWT_REFRESH_TOKEN_EXPIRY_MS
+#   S3_PUBLIC_BASE_URL
 #
 # =============================================================================
 
@@ -47,19 +47,19 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:
+      pool-name: RentrixProdHikariPool
       maximum-pool-size: ${DB_POOL_MAX:20}
       minimum-idle: ${DB_POOL_MIN:5}
       connection-timeout: 20000
       idle-timeout: 600000
       max-lifetime: 1800000
+      leak-detection-threshold: 60000   # log connections held >60s
 
   jpa:
     open-in-view: false
     show-sql: false
-
     hibernate:
       ddl-auto: validate
-
     properties:
       hibernate:
         format_sql: false
@@ -91,10 +91,8 @@ app:
       region: ${AWS_REGION}
       access-key: ${AWS_ACCESS_KEY_ID:}
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
-
       public-bucket: ${S3_PUBLIC_BUCKET}
       private-bucket: ${S3_PRIVATE_BUCKET}
-
       public-base-url: ${S3_PUBLIC_BASE_URL:}
 
 # =============================================================================
@@ -102,21 +100,17 @@ app:
 # =============================================================================
 
 management:
-
   endpoints:
     web:
       exposure:
         include: health,info
-
   endpoint:
     health:
       show-details: when_authorized
       show-components: when_authorized
-
   health:
     defaults:
       enabled: true
-
   info:
     env:
       enabled: true
@@ -128,7 +122,6 @@ management:
 springdoc:
   api-docs:
     enabled: false
-
   swagger-ui:
     enabled: false
 

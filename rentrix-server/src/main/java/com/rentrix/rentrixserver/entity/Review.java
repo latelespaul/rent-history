@@ -8,6 +8,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +19,8 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "reviews", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "flat_id"})})
+@SQLDelete(sql = "UPDATE reviews SET deleted = TRUE WHERE id = ?")
+@SQLRestriction("deleted = false")
 public class Review extends BaseEntity {
 	
 	@Id
@@ -35,10 +40,12 @@ public class Review extends BaseEntity {
 	private Flat flat;
 	
 	@NotBlank
+	@Column(nullable = false, length = 200)
 	private String title;
 	
 	@NotBlank
 	@Lob
+	@Column(nullable = false, length = 4000)
 	private String content;
 	
 	@Min(1)
@@ -50,8 +57,8 @@ public class Review extends BaseEntity {
 	
 	private Boolean deleted = false;
 	
-	// v0.1.3 — proof of living
 	@OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	@BatchSize(size = 20)
 	@EqualsAndHashCode.Exclude
 	@ToString.Exclude
 	private List<ReviewProof> proofs = new ArrayList<>();

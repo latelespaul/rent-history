@@ -20,7 +20,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 	private final ObjectMapper objectMapper;
 	
 	@Override
-	public void commence(@NonNull HttpServletRequest request, HttpServletResponse response,
+	public void commence(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
 		@NonNull AuthenticationException authException) throws IOException {
 		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);

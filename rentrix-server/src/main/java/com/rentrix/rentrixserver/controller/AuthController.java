@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.dto.request.LoginRequest;
 import com.rentrix.rentrixserver.dto.request.RefreshRequest;
 import com.rentrix.rentrixserver.dto.request.SignupRequest;
 import com.rentrix.rentrixserver.dto.response.AuthResponse;
+import com.rentrix.rentrixserver.dto.response.RefreshResponse;
 import com.rentrix.rentrixserver.dto.response.UserDto;
 import com.rentrix.rentrixserver.security.CustomUserDetails;
 import com.rentrix.rentrixserver.service.AuthService;
@@ -50,11 +51,4 @@ public class AuthController {
 		return ResponseEntity.noContent().build();
 	}
 	
-	public record RefreshResponse(String accessToken) {
-	
-	}
-	/*
-	Note: RefreshResponse is a nested record — small, single-use, fine here. If you prefer a separate file, create
-	dto/RefreshResponse.java.
-	 */
 }

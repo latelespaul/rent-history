@@ -1,40 +1,86 @@
-HELP.md
+# =============================================================================
+# Rentrix Server — .gitignore
+# =============================================================================
+
+# --- Build outputs -----------------------------------------------------------
 target/
+build/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-### STS ###
+# --- Logs -------------------------------------------------------------------
+*.log
+logs/
+log/
+
+# --- Environment / Secrets --------------------------------------------------
+.env
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+!*.pub.key
+
+# --- IDE — IntelliJ ---------------------------------------------------------
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# --- IDE — Eclipse / STS ----------------------------------------------------
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
+# --- IDE — NetBeans ---------------------------------------------------------
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
+# --- IDE — VS Code ----------------------------------------------------------
 .vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
 
-### Env ###
-.env
-.aws
+# --- OS ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
 
-### SQL ###
-.sql
+# --- Spring -----------------------------------------------------------------
+HELP.md
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# --- Database dumps (do NOT ignore migrations!) -----------------------------
+# Only ignore ad-hoc dumps, never the migration scripts in src/main/resources/db/
+*.dump
+*.dump.sql
+*.sql.gz
+# Migrations live under src/main/resources/db/** — never ignore .sql there
+!src/main/resources/db/**/*.sql
+
+# --- Java compiled artifacts ------------------------------------------------
+*.class
+*.jar
+*.war
+*.ear
+# Explicitly keep the wrapper jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Test coverage ----------------------------------------------------------
+jacoco.exec
+*.exec

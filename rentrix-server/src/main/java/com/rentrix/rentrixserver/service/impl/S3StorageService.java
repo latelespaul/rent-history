@@ -5,20 +5,17 @@ import com.rentrix.rentrixserver.exception.ApiException;
 import com.rentrix.rentrixserver.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.time.Duration;
 
@@ -29,6 +26,7 @@ public class S3StorageService implements StorageService {
 	
 	private final S3Client s3;
 	private final StorageProperties props;
+	private final S3Presigner s3Presigner;
 	
 	@Override
 	public String uploadPublicImage(String prefix, String filename, byte[] content, String contentType) {
@@ -44,8 +42,7 @@ public class S3StorageService implements StorageService {
 		String contentType, String originalFilename) {
 		String key = buildKey(prefix, filename);
 		upload(props.getPrivateBucket(), key, content, contentType, false);
-		log.info("Uploaded private file: key={}, original={}, size={}B",
-			key, originalFilename, content.length);
+		log.info("Uploaded private file: original={}, size={}B", originalFilename, content.length);
 		return key;
 	}
 	
@@ -71,27 +68,24 @@ public class S3StorageService implements StorageService {
 	
 	@Override
 	public String presignedPrivateUrl(String key, int expiryMinutes) {
+		GetObjectRequest getRequest = GetObjectRequest.builder()
+																	 .bucket(props.getPrivateBucket())
+																	 .key(key)
+																	 .build();
+		
+		GetObjectPresignRequest presignRequest = GetObjectPresignRequest
+																  .builder()
+																  .signatureDuration(Duration.ofMinutes(expiryMinutes))
+																  .getObjectRequest(getRequest)
+																  .build();
+		
 		try {
-			S3Presigner presigner = S3Presigner.builder()
-														  .region(Region.of(props.getRegion()))
-														  .credentialsProvider(credentialsProvider())
-														  .build();
+			return s3Presigner.presignGetObject(presignRequest)
+									.url()
+									.toString();
 			
-			GetObjectRequest getRequest = GetObjectRequest.builder()
-																		 .bucket(props.getPrivateBucket())
-																		 .key(key)
-																		 .build();
-			
-			GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-																								 .signatureDuration(
-																									 Duration.ofMinutes(expiryMinutes))
-																								 .getObjectRequest(getRequest)
-																								 .build();
-			
-			PresignedGetObjectRequest presigned = presigner.presignGetObject(presignRequest);
-			return presigned.url().toString();
-		} catch (Exception e) {
-			log.error("Failed to generate presigned URL for key={}", key, e);
+		} catch (SdkException ex) {
+			log.error("Failed to generate presigned URL for key={}", key, ex);
 			throw ApiException.badRequest("Failed to generate download link");
 		}
 	}
@@ -117,9 +111,15 @@ public class S3StorageService implements StorageService {
 			}
 			
 			s3.putObject(req.build(), RequestBody.fromBytes(content));
-		} catch (Exception e) {
-			log.error("S3 upload failed: bucket={}, key={}", bucket, key, e);
+		} catch (S3Exception e) {
+			log.error("S3 upload failed: bucket={}, key={}, status={}", bucket, key, e.statusCode(), e);
+			if (e.statusCode() == 403) {
+				throw ApiException.badRequest("File upload rejected by storage");
+			}
 			throw ApiException.badRequest("Failed to upload file");
+		} catch (SdkException e) {
+			log.error("AWS SDK error during upload: bucket={}, key={}", bucket, key, e);
+			throw new ApiException("Storage service unavailable", HttpStatus.SERVICE_UNAVAILABLE);
 		}
 	}
 	
@@ -135,15 +135,19 @@ public class S3StorageService implements StorageService {
 		}
 	}
 	
-	// Returns an AWS credentials provider based on the configured access/secret keys, or the default provider chain if
-	// not set.
-	private AwsCredentialsProvider credentialsProvider() {
-		if (props.getAccessKey() != null && !props.getAccessKey().isBlank()
-				 && props.getSecretKey() != null && !props.getSecretKey().isBlank()) {
-			return StaticCredentialsProvider.create(
-				AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey()));
-		}
-		return DefaultCredentialsProvider.create();
-	}
-	
+	// Returns an AWS credentials provider based on the configured access/secret keys,
+	// or the default provider chain if not set.
+//	@Bean
+//	public AwsCredentialsProvider awsCredentialsProvider() {
+//		if (props.getAccessKey() != null && !props.getAccessKey().isBlank()
+//				 && props.getSecretKey() != null && !props.getSecretKey().isBlank()) {
+//			return StaticCredentialsProvider.create(
+//				AwsBasicCredentials.create(props.getAccessKey(), props.getSecretKey()));
+//		}
+//		// Fallback for IAM roles (EC2/EKS/ECS) — but log loudly
+//		log.warn("S3 credentials not configured — falling back to DefaultCredentialsProvider. "
+//						+ "This will work only if running on infrastructure with an IAM role.");
+//		return DefaultCredentialsProvider.builder().build();
+//	}
+//
 }

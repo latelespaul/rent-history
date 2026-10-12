@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.controller;
 
 import com.rentrix.rentrixserver.dto.response.ReviewProofDto;
+import com.rentrix.rentrixserver.entity.constants.Role;
 import com.rentrix.rentrixserver.security.CustomUserDetails;
 import com.rentrix.rentrixserver.service.ReviewService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class ReviewProofController {
 	public List<ReviewProofDto> listProofs(
 		@PathVariable Long reviewId,
 		@AuthenticationPrincipal CustomUserDetails principal) {
-		boolean isAdmin = "ADMIN".equals(principal.getRole());
+		boolean isAdmin = Role.ADMIN.name().equals(principal.getRole());
 		return reviewService.listProofs(reviewId, principal.getId(), isAdmin);
 	}
 	
@@ -45,7 +46,7 @@ public class ReviewProofController {
 		@PathVariable Long reviewId,
 		@PathVariable Long proofId,
 		@AuthenticationPrincipal CustomUserDetails principal) {
-		boolean isAdmin = "ADMIN".equals(principal.getRole());
+		boolean isAdmin = Role.ADMIN.name().equals(principal.getRole());
 		String url = reviewService.getProofUrl(reviewId, proofId, principal.getId(), isAdmin);
 		return ResponseEntity.ok(Map.of("url", url));
 	}

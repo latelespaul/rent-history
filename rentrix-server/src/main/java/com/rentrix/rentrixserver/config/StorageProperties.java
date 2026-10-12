@@ -27,7 +27,7 @@ public class StorageProperties {
 	@NotBlank
 	private String privateBucket;
 	private String publicBaseUrl;
-	private long maxImageSizeBytes = 10L * 1024 * 1024;
+	private long maxImageSizeBytes = 15L * 1024 * 1024;
 	private long maxProofSizeBytes = 15L * 1024 * 1024;
 	private List<String> allowedImageTypes =
 		List.of(

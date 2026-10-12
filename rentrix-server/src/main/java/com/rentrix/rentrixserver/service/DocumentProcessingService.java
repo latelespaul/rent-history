@@ -15,7 +15,7 @@ import java.util.Set;
 @Service
 public class DocumentProcessingService {
 	
-	private static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;    // 20 MB
+	private static final long MAX_SIZE_BYTES = 15L * 1024 * 1024;    // 15 MB
 	private static final Set<String> ALLOWED_TYPES = Set.of(
 		"application/pdf",
 		"image/jpeg",
@@ -49,7 +49,7 @@ public class DocumentProcessingService {
 						 .toOutputStream(out);
 			
 			byte[] processed = out.toByteArray();
-			log.info("Document (image) processed: original={}B, processed={}B",
+			log.debug("Document (image) processed: original={}B, processed={}B",
 				file.getSize(), processed.length);
 			return new ProcessedDocument(processed, "image/jpeg");
 			

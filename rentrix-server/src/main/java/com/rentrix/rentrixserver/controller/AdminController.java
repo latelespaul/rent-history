@@ -116,8 +116,9 @@ public class AdminController {
 	 * @return Success message
 	 */
 	@DeleteMapping("/reviews/{id}")
-	public ResponseEntity<String> deleteReview(@PathVariable Long id) {
-		return ResponseEntity.ok(reviewService.deleteReview(id));
+	public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
+		reviewService.deleteReview(id);
+		return ResponseEntity.noContent().build();
 	}
 	
 	/**

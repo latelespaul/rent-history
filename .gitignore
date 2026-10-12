@@ -1,4 +1,61 @@
-# Documentation files
-rentrix-docs/INSERT USERS.txt
-rentrix-docs/INSERT USER_DETAILS.txt
+
+
+# =============================================================================
+# Rentrix — Root .gitignore
+# =============================================================================
+
+# --- OS ---------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# --- IDE --------------------------------------------------------------------
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+
+# --- Environment ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.envrc
+.aws/
+*.pem
+*.key
+
+# --- Logs -------------------------------------------------------------------
+*.log
+logs/
+
+# --- Node (in case of root-level tooling) -----------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# --- Build ------------------------------------------------------------------
+dist/
+build/
+out/
+
+# --- Coverage ---------------------------------------------------------------
+coverage/
+*.lcov
+
+# --- Custome ---------------------------------------------------------------
 todo.txt
+
+# --- Documentation files ----------------------------------------------------
+rentrix-docs/
+rentrix-docs/

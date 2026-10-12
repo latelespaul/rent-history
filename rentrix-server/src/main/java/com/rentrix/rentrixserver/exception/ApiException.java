@@ -8,9 +8,13 @@ public class ApiException extends RuntimeException {
 	
 	private final HttpStatus status;
 	
-	public ApiException(String message, HttpStatus status) {
-		super(message);
+	public ApiException(String message, HttpStatus status, Throwable cause) {
+		super(message, cause);
 		this.status = status;
+	}
+	
+	public ApiException(String message, HttpStatus status) {
+		this(message, status, null);
 	}
 	
 	// Common shortcuts

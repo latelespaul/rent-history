@@ -64,7 +64,7 @@ public final class FlatMapper {
 											.filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
 											.findFirst()
 											.map(FlatImage::getPublicUrl)
-											.orElse(active.isEmpty() ? null : active.get(0).getPublicUrl()));
+											.orElse(active.isEmpty() ? null : active.getFirst().getPublicUrl()));
 		}
 		return b.build();
 	}
@@ -88,16 +88,15 @@ public final class FlatMapper {
 		// Primary image URL for the card
 		String primaryImageUrl = null;
 		if (flat.getImages() != null) {
-			primaryImageUrl = flat.getImages().stream()
-										 .filter(img -> !Boolean.TRUE.equals(img.getDeleted()))
-										 .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
-										 .findFirst()
-										 .map(FlatImage::getPublicUrl)
-										 .orElseGet(() -> flat.getImages().stream()
-																	 .filter(img -> !Boolean.TRUE.equals(img.getDeleted()))
-																	 .findFirst()
-																	 .map(FlatImage::getPublicUrl)
-																	 .orElse(null));
+			List<FlatImage> active = flat.getImages().stream()
+												  .filter(img -> !Boolean.TRUE.equals(img.getDeleted()))
+												  .toList();
+			primaryImageUrl = active.stream()
+											.filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+											.findFirst()
+											.or(() -> active.stream().findFirst())
+											.map(FlatImage::getPublicUrl)
+											.orElse(null);
 		}
 		return FlatSummaryResponse.builder()
 										  .id(flat.getId())

@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface FlatImageRepository extends JpaRepository<FlatImage, Long> {
 	
-	List<FlatImage> findByFlatIdAndDeletedFalseOrderByDisplayOrderAsc(Long flatId);
+	List<FlatImage> findByFlatIdOrderByDisplayOrderAsc(Long flatId);
 	
 	Optional<FlatImage> findByIdAndDeletedFalse(Long id);
 	

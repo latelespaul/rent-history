@@ -91,4 +91,21 @@ class ReviewIntegrationTest extends BaseIntegrationTest {
 				 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REJECTED"));
 	}
 	
+	@Test
+	void createReview_onOwnFlat_returns400() throws Exception {
+		User landlord = testData.createLandlord();
+		Flat flat = testData.createVerifiedFlat(landlord);
+		
+		String body = """
+			{"title":"My own place","content":"Testing self-review block.","rating":10}
+			""";
+		
+		mockMvc.perform(post("/flats/{id}/reviews", flat.getId())
+								 .header("Authorization", auth.bearer(landlord))
+								 .contentType(MediaType.APPLICATION_JSON)
+								 .content(body))
+				 .andExpect(status().isBadRequest())
+				 .andExpect(jsonPath("$.message", containsString("your own")));
+	}
+	
 }

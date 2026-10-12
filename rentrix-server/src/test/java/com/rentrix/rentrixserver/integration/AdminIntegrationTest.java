@@ -80,4 +80,16 @@ class AdminIntegrationTest extends BaseIntegrationTest {
 				 .andExpect(status().isUnauthorized());
 	}
 	
+	@Test
+	void admin_canUnverifyFlat() throws Exception {
+		User landlord = testData.createLandlord();
+		User admin = testData.createAdmin();
+		Flat flat = testData.createVerifiedFlat(landlord);
+		
+		mockMvc.perform(patch("/admin/flats/{id}/verify", flat.getId())
+								 .header("Authorization", auth.bearer(admin)))
+				 .andExpect(status().isOk())
+				 .andExpect(jsonPath("$.verified").value(false));
+	}
+	
 }

@@ -13,6 +13,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestControllerAdvice
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler {
 			fieldErrors.put(err.getField(), err.getDefaultMessage());
 		}
 		String message = fieldErrors.values().stream().findFirst().orElse("Validation failed");
-		log.error("Validation failed {} ", ex.getMessage());
+		log.warn("Validation failed {} ", ex.getMessage());
 		return ResponseEntity
 					 .status(HttpStatus.BAD_REQUEST)
 					 .body(new ErrorResponse(message, HttpStatus.BAD_REQUEST.value(), java.time.Instant.now(),
@@ -45,7 +46,7 @@ public class GlobalExceptionHandler {
 	// ---------- Security ----------
 	@ExceptionHandler(BadCredentialsException.class)
 	public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
-		log.error("Invalid credentials {}", ex.getMessage());
+		log.warn("Invalid credentials {}", ex.getMessage());
 		return ResponseEntity
 					 .status(HttpStatus.UNAUTHORIZED)
 					 .body(new ErrorResponse("Invalid credentials", HttpStatus.UNAUTHORIZED.value()));
@@ -70,10 +71,11 @@ public class GlobalExceptionHandler {
 	// ---------- Catch-all ----------
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
-		log.error("Unhandled exception", ex);
+		String errorId = UUID.randomUUID().toString().substring(0, 8);
+		log.error("Unhandled exception [errorId={}]", errorId, ex);
 		return ResponseEntity
 					 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-					 .body(new ErrorResponse("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR.value()));
+					 .body(new ErrorResponse("Internal server error (ref: " + errorId + ")", 500));
 	}
 	
 	// --------- File upload size ----------
@@ -82,7 +84,7 @@ public class GlobalExceptionHandler {
 		org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
 		return ResponseEntity
 					 .status(HttpStatus.CONTENT_TOO_LARGE)
-					 .body(new ErrorResponse("File too large (max 15 MB)", 413));
+					 .body(new ErrorResponse("File exceeds maximum allowed size", 413));
 	}
 	
 }

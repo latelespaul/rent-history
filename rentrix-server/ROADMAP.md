@@ -92,3 +92,26 @@ Proof is:
 - [ ] Loading skeleton polish
 - [ ] Denormalize averageRating + reviewCount
 - [ ] SEO / OG meta tags
+
+## v0.1.5 — Foundation Audit + Cleanup (current)
+- [ ] Full-stack code audit
+- [ ] Fix critical findings
+- [ ] Fix warnings
+- [ ] Clean up dead code
+- [ ] Update docs to match reality
+- [ ] Verify tests + CI still green
+- [ ] No new features
+
+## v0.1.6 — Polish + Observability (was v0.1.5)
+- [ ] Prometheus + Grafana (local + Grafana Cloud)
+- [ ] Bottom navigation on mobile
+- [ ] Loading skeleton polish
+- [ ] Denormalize averageRating + reviewCount
+- [ ] SEO / OG meta tags
+- [ ] Password reset flow
+- [ ] Whatever the friction journal surfaces
+
+## v0.2.0 — Landlord claiming (unchanged)
+- [ ] Landlord claim flow
+- [ ] Review verification tiers
+- [ ] Admin analytics dashboard

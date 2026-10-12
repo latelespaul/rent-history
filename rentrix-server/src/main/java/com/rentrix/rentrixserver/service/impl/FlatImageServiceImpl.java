@@ -1,6 +1,5 @@
 package com.rentrix.rentrixserver.service.impl;
 
-import com.rentrix.rentrixserver.config.StorageProperties;
 import com.rentrix.rentrixserver.dto.response.FlatImageDto;
 import com.rentrix.rentrixserver.entity.Flat;
 import com.rentrix.rentrixserver.entity.FlatImage;
@@ -32,12 +31,12 @@ public class FlatImageServiceImpl implements FlatImageService {
 	private final FlatImageRepository flatImageRepository;
 	private final ImageProcessingService imageProcessing;
 	private final StorageService storage;
-	private final StorageProperties props;
 	
 	@Override
+	@Transactional(readOnly = true)
 	public List<FlatImageDto> listImages(Long flatId) {
 		return FlatMapper.toImageDtos(
-			flatImageRepository.findByFlatIdAndDeletedFalseOrderByDisplayOrderAsc(flatId));
+			flatImageRepository.findByFlatIdOrderByDisplayOrderAsc(flatId));
 	}
 	
 	@Override
@@ -74,8 +73,8 @@ public class FlatImageServiceImpl implements FlatImageService {
 		image.setIsPrimary(currentCount == 0);   // first image is primary
 		
 		FlatImage saved = flatImageRepository.save(image);
-		log.info("Uploaded image for flat {}: id={}, primary={}",
-			flatId, saved.getId(), saved.getIsPrimary());
+		log.info("Image uploaded. flatId={}, imageId={}, primary={}, sizeBytes={}",
+			flatId, saved.getId(), saved.getIsPrimary(), saved.getSizeBytes());
 		
 		return FlatMapper.toImageDto(saved);
 	}
@@ -94,16 +93,17 @@ public class FlatImageServiceImpl implements FlatImageService {
 			throw ApiException.notFound("Image does not belong to this flat");
 		}
 		
-		// Soft-delete in DB
+		boolean wasPrimary =
+			Boolean.TRUE.equals(image.getIsPrimary());
+		
 		image.setDeleted(true);
 		image.setIsPrimary(false);
+		
 		flatImageRepository.save(image);
 		
-		// Best-effort S3 cleanup — non-fatal
 		storage.deletePublic(image.getStorageKey());
 		
-		// If it was primary, promote the next image
-		if (Boolean.TRUE.equals(image.getIsPrimary())) {
+		if (wasPrimary) {
 			promoteNextAsPrimary(flatId);
 		}
 		
@@ -150,7 +150,7 @@ public class FlatImageServiceImpl implements FlatImageService {
 	
 	private void promoteNextAsPrimary(Long flatId) {
 		List<FlatImage> remaining =
-			flatImageRepository.findByFlatIdAndDeletedFalseOrderByDisplayOrderAsc(flatId);
+			flatImageRepository.findByFlatIdOrderByDisplayOrderAsc(flatId);
 		if (!remaining.isEmpty()) {
 			FlatImage next = remaining.get(0);
 			next.setIsPrimary(true);
