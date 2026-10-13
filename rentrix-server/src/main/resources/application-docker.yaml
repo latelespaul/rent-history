@@ -50,7 +50,6 @@ app:
 
   jwt:
     secret: ${JWT_SECRET:UtSmryGfnnxJiVHWYYiyyizEOK92De7npIL16owOeaF}
-
     access-token-expiry-ms: ${JWT_ACCESS_TOKEN_EXPIRY_MS:900000}
     refresh-token-expiry-ms: ${JWT_REFRESH_TOKEN_EXPIRY_MS:604800000}
 
@@ -62,13 +61,10 @@ app:
   storage:
     s3:
       region: ${AWS_REGION:ap-south-1}
-
       access-key: ${AWS_ACCESS_KEY_ID:}
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
-
       public-bucket: ${S3_PUBLIC_BUCKET:rentrix-media}
       private-bucket: ${S3_PRIVATE_BUCKET:rentrix-private}
-
       public-base-url: ${S3_PUBLIC_BASE_URL:}
 
 # =============================================================================

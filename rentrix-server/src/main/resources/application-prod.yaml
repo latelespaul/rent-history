@@ -40,6 +40,13 @@ server:
 
 spring:
 
+  main:
+    lazy-initialization: true     # defers bean creation until needed
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred  # starts JPA repos lazily
+
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=true&requireSSL=true&serverTimezone=UTC
     username: ${DB_USERNAME}
@@ -63,6 +70,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
 
   servlet:
     multipart:
