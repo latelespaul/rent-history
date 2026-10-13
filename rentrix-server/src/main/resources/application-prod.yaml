@@ -39,7 +39,6 @@ server:
     connection-timeout: 20000
 
 spring:
-
   main:
     lazy-initialization: true     # defers bean creation until needed
   data:
@@ -74,9 +73,10 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 15MB
-      max-request-size: 50MB
-      file-size-threshold: 2MB
+      max-file-size: 10MB         # ← Lower from 15 to 10
+      max-request-size: 20MB      # ← Lower from 50 to 20
+      file-size-threshold: 0      # ← Force disk buffering
+      location: /tmp
 
 # =============================================================================
 # Application

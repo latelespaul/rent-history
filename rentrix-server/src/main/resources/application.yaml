@@ -19,7 +19,7 @@ spring:
     multipart:
       max-file-size: 15MB
       max-request-size: 50MB
-      file-size-threshold: 2MB
+      file-size-threshold: 0 # ← Force write-to-disk immediately
 
   # --- Output configuration -----------------------------------------------------
   output:

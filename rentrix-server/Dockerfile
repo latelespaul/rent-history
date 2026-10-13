@@ -33,7 +33,9 @@ EXPOSE 8080
 
 # JVM flags tuned for small containers (Render free tier)
 ENTRYPOINT ["java", \
-            "-XX:MaxRAMPercentage=75", \
+            "-XX:MaxRAMPercentage=70", \
+            "-XX:InitialRAMPercentage=50", \
             "-XX:+UseSerialGC", \
+            "-XX:MaxMetaspaceSize=128m", \
             "-XX:+ExitOnOutOfMemoryError", \
             "-jar", "app.jar"]
