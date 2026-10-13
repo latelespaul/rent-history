@@ -4,6 +4,7 @@ import type { AxiosError } from "axios"
 import { flatsApi } from "@/api/flats"
 import { queryKeys } from "@/api/queryKeys"
 import { useAuthStore } from "@/features/auth/store"
+import imageCompression from "browser-image-compression"
 
 export function useFlatImages(flatId: number) {
   return useQuery({
@@ -13,12 +14,22 @@ export function useFlatImages(flatId: number) {
     staleTime: 1000 * 60,
   })
 }
-
+async function compressIfNeeded(file: File): Promise<File> {
+  if (file.size <= 2 * 1024 * 1024) return file // already small
+  return imageCompression(file, {
+    maxSizeMB: 2,
+    maxWidthOrHeight: 1920,
+    useWebWorker: true,
+  })
+}
 export function useUploadFlatImage(flatId: number) {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: (file: File) => flatsApi.uploadImage(flatId, file),
+    mutationFn: async (file: File) => {
+      const compressed = await compressIfNeeded(file)
+      return flatsApi.uploadImage(flatId, compressed)
+    },
     onSuccess: async () => {
       toast.success("Image uploaded")
       await Promise.all([

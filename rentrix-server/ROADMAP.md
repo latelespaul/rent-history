@@ -115,3 +115,12 @@ Proof is:
 - [ ] Landlord claim flow
 - [ ] Review verification tiers
 - [ ] Admin analytics dashboard
+
+v0.1.5 — Foundation hardening
+
+- Full-stack code audit
+- Fixed N bugs found
+- Removed M lines of dead code
+- Updated docs
+
+No user-facing features. This is a stability release ahead of v0.1.6.

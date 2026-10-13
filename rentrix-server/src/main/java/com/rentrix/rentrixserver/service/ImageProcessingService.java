@@ -41,7 +41,7 @@ public class ImageProcessingService {
 			// Pre-check dimensions to reject huge images before Thumbnailator
 			try {
 				int[] dims = readDimensions(original);
-				if (dims[0] > 4000 || dims[1] > 4000) {
+				if (dims[0] > 6000 || dims[1] > 6000) {
 					throw new FileValidationException(
 						"Image dimensions too large (max 6000×6000)");
 				}
