@@ -31,7 +31,7 @@ public class JwtService {
 	
 	@PostConstruct
 	void init() {
-		if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+		if (secret == null || secret.isBlank() || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
 			throw new IllegalStateException(
 				"app.jwt.secret must be at least 32 bytes for HS256");
 		}
@@ -87,9 +87,10 @@ public class JwtService {
 	public boolean isValid(String token) {
 		try {
 			Claims claims = parseClaims(token);
-			return claims.getExpiration().after(new Date());
+			Date exp = claims.getExpiration();
+			return exp != null && exp.after(new Date());
 		} catch (Exception ex) {
-			log.debug("Invalid JWT: {}", ex.getMessage());
+			log.debug("JWT validation failed: {}", ex.getClass().getSimpleName());
 			return false;
 		}
 	}

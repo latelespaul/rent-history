@@ -4,7 +4,9 @@ import com.rentrix.rentrixserver.dto.projection.RatingAggregate;
 import com.rentrix.rentrixserver.dto.request.CreateReviewRequest;
 import com.rentrix.rentrixserver.dto.response.PageResponse;
 import com.rentrix.rentrixserver.dto.response.ReviewDto;
+import com.rentrix.rentrixserver.dto.response.ReviewProofDto;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -21,12 +23,33 @@ public interface ReviewService {
 	
 	PageResponse<ReviewDto> getMyReviews(Long userId, Pageable pageable);
 	
-	String deleteReview(Long id);
+	void deleteReview(Long id);
 	
 	/**
 	 * Batch fetch rating aggregates for a set of flat IDs.
 	 * Returns a map keyed by flat ID. Flats with no APPROVED reviews are absent.
 	 */
 	Map<Long, RatingAggregate> getRatingAggregates(List<Long> flatIds);
+	
+	// ── Proof-of-living ───────────────────────────────────────────────────
+	
+	/**
+	 * Uploads a proof-of-living document for a review.
+	 * Only the review owner may upload, and only while status is PENDING.
+	 */
+	ReviewProofDto uploadProof(Long reviewId, MultipartFile file, Long requesterId);
+	
+	List<ReviewProofDto> listProofs(Long reviewId, Long requesterId, boolean isAdmin);
+	
+	/**
+	 * Generates a short-lived presigned URL to view a review's proof.
+	 * Only review owner or ADMIN.
+	 */
+	String getProofUrl(Long reviewId, Long proofId, Long requesterId, boolean isAdmin);
+	
+	/**
+	 * Deletes a review's proof (before approval).
+	 */
+	void deleteProof(Long reviewId, Long proofId, Long requesterId, boolean isAdmin);
 	
 }

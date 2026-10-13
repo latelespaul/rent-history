@@ -4,20 +4,24 @@ import com.rentrix.rentrixserver.entity.constants.PropertyType;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(
 	name = "flats",
 	indexes = {
-		@Index(name = "idx_flats_city", columnList = "city"),
-		@Index(name = "idx_flats_state", columnList = "state"),
-		@Index(name = "idx_flats_rent", columnList = "rent"),
+		@Index(name = "idx_flats_city", columnList = "city"),// filter: city
+		@Index(name = "idx_flats_state", columnList = "state"), // filter: state
+		@Index(name = "idx_flats_rent", columnList = "rent"), //filter: rent rang
 		@Index(name = "idx_flats_available", columnList = "available"),
 		@Index(name = "idx_flats_owner", columnList = "owner_id"),
 		@Index(name = "idx_flats_created_by", columnList = "created_by"),     // NEW
@@ -57,9 +61,10 @@ public class Flat extends BaseEntity {
 	private PropertyType propertyType;
 	
 	@Lob
+	@Column(length = 4000)
 	private String description;
 	
-	@Column(name = "available", nullable = false)
+	@Column(nullable = false)
 	private Boolean available = true;
 	
 	@Embedded
@@ -92,5 +97,12 @@ public class Flat extends BaseEntity {
 	
 	@Column(nullable = false)
 	private Boolean deleted = false;
+	
+	@OneToMany(mappedBy = "flat", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	@BatchSize(size = 20)
+	@EqualsAndHashCode.Exclude
+	@ToString.Exclude
+	@OrderBy("displayOrder ASC")
+	private List<FlatImage> images = new ArrayList<>();
 	
 }

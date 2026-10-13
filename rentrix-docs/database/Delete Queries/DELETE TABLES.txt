@@ -1,0 +1,18 @@
+DELETE FROM flat_images;
+DELETE FROM review_proofs;
+DELETE FROM reviews;
+DELETE FROM flats;
+DELETE FROM user_details;
+DELETE FROM users;
+
+
+-- Drop in reverse FK order
+DROP TABLE IF EXISTS review_proofs;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS flat_images;
+DROP TABLE IF EXISTS rent_history;
+DROP TABLE IF EXISTS flats;
+DROP TABLE IF EXISTS user_details;
+DROP TABLE IF EXISTS users;
+
+-- Then run the CREATE statements above

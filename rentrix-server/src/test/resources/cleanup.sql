@@ -1,4 +1,7 @@
--- Clean slate between tests — HARD delete to bypass soft-delete
+DELETE
+FROM flat_images;
+DELETE
+FROM review_proofs;
 DELETE
 FROM reviews;
 DELETE

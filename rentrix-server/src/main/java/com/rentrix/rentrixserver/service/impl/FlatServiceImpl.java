@@ -36,19 +36,21 @@ public class FlatServiceImpl implements FlatService {
 	private final ReviewService reviewService;
 	
 	@Override
+	@Transactional(readOnly = true)
 	public PageResponse<FlatSummaryResponse> listFlats(FlatFilterRequest filter, Pageable pageable) {
-		log.info("Listing flats with filters: {}", filter);
+		log.debug("Listing flats with filters={}", filter);
 		
-		Page<Flat> page = flatRepository.findAll(
-			FlatSpecification.visibleAndFiltered(filter), pageable);
+		Page<Flat> page = flatRepository
+									.findAll(FlatSpecification.visibleAndFiltered(filter), pageable);
 		
 		// Batch fetch ratings for the current page
 		return flatSummaryPageResponse(page);
 	}
 	
 	@Override
+	@Transactional(readOnly = true)
 	public PageResponse<FlatSummaryResponse> listMyFlats(Long userId, Pageable pageable) {
-		log.info("Listing flats for user id={}", userId);
+		log.debug("Listing flats for userId={}", userId);
 		
 		Page<Flat> page = flatRepository.findByCreatedById(userId, pageable);
 		return flatSummaryPageResponse(page);
@@ -57,7 +59,7 @@ public class FlatServiceImpl implements FlatService {
 	@Override
 	@Transactional(readOnly = true)
 	public FlatResponse getFlatById(Long id) {
-		Flat flat = flatRepository.findById(id)
+		Flat flat = flatRepository.findByIdWithImages(id)
 										  .orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
 		
 		RatingAggregate aggregate = reviewService
@@ -83,8 +85,11 @@ public class FlatServiceImpl implements FlatService {
 		}
 		
 		Flat saved = flatRepository.save(flat);
-		log.info("Flat created: id={}, creator={}, verified={}",
-			saved.getId(), creatorId, saved.getVerified());
+		log.info("Flat created. flatId={}, creatorId={}, ownerId={}, verified={}",
+			saved.getId(),
+			creatorId,
+			saved.getOwner() != null ? saved.getOwner().getId() : null,
+			saved.getVerified());
 		return FlatMapper.toResponse(saved);
 	}
 	
@@ -130,6 +135,7 @@ public class FlatServiceImpl implements FlatService {
 		Flat flat = flatRepository.findById(id)
 										  .orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
 		flat.setVerified(verified);
+		log.info("Flat verification changed. flatId={}, verified={}", id, verified);
 		return FlatMapper.toResponse(flatRepository.save(flat));
 	}
 	
@@ -139,6 +145,7 @@ public class FlatServiceImpl implements FlatService {
 		Flat flat = flatRepository.findById(id)
 										  .orElseThrow(() -> ApiException.notFound("Flat not found with id: " + id));
 		flat.setVisible(visible);
+		log.info("Flat visibility changed. flatId={}, visible={}", id, visible);
 		return FlatMapper.toResponse(flatRepository.save(flat));
 	}
 	

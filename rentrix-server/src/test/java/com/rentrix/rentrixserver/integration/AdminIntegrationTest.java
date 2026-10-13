@@ -59,7 +59,7 @@ class AdminIntegrationTest extends BaseIntegrationTest {
 		User admin = testData.createAdmin();
 		Flat flat = testData.createVerifiedFlat(landlord);
 		
-		mockMvc.perform(delete("/admin/flats/{id}/visible", flat.getId())
+		mockMvc.perform(patch("/admin/flats/{id}/visible", flat.getId())
 								 .header("Authorization", auth.bearer(admin)))
 				 .andExpect(status().isOk())
 				 .andExpect(jsonPath("$.visible").value(false));
@@ -78,6 +78,18 @@ class AdminIntegrationTest extends BaseIntegrationTest {
 	void unauthenticated_cannotAccessAdminEndpoints() throws Exception {
 		mockMvc.perform(get("/admin/reviews"))
 				 .andExpect(status().isUnauthorized());
+	}
+	
+	@Test
+	void admin_canUnverifyFlat() throws Exception {
+		User landlord = testData.createLandlord();
+		User admin = testData.createAdmin();
+		Flat flat = testData.createVerifiedFlat(landlord);
+		
+		mockMvc.perform(patch("/admin/flats/{id}/verify", flat.getId())
+								 .header("Authorization", auth.bearer(admin)))
+				 .andExpect(status().isOk())
+				 .andExpect(jsonPath("$.verified").value(false));
 	}
 	
 }

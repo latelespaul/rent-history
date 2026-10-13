@@ -3,28 +3,51 @@ package com.rentrix.rentrixserver.controller;
 import com.rentrix.rentrixserver.dto.filter.FlatFilterRequest;
 import com.rentrix.rentrixserver.dto.request.CreateFlatRequest;
 import com.rentrix.rentrixserver.dto.request.UpdateFlatRequest;
+import com.rentrix.rentrixserver.dto.response.FlatImageDto;
 import com.rentrix.rentrixserver.dto.response.FlatResponse;
 import com.rentrix.rentrixserver.dto.response.FlatSummaryResponse;
 import com.rentrix.rentrixserver.dto.response.PageResponse;
+import com.rentrix.rentrixserver.entity.constants.Role;
 import com.rentrix.rentrixserver.security.CustomUserDetails;
+import com.rentrix.rentrixserver.service.FlatImageService;
 import com.rentrix.rentrixserver.service.FlatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+/**
+ * Flat management APIs.
+ * <p>
+ * Responsibilities:
+ * - Public flat search
+ * - Flat detail retrieval
+ * - Flat creation
+ * - Flat updates
+ * - Flat deletion
+ * - Flat image management
+ * <p>
+ * Access Rules:
+ * - Listing and detail views are public
+ * - Creation requires authentication
+ * - Updates require owner, creator, or admin
+ * - Image management requires owner, creator, or admin
+ */
 @RestController
 @RequestMapping("/flats")
 @RequiredArgsConstructor
 public class FlatController {
 	
 	private final FlatService flatService;
+	private final FlatImageService flatImageService;
 	
 	/** Public: list flats with optional filters. */
 	@GetMapping
@@ -47,7 +70,6 @@ public class FlatController {
 	/** Public: flat detail. */
 	@GetMapping("/{id}")
 	public ResponseEntity<FlatResponse> getFlatById(@PathVariable Long id) {
-		
 		return ResponseEntity.ok(flatService.getFlatById(id));
 	}
 	
@@ -55,7 +77,9 @@ public class FlatController {
 	@PostMapping
 	public ResponseEntity<FlatResponse> createFlat(@Valid @RequestBody CreateFlatRequest request,
 		@AuthenticationPrincipal CustomUserDetails principal) {
-		boolean isVerifiedCreator = principal.getRole().equals("LANDLORD") || principal.getRole().equals("ADMIN");
+		Role role = Role.valueOf(principal.getRole());
+		boolean isVerifiedCreator = "LANDLORD".equals(principal.getRole())
+												 || "ADMIN".equals(principal.getRole());
 		FlatResponse created = flatService.createFlat(request, principal.getId(), isVerifiedCreator);
 		
 		return ResponseEntity.status(201).body(created);
@@ -70,7 +94,6 @@ public class FlatController {
 		return ResponseEntity.ok(flatService.updateFlat(id, request, principal.getId(), isAdmin));
 	}
 	
-	/** Owner or ADMIN: soft-delete. */
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteFlat(@PathVariable Long id,
 		@AuthenticationPrincipal CustomUserDetails principal) {
@@ -79,11 +102,43 @@ public class FlatController {
 		return ResponseEntity.noContent().build();
 	}
 	
-	@GetMapping("/debug/h2-console")
-	public Map<String, Object> debugH2(
-		@Value("${spring.h2.console.enabled:NOT_SET}") String enabled,
-		@Value("${spring.h2.console.path:NOT_SET}") String path) {
-		return Map.of("enabled", enabled, "path", path);
+	/** Public: list images for a flat. */
+	@GetMapping("/{id}/images")
+	public List<FlatImageDto> listImages(@PathVariable Long id) {
+		return flatImageService.listImages(id);
+	}
+	
+	/** Owner / creator / ADMIN: upload an image. */
+	@PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<FlatImageDto> uploadImage(
+		@PathVariable Long id,
+		@RequestParam("file") MultipartFile file,
+		@AuthenticationPrincipal CustomUserDetails principal) {
+		boolean isAdmin = "ADMIN".equals(principal.getRole());
+		FlatImageDto uploaded = flatImageService.uploadImage(id, file, principal.getId(), isAdmin);
+		return ResponseEntity.status(201).body(uploaded);
+	}
+	
+	/** Owner / creator / ADMIN: delete an image. */
+	@DeleteMapping("/{id}/images/{imageId}")
+	public ResponseEntity<Void> deleteImage(
+		@PathVariable Long id,
+		@PathVariable Long imageId,
+		@AuthenticationPrincipal CustomUserDetails principal) {
+		boolean isAdmin = "ADMIN".equals(principal.getRole());
+		flatImageService.deleteImage(id, imageId, principal.getId(), isAdmin);
+		return ResponseEntity.noContent().build();
+	}
+	
+	/** Owner / creator / ADMIN: mark an image as primary. */
+	@PatchMapping("/{id}/images/{imageId}/primary")
+	public ResponseEntity<FlatImageDto> setPrimaryImage(
+		@PathVariable Long id,
+		@PathVariable Long imageId,
+		@AuthenticationPrincipal CustomUserDetails principal) {
+		boolean isAdmin = "ADMIN".equals(principal.getRole());
+		FlatImageDto image = flatImageService.setPrimary(id, imageId, principal.getId(), isAdmin);
+		return ResponseEntity.ok(image);
 	}
 	
 }

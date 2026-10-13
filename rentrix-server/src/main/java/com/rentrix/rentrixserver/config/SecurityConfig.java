@@ -14,7 +14,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +34,7 @@ public class SecurityConfig {
 	private final CustomUserDetailsService userDetailsService;
 	private final RestAuthenticationEntryPoint authenticationEntryPoint;
 	private final RestAccessDeniedHandler accessDeniedHandler;
+	private final CorsProperties corsProperties;
 	
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -55,8 +55,7 @@ public class SecurityConfig {
 	
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-			 .csrf(AbstractHttpConfigurer::disable)
+		http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(AbstractHttpConfigurer::disable)
 			 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			 .exceptionHandling(
 				 ex -> ex.authenticationEntryPoint(authenticationEntryPoint).accessDeniedHandler(accessDeniedHandler))
@@ -66,18 +65,19 @@ public class SecurityConfig {
 								.requestMatchers("/auth/signup", "/auth/login", "/auth/refresh").permitAll()
 								
 								// Public: browse flats + read reviews
-								.requestMatchers(HttpMethod.GET, "/flats/me").authenticated()     // ← first
+								.requestMatchers(HttpMethod.GET, "/flats/me").authenticated()     // ←
+								// first
 								.requestMatchers(HttpMethod.GET, "/flats/*/reviews").permitAll()
-								.requestMatchers(HttpMethod.GET, "/flats/*").permitAll()
-								.requestMatchers(HttpMethod.GET, "/flats").permitAll()
+								.requestMatchers(HttpMethod.GET, "/flats/**").permitAll()
 								
 								// Public: docs + H2 console (dev only — remove before prod!)
 								.requestMatchers("/v3/api-docs/**",
 									"/swagger-ui/**",
 									"/swagger-ui.html",
 									"/swagger-resources/**",
-									"/webjars/**",
-									"/h2-console/**").permitAll()
+									"/webjars/**").permitAll()
+								
+								// Public: health check
 								.requestMatchers("/actuator/health").permitAll()
 								
 								// Admin-only
@@ -87,7 +87,7 @@ public class SecurityConfig {
 								.anyRequest().authenticated())
 			 
 			 // H2 console uses frames — allow same-origin
-			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
+//			 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
 			 .authenticationProvider(authenticationProvider())
 			 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		
@@ -101,10 +101,7 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowedOriginPatterns(
-			List.of("http://localhost:5173", "https://myrentrix.vercel.app",
-				"https://*.vercel.app"          // ← covers every preview URL
-			));
+		config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);

@@ -52,18 +52,13 @@ class AuthIntegrationTest extends BaseIntegrationTest {
 	
 	@Test
 	void signup_withDuplicateEmail_returns409() throws Exception {
-		testData.createTenant();
+		User existing = testData.createTenant();
 		
 		SignupRequest req = new SignupRequest();
 		req.setName("Dup");
-		req.setEmail(testData.createTenant().getEmail()); // reuse same email
+		req.setEmail(existing.getEmail());
 		req.setPassword("password123");
 		req.setRole(Role.TENANT);
-		
-		// NOTE: createTenant generates a unique email per call, so this needs
-		// to be done differently. Use a direct approach:
-		User existing = testData.createTenant();
-		req.setEmail(existing.getEmail());
 		
 		mockMvc.perform(post("/auth/signup")
 								 .contentType(MediaType.APPLICATION_JSON)
