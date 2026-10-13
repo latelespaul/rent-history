@@ -1,1 +1,4 @@
 TODO: VITE_API_BASE_URL, VITE_APP_NAME
+- fix the theme changer
+- clicking of thumbnail of flat not working but clicking on text section is working
+- add some more fields on flat details page

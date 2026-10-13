@@ -38,14 +38,27 @@ public class ImageProcessingService {
 		try {
 			byte[] original = file.getBytes();
 			
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			// Pre-check dimensions to reject huge images before Thumbnailator
+			try {
+				int[] dims = readDimensions(original);
+				if (dims[0] > 4000 || dims[1] > 4000) {
+					throw new FileValidationException(
+						"Image dimensions too large (max 6000×6000)");
+				}
+			} catch (IOException e) {
+				throw new FileValidationException("Invalid image");
+			}
 			
-			// Thumbnailator strips EXIF when outputting — this is intentional.
-			Thumbnails.of(new ByteArrayInputStream(original)).size(MAX_DIMENSION, MAX_DIMENSION)
-						 .outputQuality(JPEG_QUALITY).outputFormat("jpg").toOutputStream(out);
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			Thumbnails.of(new ByteArrayInputStream(original))
+						 .size(MAX_DIMENSION, MAX_DIMENSION)
+						 .outputQuality(JPEG_QUALITY)
+						 .outputFormat("jpg")
+						 .toOutputStream(out);
 			
 			byte[] processed = out.toByteArray();
-			log.debug("Image processed: original={}B, processed={}B", original.length, processed.length);
+			log.debug("Image processed: original={}B, processed={}B",
+				original.length, processed.length);
 			return processed;
 			
 		} catch (IOException e) {

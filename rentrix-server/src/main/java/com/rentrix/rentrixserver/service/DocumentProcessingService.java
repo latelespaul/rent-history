@@ -43,8 +43,8 @@ public class DocumentProcessingService {
 			// Max dimension 2400px — higher than flat photos since documents need legibility
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			Thumbnails.of(new ByteArrayInputStream(file.getBytes()))
-						 .size(2400, 2400)
-						 .outputQuality(0.9f)
+						 .size(1920, 1920)
+						 .outputQuality(0.85f)
 						 .outputFormat("jpg")
 						 .toOutputStream(out);
 			
