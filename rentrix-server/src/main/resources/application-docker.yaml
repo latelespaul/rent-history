@@ -33,7 +33,6 @@ spring:
 
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
 
         jdbc:
