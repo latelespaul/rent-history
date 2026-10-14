@@ -9,7 +9,7 @@ services:
       MYSQL_USER: rentrix
       MYSQL_PASSWORD: rentrix123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
