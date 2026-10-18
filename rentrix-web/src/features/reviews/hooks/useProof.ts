@@ -4,6 +4,7 @@ import type { AxiosError } from "axios"
 import { reviewsApi } from "@/api/reviews"
 import { queryKeys } from "@/api/queryKeys"
 import { useAuthStore } from "@/features/auth/store"
+import { compressImageIfNeeded, formatBytes } from "@/lib/imageCompression.ts"
 
 export function useReviewProofs(reviewId: number) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -20,7 +21,15 @@ export function useUploadProof(reviewId: number) {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: (file: File) => reviewsApi.uploadProof(reviewId, file),
+    mutationFn: async (file: File) => {
+      const result = await compressImageIfNeeded(file)
+      if (result.wasCompressed) {
+        console.log(
+          `Compressed proof: ${formatBytes(result.originalSize)} → ${formatBytes(result.compressedSize)}`,
+        )
+      }
+      return reviewsApi.uploadProof(reviewId, result.file)
+    },
     onSuccess: async () => {
       toast.success("Proof uploaded")
       await Promise.all([
