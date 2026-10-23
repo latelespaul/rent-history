@@ -20,6 +20,14 @@ spring:
       max-file-size: 15MB
       max-request-size: 50MB
       file-size-threshold: 0 # ← Force write-to-disk immediately
+  #--- Flyway Confinguration -----------------------------------------------------
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    out-of-order: false
 
   # --- Output configuration -----------------------------------------------------
   output:
