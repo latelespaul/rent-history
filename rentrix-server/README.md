@@ -12,9 +12,9 @@ Env contract changes:
 
 | Old | v1 |
 |---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME` | removed; `DB_URL` (full JDBC URL) is required in `prod` |
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | removed and ignored; `DB_URL` (full JDBC URL) is required in `prod`. The Docker image defaults it to SQLite at `/app/data/rentrix.db`, so an old deployment that still sets only `DB_*` starts on SQLite and never touches the old MySQL |
 | `docker` profile | removed; use exactly one of `dev`, `test`, `prod` (`SPRING_PROFILES_ACTIVE` is required) |
 | `JWT_ACCESS_TOKEN_EXPIRY_MS`, `JWT_REFRESH_TOKEN_EXPIRY_MS` | removed; no env var (the access token lifetime defaults to 15 minutes) |
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_PRIVATE_BUCKET`, `AWS_PUBLIC_URL`, `S3_PUBLIC_BUCKET`, `S3_PRIVATE_BUCKET`, `S3_PUBLIC_BASE_URL` | removed; media storage returns later as `STORAGE_BACKEND` + `S3_*` (SYSTEM_DESIGN §17) |
-| CORS origins hard-coded in `application-prod.yaml` | `CORS_ALLOWED_ORIGINS` (comma list), required in `prod` |
+| CORS origins hard-coded in `application-prod.yaml` | `CORS_ALLOWED_ORIGINS` (comma list). In `prod`, unset means a warning and an empty allow-list (no cross-origin browser calls) |
 | `JWT_SECRET` | still required in `prod`, now at least 32 bytes |

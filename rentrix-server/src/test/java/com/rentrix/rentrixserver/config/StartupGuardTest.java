@@ -69,14 +69,22 @@ class StartupGuardTest {
 	}
 	
 	@Test
-	void prodRefusesMissingCorsOrigins() {
-		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", "")))
-			.hasMessageContaining("CORS_ALLOWED_ORIGINS");
-		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", " , ")))
-			.hasMessageContaining("CORS_ALLOWED_ORIGINS");
+	void prodStartsWithEmptyCorsAllowList() {
+		// Render's existing deployment sets no CORS_ALLOWED_ORIGINS: start, warn, allow no origin.
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", "")))
+			.doesNotThrowAnyException();
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", " , ")))
+			.doesNotThrowAnyException();
 		MockEnvironment unset = env("prod").withProperty("app.jwt.secret", GOOD_SECRET)
 			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix");
-		assertThatThrownBy(() -> StartupGuard.check(unset)).hasMessageContaining("CORS_ALLOWED_ORIGINS");
+		assertThatCode(() -> StartupGuard.check(unset)).doesNotThrowAnyException();
+	}
+	
+	@Test
+	void prodStillRefusesShortSecretWithoutCorsOrigins() {
+		MockEnvironment weak = env("prod").withProperty("app.jwt.secret", "too-short")
+			.withProperty("spring.datasource.url", "jdbc:sqlite:/app/data/rentrix.db");
+		assertThatThrownBy(() -> StartupGuard.check(weak)).hasMessageContaining("JWT_SECRET");
 	}
 	
 	@Test

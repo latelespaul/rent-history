@@ -1,8 +1,8 @@
-# syntax=docker/dockerfile:1
 # =============================================================================
 # Rentrix API image: multi-stage Maven build, then a small JRE 21 runtime.
 #   docker build -t rentrix-server rentrix-server
-# Runs as a non-root user. SQLite data and local media live under /app/data;
+# Builds with a plain (non-BuildKit) docker build, as Render does: no syntax line,
+# no cache mounts. Runs as a non-root user. SQLite data and local media live under /app/data;
 # mount a volume there (docker-compose.yml does). Config is env only (§17).
 # =============================================================================
 
@@ -13,10 +13,10 @@ WORKDIR /build
 
 # Resolve dependencies first so this layer stays cached until pom.xml changes.
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q dependency:go-offline
+RUN mvn -B -q dependency:go-offline
 
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q package -DskipTests \
+RUN mvn -B -q package -DskipTests \
  && cp target/rentrix-server-*.jar /build/app.jar
 
 # --- Runtime stage ----------------------------------------------------------

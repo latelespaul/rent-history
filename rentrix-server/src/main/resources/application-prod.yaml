@@ -1,7 +1,9 @@
 # =============================================================================
-# prod profile. Required env: DB_URL (+ DB_USERNAME / DB_PASSWORD), JWT_SECRET
-# (>= 32 bytes), CORS_ALLOWED_ORIGINS. The startup guard refuses to start without
-# them; there are no built-in defaults here.
+# prod profile. Required env: DB_URL (+ DB_USERNAME / DB_PASSWORD) and JWT_SECRET
+# (>= 32 bytes); the startup guard refuses to start without them and there are no
+# built-in defaults here. Set CORS_ALLOWED_ORIGINS to the web origin(s): when it is
+# empty the API starts with a warning and allows no cross-origin browser request.
+# The Docker image defaults DB_URL to SQLite under /app/data.
 # =============================================================================
 server:
   forward-headers-strategy: framework
