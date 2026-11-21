@@ -40,7 +40,7 @@ Google sign-in needs only an OAuth **client ID** (no client secret). Never commi
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project (for example "rentrix-dev").
 2. APIs & Services → OAuth consent screen: user type **External**, app name "Rentrix (dev)", a support email, scopes `openid`, `email` and `profile` only. While the app is in "Testing", add your own Google account as a test user.
 3. APIs & Services → Credentials → **Create credentials → OAuth client ID** → application type **Web application**.
-4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (Google Identity Services needs both for local dev). Add the production web origin later (for example `https://rentrix.in`). No redirect URIs are needed.
+4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (Google Identity Services needs both for local dev). For production add the web origins `https://doorwayliving.in` and `https://www.doorwayliving.in`. No redirect URIs are needed.
 5. Copy the client ID (`…apps.googleusercontent.com`). Do **not** download or commit the JSON file.
 6. Give it to the API only, from your shell or an untracked `.env` file (`.env` is git-ignored):
 
@@ -52,6 +52,16 @@ Google sign-in needs only an OAuth **client ID** (no client secret). Never commi
 7. Start the API and the web; "Sign in with Google" appears on the login page.
 
 Without `GOOGLE_CLIENT_ID` the Google button is hidden. In `prod` the API still starts, logs a warning and answers `POST /auth/google` with `503 google_sign_in_disabled`.
+
+### Production
+
+Web `https://doorwayliving.in`, API `https://api.doorwayliving.in`. They are same-site, so the `SameSite=Strict` refresh cookie works across them. Set on the API:
+
+```sh
+SPRING_PROFILES_ACTIVE=prod
+GOOGLE_CLIENT_ID=…apps.googleusercontent.com
+CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
+```
 
 ### Admins
 
