@@ -54,9 +54,10 @@ class SqliteMigrationTest {
 	}
 	
 	@Test
-	void onlyBangaloreAndPuneAreLive() {
-		List<String> live = jdbc.queryForList("select code from cities where live = true order by code", String.class);
-		assertThat(live).containsExactly("BLR", "PNQ");
+	void seedCitiesAreLiveWithPincodePrefixes() {
+		List<String> live = jdbc.queryForList(
+			"select code || ':' || pincode_prefixes from cities where live = true order by code", String.class);
+		assertThat(live).containsExactly("BLR:56", "PNQ:41");
 	}
 	
 	@Test

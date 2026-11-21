@@ -80,7 +80,7 @@ B1+W1 ─▶ O1 ;  B2+W1 ─▶ O2 ───────────────
 
 - **Google sign-in** is B3 (API, README steps) + W3 (UI). Dev login keeps local runs, tests and screenshots Google-free.
 - **Fake claims**: removed in W1 (HomePage stats, testimonials, "18 cities"); W4 rebuilds Home on `/stats` only.
-- **Migrations**: B1 owns `V1` (frozen). B2 (open PR #20) adds `V2__idempotency_keys.sql`. Design v2 adds three migrations with no fixed numbers: cities (C1, `cities.pincode_prefixes`), verification core (B11, plus the `moderation_actions` rebuild) and verification documents (B12, `verification_documents`); each takes the next free version when its PR merges (D-98). No PR edits a merged migration.
+- **Migrations**: B1 owns `V1` (frozen). B2 (merged) added `V2__idempotency_keys.sql`. Design v2 adds three migrations: cities (C1, `V3__city_pincode_prefixes.sql`), verification core (B11, plus the `moderation_actions` rebuild) and verification documents (B12, `verification_documents`); each takes the next free version when its PR merges (D-98). No PR edits a merged migration.
 - **Cities**: adding a city is a DB row plus admin activation (D-83); no PR adds a city to code.
 - **Approvals**: reading never needs approval; trust writes do (D-91). Tests for B4–B7 create approved users through a test fixture; the seed (B10) approves every seeded party.
 - **Privacy**: no API, log, email or screenshot may contain a full ID number; screenshots use the seed's placeholder documents only (D-94, D-95, D-97).

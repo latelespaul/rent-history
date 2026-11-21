@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 import java.util.Arrays;
 import java.util.List;
 
-/** Reference row per city (D-20). v1 ships BLR and PNQ, both live. */
+/** Reference row per city (D-20). Cities are data: adding one is a row, activating it sets {@code live}. */
 @Entity
 @Table(name = "cities")
 @Getter
@@ -36,11 +36,23 @@ public class City extends TimestampedEntity {
 	@Column(name = "live", nullable = false)
 	private boolean live;
 	
+	/** Comma-separated pincode prefixes, e.g. "56"; empty accepts any 6-digit pincode (D-84). */
+	@Column(name = "pincode_prefixes", length = 64)
+	private String pincodePrefixes;
+	
 	public List<String> aliasList() {
-		if (aliases == null || aliases.isBlank()) {
+		return splitList(aliases);
+	}
+	
+	public List<String> pincodePrefixList() {
+		return splitList(pincodePrefixes);
+	}
+	
+	private static List<String> splitList(String value) {
+		if (value == null || value.isBlank()) {
 			return List.of();
 		}
-		return Arrays.stream(aliases.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+		return Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
 	}
 	
 }
