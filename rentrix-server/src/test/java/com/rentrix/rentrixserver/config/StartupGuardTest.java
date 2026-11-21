@@ -25,7 +25,8 @@ class StartupGuardTest {
 	private static MockEnvironment prod() {
 		return env("prod")
 			.withProperty("app.jwt.secret", GOOD_SECRET)
-			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix");
+			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix")
+			.withProperty("app.cors.allowed-origins", "https://rentrix.in");
 	}
 	
 	@Test
@@ -65,6 +66,17 @@ class StartupGuardTest {
 			.hasMessageContaining("DEV_LOGIN_ENABLED");
 		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("spring.datasource.url", "")))
 			.hasMessageContaining("DB_URL");
+	}
+	
+	@Test
+	void prodRefusesMissingCorsOrigins() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", "")))
+			.hasMessageContaining("CORS_ALLOWED_ORIGINS");
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", " , ")))
+			.hasMessageContaining("CORS_ALLOWED_ORIGINS");
+		MockEnvironment unset = env("prod").withProperty("app.jwt.secret", GOOD_SECRET)
+			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix");
+		assertThatThrownBy(() -> StartupGuard.check(unset)).hasMessageContaining("CORS_ALLOWED_ORIGINS");
 	}
 	
 	@Test

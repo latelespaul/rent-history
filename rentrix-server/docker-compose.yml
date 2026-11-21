@@ -11,7 +11,7 @@ services:
     ports:
       - "3307:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - rentrix-v1-mysql-data:/var/lib/mysql
     healthcheck:
       test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u rentrix -prentrix123" ]
       interval: 5s
@@ -41,4 +41,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  mysql-data:
+  rentrix-v1-mysql-data:

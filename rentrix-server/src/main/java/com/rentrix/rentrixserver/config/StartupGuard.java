@@ -1,6 +1,8 @@
 package com.rentrix.rentrixserver.config;
 
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -17,7 +19,8 @@ import java.util.Set;
  * <ul>
  *   <li>exactly one of {@code dev}, {@code test}, {@code prod} must be active; there is no default;</li>
  *   <li>{@code JWT_SECRET} must be at least 32 bytes (dev and test ship a built-in one);</li>
- *   <li>outside dev and test, {@code DEV_LOGIN_ENABLED=true} is refused and {@code DB_URL} is required.</li>
+ *   <li>outside dev and test, {@code DEV_LOGIN_ENABLED=true} is refused and {@code DB_URL} and
+ *       {@code CORS_ALLOWED_ORIGINS} are required.</li>
  * </ul>
  * Registered in {@code META-INF/spring.factories}, so it also guards tests.
  */
@@ -56,6 +59,12 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		if (!StringUtils.hasText(env.getProperty("spring.datasource.url"))) {
 			throw new IllegalStateException("Refusing to start: DB_URL is required in the '" + profile
 				+ "' profile (a jdbc:sqlite:, jdbc:mysql: or jdbc:postgresql: URL).");
+		}
+		boolean hasOrigin = Binder.get(env).bind("app.cors.allowed-origins", Bindable.listOf(String.class))
+			.orElse(List.of()).stream().anyMatch(StringUtils::hasText);
+		if (!hasOrigin) {
+			throw new IllegalStateException("Refusing to start: CORS_ALLOWED_ORIGINS is required in the '" + profile
+				+ "' profile (comma list of web app origins).");
 		}
 	}
 	

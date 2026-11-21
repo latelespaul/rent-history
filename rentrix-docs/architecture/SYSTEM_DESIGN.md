@@ -601,7 +601,7 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `LOG_FORMAT` | `ecs` | structured JSON console logs (`ecs`, `logstash` or `gelf`); every line carries the request id as `traceId` |
 | `DB_USERNAME`, `DB_PASSWORD` | empty | |
 | `JWT_SECRET` | built-in default only in `dev`/`test` | required (≥ 32 bytes) in any other profile (D-64) |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | comma list |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` only in `dev`/`test`; none (required) in `prod` | comma list; the API refuses to start in `prod` if empty |
 | `APP_BASE_URL` | `http://localhost:5173` | links in emails |
 | `ADMIN_EMAILS` | empty | D-19, D-78 |
 | `GOOGLE_CLIENT_ID` | none (never committed) | Google sign-in (D-70, D-74); required in `prod` |
@@ -612,6 +612,8 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | — | prod email |
 | `SEED_DEMO` | `false` | D-68 |
 | `VITE_API_BASE_URL` (web, build-time) | `/api/v1` | |
+
+**Upgrading from the old app**: v1 starts from a fresh, empty database (new Flyway V1 baseline); point `DB_URL` at a new database, because the old schema and data are not migrated and are left as they are. See `rentrix-server/README.md` for the env changes.
 
 A local developer needs nothing but Java 21 and Node: SQLite file + local media folder + dev login, no MySQL, no S3, no Docker, no Google account. Google sign-in is optional locally (set `GOOGLE_CLIENT_ID`).
 
