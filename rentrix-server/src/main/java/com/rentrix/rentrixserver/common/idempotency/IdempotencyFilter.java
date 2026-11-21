@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterProperties;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -121,8 +122,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			byte[] body = captured.getContentAsByteArray();
 			if (status >= 200 && status < 300 && body.length <= MAX_STORED_BODY_BYTES) {
 				keepReservation = true;
-				store.complete(record.getId(), status, captured.getContentType(),
-					captured.getHeader(HttpHeaders.LOCATION), new String(body, StandardCharsets.UTF_8));
+				complete(record, status, captured.getContentType(), captured.getHeader(HttpHeaders.LOCATION),
+					new String(body, StandardCharsets.UTF_8));
 			} else if (status >= 200 && status < 300) {
 				log.warn("Idempotent response of {} bytes on {} is too large to store; key released", body.length,
 					request.getRequestURI());
@@ -144,6 +145,16 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			} finally {
 				captured.copyBodyToResponse();
 			}
+		}
+	}
+	
+	/** Stores the response, retrying once if the database was locked (SQLite under concurrent writes). */
+	private void complete(IdempotencyRecord record, int status, String contentType, String location, String body) {
+		try {
+			store.complete(record.getId(), status, contentType, location, body);
+		} catch (PessimisticLockingFailureException locked) {
+			log.debug("Database locked while storing idempotent response {}; retrying once", record.getId());
+			store.complete(record.getId(), status, contentType, location, body);
 		}
 	}
 	

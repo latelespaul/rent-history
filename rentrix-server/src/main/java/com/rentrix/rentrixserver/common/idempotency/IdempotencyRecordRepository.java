@@ -17,6 +17,14 @@ public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRe
 	int deleteRecord(@Param("id") long id);
 	
 	@Modifying
+	@Query("update IdempotencyRecord r set r.state = :state, r.responseStatus = :status,"
+		+ " r.responseContentType = :contentType, r.responseLocation = :location, r.responseBody = :body,"
+		+ " r.updatedAt = :now where r.id = :id")
+	int completeRecord(@Param("id") long id, @Param("state") IdempotencyState state, @Param("status") int status,
+		@Param("contentType") String contentType, @Param("location") String location, @Param("body") String body,
+		@Param("now") Instant now);
+	
+	@Modifying
 	@Query("delete from IdempotencyRecord r where r.expiresAt <= :now")
 	int deleteExpired(@Param("now") Instant now);
 	

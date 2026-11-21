@@ -59,16 +59,14 @@ public class IdempotencyStore {
 		return records.saveAndFlush(new IdempotencyRecord(scope, key, requestHash, now().plus(RETENTION)));
 	}
 	
-	/** Stores the successful response for replay. */
+	/**
+	 * Stores the successful response for replay. One UPDATE with no read before it: on SQLite a
+	 * read-then-write transaction fails at once with SQLITE_BUSY when another connection wrote in
+	 * between, while a write-only one waits for the busy timeout.
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void complete(long recordId, int status, String contentType, String location, String body) {
-		records.findById(recordId).ifPresent(record -> {
-			record.setState(IdempotencyState.COMPLETED);
-			record.setResponseStatus(status);
-			record.setResponseContentType(contentType);
-			record.setResponseLocation(location);
-			record.setResponseBody(body);
-		});
+		records.completeRecord(recordId, IdempotencyState.COMPLETED, status, contentType, location, body, now());
 	}
 	
 	/** Forgets a reservation whose request failed, so the client may retry with the same key. */

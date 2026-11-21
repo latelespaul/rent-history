@@ -26,7 +26,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
 /** {@code Idempotency-Key} on {@link Idempotent} endpoints (§12.1), on the real V2 table. */
@@ -91,6 +98,47 @@ class IdempotencyTest {
 		
 		MvcResult fresh = send(user, key(), body("a"));
 		assertThat(fresh.getResponse().getContentAsString()).isNotEqualTo(first.getResponse().getContentAsString());
+	}
+	
+	@Test
+	void concurrentSameKeyRequestsWriteOnceAndStoreTheResponseForReplay() throws Exception {
+		for (int round = 0; round < 5; round++) {
+			String key = key();
+			int callers = 10;
+			CountDownLatch start = new CountDownLatch(1);
+			ExecutorService pool = Executors.newFixedThreadPool(callers);
+			List<Future<MvcResult>> results = new ArrayList<>();
+			try {
+				for (int i = 0; i < callers; i++) {
+					results.add(pool.submit(() -> {
+						start.await();
+						return send(user, key, body("a"));
+					}));
+				}
+				start.countDown();
+				List<Integer> statuses = new ArrayList<>();
+				List<String> written = new ArrayList<>();
+				for (Future<MvcResult> result : results) {
+					MvcResult done = result.get(30, TimeUnit.SECONDS);
+					statuses.add(done.getResponse().getStatus());
+					if (done.getResponse().getStatus() == 201
+						&& done.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER) == null) {
+						written.add(done.getResponse().getContentAsString());
+					}
+				}
+				assertThat(written).hasSize(1); // the write ran once; later arrivals get 409 or a replay
+				assertThat(statuses).allMatch(s -> s == 201 || s == 409);
+				
+				assertThat(store.findLive(user.toString(), key).orElseThrow().getState())
+					.isEqualTo(IdempotencyState.COMPLETED);
+				MvcResult retry = send(user, key, body("a"));
+				assertThat(retry.getResponse().getStatus()).isEqualTo(201);
+				assertThat(retry.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isEqualTo("true");
+				assertThat(retry.getResponse().getContentAsString()).isEqualTo(written.get(0));
+			} finally {
+				pool.shutdownNow();
+			}
+		}
 	}
 	
 	@Test
