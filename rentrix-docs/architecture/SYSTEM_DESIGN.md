@@ -82,7 +82,7 @@ Flyway, JWT, context path `/api/v1`, GitHub Actions CI (backend tests + web lint
 ### 3.2 API tier
 - **D-06** `rentrix-server` is a stateless Spring Boot 4 (Java 21) REST API under `/api/v1`. No HTTP session, no in-memory state that must survive between requests. Any instance can serve any request.
 - **D-07** Layering: `controller` → `service` → `repository`, DTOs at the edge, entities never serialised directly. Package by feature (`user`, `city`, `property`, `tenancy`, `review`, `enquiry`, `report`, `admin`, `auth`, `media`, plus `security`, `config` and `common`) instead of by layer.
-- **D-08** Scheduled work (review reveal, window close, aggregate repair) runs in-process with a DB row lock (`scheduled_job_lock` table, ShedLock-style), so it is safe with several instances and needs no extra service.
+- **D-08** Scheduled work (review reveal, window close, aggregate repair) runs in-process with a DB row lock (`scheduled_job_lock` table, ShedLock-style), so it is safe with several instances and needs no extra service. Jobs call `common.scheduling.JobLock.runLocked(name, lockAtMostFor, lockAtLeastFor, job)`; `SCHEDULING_ENABLED=false` turns the scheduler off (the `test` profile does, and tests call jobs directly).
 
 ### 3.3 Data tier
 - **D-09** SQLite is the default database: in the `dev` profile `DB_URL` defaults to `jdbc:sqlite:./data/rentrix.db` (the `test` profile uses a fresh file under `target/`). `prod` has no default and refuses to start without `DB_URL` (fail closed, like D-64); a `jdbc:sqlite:` URL is a valid production value for the single-box stage (§18). Setting `DB_URL` (+ `DB_USERNAME`, `DB_PASSWORD`) to a MySQL 8 or PostgreSQL 15+ JDBC URL switches the database with no code change.
@@ -274,7 +274,7 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
   `action` adds, to the D-51 set: `APPROVE_APPLICATION`, `REJECT_APPLICATION`, `REVOKE_APPROVAL`, `SET_LINKEDIN_CHECK`, `APPROVE_PROPERTY`, `REJECT_PROPERTY`, `VIEW_DOCUMENT`, `CREATE_CITY`, `UPDATE_CITY`, `ACTIVATE_CITY`, `DEACTIVATE_CITY`, `GRANT_ADMIN`, `REVOKE_ADMIN`. `target_type` adds `APPLICATION`, `DOCUMENT`, `CITY`.
 
 ### 5.12 Supporting tables
-`user_roles`, `refresh_tokens` (D-63), `share_links` (tenant reputation links, D-54; hashed token, 30-day expiry, revocable), `invite_tokens` (tenancy invites to people without an account; hashed, single use, 14-day expiry), `scheduled_job_lock` (D-08), `property_images` (§15).
+`user_roles`, `refresh_tokens` (D-63), `share_links` (tenant reputation links, D-54; hashed token, 30-day expiry, revocable), `invite_tokens` (tenancy invites to people without an account; hashed, single use, 14-day expiry), `scheduled_job_lock` (D-08), `property_images` (§15), `idempotency_keys` (§12.1; added in migration `V2`: `scope` = caller's user `public_id`, unique `(scope, idempotency_key)`, `request_hash`, `state` IN_PROGRESS/COMPLETED, stored response incl. `Location`, `expires_at`).
 
 ### 5.13 VerificationApplication (`verification_applications`, has `public_id`, verification-core migration)
 One per user per role; it carries the approval for that role (§7.3).
@@ -492,6 +492,8 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
   Status use: `400` malformed, `401` no/invalid token, `403` authenticated but not allowed (including `approval_required` with `{role, status}`, D-91, and `admin_conflict`, D-88), `404` not found **or not visible to the caller** (no existence leak), `409` conflict (duplicate review, overlapping tenancy, state transition not allowed), `422` validation/business rule, `429` rate limited (with `Retry-After`).
 - Dates `YYYY-MM-DD`, timestamps ISO-8601 UTC, money as integer rupees with field suffix `Inr`.
 - Writes that may be retried by clients accept an optional `Idempotency-Key` header (stored 24 h) on `POST /tenancies`, `POST .../reviews`, `POST /reports`.
+  Endpoints opt in with `@Idempotent`. Keys are 1–64 chars from `A-Z a-z 0-9 . _ : -` (else `400 idempotency_key_invalid`) and are scoped to the signed-in caller. The first request reserves the key; a `2xx` response (status, `Content-Type`, `Location`, body) is stored and replayed for the same key and same request (method, path, query, body) with `Idempotent-Replayed: true`. A non-`2xx` response releases the key so the client can fix and retry with it. Same key with a different request: `422 idempotency_key_reused`; same key while the first request still runs: `409 idempotency_request_in_progress`. A reservation still `IN_PROGRESS` after a 5-minute lease is treated as abandoned (its instance died), so a retry with the key runs. Expired keys are deleted hourly by a locked job (D-08).
+- Problem `title` is derived from `code` (`review_window_closed` → "Review window closed"). `ApiException` factories: `notFound`, `conflict` (409), `rule` (422 business rule), `validation` (422 with `errors`), `rateLimited` (429 with `Retry-After` in seconds).
 
 ### 12.2 Endpoints
 
@@ -734,6 +736,7 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `S3_*` | — | only when `s3` |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | — | prod email |
 | `SEED_DEMO` | `false` | D-68 |
+| `SCHEDULING_ENABLED` | `true`; `false` in `test` | in-process scheduled jobs (D-08) |
 | `VITE_API_BASE_URL` (web, build-time) | `/api/v1` | overridden at runtime by `config.js` (D-04) |
 | `window.__RENTRIX_CONFIG__.apiBaseUrl` (web, runtime, `dist/config.js`) | empty (use build value) | D-04 |
 | `API_PROXY_TARGET` (web dev server only) | `http://localhost:8080` | where `npm run dev` proxies `/api` |

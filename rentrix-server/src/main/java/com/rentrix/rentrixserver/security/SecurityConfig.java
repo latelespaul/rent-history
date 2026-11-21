@@ -29,7 +29,7 @@ import java.util.List;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-	
+
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
 	static final String[] PUBLIC_GET = {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
@@ -37,7 +37,7 @@ public class SecurityConfig {
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
 	};
-	
+
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AccessTokenService tokens,
 		AuthenticationEntryPoint entryPoint, AccessDeniedHandler accessDeniedHandler,
@@ -58,7 +58,7 @@ public class SecurityConfig {
 			.addFilterBefore(new JwtAuthenticationFilter(tokens), UsernamePasswordAuthenticationFilter.class);
 		return http.build();
 	}
-	
+
 	@Bean
 	AuthenticationEntryPoint problemAuthenticationEntryPoint(ProblemWriter problems) {
 		return (request, response, exception) -> {
@@ -68,30 +68,30 @@ public class SecurityConfig {
 				badToken ? "The access token is invalid or expired." : "Sign in to continue.");
 		};
 	}
-	
+
 	@Bean
 	AccessDeniedHandler problemAccessDeniedHandler(ProblemWriter problems) {
 		return (request, response, exception) -> problems.write(request, response, HttpStatus.FORBIDDEN, "forbidden",
 			"You are not allowed to do this.");
 	}
-	
+
 	@Bean
 	CorsConfigurationSource corsConfigurationSource(CorsProperties cors) {
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowedOrigins(cors.allowedOrigins());
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"));
-		config.setExposedHeaders(List.of("X-Request-Id", "Retry-After"));
+		config.setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Idempotent-Replayed"));
 		config.setAllowCredentials(true); // refresh cookie (D-63)
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 		return source;
 	}
-	
+
 	/** No passwords and no user store (D-71); stops Spring Boot from creating a default user. */
 	@Bean
 	UserDetailsService noUserDetailsService() {
 		return new InMemoryUserDetailsManager();
 	}
-	
+
 }

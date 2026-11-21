@@ -88,3 +88,5 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   dev-login:
     enabled: ${DEV_LOGIN_ENABLED:false}   # only dev/test may set true (D-77)
+  scheduling:
+    enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
