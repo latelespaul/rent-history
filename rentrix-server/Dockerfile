@@ -13,6 +13,10 @@ FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
 WORKDIR /build
 
+# Every mvn call below reads MAVEN_ARGS. Maven Central rate-limits shared CI and
+# build hosts (HTTP 429), so retry 429/503 downloads with a backoff instead of failing.
+ENV MAVEN_ARGS="-Daether.connector.http.retryHandler.count=5 -Daether.connector.http.retryHandler.interval=10000 -Daether.connector.http.retryHandler.serviceUnavailable=429,503"
+
 # Resolve dependencies first so this layer stays cached until pom.xml changes.
 COPY pom.xml .
 RUN mvn -B -q dependency:go-offline
