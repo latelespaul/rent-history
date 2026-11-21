@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Admin · Dashboard</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Admin console: dashboard</b> · demo-admin@example.test (dev login) · <code>GET /admin/overview</code> · queues from the D-97 seed · D-86 D-90</div>
+<header data-topbar data-as="admin" data-active="dashboard"></header>
+<main class="container section">
+  <div class="row between">
+    <div><p class="eyebrow">Admin console</p><h1 class="h1" style="margin-top:6px">Today's queues</h1><p class="muted small">Decide approvals within 48 hours. Every decision is logged with who, when and why. <span class="spec">D-87</span></p></div>
+    <div class="input-icon" style="width:340px;max-width:100%"><i data-icon="search" data-size="18"></i><input class="input" placeholder="Search people, properties, IDs…"></div>
+  </div>
+
+  <div class="grid-4" style="margin-top:20px">
+    <a class="stat" href="admin-approvals.html"><div class="k">Landlord verifications</div><div class="v">1</div><div class="xs" style="color:var(--rx-danger-600)">oldest 2 d 6 h · over 48 h</div></a>
+    <a class="stat" href="admin-approvals.html"><div class="k">Tenant verifications</div><div class="v">2</div><div class="xs muted">oldest 21 h · 1 flagged</div></a>
+    <a class="stat" href="admin-approvals.html"><div class="k">Property listings</div><div class="v">1</div><div class="xs muted">oldest 1 d 5 h</div></a>
+    <a class="stat" href="#"><div class="k">Open reports</div><div class="v">1</div><div class="xs muted">target 72 h <span class="spec">D-51</span></div></a>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="card card-flush">
+      <div class="row between" style="padding:16px 20px 4px"><h2 class="h3" style="margin:0">Waiting longest</h2><a class="small" href="admin-approvals.html">Open approvals</a></div>
+      <table class="table">
+        <thead><tr><th>Item</th><th>Type</th><th class="hide-sm">Submitted</th><th>Waiting</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><b>Demo Landlord BLR-3</b> <span class="badge badge-demo">Demo data</span><div class="xs muted">Bangalore · LinkedIn + PAN</div></td><td><span class="badge badge-landlord">Landlord</span></td><td class="hide-sm small">19 Nov 2026, 10:15</td><td><span class="badge badge-danger">2 d 6 h</span></td><td class="r"><a class="btn btn-secondary btn-sm" href="admin-approvals.html">Review</a></td></tr>
+          <tr><td><b>Demo Annex I</b> <span class="badge badge-demo">Demo data</span><div class="xs muted">Jayanagar, Bangalore · 1 BHK · by Demo Landlord BLR-2</div></td><td><span class="badge">Listing</span></td><td class="hide-sm small">20 Nov 2026, 11:00</td><td><span class="badge badge-warn">1 d 5 h</span></td><td class="r"><a class="btn btn-secondary btn-sm" href="admin-approvals.html">Review</a></td></tr>
+          <tr><td><b>Demo Tenant BLR-7</b> <span class="badge badge-demo">Demo data</span><div class="xs muted">Bangalore · <span class="badge badge-warn">Duplicate ID</span></div></td><td><span class="badge badge-tenant">Tenant</span></td><td class="hide-sm small">20 Nov 2026, 18:40</td><td><span class="badge">21 h</span></td><td class="r"><a class="btn btn-primary btn-sm" href="admin-approvals.html">Review</a></td></tr>
+          <tr><td><b>Demo Tenant PNQ-7</b> <span class="badge badge-demo">Demo data</span><div class="xs muted">Pune · no LinkedIn · PAN + agreement</div></td><td><span class="badge badge-tenant">Tenant</span></td><td class="hide-sm small">21 Nov 2026, 09:30</td><td><span class="badge">6 h</span></td><td class="r"><a class="btn btn-secondary btn-sm" href="admin-approvals.html">Review</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <aside class="stack">
+      <div class="card"><h2 class="h3">Recent decisions</h2>
+        <ul class="timeline">
+          <li class="bad"><b>Rejected</b> tenant verification · Demo Tenant BLR-8<div class="when">Demo A. · 19 Nov 2026, 16:02</div><div class="why">ID_UNREADABLE · "The PAN photo is blurred. Upload a sharper photo."</div></li>
+          <li class="view"><b>Viewed</b> ID document · Demo Tenant BLR-8<div class="when">Demo A. · 19 Nov 2026, 15:58</div></li>
+          <li class="ok"><b>Dismissed</b> report · review on Demo Villa C<div class="when">Demo A. · 14 Nov 2026, 12:20</div><div class="why">"Fair review of a real tenancy."</div></li>
+        </ul>
+        <a class="small" href="admin-record.html">Full audit log</a></div>
+      <div class="card"><h2 class="h3">Records</h2>
+        <div class="grid-2" style="gap:8px">
+          <a class="small" href="admin-records.html">Landlords · 5</a><a class="small" href="admin-records.html">Tenants · 15</a>
+          <a class="small" href="admin-records.html">Properties · 9</a><a class="small" href="admin-records.html">Tenancies · 13</a>
+          <a class="small" href="admin-records.html">Reviews</a><a class="small" href="admin-records.html">Reports · 1 open</a>
+        </div>
+        <hr class="divider"><a class="small" href="admin-cities.html"><i data-icon="city" data-size="16"></i> Cities · 2 active</a></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

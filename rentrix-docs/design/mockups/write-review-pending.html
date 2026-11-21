@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Write a review · pending approval</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Write a review, account pending approval</b> · Demo Tenant BLR-7 · <code>403 approval_required {role: TENANT, status: PENDING}</code> · reading needs no approval · D-91 · <u>illustrative</u> entry from a property page</div>
+<header data-topbar data-as="tenant" data-active="reviews"></header>
+<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Your account is not verified yet. You can read everything; writing reviews and confirming tenancies open after approval. <a href="verify-pending.html">See status</a></span></div></div>
+<main class="container section" style="max-width:860px">
+  <a class="small" href="property.html"><i data-icon="chevron-right" data-size="14" style="transform:rotate(180deg)"></i> Demo Residency A</a>
+  <h1 class="h1" style="margin-top:8px">Write a review</h1>
+  <div class="card" style="margin-top:16px">
+    <div class="status-hero"><span class="ic ic-info"><i data-icon="lock" data-size="28"></i></span><div style="flex:1">
+      <span class="badge badge-info"><i data-icon="clock"></i>Pending approval</span>
+      <h2 class="h2" style="margin-top:8px">Your account is pending approval</h2>
+      <p class="muted" style="margin-top:6px">Reviews on Rentrix come only from verified people with a confirmed tenancy. An admin is checking the details you sent on 20 Nov 2026; this usually takes up to 48 hours. We'll email you when it's done.</p>
+      <ul class="checklist" style="margin-top:14px">
+        <li><i data-icon="check" class="yes"></i><span><b>1. Verify your account</b> · submitted, waiting for an admin</span></li>
+        <li><i data-icon="lock" class="no"></i><span><b>2. Record your tenancy</b> at this home; your landlord confirms it <span class="spec">D-34</span></span></li>
+        <li><i data-icon="lock" class="no"></i><span><b>3. Write your review</b> once the review window opens <span class="spec">D-39</span></span></li>
+      </ul>
+      <div class="row" style="margin-top:16px"><a class="btn btn-primary" href="verify-pending.html">See verification status</a><a class="btn btn-secondary" href="property.html">Read reviews of this home</a></div>
+    </div></div>
+  </div>
+  <div class="card lock-overlay" style="margin-top:16px;opacity:.85">
+    <div class="field"><span class="label">Overall, how was living here?</span><span class="stars lg" data-stars="0"></span></div>
+    <div class="field" style="margin-top:12px"><span class="label">Your review</span><textarea class="textarea" disabled></textarea></div>
+    <div class="veil"><span class="badge"><i data-icon="lock"></i>Opens after approval</span></div>
+  </div>
+  <p class="xs muted" style="margin-top:10px">If the review form is opened anyway, the API refuses it with <code>403 approval_required</code>; the page shows this state instead of an error. Rejected accounts see the reason and a "Fix and resubmit" button here. <span class="spec">D-90 · D-91</span></p>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

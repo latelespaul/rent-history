@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Admin · Record detail</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Admin console: record detail</b> · Demo Landlord BLR-1 · <code>GET /admin/users/{id}</code> · audit trail from <code>moderation_actions</code> + <code>verification_events</code> · D-86 D-87</div>
+<header data-topbar data-as="admin" data-active="records"></header>
+<main class="container section">
+  <a class="small" href="admin-records.html"><i data-icon="chevron-right" data-size="14" style="transform:rotate(180deg)"></i> Records · Landlords</a>
+  <div class="row between" style="margin-top:10px">
+    <div class="row" style="gap:14px"><span class="avatar avatar-lg avatar-landlord">DL</span>
+      <div><h1 class="h1" style="margin:0">Demo Landlord BLR-1 <span class="badge badge-demo">Demo data</span></h1>
+      <div class="row" style="gap:6px;margin-top:6px"><span class="badge badge-landlord">Landlord</span><span class="badge badge-success"><i data-icon="check"></i>Approved</span><span class="badge">Account active</span><span class="xs muted">public id 0193a7c2-…-5d1e</span></div></div></div>
+    <div class="row"><button class="btn btn-secondary">Revoke approval</button><button class="btn btn-danger-ghost">Suspend</button></div>
+  </div>
+
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card"><h2 class="h3">Profile and verification</h2>
+        <dl class="kv">
+          <dt>Email (private)</dt><dd>demo-landlord-blr-1@example.test</dd>
+          <dt>Phone</dt><dd class="muted">not set</dd>
+          <dt>Home city</dt><dd>Bangalore</dd>
+          <dt>LinkedIn</dt><dd>linkedin.com/in/demo-landlord-blr-1 · <span class="badge badge-success">Matched</span></dd>
+          <dt>ID document</dt><dd>PAN <span class="masked">XXXXXX101D</span> · accepted · file purged after 90 days <span class="spec">D-96</span></dd>
+          <dt>Rating as landlord</dt><dd><b>4.3</b> <span class="stars sm" data-stars="4"></span> (3 reviews)</dd>
+        </dl></div>
+      <div class="card card-flush"><div style="padding:16px 20px 4px"><h2 class="h3" style="margin:0">Properties</h2></div>
+        <table class="table"><thead><tr><th>Property</th><th>Status</th><th class="r">Tenancies</th><th class="hide-sm">Listing decision</th></tr></thead><tbody>
+          <tr><td><b>Demo Residency A</b><div class="xs muted">Koramangala · unit D-101 (private)</div></td><td><span class="badge badge-success">Published</span></td><td class="r">2</td><td class="hide-sm small">approved 1 Mar 2022</td></tr>
+          <tr><td><b>Demo Heights B</b><div class="xs muted">HSR Layout · unit B-204 (private)</div></td><td><span class="badge badge-success">Published</span></td><td class="r">1</td><td class="hide-sm small">approved 5 Dec 2022</td></tr>
+        </tbody></table></div>
+      <div class="card"><h2 class="h3">Reviews</h2><p class="small muted">3 received as landlord (5, 4, 4) · 3 written as landlord · 0 reports against. <a href="#">Open reviews</a></p></div>
+    </div>
+    <aside class="card">
+      <h2 class="h3">Audit trail</h2>
+      <p class="xs muted" style="margin-top:-6px;margin-bottom:12px">Append-only: who, when, what, why. <span class="spec">D-87</span></p>
+      <ul class="timeline">
+        <li class="ok"><b>Approved listing</b> · Demo Heights B<div class="when">Demo A. · 5 Dec 2022, 11:40</div><div class="why">Note: "Electricity bill matches the address."</div></li>
+        <li class="view"><b>Viewed</b> property proof · Demo Heights B<div class="when">Demo A. · 5 Dec 2022, 11:37</div></li>
+        <li class="ok"><b>Approved listing</b> · Demo Residency A<div class="when">Demo A. · 1 Mar 2022, 16:05</div></li>
+        <li class="ok"><b>Approved</b> landlord verification · rev 1<div class="when">Demo A. · 28 Feb 2022, 10:12</div><div class="why">Note: "PAN and LinkedIn match."</div></li>
+        <li class="ok"><b>LinkedIn check</b> · Matched<div class="when">Demo A. · 28 Feb 2022, 10:09</div></li>
+        <li class="view"><b>Viewed</b> ID document<div class="when">Demo A. · 28 Feb 2022, 10:08</div></li>
+        <li><b>Submitted</b> landlord verification · rev 1<div class="when">the user · 27 Feb 2022, 19:30</div></li>
+      </ul>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

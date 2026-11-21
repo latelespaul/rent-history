@@ -1,6 +1,6 @@
 # Rentrix — UX design (v1)
 
-Status: **current**. Date: 2026-11-21.
+Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console.
 Scope: user flows, screen inventory, visual style, design tokens, icon set and static mockups for the v1 rebuild.
 Source of truth for roles, entities, permissions, API, auth and trust rules: [`../architecture/SYSTEM_DESIGN.md`](../architecture/SYSTEM_DESIGN.md).
 This document cites its decisions as `D-xx`. It introduces no deviation from them; UX-only choices are listed in §8.
@@ -12,9 +12,10 @@ rentrix-docs/design/
 ├── icons.html           icon sheet
 ├── icons/               icons.js (source), <name>.svg (49 files), sprite.svg
 ├── mockups/             one static HTML page per screen + mock.css, mock.js, index.html
-├── screenshots/         PNG renders: <screen>-desktop.png (1440 px), home/property also -mobile.png (390 px)
+├── screenshots/         PNG renders: <screen>-desktop.png (1440 px), some also -mobile.png (390 px)
 └── tools/               build-icons.mjs, render.mjs (headless Chromium via Playwright)
 ```
+Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/screenshots/design-v2/`.
 
 ---
 
@@ -35,7 +36,7 @@ Legend: `[screen]` = a mockup; `→` = navigation; `(API)` = the call behind a s
 
 ### 2.1 Anonymous visitor
 ```
-[Home] ─ pick city (Bangalore | Pune) + locality ─▶ [Search results]
+[Home] ─ pick city (city picker, GET /cities) + locality ─▶ [Search results]
    │                                                     │ open card
    │                                                     ▼
    │                                            [Property page]  facts, images, aggregate rating
@@ -61,6 +62,7 @@ Legend: `[screen]` = a mockup; `→` = navigation; `(API)` = the call behind a s
     └─ dev profile only: [Dev login] picker → POST /auth/dev-login (seed users, D-77)
 ```
 - Until onboarding completes, every other write returns `403 onboarding_required`; the web routes the user back to [Role pick] (D-73).
+- After the role pick comes verification (§2.7). The user can read everything at once; trust writes wait for approval (D-91).
 - The other role is added later from settings (`PATCH /me`), shown as an "Also a landlord?" card on [My tenancies] (D-16).
 - An invite link (tenancy invite email) goes through the same sign-in, then lands on the tenancy to confirm (D-34).
 
@@ -99,7 +101,33 @@ Legend: `[screen]` = a mockup; `→` = navigation; `(API)` = the call behind a s
 Every review, response, profile, property and tenancy has a "Report" action (flag icon). It opens a small dialog: reason (the 7 reasons of §5.11), optional details, submit (`POST /reports`). A report never hides content, except `PERSONAL_DATA` from a party, which hides the text (D-49, D-50). The dialog is a component, not a separate screen.
 
 ### 2.6 Admin
-Admin moderation (reports queue, hide/restore, void, suspend, audit) is a later screen set. It uses the same components (tables, badges, review block). Not mocked in v1.
+```
+[Admin dashboard] ── queue counts, oldest waiting (48 h target), recent decisions   (GET /admin/overview)
+   ├─ [Approvals] tabs Landlords | Tenants | Listings
+   │     queue item ─▶ detail: profile, LinkedIn (open, Matches / Doesn't match), documents via 5-min link (logged),
+   │                   masked ID number, flags (Duplicate ID), history
+   │                   ├─ Approve (note optional)          ─▶ APPROVED, user emailed
+   │                   └─ Reject (reason code + note)      ─▶ REJECTED, user sees reason, can resubmit
+   ├─ [Records] Landlords | Tenants | Properties | Tenancies | Reviews | Reports   search + filters (city picker, status, verification, demo, date)
+   │     row ─▶ [Record detail] private fields, roles, verification, related records, audit trail
+   ├─ Reports queue ─▶ dismiss / hide / void / suspend (D-51)
+   └─ [Cities] add city (created inactive) ─▶ activate ─▶ appears in every picker at once (D-83)
+```
+- Admins are assigned by `ADMIN_EMAILS` or by another admin, never self-service (D-19). The dev seed admin signs in through dev login.
+- Every decision writes an audit row: who, when, what, why (D-87). An admin cannot decide their own records (D-88).
+
+### 2.7 Verification (tenant and landlord)
+```
+[Role pick] ─▶ [1 Profile] ─▶ [2 LinkedIn] ─▶ [3 ID document] ─▶ [4 Rental agreement, tenant, optional] + Submit
+                                                                                   │ POST /me/verification/{role}/submit
+                                                                                   ▼
+                       [Pending] ── admin approves ──▶ [Approved]  trust writes open, "ID verified" badge
+                           │
+                           └── admin rejects ──▶ [Rejected] reason + note ─▶ fix a step ─▶ resubmit ─▶ [Pending]
+```
+- Each step saves a draft; the stepper shows done / current / next.
+- While not approved, a slim banner on every page links to the status; gated actions (write review, record or confirm a tenancy, enquiry, submit a listing) show [Write review · pending] style states instead of an error (D-91).
+- Landlords do steps 1–3; each property is checked at listing time with a proof document (D-92), shown on the landlord's property form (W5).
 
 ---
 
@@ -120,8 +148,23 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 9 | Sign in / sign up (+ dev login) | `/login` | anonymous | `GET /auth/config`, `POST /auth/google`, dev: `/auth/dev-users`, `/auth/dev-login` | D-70–D-77 | `mockups/login.html` | `screenshots/login-desktop.png` |
 | 10 | First sign-in role pick | `/welcome` | signed in, not onboarded | `POST /me/onboarding` | D-16, D-73 | `mockups/onboarding.html` | `screenshots/onboarding-desktop.png` |
 | – | Icon sheet | – | design | – | §5 | `icons.html` | `screenshots/icons-desktop.png` |
+| 11 | Home with many cities (v2) | `/` | anyone | `GET /cities`, `GET /stats` | D-83, D-85 | `mockups/home-many-cities.html` | `screenshots/home-many-cities-desktop.png`, `-mobile.png` |
+| 12 | City picker component (v2) | – | everywhere a city is chosen | `GET /cities` | D-20, D-82, D-85 | `mockups/city-picker.html` | `screenshots/city-picker-desktop.png` |
+| 13 | Verify 1 · Profile (v2) | `/verify/profile` | signed in, not approved | `PATCH /me` | D-89 | `mockups/verify-profile.html` | `screenshots/verify-profile-desktop.png` |
+| 14 | Verify 2 · LinkedIn (v2) | `/verify/linkedin` | same | `PUT /me/verification/{role}` | D-93 | `mockups/verify-linkedin.html` | `screenshots/verify-linkedin-desktop.png` |
+| 15 | Verify 3 · ID document (v2) | `/verify/id` | same | `POST /me/documents` | D-94, D-95 | `mockups/verify-id.html` | `screenshots/verify-id-desktop.png`, `-mobile.png` |
+| 16 | Verify 4 · Rental agreement + submit (v2) | `/verify/agreement` | tenant | `POST /me/documents`, `POST /me/verification/TENANT/submit` | D-89, D-90 | `mockups/verify-agreement.html` | `screenshots/verify-agreement-desktop.png` |
+| 17 | Verification pending (v2) | `/verify` | `PENDING` | `GET /me/verification` | D-90, D-91 | `mockups/verify-pending.html` | `screenshots/verify-pending-desktop.png` |
+| 18 | Verification rejected (v2) | `/verify` | `REJECTED` | `GET /me/verification` | D-90 | `mockups/verify-rejected.html` | `screenshots/verify-rejected-desktop.png`, `-mobile.png` |
+| 19 | Verification approved (v2) | `/verify` | `APPROVED` | `GET /me/verification` | D-91, D-95 | `mockups/verify-approved.html` | `screenshots/verify-approved-desktop.png` |
+| 20 | Write review · pending approval (v2) | `/tenancies/:id/review`, from a property | not approved | `403 approval_required` | D-91 | `mockups/write-review-pending.html` | `screenshots/write-review-pending-desktop.png` |
+| 21 | Admin · Dashboard (v2) | `/admin` | `ADMIN` | `GET /admin/overview` | D-86, D-90 | `mockups/admin-dashboard.html` | `screenshots/admin-dashboard-desktop.png` |
+| 22 | Admin · Approvals (v2) | `/admin/approvals?role=` | `ADMIN` | `GET /admin/applications`, `POST …/approve`, `…/reject` | D-86–D-88, D-93–D-95 | `mockups/admin-approvals.html` | `screenshots/admin-approvals-desktop.png` |
+| 23 | Admin · Records (v2) | `/admin/records/:type` | `ADMIN` | `GET /admin/users`, `/admin/properties`, `/admin/tenancies`, `/admin/reviews`, `/admin/reports` | D-59, D-86 | `mockups/admin-records.html` | `screenshots/admin-records-desktop.png` |
+| 24 | Admin · Record detail (v2) | `/admin/users/:id` (and other types) | `ADMIN` | `GET /admin/users/{id}` | D-86, D-87 | `mockups/admin-record.html` | `screenshots/admin-record-desktop.png` |
+| 25 | Admin · Cities (v2) | `/admin/cities` | `ADMIN` | `GET/POST/PATCH /admin/cities` | D-83, D-84 | `mockups/admin-cities.html` | `screenshots/admin-cities-desktop.png` |
 
-Screens named in flows but not mocked in v1 (they reuse the same components): property create/edit form, record-a-tenancy form, tenancy detail (confirm/decline view), settings (profile, add role, share links, delete account), report dialog, admin screens.
+Screens named in flows but not mocked (they reuse the same components): property create/edit form (with proof upload and "Submit for review", D-92), record-a-tenancy form, tenancy detail (confirm/decline view), settings (profile, add role, verification status per role, share links, delete account), report dialog, admin reports queue (same queue + detail layout as Approvals).
 
 ### 3.1 Data in the mockups
 All mockups use the dev seed of SYSTEM_DESIGN §16 (D-68, D-69): 4 Bangalore + 4 Pune fictional properties, "Demo Landlord BLR-1", "Demo Tenant PNQ-2" etc., `@example.test` emails, no phones. Public short names follow the D-28/D-55 examples ("Demo L.", "Demo T."). Every seeded row carries the "Demo data" badge (D-68).
@@ -129,6 +172,11 @@ All mockups use the dev seed of SYSTEM_DESIGN §16 (D-68, D-69): 4 Bangalore + 4
 | Mockup | Viewed as | Seed rows shown |
 |---|---|---|
 | Home | anonymous | per-city counts: BLR 4 properties / 6 tenancies, PNQ 4 / 7 |
+| Home with many cities, City picker | anonymous | the 2 seed cities plus 7 **illustrative** rows (not in the seed) with "No properties yet" |
+| Verify steps, Pending, Write review · pending | Demo Tenant BLR-7 | `PENDING`, LinkedIn + PAN `XXXXXX001D` + agreement (D-97) |
+| Verification rejected | Demo Tenant BLR-8 | `REJECTED`, `ID_UNREADABLE` with note |
+| Verification approved | Demo Tenant PNQ-2 | `APPROVED` tenant |
+| Admin screens | `demo-admin@example.test` | queues: landlord BLR-3, tenants BLR-7 (Duplicate ID) and PNQ-7, listing Demo Annex I; record Demo Landlord BLR-1 |
 | Search | tenant | Demo Residency A, Villa C, Heights B, Studio D (Bangalore) |
 | Property | tenant | Demo Residency A: rent 32,000 → 34,000 → 36,500; 2 property reviews; landlord BLR-1 |
 | Landlord profile | tenant | Demo Landlord BLR-1: reviews 5, 4, 4 → 4.3 (the D-53 worked example, bayes 3.81) |
@@ -194,7 +242,14 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 | Rent history | `.rentchart` + `.table` | step chart + table; gaps show as "vacant"; no tenant identity (D-26) |
 | Notice | `.notice` + `-teal`, `-warn`, `-dev` | explains access and rules in plain words |
 | Form | `.field`, `.label`, `.hint`, `.input`, `.select`, `.textarea`, `.checkrow` | inline validation under the field |
-| Segmented / chips / tabs | `.segmented`, `.chip`, `.tabs` | city switch is always a 2-option segmented control |
+| Segmented / chips / tabs | `.segmented`, `.chip`, `.tabs` | small fixed option sets only (bedrooms, sort); **never for cities** |
+| City picker (v2) | `.combo`, `.combo-pop`, `.combo-opt` | searchable combobox fed by `GET /cities`; filters on name, alias, state; no-match state; ARIA combobox + listbox (D-85) |
+| City cards (v2) | `.city-grid`, `.city-card` | one card per active city, from the list; 2-column for 2 cities, 4-column grid beyond; first 8 + "Show all" |
+| Stepper (v2) | `.stepper` | verification steps: done / current / next |
+| File row / drop zone / document view (v2) | `.filerow`, `.drop`, `.docview` | private uploads; "View" opens a 5-min signed link (D-95) |
+| Masked ID (v2) | `.masked` | mono, last 4 characters only, e.g. `XXXXXX001D` (D-94) |
+| Status hero / pending banner (v2) | `.status-hero`, `.banner-pending` | verification state pages and the site-wide "not verified yet" banner |
+| Admin (v2) | `.admin-tabs`, `.queue`, `.qitem`, `.filters`, `.timeline`, `.switch`, `.dialog`, `.badge-admin` | queue + detail layout, filter bar, audit timeline, city activation switch |
 | Stat tile | `.stat` | only real numbers from the API |
 
 ### 4.5 State vocabulary
@@ -211,6 +266,13 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 | Review `HIDDEN` | author sees danger "Hidden by moderator" + reason | eye-off |
 | Rent record `PROPOSED` / `DISPUTED` | info "To confirm" / danger "Disputed" | rupee |
 | Demo row | demo "Demo data" | – |
+| Verification `DRAFT` (v2) | neutral "Not submitted" + banner | – |
+| Verification `PENDING` (v2) | info "Pending approval" | clock |
+| Verification `REJECTED` (v2) | danger "Not approved" + reason notice | alert |
+| Verification `APPROVED` (v2) | success "Approved"; public: verified "ID verified" | shield-check |
+| Listing `PENDING_REVIEW` / `REJECTED` (v2) | info "In review" / danger "Not approved" + reason | clock / alert |
+| Flag `DUPLICATE_ID` (admin only, v2) | warn "Duplicate ID" | alert |
+| City inactive (admin only, v2) | switch off, "Inactive" | city |
 
 ---
 
@@ -252,6 +314,7 @@ cd rentrix-docs/design/tools
 npm install            # playwright 1.49.1
 npm run browsers       # once, if Chromium is not cached yet
 npm run render         # build icons, then write screenshots/*.png
+npm run render:v2      # same, and copy the design-v2 renders to rentrix-docs/screenshots/design-v2/
 ```
 
 Screenshots of implemented features (from the real app with dev login) go to `rentrix-docs/screenshots/` in the implementation PRs; this folder holds design renders only.
@@ -266,3 +329,14 @@ Screenshots of implemented features (from the real app with dev login) go to `re
 - **Enquiry consent** ("Share my email with the landlord") is a visible checkbox on the enquiry card, default on, and the landlord sees "shared with you" next to the contact (D-31).
 - **Double-blind is explained in place**: the author sees "Awaiting reveal · <date>" and the date it will publish at the latest (D-46).
 - **Brand mark** = the tenancy icon in a teal tile: the product is about confirmed tenancies.
+
+### 8.1 Design v2 choices
+- **City picker is a combobox, not a select.** A native select does not search aliases ("Bengaluru") or states, and a toggle does not scale. One component serves Home, Search, onboarding, the property form and admin filters (D-85).
+- **City cards switch layout by count**: two wide cards for 2 cities, a 4-column grid beyond; a new city shows "No properties yet", never a placeholder number (D-03).
+- **Launch copy names up to 3 cities, then counts** ("Live in 9 cities, more coming"), so the line never grows unbounded.
+- **Verification is a 4-step stepper with drafts**, so a user can stop after any step. Rental agreement is optional for tenants; landlords prove each property when listing instead (D-89, D-92).
+- **"I don't have a LinkedIn profile" is a visible option**, because many tenants have none; the admin then relies on the ID document (D-93).
+- **The ID number is shown masked as soon as it is accepted**; the typed value is never echoed back (D-94).
+- **Pending users see a calm banner, not errors.** Gated pages show what is done, what is next and a link to the status; reading stays open (D-91).
+- **Admin approvals use a queue + detail layout** with approve and reject side by side; reject cannot be sent without a reason code and a note (D-87).
+- **Admin is visually distinct**: an ink "Admin" badge in the top bar and admin-only nav, so staff always know they are acting as admin.

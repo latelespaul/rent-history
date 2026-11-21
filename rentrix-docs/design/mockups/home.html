@@ -8,14 +8,12 @@
 <style>
   .hero { padding: var(--rx-space-12) 0 var(--rx-space-10); background: radial-gradient(1200px 400px at 80% -10%, var(--rx-teal-50), transparent), var(--rx-bg); }
   .hero .lead { font-size: var(--rx-text-lg); color: var(--rx-ink-700); max-width: 620px; margin-top: 12px; }
-  .city-card { display: flex; gap: 16px; align-items: center; }
-  .city-card .ic { width: 56px; height: 56px; border-radius: 14px; background: var(--rx-teal-50); color: var(--rx-teal-700); display: grid; place-items: center; }
   .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--rx-space-4); }
   @media (max-width: 860px) { .three { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Home / search entry</b> · anonymous visitor · D-03 no invented stats · D-20 two live cities</div>
+<div class="mock-banner"><b>Mockup · Home / search entry</b> · anonymous visitor · city picker and city cards from <code>GET /cities</code> (2 active) · D-03 no invented stats · D-20 D-85</div>
 <header data-topbar data-as="anon"></header>
 
 <section class="hero">
@@ -27,8 +25,7 @@
     <form class="searchbar" style="margin-top:28px;max-width:820px" onsubmit="return false">
       <div class="seg">
         <i data-icon="city"></i>
-        <div><div class="k">City</div>
-          <div class="segmented" style="margin-top:2px"><span class="on">Bangalore</span><span>Pune</span></div></div>
+        <div data-citypicker data-bare data-label="City" data-value="BLR" data-cities="2"></div>
       </div>
       <div class="seg grow">
         <i data-icon="map-pin"></i>
@@ -37,32 +34,15 @@
       </div>
       <a class="btn btn-primary btn-lg" href="search.html"><i data-icon="search"></i>Search</a>
     </form>
-    <p class="small muted" style="margin-top:10px">Live only in Bangalore and Pune. More cities later.</p>
+    <p class="small muted" style="margin-top:10px"><span data-launch data-cities="2"></span>. <span class="spec">D-85</span></p>
   </div>
 </section>
 
 <section class="section">
   <div class="container">
     <h2 class="h2">Pick a city</h2>
-    <p class="muted small" style="margin-top:4px">Counts come from <code>GET /stats</code>. Shown as they are, even when small. <span class="spec">D-03</span></p>
-    <div class="grid-2" style="margin-top:16px">
-      <a class="card city-card" href="search.html">
-        <span class="ic"><i data-icon="city" data-size="28"></i></span>
-        <div style="flex:1">
-          <div class="h3" style="margin:0;color:var(--rx-ink-900)">Bangalore <span class="muted small" style="font-weight:400">Bengaluru · Karnataka</span></div>
-          <div class="small muted">4 properties · 6 confirmed tenancies</div>
-        </div>
-        <i data-icon="chevron-right"></i>
-      </a>
-      <a class="card city-card" href="search.html">
-        <span class="ic"><i data-icon="city" data-size="28"></i></span>
-        <div style="flex:1">
-          <div class="h3" style="margin:0;color:var(--rx-ink-900)">Pune <span class="muted small" style="font-weight:400">Maharashtra</span></div>
-          <div class="small muted">4 properties · 7 confirmed tenancies</div>
-        </div>
-        <i data-icon="chevron-right"></i>
-      </a>
-    </div>
+    <p class="muted small" style="margin-top:4px">One card per active city from <code>GET /cities</code>; counts from <code>GET /stats</code>, shown as they are, even when small. Same layout for 2 or 20 cities (<a href="home-many-cities.html">see 9</a>). <span class="spec">D-03 · D-85</span></p>
+    <div data-citycards data-cities="2" style="margin-top:16px"></div>
   </div>
 </section>
 
