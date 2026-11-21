@@ -166,6 +166,22 @@ describe("api client", () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the session when the refresh fails transiently", async () => {
+    for (const status of [503, 429]) {
+      const onSessionExpired = vi.fn()
+      const f = fakeFetch(
+        () => problem(401, "unauthenticated"),
+        () => problem(status, `http_${status}`),
+      )
+      const api = createApiClient({ baseUrl: BASE, fetch: f.fn, onSessionExpired })
+      api.setAccessToken("tok-1")
+
+      await expect(api.get("/me")).rejects.toMatchObject({ status: 401, code: "unauthenticated" })
+      expect(api.getAccessToken()).toBe("tok-1")
+      expect(onSessionExpired).not.toHaveBeenCalled()
+    }
+  })
+
   it("never refreshes on a 401 from an /auth endpoint", async () => {
     const f = fakeFetch(() => problem(401, "google_token_invalid"))
     const api = createApiClient({ baseUrl: BASE, fetch: f.fn })

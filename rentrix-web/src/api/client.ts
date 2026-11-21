@@ -9,8 +9,9 @@ import { ApiError, CLIENT_ERROR_CODES, networkError, toApiError } from "./errors
  * - The refresh token is an `HttpOnly` cookie on `/api/v1/auth` (D-63), so every call sends
  *   `credentials: "include"` and the client never sees it.
  * - On a `401` the client calls `POST /auth/refresh` once (concurrent 401s share that one call),
- *   then retries the original request once. If the refresh is refused, the token is cleared and,
- *   when the user was signed in, `onSessionExpired` runs.
+ *   then retries the original request once. If the refresh is refused (`401`/`403`), the token is
+ *   cleared and, when the user was signed in, `onSessionExpired` runs. Any other refresh failure
+ *   (`5xx`, `429`, offline) keeps the token, and the caller sees the original error.
  * - Every failure rejects with an `ApiError` mapped from Problem Details (D-60).
  */
 
@@ -31,7 +32,7 @@ export interface ApiClientOptions {
   /** Base URL such as `/api/v1`, or a function read on every request. */
   baseUrl: string | (() => string)
   fetch?: typeof fetch
-  /** Runs when a refresh fails, i.e. the user must sign in again. */
+  /** Runs when a refresh is refused (401/403), i.e. the user must sign in again. */
   onSessionExpired?: () => void
 }
 
@@ -106,6 +107,7 @@ export function createApiClient(options: ApiClientOptions) {
     try {
       const response = await send("POST", REFRESH_PATH, {})
       if (!response.ok) {
+        if (response.status !== 401 && response.status !== 403) return false
         const wasSignedIn = accessToken !== null
         accessToken = null
         if (wasSignedIn) options.onSessionExpired?.()
