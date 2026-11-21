@@ -2,7 +2,7 @@
 
 Status: **current**. This document is the single source of truth for the v1 rebuild.
 It supersedes every older architecture, API and database doc in `rentrix-docs/` (see §20).
-Date: 2026-11-21.
+Date: 2026-11-21. Revised 2026-11-21 (design v2): data-driven cities (§5.2), admin console (§8.1), onboarding with approvals (§7.3), verification documents (§5.13–§5.14).
 
 Each decision is recorded as a numbered line `D-xx`. Later work (UX, implementation plan,
 code) cites these numbers. To change a decision, edit its line here in the same PR as the change. Numbers are stable IDs, not reading order: decisions added later get the next free number wherever they sit (e.g. D-70–D-79, Google sign-in).
@@ -23,7 +23,8 @@ Rentrix is a two-sided trust platform for renting in India. It rates three thing
 - A tenant can check a landlord's rating, a property's rating, and the property's rent history.
 - Every review is tied to a **confirmed tenancy** (landlord + tenant + property + dates + rent).
   A stranger cannot rate anyone.
-- Live cities: **Bangalore (Bengaluru)** and **Pune** only.
+- Every account that writes trust data (tenancies, reviews, listings) is approved by an admin first (§7.3). Reading needs no approval.
+- Cities: **starting in Bangalore (Bengaluru) and Pune, more cities coming**. Cities are rows in the `cities` table; adding one is data, not code (D-20, D-83).
 
 - **D-01** The repo is a scratch start. The flat-listing + admin-approved-review model is replaced, not migrated. No feature is kept only because it exists today.
 - **D-02** v1 is a trust and reputation product, not a listings marketplace. Properties exist so that tenancies, rent history and property ratings have something to attach to.
@@ -49,7 +50,7 @@ What exists on `master` (v0.1.6) and what happens to it:
 | MySQL-only Flyway `V1__initial_schema.sql` and loose `db/migration-*.sql` files | Deleted. New portable baseline `V1` for SQLite/MySQL/Postgres (§3.3) |
 | `dataSeed/*.sql`, `rentrix-docs/**/INSERT*.txt`, `database/sample-data.md` | Deleted. Replaced by the dev-only seeder (§16) |
 | `rentrix-web` mock layer (`VITE_ENABLE_MOCKS`, `src/api/mock`) | Removed. The web talks only to the real API |
-| `HomePage.tsx` fake stats ("Now live in 18 cities", "Cities covered: 18", "2,400+ flats", "9,800+ reviews", "6,200+ tenants") and testimonials (incl. "Tenant · Mumbai") | Removed (D-03). Search hint names only Bangalore/Pune localities |
+| `HomePage.tsx` fake stats ("Now live in 18 cities", "Cities covered: 18", "2,400+ flats", "9,800+ reviews", "6,200+ tenants") and testimonials (incl. "Tenant · Mumbai") | Removed (D-03). City names and counts come only from `GET /cities` and `GET /stats` (D-85) |
 | `rentrix-tests/` Postman collections | Obsolete; replaced by API integration tests in `rentrix-server` |
 | Email + password signup/login (`AuthController`, `AuthServiceImpl`, bcrypt, `SignupRequest`/`LoginRequest`, web `LoginForm`/`SignupForm`) | Replaced by "Sign in with Google" (§13.1). No passwords are stored in v1 |
 | Hard-coded `JWT_SECRET` default in `application-dev.yaml` | Allowed only when the `dev` or `test` profile is explicitly active; any other profile refuses to start without a real `JWT_SECRET` (D-64) |
@@ -93,6 +94,10 @@ Flyway, JWT, context path `/api/v1`, GitHub Actions CI (backend tests + web lint
 - **D-15** Soft delete only where history matters (users, properties, reviews); a `deleted_at` column, not a boolean. Tenancies and rent records are never hard-deleted; they change status.
 - **D-80** Internal ids are time-ordered 64-bit values generated in the API (`TimeOrderedIds`: 41 bits of milliseconds since 2026-01-01, 10 bits of node id, 12 bits of sequence starting at a random value each millisecond). This keeps the DDL identical on all three databases (no `AUTO_INCREMENT`, `IDENTITY` or sequences), needs no database round trip, and avoids the second write transaction a table-based id generator would need on SQLite's single writer. Several instances set `ID_NODE` (0–1023) each to rule out collisions; without it the node id is random per process. `public_id` is a UUIDv7 generated in the API.
 - **D-81** The only vendor difference in the baseline is the timestamp column type: MySQL's `TIMESTAMP` ends in 2038 and is converted through the session time zone, so migrations write `${timestamp_type}`, which the API sets at startup from the connection's database product (`DATETIME(6)` on MySQL, `TIMESTAMP` elsewhere; `MigrationPlaceholders`). Running the migrations with the Flyway CLI needs `-placeholders.timestamp_type=…`.
+- **D-98** `V1` is frozen (merged with B1); later schema changes are new migrations, never edits to a merged one. Design v2 needs three. None has a fixed version number: each takes the next free version when its PR merges (B2's open PR #20 already adds `V2__idempotency_keys.sql`), so they are named by purpose here:
+  - **Cities migration**, `V<n>__city_pincode_prefixes.sql` (PLAN C1): `ALTER TABLE cities ADD COLUMN pincode_prefixes VARCHAR(64)`; set `56` for `BLR` and `41` for `PNQ`.
+  - **Verification-core migration**, `V<n>__verification_core.sql` (PLAN B11): `verification_applications` + `verification_events` (§5.13); `properties` gains `review_reason`, `reviewed_by`, `reviewed_at` (the new status values need no DDL: enum columns have no `CHECK`, per the V1 header); `moderation_actions` is dropped and recreated with nullable `target_id` and a new `target_ref VARCHAR(36) NOT NULL` plus index `(target_type, target_ref, created_at)`. The drop is safe because no released code writes that table before B8, which lands after B11; SQLite cannot relax `NOT NULL` in place, so recreate is the portable path.
+  - **Verification-documents migration**, `V<n>__verification_documents.sql` (PLAN B12): `verification_documents` (§5.14) with indexes on `(owner_id, kind)`, `(number_hmac)` and `(status, purge_after)`.
 
 ---
 
@@ -101,14 +106,17 @@ Flyway, JWT, context path `/api/v1`, GitHub Actions CI (backend tests + web lint
 - **D-16** A `User` has a role set: any of `TENANT`, `LANDLORD`, plus `ADMIN` for staff. One person can be both tenant and landlord with one account. A user picks at least one of `TENANT`/`LANDLORD` on first sign-in (onboarding, D-73) and can add the other later from settings. Roles are never removed by the user once they are attached to a tenancy.
 - **D-17** The role a user plays **in a tenancy** comes from the tenancy (`landlord_id` / `tenant_id`), not from the account. The account role set only gates actions such as "create a property" (needs `LANDLORD`) or "send an enquiry" (needs `TENANT`).
 - **D-18** A user has two separate reputations: **as landlord** and **as tenant**. They are aggregated and shown separately and never mixed.
-- **D-19** `ADMIN` is never self-assigned. It is granted at startup to the emails in `ADMIN_EMAILS` (env) or by another admin. Admins cannot write reviews in their admin capacity; an admin who is also a party to a tenancy acts as a normal user there.
+- **D-19** `ADMIN` is never self-assigned and there is no self-service path to it. It comes from config or the database only: (a) at sign-in, to verified Google emails listed in `ADMIN_EMAILS` (env, D-78); (b) an existing admin grants or revokes it from the admin console, which writes or deletes the `user_roles` row (the DB flag). Nobody can grant or revoke their own `ADMIN`; an `ADMIN_EMAILS` admin is removed only by editing the env. Every grant and revoke is audited (D-87). In the dev seed, `demo-admin@example.test` has `ADMIN` and signs in through dev login (D-77, D-97). Admins cannot write reviews in their admin capacity; an admin who is also a party to a tenancy acts as a normal user there (and D-88 applies).
 
 | Role | Can do |
 |---|---|
 | Anonymous | Browse cities and properties, see property cards with aggregate rating and count, see public landlord summary (name + aggregate as landlord). Sign up / log in. |
-| `TENANT` | Everything a logged-in user can, plus: send enquiries, start a tenancy request on a property, review landlord and property of own confirmed tenancies. |
-| `LANDLORD` | Everything a logged-in user can, plus: create and manage own properties, invite tenants to tenancies, confirm tenancy requests, review tenants of own confirmed tenancies, view profiles of tenants who enquired. |
-| `ADMIN` | Moderation: reports queue, hide/restore content, void tenancies, suspend users, view audit log. |
+| Logged in, verification not approved | Read everything a logged-in user can read (all review texts, rent history, landlord profiles; D-55, D-56). Fill in and submit verification (§7.3). Report content, withdraw own reviews, delete the account. No trust writes (D-91). |
+| `TENANT` (approved) | Everything a logged-in user can, plus: send enquiries, start a tenancy request on a property, confirm tenancies, review landlord and property of own confirmed tenancies. |
+| `LANDLORD` (approved) | Everything a logged-in user can, plus: create and manage own properties and submit them for listing approval, invite tenants to tenancies, confirm tenancy requests, review tenants of own confirmed tenancies, view profiles of tenants who enquired. A not-yet-approved landlord can save property drafts only. |
+| `ADMIN` | Admin console (§8.1): view, search and filter all records; approve or reject landlord and tenant verification and property listings; moderation (reports queue, hide/restore content, void tenancies, suspend users); activate cities; grant admin; view the audit log. |
+
+Approval is per role: a user who is both tenant and landlord has one verification for each (D-89).
 
 ---
 
@@ -123,8 +131,10 @@ Review 1───0..1 ReviewResponse        Review 1───N ReviewRevision
 Property 1───N PropertyImage          Tenancy 1───N TenancyDocument
 Tenant  1───N Enquiry N───1 Property
 Report N───1 (Review | ReviewResponse | User | Property | Tenancy)
+User 1───0..2 VerificationApplication (one per role)
+User 1───N VerificationDocument N───0..1 VerificationApplication | Property (listing proof)
 RatingAggregate: one row per (subject_type, subject_id)
-City: reference table (2 live rows)
+City: reference table (rows added as data; BLR and PNQ live at launch)
 ```
 
 Common columns on every table: `id BIGINT PK`, `created_at`, `updated_at`. Tables with `public_id` noted.
@@ -152,13 +162,18 @@ There is no password column: v1 has no passwords (D-71).
 ### 5.2 City (`cities`)
 | Column | Notes |
 |---|---|
-| `code` | PK: `BLR`, `PNQ` |
-| `name` | "Bangalore", "Pune" |
-| `aliases` | "Bengaluru" for `BLR` (search matches aliases) |
-| `state` | "Karnataka", "Maharashtra" |
-| `live` | boolean |
+| `code` | PK, short upper-case code, e.g. `BLR`, `PNQ` |
+| `name` | display name, e.g. "Bangalore", "Pune" |
+| `aliases` | comma list of other names, e.g. "Bengaluru" for `BLR`; search matches aliases |
+| `state` | e.g. "Karnataka", "Maharashtra" |
+| `live` | boolean; `true` = active (offered in pickers, search and new properties) |
+| `pincode_prefixes` | comma list of pincode prefixes, e.g. `56` for `BLR`, `41` for `PNQ` (added by the cities migration, D-84) |
 
-- **D-20** Cities are data, not an enum. v1 ships exactly two rows, both `live=true`: `BLR` Bangalore (alias Bengaluru, Karnataka) and `PNQ` Pune (Maharashtra). The API rejects any `city` that is not a live row (`422 city_not_live`). City pickers and filters list only `GET /cities` results. Adding a city later is one migration row, no code.
+- **D-20** Cities are data, not an enum. The `cities` table is the **only** list of cities: no city code, name, count or "only these cities" rule is hard-coded anywhere in the API, the web, UI copy or error messages (test fixtures may use the seed codes). Launch rows: `BLR` Bangalore (alias Bengaluru, Karnataka) and `PNQ` Pune (Maharashtra), both `live=true`. The API rejects any `city` that is not a live row (`422 city_not_live`, detail "Rentrix is not live in this city yet."). City pickers and filters list only `GET /cities` results. The 4 + 4 demo properties of the seed stay as they are (§16).
+- **D-82** `GET /cities` returns the active cities as `{code, name, aliases[], state}`, ordered by name. Optional `?q=` matches code, name, any alias or state, case-insensitive, by prefix of any word (so "beng" finds Bangalore through "Bengaluru"). The web city picker filters the same fields client-side over the loaded list and calls `?q=` only when the list is paged (more than 200 active cities, not expected in v1). `GET /properties?city=` takes a code; free text never reaches the property search.
+- **D-83** Adding a city is a database row, not a release: an admin creates it from the admin console (`POST /admin/cities`, created inactive) or a Flyway data migration inserts it, then an admin activates it (`PATCH /admin/cities/{code}` with `live=true`). Activate, deactivate and edits are audited (D-87). Deactivating hides the city from pickers, search and new properties; existing properties, tenancies, rent history and reviews in it stay readable by direct link (like archived, D-21) and their parties can still end tenancies and review. Codes are never reused.
+- **D-84** Pincode rule from data: a property's 6-digit pincode must start with one of its city's `pincode_prefixes`. A city with no prefixes accepts any valid 6-digit pincode. This replaces the hard-coded `56xxxx`/`41xxxx` rule.
+- **D-85** City UI everywhere is driven by the list: the city control is a searchable picker (combobox) on Home, Search, onboarding (home city), the property form and admin filters, never a fixed two-option toggle. Home shows one city card per active city with counts from `GET /stats` (a city with none shows "No properties yet", D-03), ordered by published property count, then name; the first 8 show, then "Show all N cities". Launch copy is built from the list: with up to 3 active cities it names them ("Starting in Bangalore and Pune, more cities coming"; "A, B and C" for three), with more it counts them ("Live in 8 cities, more coming"). The product never says "only".
 
 ### 5.3 Property (`properties`, has `public_id`)
 | Column | Notes |
@@ -168,14 +183,15 @@ There is no password column: v1 has no passwords (D-71).
 | `locality` | e.g. "Koramangala"; free text, trimmed, normalised for search into `locality_key` (lower-case, single spaces; indexed with `city_code`, `status`) |
 | `building_name`, `street` | public |
 | `unit_label` | flat/house number; **private** (parties + admin only) |
-| `pincode` | 6 digits, validated against city prefix (`56xxxx` BLR, `41xxxx` PNQ) |
+| `pincode` | 6 digits, must start with one of the city's `pincode_prefixes` (D-84) |
 | `property_type` | `APARTMENT`, `INDEPENDENT_HOUSE`, `VILLA`, `STUDIO`, `ROOM`, `PG` |
 | `bedrooms`, `bathrooms`, `area_sqft`, `furnishing` (`UNFURNISHED`, `SEMI`, `FULL`), `parking` | optional facts |
 | `description` | ≤ 2000 chars |
-| `status` | `DRAFT`, `PUBLISHED`, `ARCHIVED` |
+| `status` | `DRAFT`, `PENDING_REVIEW`, `REJECTED`, `PUBLISHED`, `ARCHIVED` (D-92) |
+| `review_reason`, `reviewed_by`, `reviewed_at` | last listing decision (added by the verification-core migration, D-98) |
 | `is_demo`, `deleted_at` | |
 
-- **D-21** Only users with `LANDLORD` create properties. A property is visible to others only when `PUBLISHED`. Archiving hides it from search but keeps its tenancies, rent history and reviews readable via direct link.
+- **D-21** Only users with `LANDLORD` create properties. A property is visible to others only when `PUBLISHED`; it reaches `PUBLISHED` only through admin listing approval (D-92). Archiving hides it from search but keeps its tenancies, rent history and reviews readable via direct link.
 - **D-22** Ownership transfer between landlords is not in v1. The tenancy stores its own `landlord_id`, so history stays correct if transfer is added later.
 
 ### 5.4 Tenancy (`tenancies`, has `public_id`)
@@ -254,10 +270,42 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
   `target_type` ∈ `REVIEW`, `REVIEW_RESPONSE`, `USER`, `PROPERTY`, `TENANCY`.
   `reason` ∈ `FAKE_TENANCY`, `PERSONAL_DATA`, `HARASSMENT_OR_HATE`, `OFF_TOPIC`, `CONFLICT_OF_INTEREST`, `SPAM`, `OTHER`.
   `status` ∈ `OPEN`, `ACTIONED`, `DISMISSED`.
-- `moderation_actions(admin_id, action, target_type, target_id, report_id?, reason, created_at)`: append-only audit log of every admin action.
+- `moderation_actions(admin_id, action, target_type, target_id?, target_ref, report_id?, reason, created_at)`: append-only audit log of every admin action and decision (D-87). `target_ref` is the target's `public_id` (or the city code for `CITY`), so cities and future non-BIGINT targets fit; `target_id` stays for joins and is null for cities. Rebuilt by the verification-core migration (D-98).
+  `action` adds, to the D-51 set: `APPROVE_APPLICATION`, `REJECT_APPLICATION`, `REVOKE_APPROVAL`, `SET_LINKEDIN_CHECK`, `APPROVE_PROPERTY`, `REJECT_PROPERTY`, `VIEW_DOCUMENT`, `CREATE_CITY`, `UPDATE_CITY`, `ACTIVATE_CITY`, `DEACTIVATE_CITY`, `GRANT_ADMIN`, `REVOKE_ADMIN`. `target_type` adds `APPLICATION`, `DOCUMENT`, `CITY`.
 
 ### 5.12 Supporting tables
 `user_roles`, `refresh_tokens` (D-63), `share_links` (tenant reputation links, D-54; hashed token, 30-day expiry, revocable), `invite_tokens` (tenancy invites to people without an account; hashed, single use, 14-day expiry), `scheduled_job_lock` (D-08), `property_images` (§15).
+
+### 5.13 VerificationApplication (`verification_applications`, has `public_id`, verification-core migration)
+One per user per role; it carries the approval for that role (§7.3).
+| Column | Notes |
+|---|---|
+| `user_id`, `role` | unique together; `role` ∈ `TENANT`, `LANDLORD` |
+| `status` | `DRAFT`, `PENDING`, `APPROVED`, `REJECTED` (D-90) |
+| `revision` | starts at 1; +1 on each resubmission after a rejection |
+| `linkedin_url` | normalised `https://www.linkedin.com/in/<slug>`; private (D-93); null with `linkedin_not_provided=true` |
+| `linkedin_not_provided` | the user ticked "I don't have a LinkedIn profile" |
+| `linkedin_check` | `UNCHECKED`, `MATCHED`, `MISMATCH`, `NOT_PROVIDED`; set by an admin |
+| `flags` | comma list set by the API, e.g. `DUPLICATE_ID` (D-94); shown to admins only |
+| `submitted_at`, `decided_at`, `decided_by` | |
+| `decision_code`, `decision_note` | on reject: `ID_UNREADABLE`, `ID_NAME_MISMATCH`, `LINKEDIN_MISMATCH`, `DOCUMENT_MISSING`, `DUPLICATE_ACCOUNT`, `OTHER`, plus a note shown to the user; on approve: optional note (admin only) |
+
+Previous revisions are not overwritten. `verification_events(application_id, revision, event, actor_id, code, note, created_at)`, append-only, keeps the history: `event` ∈ `SUBMITTED`, `APPROVED`, `REJECTED`, `REVOKED`, `LINKEDIN_CHECKED`. Admin events are also written to `moderation_actions` (D-87) in the same transaction; the record detail merges both into one timeline.
+
+### 5.14 VerificationDocument (`verification_documents`, has `public_id`, verification-documents migration)
+Private files uploaded for verification (D-95).
+| Column | Notes |
+|---|---|
+| `owner_id` | the uploading user |
+| `kind` | `ID_PROOF`, `RENTAL_AGREEMENT`, `PROPERTY_PROOF` |
+| `application_id` | set for `ID_PROOF` and `RENTAL_AGREEMENT` |
+| `property_id` | set for `PROPERTY_PROOF` (listing approval, D-92) |
+| `id_type` | `ID_PROOF` only: `PAN`, `PASSPORT`, `DRIVING_LICENCE`, `VOTER_ID` (D-94) |
+| `number_last4` | `ID_PROOF` only: last 4 characters of the typed number; the full number is never stored |
+| `number_hmac` | `ID_PROOF` only: HMAC-SHA256 of the normalised number with `ID_HASH_KEY`; indexed, for duplicate detection |
+| `storage_key`, `content_type`, `size_bytes`, `sha256` | PRIVATE object (D-66) |
+| `status` | `UPLOADED`, `ACCEPTED`, `REJECTED`, `PURGED` (file deleted by retention, D-96) |
+| `reviewed_by`, `reviewed_at`, `purge_after`, `deleted_at` | |
 
 ---
 
@@ -281,7 +329,7 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
   - Landlord-initiated: landlord picks own property, enters tenant email, dates, rent. Tenant gets an email invite; they sign in with Google from the link (creating an account if needed), then confirm. The invite binds only to an account whose verified Google email equals `invite_email`.
   - Tenant-initiated: tenant picks a published property, enters dates and rent. The property's landlord confirms or declines.
   - The counterparty sees all fields before confirming and can decline with a reason; corrections are made by declining and re-creating (no counter-offer flow in v1).
-- **D-35** Guards at creation: both accounts email-verified; `landlord_id ≠ tenant_id`; dates valid; no overlapping tenancy for the same tenant + property; a user may create at most 5 pending tenancies at once; an invite email cannot be the initiator's own email or an existing account with a different email in the payload.
+- **D-35** Guards at creation: the initiator's verification for their side is `APPROVED` (D-91), and the counterparty's must be `APPROVED` before they can confirm, while declining needs no approval (an invitee without an account signs in, onboards and is approved first; the 14-day expiry still runs, so admins aim to decide within 48 h); both accounts email-verified; `landlord_id ≠ tenant_id`; dates valid; no overlapping tenancy for the same tenant + property; a user may create at most 5 pending tenancies at once; an invite email cannot be the initiator's own email or an existing account with a different email in the payload.
 - **D-36** Ending: either party sets `end_date` (≤ today). The other party is notified and can dispute within 14 days (→ report `FAKE_TENANCY` / admin review). An admin `VOID` (fake or mistaken tenancy) hides all its reviews, removes them from aggregates and removes its rent records from rent history; it is logged in `moderation_actions`.
 - `evidence_level` is `MUTUAL` after confirmation. If a party uploads an agreement and an admin accepts it, it becomes `DOCUMENT`, shown as a stronger badge ("Agreement checked"). Document upload is optional in v1.
 
@@ -312,7 +360,27 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
 
 - **D-46** Double-blind reveal for the landlord↔tenant pair: a person review stays `AWAITING_REVEAL` (visible only to its author) until the counter-review for the same tenancy is submitted, or 14 days pass since the first of the two was submitted, or the review window closes. Then both publish together. This prevents retaliation reviews.
 - **D-47** `TENANT_TO_PROPERTY` reviews publish immediately after checks (there is no counter-review).
-- **D-48** Post-moderation: published reviews are live without admin approval (the tenancy gate replaces the old `PENDING` admin approval). Admin action happens on reports and automated flags.
+- **D-48** Post-moderation: published reviews are live without admin approval (the tenancy gate replaces the old `PENDING` admin approval). Admin action happens on reports and automated flags. Admin approval applies to **people and listings** (§7.3), not to each review: an approved party of a confirmed tenancy publishes without a further check.
+
+### 7.3 Onboarding with approvals
+
+```
+ Google sign-in ─▶ role pick (D-73) ─▶ verification, per role
+                                         1 Profile   2 LinkedIn   3 ID document   4 Rental agreement (tenant, optional)
+                                         └──────────────── DRAFT ───────────────────────┘
+                                                              │ submit
+                                                              ▼
+                                  ┌──────────────────────── PENDING ──── admin ──▶ APPROVED ─▶ trust writes open
+                                  │ resubmit (revision+1)        │                     │
+                                  └──── REJECTED (code + note) ◀─┘ admin               └─ admin revoke ─▶ REJECTED
+```
+
+- **D-89** Onboarding has two layers. (1) Account onboarding: the first-sign-in role pick (D-73), unchanged. (2) Verification: for each role the user holds, one `verification_application` (§5.13) that an admin approves. Steps, in order, each saved as a draft: **Profile** (display name, home city from the city picker, optional phone); **LinkedIn** profile URL (D-93); **Identity document** (D-94); **Rental agreement**, tenant only and optional ("if you rent now or rented before"; it helps the admin, and tenancy-level agreements stay in §5.8). Landlords prove each property at listing time instead (D-92). Then **Submit** → `PENDING`. Adding the other role later (D-16) starts a second application; an `ACCEPTED` identity document is reused while it is not `PURGED` (D-96), so the user does not upload it again, but an admin still approves the new role; once it is `PURGED`, the identity document step is required again.
+- **D-90** States: `DRAFT` → (user submits) `PENDING` → (admin) `APPROVED` or `REJECTED`. A rejection needs a reason code and a note, both shown to the user; the user edits any step and resubmits (`PENDING`, `revision + 1`), with no limit except the D-45-style rate limit (3 submissions per 24 h). An admin can revoke an approval (→ `REJECTED`, with reason) when new facts appear; suspension (D-51) stays the tool for abuse. Every submit and decision is audited (D-87). Users get an email on each decision (D-65). Target: decisions within 48 h; the admin dashboard shows the oldest waiting item.
+- **D-91** The approval gate. **Reading never needs approval**: browsing, search, property pages, rent history, landlord profiles and every review text follow only the visibility rules of D-54–D-56. An `APPROVED` application for the matching role is required to: create a tenancy request or confirm a tenancy; add, confirm or dispute a rent record; write or edit a review; post a review response; send an enquiry (`TENANT`); submit a property for listing (`LANDLORD`). Otherwise the API returns `403 approval_required` with `{role, status}`. The check reads the application from the database on each gated write (not from the JWT), so a decision takes effect at once. Safety exits are never gated: report content, withdraw an own review, decline a tenancy request, cancel an own pending request, end a tenancy already confirmed, delete the account. Admins are not gated in their admin actions.
+- **D-92** Property listing approval. Statuses: `DRAFT` → (landlord submits) `PENDING_REVIEW` → (admin) `PUBLISHED`, or `REJECTED` with reason → (landlord edits) → `PENDING_REVIEW`; `PUBLISHED` → `ARCHIVED` as before. Submitting needs an approved landlord and one `PROPERTY_PROOF` document for that property (a rental agreement for it, or proof of ownership such as a property-tax receipt or electricity bill in the landlord's name). After publishing, location fields (city, locality, building, street, pincode) are locked; to change them the landlord asks an admin. Facts, description and images stay editable without re-review. The 4 + 4 seeded demo properties are `PUBLISHED`.
+- **D-93** LinkedIn check. Automatic verification is not feasible in v1: "Sign in with LinkedIn" (OpenID Connect) returns name, email and photo but not the profile URL, and fetching profile pages breaks LinkedIn's terms. So the API only validates and normalises the URL (`https://www.linkedin.com/in/<slug>`, no query string, ≤ 200 chars) and never fetches it. An admin opens it from the console and records `MATCHED` or `MISMATCH` (`linkedin_check`). A user may tick "I don't have a LinkedIn profile" (`NOT_PROVIDED`); the admin then decides on the identity document alone. The URL is private: owner and admins only.
+- **D-94** Identity document. Accepted types: PAN card, passport, driving licence, voter ID. Aadhaar is **not** accepted in v1, because the Aadhaar Act restricts storing Aadhaar numbers and copies. The user types the document number and uploads the file (PDF, JPEG or PNG, ≤ 10 MB; one file, or front + back). The API validates the format per type (PAN: `^[A-Z]{5}[0-9]{4}[A-Z]$`) and stores only `number_last4` and `number_hmac` (HMAC-SHA256 with `ID_HASH_KEY`). The full number is never stored, logged or returned by any API. When the same `number_hmac` appears on two accounts, both applications get the flag `DUPLICATE_ID` for the admin; nothing is rejected automatically. The UI masks every ID number to its last 4 characters, e.g. PAN `XXXXXX234F`.
 
 ---
 
@@ -322,6 +390,12 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
 - **D-50** Reports never auto-hide content, so a subject cannot hide a fair review by reporting it. Exception: a report with reason `PERSONAL_DATA` from a party of the tenancy auto-hides the **text** (rating still counts) until an admin decides, because exposure of personal data is the higher harm.
 - **D-51** Admin outcomes: dismiss; hide review/response (removed from public and aggregates; author is notified with the reason); void tenancy (D-36); suspend user (their pending tenancies cancel, their authored published reviews are hidden pending review). Every action writes `moderation_actions`. Target: reports handled within 72 h.
 - Hidden is reversible (restore). Admins never edit review text.
+
+### 8.1 Admin console
+
+- **D-86** The admin console (web `/admin`, API `/admin/**`, `ADMIN` only) gives read access to every record: landlords and tenants (users by role), properties in every status, tenancies, reviews (including `AWAITING_REVEAL` and `HIDDEN`), reports, verification applications, cities and the audit log. Each list has search (name, email, `public_id`, locality, building) and filters (role, city, status, verification status, demo data, created date range), with D-59 pagination. Screens: dashboard (queue counts, oldest waiting item, recent decisions), approvals queue (landlord, tenant, property listing), records lists, record detail with its audit trail, reports queue (D-51) and cities (D-83). Admins see private fields that D-57 allows them (email, phone, `unit_label`), but ID numbers only masked, like everyone else; document files only through logged signed URLs (D-95). No bulk export in v1.
+- **D-87** Every admin decision writes one append-only `moderation_actions` row: **who** (`admin_id`), **when** (`created_at`), **what** (`action`, `target_type`, `target_ref`) and **why** (`reason`). A reason is required for every reject, revoke, hide, void, suspend, city deactivation and admin revoke; approvals take an optional note. The user's own steps (submit, resubmit) are recorded in `verification_events` (§5.13), so `moderation_actions` stays an admin-only log. Rows of both are never updated or deleted; on account deletion (D-58) the rows stay and refer to the anonymised user. Each record detail page shows the trail for that record.
+- **D-88** Conflict of interest: an admin cannot decide their own verification, approve their own property, or moderate a review, tenancy or report they are a party to (`403 admin_conflict`). Another admin must act. The dev seed has one admin and no admin-party records, so this never blocks the demo.
 
 ---
 
@@ -345,38 +419,50 @@ Worked example: landlord with reviews 5, 4, 4 → `n=3`, `average=4.3`, with `m=
 - **D-54** Tenants are not searchable. There is no tenant directory. A tenant's profile and tenant reputation are visible only to: the tenant; landlords of their tenancies; a landlord who received an open enquiry from them (until `expires_at`); anyone holding a share link the tenant created (`/me/share-links`, revocable, 30-day expiry); admins.
 - **D-55** Landlord profiles (short name, landlord aggregate, published properties, reviews received as landlord) are visible to any **logged-in** user. Anonymous visitors see the landlord's short name and aggregate only on property pages.
 - **D-56** Property pages: anonymous visitors see city, locality, building/street, facts, images, aggregate rating and count. Logged-in users also see review texts, responses and the full rent history.
-- **D-57** Never shown to anyone except the user, the other party of a shared tenancy (where relevant) and admins: email, phone (unless shared via enquiry), `unit_label`, tenancy documents, exact tenancy dates of others (public views show month/year only), deposit amounts.
+- **D-57** Never shown to anyone except the user, the other party of a shared tenancy (where relevant) and admins: email, phone (unless shared via enquiry), `unit_label`, tenancy documents, exact tenancy dates of others (public views show month/year only), deposit amounts. Never shown to anyone except the user and admins (not to the other party either): verification documents, the LinkedIn URL, the masked ID number, verification status details and reject reasons (D-95).
+- **D-95** Verification documents are private. ID proofs, onboarding rental agreements and property proofs are stored with `Visibility.PRIVATE` through the `ImageStorage` interface (§15) under random keys (`verification/{userPublicId}/{uuid}`); JPEG and PNG files are re-encoded to strip EXIF (resolution kept so they stay readable), PDFs are stored as uploaded; `sha256` is recorded. Only the owner and admins can open them, through short-lived signed URLs (5 min, D-30): `GET /me/documents/{id}/url` and `GET /admin/documents/{id}/url`; each admin URL writes a `VIEW_DOCUMENT` audit row (D-87). Public and party-facing APIs never return document data, ID numbers or their last 4, LinkedIn URLs or reject reasons. The only public signal is an **"ID verified"** badge per approved role on profiles and review author lines. Request and error logs exclude multipart bodies and the `idNumber` field.
+- **D-96** Retention (DPDP data minimisation): document files are deleted 90 days after their application or listing is decided (`VERIFICATION_DOC_RETENTION_DAYS`), and at once when the user deletes the account (D-58) or replaces the file before a decision. `number_last4`, `number_hmac`, statuses and audit rows stay, so duplicates are still caught and decisions stay explained. A nightly job with the D-08 lock purges due files and sets `status = PURGED`.
 - **D-58** Account deletion (DPDP Act 2023 aligned): personal data is erased (email, phone, `google_sub`, `google_name`, `avatar_url` cleared, display name replaced). Signing in again with the same Google account creates a new, empty user. Reviews the user **wrote** stay, attributed to "Former Rentrix user", and keep counting. Reviews **about** the user are hidden with their profile. Property reviews and confirmed rent records stay (they describe the property, not the person).
 
 ---
 
 ## 11. Permission matrix
 
-Legend: ✅ allowed · 🔒 own only / condition noted · — not allowed.
-"Party" = landlord or tenant of the tenancy in question.
+Legend: ✅ allowed · 🔒 own only / condition noted · Ⓐ needs an `APPROVED` verification for that role (D-91) · — not allowed.
+"Party" = landlord or tenant of the tenancy in question. "Logged-in" includes users whose verification is not yet approved.
 
 | Action | Anonymous | Logged-in | Tenant party | Landlord party | Admin |
 |---|---|---|---|---|---|
 | List cities, search properties | ✅ | ✅ | ✅ | ✅ | ✅ |
 | View property card + aggregate | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View property reviews text + rent history | — | ✅ | ✅ | ✅ | ✅ |
+| View property reviews text + rent history (no approval needed) | — | ✅ | ✅ | ✅ | ✅ |
 | View property `unit_label` | — | — | ✅ | ✅ | ✅ |
-| Create / edit / archive property | — | 🔒 `LANDLORD`, own | — | 🔒 own | hide only |
-| View landlord profile + reviews | aggregate only | ✅ | ✅ | ✅ | ✅ |
+| Create / edit draft property | — | 🔒 `LANDLORD`, own | — | 🔒 own | hide only |
+| Submit property for listing approval | — | 🔒 `LANDLORD`, own, Ⓐ | — | 🔒 own, Ⓐ | — |
+| Archive own property | — | 🔒 `LANDLORD`, own | — | 🔒 own | hide only |
+| View landlord profile + reviews (no approval needed) | aggregate only | ✅ | ✅ | ✅ | ✅ |
 | View tenant profile + reviews | — | 🔒 self, enquiry grant, share link (D-54) | ✅ self | ✅ | ✅ |
-| Send enquiry | — | 🔒 `TENANT` | — | — | — |
-| Create tenancy request | — | 🔒 `TENANT` on a published property, or `LANDLORD` on own property | — | — | — |
-| Confirm / decline tenancy | — | — | 🔒 if counterparty | 🔒 if counterparty | — |
+| Send enquiry | — | 🔒 `TENANT`, Ⓐ | — | — | — |
+| Create tenancy request | — | 🔒 `TENANT` on a published property, or `LANDLORD` on own property; Ⓐ | — | — | — |
+| Confirm tenancy | — | — | 🔒 if counterparty, Ⓐ | 🔒 if counterparty, Ⓐ | — |
+| Decline tenancy request (counterparty) / cancel own pending request (initiator), no approval needed | — | — | 🔒 if counterparty or initiator | 🔒 if counterparty or initiator | — |
 | End tenancy | — | — | ✅ | ✅ | ✅ |
 | Void tenancy | — | — | — | — | ✅ |
-| Add rent record | — | — | ✅ | ✅ | — |
-| Confirm / dispute rent record | — | — | 🔒 other party | 🔒 other party | ✅ |
+| Add rent record | — | — | ✅ Ⓐ | ✅ Ⓐ | — |
+| Confirm / dispute rent record | — | — | 🔒 other party, Ⓐ | 🔒 other party, Ⓐ | ✅ |
 | Upload / view tenancy document | — | — | ✅ | ✅ | ✅ |
-| Write `TENANT_TO_LANDLORD`, `TENANT_TO_PROPERTY` | — | — | ✅ (window open) | — | — |
-| Write `LANDLORD_TO_TENANT` | — | — | — | ✅ (window open) | — |
-| Edit / withdraw review | — | — | 🔒 author, D-41 | 🔒 author, D-41 | — |
-| Respond to review | — | — | 🔒 subject | 🔒 subject / property landlord | — |
+| Write `TENANT_TO_LANDLORD`, `TENANT_TO_PROPERTY` | — | — | ✅ Ⓐ (window open) | — | — |
+| Write `LANDLORD_TO_TENANT` | — | — | — | ✅ Ⓐ (window open) | — |
+| Edit review | — | — | 🔒 author, D-41, Ⓐ | 🔒 author, D-41, Ⓐ | — |
+| Withdraw review | — | — | 🔒 author | 🔒 author | — |
+| Respond to review | — | — | 🔒 subject, Ⓐ | 🔒 subject / property landlord, Ⓐ | — |
 | Report content | — | ✅ | ✅ | ✅ | — |
+| Fill in / submit / resubmit own verification | — | 🔒 own, per held role | ✅ | ✅ | — |
+| Upload / view own verification documents | — | 🔒 owner (D-95) | 🔒 owner | 🔒 owner | ✅ logged |
+| View all records, search and filter (admin console) | — | — | — | — | ✅ (D-86) |
+| Approve / reject verification and property listings | — | — | — | — | ✅ not own (D-88) |
+| Create / activate / deactivate city | — | — | — | — | ✅ |
+| Grant / revoke `ADMIN` | — | — | — | — | ✅ not self (D-19) |
 | Handle reports, hide/restore, suspend | — | — | — | — | ✅ |
 
 ---
@@ -403,7 +489,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
     "traceId": "4f1c..."
   }
   ```
-  Status use: `400` malformed, `401` no/invalid token, `403` authenticated but not allowed, `404` not found **or not visible to the caller** (no existence leak), `409` conflict (duplicate review, overlapping tenancy, state transition not allowed), `422` validation/business rule, `429` rate limited (with `Retry-After`).
+  Status use: `400` malformed, `401` no/invalid token, `403` authenticated but not allowed (including `approval_required` with `{role, status}`, D-91, and `admin_conflict`, D-88), `404` not found **or not visible to the caller** (no existence leak), `409` conflict (duplicate review, overlapping tenancy, state transition not allowed), `422` validation/business rule, `429` rate limited (with `Retry-After`).
 - Dates `YYYY-MM-DD`, timestamps ISO-8601 UTC, money as integer rupees with field suffix `Inr`.
 - Writes that may be retried by clients accept an optional `Idempotency-Key` header (stored 24 h) on `POST /tenancies`, `POST .../reviews`, `POST /reports`.
 
@@ -430,18 +516,26 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/me/enquiries?as=TENANT|LANDLORD` | |
 | GET / POST / DELETE | `/me/share-links` | tenant reputation share links |
 | GET | `/me/properties` | landlord's own, all statuses |
+| GET | `/me/verification` | one entry per held role: `{role, status, revision, steps: {profile, linkedin, idDocument, rentalAgreement}, decision: {code, note, decidedAt}?}`; `GET /me` carries a short `verification: {TENANT: status, LANDLORD: status}` |
+| PUT | `/me/verification/{role}` | save draft steps: `{linkedinUrl?, linkedinNotProvided?}` (profile fields go through `PATCH /me`) |
+| POST | `/me/verification/{role}/submit` | `DRAFT` or `REJECTED` → `PENDING`; `422` with the missing steps listed; `409` when already `PENDING`/`APPROVED` |
+| POST | `/me/documents` | multipart `{kind, role?, propertyId?, idType?, idNumber?, file}` → `{id, kind, idType, numberMasked, status}`; `idNumber` is used only for format check, last 4 and HMAC (D-94) |
+| GET | `/me/documents` | own documents, metadata only, masked numbers |
+| GET | `/me/documents/{id}/url` | owner only: 5-min signed URL (D-95) |
+| DELETE | `/me/documents/{id}` | owner, only while the application or listing is not `PENDING`/decided |
 
 **Reference & stats**
-| GET | `/cities` | live cities only |
-| GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per live city |
+| GET | `/cities?q=` | active cities only, `{code, name, aliases[], state}`, by name; `q` matches code/name/alias/state (D-82) |
+| GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per active city |
 
 **Properties**
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/properties?city=BLR&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city` must be live |
+| GET | `/properties?city=BLR&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city` must be an active city code |
 | GET | `/properties/{id}` | fields per D-56 |
 | POST | `/properties` | `LANDLORD`; creates `DRAFT` |
-| PATCH | `/properties/{id}` | owner; includes `status` transitions |
+| PATCH | `/properties/{id}` | owner; edits (location fields locked once published, D-92) and `ARCHIVED` |
+| POST | `/properties/{id}/submit` | owner, Ⓐ landlord, needs a `PROPERTY_PROOF` document: `DRAFT`/`REJECTED` → `PENDING_REVIEW` (D-92) |
 | DELETE | `/properties/{id}` | owner; archives (D-21) |
 | GET / POST | `/properties/{id}/images` | upload ≤ 10 images |
 | PATCH / DELETE | `/properties/{id}/images/{imageId}` | order, primary, delete |
@@ -475,14 +569,34 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Reports**
 | POST | `/reports` | `{targetType, targetId, reason, details?}` |
 
-**Admin** (`ADMIN` only)
-| GET | `/admin/reports?status=` |
+**Admin** (`ADMIN` only; every write audited, D-87; `reason` required where D-87 says so)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/admin/overview` | queue counts (pending landlord / tenant applications, pending listings, open reports, documents to check), oldest waiting item per queue, last 10 decisions |
+| GET | `/admin/applications?role=&status=PENDING&flag=&city=&q=&sort=submittedAt,asc` | approvals queue |
+| GET | `/admin/applications/{id}` | profile, LinkedIn URL + check, documents (metadata, masked number), flags, previous revisions and decisions |
+| POST | `/admin/applications/{id}/approve` | `{note?}` → `APPROVED` |
+| POST | `/admin/applications/{id}/reject` | `{code, note}` → `REJECTED` |
+| POST | `/admin/applications/{id}/revoke` | `{code, note}` → `REJECTED` from `APPROVED` |
+| POST | `/admin/applications/{id}/linkedin-check` | `{result: MATCHED|MISMATCH}` |
+| GET | `/admin/properties?status=PENDING_REVIEW&city=&q=` | all statuses available |
+| POST | `/admin/properties/{id}/approve`, `/reject` | listing decision (D-92); reject `{code, note}` |
+| GET | `/admin/documents/{id}/url` | 5-min signed URL; writes `VIEW_DOCUMENT` (D-95) |
+| GET | `/admin/users?role=LANDLORD|TENANT&verification=&status=&city=&demo=&q=` | landlord and tenant records |
+| GET | `/admin/users/{id}` | record detail: profile, roles, verification per role, documents (masked), tenancies, reviews written/received, reports, audit trail |
+| GET | `/admin/tenancies?status=&city=&q=`, `/admin/reviews?status=&direction=&city=&q=` | records lists |
+| GET | `/admin/tenancies/{id}`, `/admin/reviews/{id}`, `/admin/properties/{id}` | record detail with audit trail |
+| GET | `/admin/reports?status=` | reports queue |
 | POST | `/admin/reports/{id}/resolve` | `{outcome: DISMISS|HIDE|VOID_TENANCY|SUSPEND_USER, note}` |
-| POST | `/admin/reviews/{id}/hide`, `/restore` |
-| POST | `/admin/tenancies/{id}/void` |
-| POST | `/admin/tenancy-documents/{id}/accept`, `/reject` |
-| POST | `/admin/users/{id}/suspend`, `/reinstate` |
-| GET | `/admin/audit?targetType=&targetId=` |
+| POST | `/admin/reviews/{id}/hide`, `/restore` | |
+| POST | `/admin/tenancies/{id}/void` | |
+| POST | `/admin/tenancy-documents/{id}/accept`, `/reject` | |
+| POST | `/admin/users/{id}/suspend`, `/reinstate` | |
+| POST / DELETE | `/admin/users/{id}/admin-role` | grant / revoke `ADMIN` (D-19); not self |
+| GET | `/admin/cities` | all cities, active and inactive |
+| POST | `/admin/cities` | `{code, name, aliases[], state, pincodePrefixes[]}` → created inactive (D-83) |
+| PATCH | `/admin/cities/{code}` | `{live?, name?, aliases?, state?, pincodePrefixes?}`; deactivation needs `reason` |
+| GET | `/admin/audit?targetType=&targetRef=&adminId=&action=` | audit log |
 
 **Ops**: `GET /actuator/health` (public, no details), probes `GET /actuator/health/liveness` and `GET /actuator/health/readiness` (readiness group includes the DB; the API container health check uses readiness), `GET /v3/api-docs` + Swagger UI only when the `dev` or `test` profile is explicitly active (D-64).
 
@@ -516,7 +630,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 - **D-70** "Sign in with Google" is the only production login, for tenants and landlords alike. The web uses Google Identity Services (GIS) to get an **ID token** in the browser and posts it to `POST /auth/google`. The API verifies it server-side: RS256 signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`, cached per its `Cache-Control`), `iss` ∈ {`accounts.google.com`, `https://accounts.google.com`}, `aud` = `GOOGLE_CLIENT_ID`, `exp` not passed (60 s clock skew), `email_verified` = true. Any failure → `401 google_token_invalid`. The API then issues its **own** access + refresh tokens (D-62, D-63); the Google token is never stored or forwarded, so the API stays stateless.
 - **D-71** No passwords in v1: no password column, no signup form, no password reset, no email-verification flow (Google already verified the email). This removes a whole class of credential storage risk.
 - **D-72** One Google account = one Rentrix user, keyed by `google_sub`, never by email (Google emails can change; the `sub` does not). On every sign-in the API refreshes `email`, `email_verified_at`, `google_name` and `avatar_url` from the token; `display_name` is changed only by the user. If the token's email already belongs to a **different** user (rare: account recreated at Google, or a seed user email), sign-in fails with `409 account_email_conflict` and an admin resolves it; accounts are never merged automatically.
-- **D-73** First sign-in creates the user with no roles and `onboarded_at = null`; the response has `needsOnboarding: true`. The web then shows a one-step role pick (tenant, landlord, or both; optional home city; accept terms) that calls `POST /me/onboarding` once; the response carries a fresh access token with the new roles (and rotates the refresh cookie), and the web replaces its in-memory token. Until onboarding completes, only `GET /me`, `POST /me/onboarding`, `DELETE /me`, `/auth/*` and public reads are allowed (`403 onboarding_required` otherwise). The other role can be added later via `PATCH /me` (D-16), which also returns a fresh access token and rotates the refresh cookie (D-62).
+- **D-73** First sign-in creates the user with no roles and `onboarded_at = null`; the response has `needsOnboarding: true`. The web then shows a one-step role pick (followed by the verification steps of §7.3, D-89) (tenant, landlord, or both; optional home city; accept terms) that calls `POST /me/onboarding` once; the response carries a fresh access token with the new roles (and rotates the refresh cookie), and the web replaces its in-memory token. Until onboarding completes, only `GET /me`, `POST /me/onboarding`, `DELETE /me`, `/auth/*` and public reads are allowed (`403 onboarding_required` otherwise). The other role can be added later via `PATCH /me` (D-16), which also returns a fresh access token and rotates the refresh cookie (D-62).
 - **D-74** The GIS ID-token flow needs only the OAuth **client ID** (no client secret, no authorization-code exchange, no redirect URI on the API). So `GOOGLE_CLIENT_ID` is the only Google setting. It comes from env only and is never committed, not even as a default (it is not a secret, but it identifies the captain's Google Cloud project). `GOOGLE_CLIENT_SECRET` is not used; if a later server-side flow (e.g. Google APIs on behalf of the user) needs it, it is added as env only.
 - **D-75** Token verification sits behind an interface so tests never call Google:
   ```java
@@ -545,7 +659,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 
 ## 14. Notifications
 
-- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome. No in-app notification centre in v1.
+- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome, verification approved / rejected (with the reason), listing approved / rejected (with the reason). Emails never contain document data or ID numbers. No in-app notification centre in v1.
 
 ---
 
@@ -562,7 +676,7 @@ enum Visibility { PUBLIC, PRIVATE }
 ```
 
 - **D-66** Two implementations chosen by `STORAGE_BACKEND`: `local` (default; files under `STORAGE_LOCAL_DIR`, default `./data/media`; public files served by the API at `/api/v1/media/**`, private files served only through HMAC-signed short-lived URLs) and `s3` (any S3-compatible service: AWS S3, Cloudflare R2, MinIO; `S3_ENDPOINT`, `S3_REGION`, `S3_PUBLIC_BUCKET`, `S3_PRIVATE_BUCKET`, `S3_PUBLIC_BASE_URL`, credentials from env). Code depends only on the interface.
-- **D-67** Uploads: `image/jpeg`, `image/png`, `image/webp`, ≤ 15 MB each, ≤ 10 per property; content type sniffed from bytes (not trusted from the client); images re-encoded server-side to WebP (max 2048 px long side) plus a 480 px thumbnail; **EXIF stripped** (removes GPS location). Keys are random (`properties/{publicId}/{uuid}.webp`), never the original filename. Tenancy documents: PDF/JPEG/PNG ≤ 10 MB, stored PRIVATE, `sha256` recorded.
+- **D-67** Uploads: `image/jpeg`, `image/png`, `image/webp`, ≤ 15 MB each, ≤ 10 per property; content type sniffed from bytes (not trusted from the client); images re-encoded server-side to WebP (max 2048 px long side) plus a 480 px thumbnail; **EXIF stripped** (removes GPS location). Keys are random (`properties/{publicId}/{uuid}.webp`), never the original filename. Tenancy documents and verification documents (D-94, D-95): PDF/JPEG/PNG ≤ 10 MB, stored PRIVATE, `sha256` recorded, served only through `signedUrl`. `ImageStorage` is the one storage abstraction for both images and private documents.
 - `property_images(property_id, storage_key, thumb_key, width, height, size_bytes, display_order, is_primary)`.
 
 ---
@@ -585,7 +699,14 @@ Seed plan (8 properties, 4 landlords, 12 tenants):
 | PNQ | Demo Court G, 3BHK house | Kothrud | Demo Landlord PNQ-2 | ended 2021-05→2024-04, current 2024-06→ | 30,000 → 32,000 → 34,000 |
 | PNQ | Demo Nest H, room in PG | Viman Nagar | Demo Landlord PNQ-2 | two overlapping ended flatmate tenancies 2024-01→2025-01 | 9,000 each |
 
-Every property has at least one tenancy with reviews in all three directions published (`TENANT_TO_LANDLORD`, `LANDLORD_TO_TENANT`, `TENANT_TO_PROPERTY`); these are ended tenancies where the table shows them. Demo Studio D's only tenancy is current and has been `ACTIVE` for more than 60 days, so its window is open under D-39. The seed also has a spread of ratings (1–5, not all 5s), at least one review response, one `AWAITING_REVEAL` review (to show double-blind), and one open report for the admin queue. One demo admin (`demo-admin@example.test`). Exact review texts live in the seeder source and stay generic (no names, phones or addresses, per D-43).
+Every property has at least one tenancy with reviews in all three directions published (`TENANT_TO_LANDLORD`, `LANDLORD_TO_TENANT`, `TENANT_TO_PROPERTY`); these are ended tenancies where the table shows them. Demo Studio D's only tenancy is current and has been `ACTIVE` for more than 60 days, so its window is open under D-39. The seed also has a spread of ratings (1–5, not all 5s), at least one review response, one `AWAITING_REVEAL` review (to show double-blind), and one open report for the admin queue. One demo admin (`demo-admin@example.test`, role `ADMIN`, in the dev-login picker).
+
+- **D-97** Seeded verification states, so the admin queue has items to show:
+  - All 4 demo landlords and 12 demo tenants above are `APPROVED` (their seeded tenancies and reviews need it, D-91), with `linkedin_check` and accepted ID proofs set by the seeder.
+  - Pending queue: **Demo Landlord BLR-3** (`LANDLORD`, `PENDING`, LinkedIn given, PAN uploaded); **Demo Tenant PNQ-7** (`TENANT`, `PENDING`, LinkedIn not provided, PAN + rental agreement); **Demo Tenant BLR-7** (`TENANT`, `PENDING`, LinkedIn given, PAN + rental agreement, flagged `DUPLICATE_ID` because its fake PAN matches BLR-8's, to show the flag).
+  - Rejected: **Demo Tenant BLR-8** (`TENANT`, `REJECTED`, `ID_UNREADABLE`, note "The PAN photo is blurred. Upload a sharper photo.", can resubmit).
+  - Pending listing: **Demo Annex I** (Jayanagar, Bangalore, 1BHK, landlord BLR-2, `PENDING_REVIEW`, one property proof). It is not published, so the 4 + 4 published demo properties and every per-city count stay as they are.
+  - Seed documents are generated placeholder images that read "DEMO DOCUMENT · NOT REAL"; their numbers are fake (last 4 like `001D`) and their HMACs come from the dev `ID_HASH_KEY`. These users have no tenancies and no reviews. Exact review texts live in the seeder source and stay generic (no names, phones or addresses, per D-43).
 
 ---
 
@@ -604,6 +725,8 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` only in `dev`/`test`; none (required) in `prod` | comma list; the API refuses to start in `prod` if empty |
 | `APP_BASE_URL` | `http://localhost:5173` | links in emails |
 | `ADMIN_EMAILS` | empty | D-19, D-78 |
+| `ID_HASH_KEY` | built-in default only in `dev`/`test` | HMAC key for ID numbers (D-94); required (≥ 32 bytes) in any other profile, like `JWT_SECRET` |
+| `VERIFICATION_DOC_RETENTION_DAYS` | `90` | D-96 |
 | `GOOGLE_CLIENT_ID` | none (never committed) | Google sign-in (D-70, D-74); required in `prod` |
 | `DEV_LOGIN_ENABLED` | `true` in `dev`, `false` in `test` | D-77; any profile other than `dev`/`test` refuses to start if `true` |
 | `STORAGE_BACKEND` | `local` | `local` or `s3` (D-66) |
@@ -631,7 +754,7 @@ The v1 shape grows without a rewrite:
 4. **Search**: Postgres full-text on locality/building; move to OpenSearch only if needed.
 5. **Background work**: the in-process scheduler (D-08) moves to a queue (e.g. SQS) only when email volume or image processing needs it.
 6. **Rate limits**: in-memory per instance in v1 (Bucket4j); move to a shared Redis store when running many instances.
-7. **New cities**: insert a `cities` row (D-20) plus locality hints; no code change.
+7. **New cities**: an admin adds the `cities` row and activates it (D-83); pickers, Home cards, search and copy follow from the data; no code change or release.
 
 ---
 
@@ -643,12 +766,12 @@ The v1 shape grows without a rewrite:
 - Tenancy verification by document alone when the other party is not on Rentrix ("unclaimed landlord"); v1 needs both parties (D-34).
 - Property ownership transfer, co-owners, agencies/property managers.
 - Email/password login, phone OTP login, and social logins other than Google (D-70, D-71).
-- KYC (Aadhaar/PAN).
+- Automated KYC (Aadhaar e-KYC, PAN verification APIs, DigiLocker) and any Aadhaar upload: v1 identity checks are admin-reviewed uploads with masked numbers (D-94).
+- Automated LinkedIn verification (D-93).
 - Native mobile apps (the web is responsive).
 - Push / in-app notifications (email only, D-65).
 - ML fraud detection (rule-based flags only, D-45).
 - Review translation, photos in reviews.
-- Cities other than Bangalore and Pune.
 - Migration of data from the v0.1.x schema (treated as test data, D-01).
 
 ---

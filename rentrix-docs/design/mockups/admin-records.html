@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Admin · Records</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Admin console: records list</b> · tenants · search + filters · <code>GET /admin/users?role=TENANT&amp;city=&amp;verification=&amp;q=</code> · D-59 D-86</div>
+<header data-topbar data-as="admin" data-active="records"></header>
+<main class="container section">
+  <p class="eyebrow">Admin console</p>
+  <div class="row between" style="margin-top:6px"><h1 class="h1">Records</h1>
+    <nav class="admin-tabs"><a href="#">Landlords</a><a class="on" href="#">Tenants</a><a href="#">Properties</a><a href="#">Tenancies</a><a href="#">Reviews</a><a href="#">Reports</a></nav></div>
+  <div class="card" style="margin-top:16px">
+    <div class="filters">
+      <div class="input-icon" style="width:300px"><i data-icon="search" data-size="18"></i><input class="input" placeholder="Name, email or public ID" value="demo tenant"></div>
+      <div data-citypicker data-cities="2" style="min-width:200px"></div>
+      <select class="select"><option>Verification: any</option><option>Pending</option><option>Approved</option><option>Rejected</option><option>Draft</option></select>
+      <select class="select"><option>Account: any</option><option>Active</option><option>Suspended</option></select>
+      <select class="select"><option>Demo data: included</option><option>Exclude demo</option></select>
+      <select class="select"><option>Joined: any time</option></select>
+      <a class="small" href="#">Clear</a>
+    </div>
+    <p class="xs muted" style="margin-top:8px">City filter uses the same city picker; values come from <code>GET /admin/cities</code>, so inactive cities can be filtered too. <span class="spec">D-85</span></p>
+  </div>
+  <div class="card card-flush" style="margin-top:16px">
+    <table class="table">
+      <thead><tr><th>Tenant</th><th>City</th><th>Verification</th><th class="r">Tenancies</th><th class="hide-sm">Rating as tenant</th><th class="hide-sm">Joined</th><th>Account</th></tr></thead>
+      <tbody><tr><td><a href="admin-record.html"><b>Demo Tenant BLR-1</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-blr-1@example.test</div></td><td>Bangalore</td><td><span class="badge badge-success">Approved</span></td><td class="r num">2</td><td class="hide-sm">New · 2</td><td class="hide-sm small">12 Mar 2022</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant BLR-2</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-blr-2@example.test</div></td><td>Bangalore</td><td><span class="badge badge-success">Approved</span></td><td class="r num">1</td><td class="hide-sm">New · 1</td><td class="hide-sm small">03 Jul 2021</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant BLR-3</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-blr-3@example.test</div></td><td>Bangalore</td><td><span class="badge badge-success">Approved</span></td><td class="r num">1</td><td class="hide-sm">New · 1</td><td class="hide-sm small">28 Apr 2024</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant BLR-7</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-blr-7@example.test</div></td><td>Bangalore</td><td><span class="badge badge-info">Pending</span> <span class='badge badge-warn'>Dup ID</span></td><td class="r num">0</td><td class="hide-sm">—</td><td class="hide-sm small">20 Nov 2026</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant BLR-8</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-blr-8@example.test</div></td><td>Bangalore</td><td><span class="badge badge-danger">Rejected</span></td><td class="r num">0</td><td class="hide-sm">—</td><td class="hide-sm small">18 Nov 2026</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant PNQ-1</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-pnq-1@example.test</div></td><td>Pune</td><td><span class="badge badge-success">Approved</span></td><td class="r num">1</td><td class="hide-sm">New · 1</td><td class="hide-sm small">02 Sep 2022</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant PNQ-2</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-pnq-2@example.test</div></td><td>Pune</td><td><span class="badge badge-success">Approved</span></td><td class="r num">1</td><td class="hide-sm">New · 1</td><td class="hide-sm small">12 Mar 2024</td><td><span class="badge">Active</span></td></tr><tr><td><a href="admin-record.html"><b>Demo Tenant PNQ-7</b></a> <span class="badge badge-demo">Demo</span><div class="xs muted">demo-tenant-pnq-7@example.test</div></td><td>Pune</td><td><span class="badge badge-info">Pending</span></td><td class="r num">0</td><td class="hide-sm">—</td><td class="hide-sm small">21 Nov 2026</td><td><span class="badge">Active</span></td></tr></tbody>
+    </table>
+    <div class="row between" style="padding:12px 16px;border-top:var(--rx-border)"><span class="small muted">1–8 of 15 tenants</span><div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm">Previous</button><button class="btn btn-secondary btn-sm">Next</button></div></div>
+  </div>
+  <p class="xs muted" style="margin-top:10px">No export in v1. ID numbers never appear in lists; documents open only from a record. <span class="spec">D-86 · D-95</span></p>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

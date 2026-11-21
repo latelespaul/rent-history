@@ -12,7 +12,7 @@
 </style>
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · First sign-in: pick a role</b> · <code>needsOnboarding: true</code> → <code>POST /me/onboarding</code> · D-16 D-73</div>
+<div class="mock-banner"><b>Mockup · First sign-in: pick a role</b> · <code>needsOnboarding: true</code> → <code>POST /me/onboarding</code> · then verification (§7.3) · D-16 D-73 D-89</div>
 <header data-topbar data-as="anon"></header>
 
 <main class="container section" style="max-width:720px">
@@ -38,11 +38,13 @@
     </div>
     <hr class="divider">
     <div class="field"><span class="label">Home city <span class="hint" style="font-weight:400">(optional)</span></span>
-      <div class="segmented"><span class="on">Bangalore</span><span>Pune</span><span>Skip</span></div></div>
+      <div data-citypicker data-cities="2" style="max-width:360px"></div>
+      <span class="hint"><span data-launch data-cities="2"></span>. Leave empty if your city is not listed yet.</span></div>
     <div class="field" style="margin-top:14px"><span class="label">Display name</span><input class="input" value="New User"><span class="hint">Shown publicly as "New U.". From your Google name; you can change it.</span></div>
     <div class="checkrow" style="margin-top:16px"><span class="box on"><i data-icon="check"></i></span><span>I accept the Terms and Privacy notice. I will review only tenancies I was part of.</span></div>
-    <button class="btn btn-primary btn-lg btn-block" style="margin-top:20px">Continue</button>
+    <button class="btn btn-primary btn-lg btn-block" style="margin-top:20px">Continue to verification</button>
     <p class="xs muted" style="margin-top:8px">Until you finish this step, only your profile and public pages are available. <span class="spec">403 onboarding_required</span></p>
+    <div class="notice notice-teal" style="margin-top:14px"><i data-icon="shield-check"></i><span><b>Next: verify your account.</b> Add your LinkedIn profile and an ID document (and a rental agreement if you have one). An admin checks them, usually within 48 hours. You can read every review meanwhile. <a href="verify-profile.html">See the steps</a> <span class="spec">D-89 · D-91</span></span></div>
   </div>
 </main>
 <script src="mock.js"></script>

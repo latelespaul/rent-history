@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · City picker</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .sheet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rx-space-5); align-items: start; }
+  @media (max-width: 1080px) { .sheet { grid-template-columns: minmax(0, 1fr); } }
+  .sheet .card h2 { font-size: var(--rx-text-md); }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · City picker (component)</b> · searchable combobox fed only by <code>GET /cities</code> · replaces the Bangalore/Pune toggle everywhere · D-20 D-82 D-85</div>
+<header data-topbar data-as="anon"></header>
+
+<main class="container section">
+  <p class="eyebrow">Component · <code>CityPicker</code></p>
+  <h1 class="h1" style="margin-top:6px">City picker</h1>
+  <p class="muted" style="margin-top:6px;max-width:760px">One component for Home, Search, onboarding (home city), the property form and admin filters. It lists the active cities from the API, filters as you type on name, alias and state, and works the same for 2 or 200 cities. No city is typed into the web code. <span class="spec">D-20 · D-85</span></p>
+
+  <div class="sheet" style="margin-top:24px">
+    <div class="card">
+      <h2>1 · Closed, a city chosen</h2>
+      <div data-citypicker data-value="BLR" data-cities="2"></div>
+      <p class="xs muted" style="margin-top:10px">Shows name + state. Selecting writes <code>?city=BLR</code>; search only ever sends a code.</p>
+      <h2 style="margin-top:20px">2 · Open, launch list (2 active)</h2>
+      <div data-citypicker data-value="BLR" data-cities="2" data-open data-inline></div>
+    </div>
+    <div class="card">
+      <h2>3 · Typing an alias</h2>
+      <div data-citypicker data-cities="9" data-open data-inline data-query="beng"></div>
+      <p class="xs muted" style="margin-top:10px">"beng" finds Bangalore through its alias Bengaluru, and West Bengal's Kolkata through its state: prefix of any word, case-insensitive. <span class="spec">D-82</span></p>
+      <h2 style="margin-top:20px">4 · No match</h2>
+      <div data-citypicker data-cities="2" data-open data-inline data-query="Goa"></div>
+    </div>
+    <div class="card">
+      <h2>5 · Open, 9 active cities</h2>
+      <div data-citypicker data-value="PNQ" data-cities="9" data-open data-inline></div>
+      <p class="xs muted" style="margin-top:10px">7 of these rows are <b>illustrative</b>; activating a city is one admin action on a DB row (<a href="admin-cities.html">Admin · Cities</a>). <span class="spec">D-83</span></p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <h2 class="h3">Behaviour</h2>
+    <ul class="small stack-sm" style="padding-left:18px;margin:0">
+      <li>Keyboard: type to filter, ↑/↓ to move, Enter to choose, Esc to close. ARIA combobox pattern with a listbox; the active option is announced.</li>
+      <li>Data: <code>useCities()</code> loads <code>GET /cities</code> once (cached); filtering is client-side over code, name, aliases and state. <code>?q=</code> is used only if the list is ever paged.</li>
+      <li>Copy under the picker and in the footer is built from the same list: "<span data-launch data-cities="2"></span>" with 2–3 cities, "<span data-launch data-cities="9"></span>" with more. The product never says "only".</li>
+      <li>Mobile: the popover takes the full width under the field; options stay 44 px tall.</li>
+    </ul>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

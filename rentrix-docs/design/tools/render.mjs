@@ -6,9 +6,10 @@
 //   cd rentrix-docs/design/tools && npm install && npm run render
 //
 // Output: rentrix-docs/design/screenshots/<name>-desktop.png (1440 wide) and
-// <name>-mobile.png (390 wide) for the pages in MOBILE.
+// <name>-mobile.png (390 wide) for the pages in MOBILE. With --copy-v2 it also
+// copies the design-v2 renders (V2 below) to rentrix-docs/screenshots/design-v2/.
 import { createServer } from 'node:http';
-import { mkdirSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -16,6 +17,7 @@ import { chromium } from 'playwright';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = normalize(join(here, '..'));
 const outDir = join(root, 'screenshots');
+const v2Dir = join(root, '..', 'screenshots', 'design-v2');
 
 const PAGES = [
   ['home', 'mockups/home.html'],
@@ -29,8 +31,27 @@ const PAGES = [
   ['login', 'mockups/login.html'],
   ['onboarding', 'mockups/onboarding.html'],
   ['icons', 'icons.html'],
+  // design v2: data-driven cities, verification with approvals, admin console
+  ['home-many-cities', 'mockups/home-many-cities.html'],
+  ['city-picker', 'mockups/city-picker.html'],
+  ['verify-profile', 'mockups/verify-profile.html'],
+  ['verify-linkedin', 'mockups/verify-linkedin.html'],
+  ['verify-id', 'mockups/verify-id.html'],
+  ['verify-agreement', 'mockups/verify-agreement.html'],
+  ['verify-pending', 'mockups/verify-pending.html'],
+  ['verify-rejected', 'mockups/verify-rejected.html'],
+  ['verify-approved', 'mockups/verify-approved.html'],
+  ['write-review-pending', 'mockups/write-review-pending.html'],
+  ['admin-dashboard', 'mockups/admin-dashboard.html'],
+  ['admin-approvals', 'mockups/admin-approvals.html'],
+  ['admin-records', 'mockups/admin-records.html'],
+  ['admin-record', 'mockups/admin-record.html'],
+  ['admin-cities', 'mockups/admin-cities.html'],
 ];
-const MOBILE = new Set(['home', 'property']);
+const MOBILE = new Set(['home', 'property', 'home-many-cities', 'verify-id', 'verify-rejected']);
+// New or changed in design v2 (copied to rentrix-docs/screenshots/design-v2/ with --copy-v2).
+const V2 = new Set(['home', 'search', 'onboarding', ...PAGES.slice(PAGES.findIndex(([n]) => n === 'home-many-cities')).map(([n]) => n)]);
+const copyV2 = process.argv.includes('--copy-v2');
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const server = createServer((req, res) => {
@@ -61,8 +82,13 @@ try {
     // Sticky bars repeat in full-page shots; pin them for the capture.
     await page.addStyleTag({ content: '.topbar,.sticky{position:static!important}' });
     const file = join(outDir, `${name}-${kind}.png`);
-    await page.screenshot({ path: file, fullPage: true });
+    // Generous timeout: on a busy machine a full-page capture can take 30 s+.
+    await page.screenshot({ path: file, fullPage: true, timeout: 180000 });
     console.log(`  ${kind.padEnd(7)} ${name} -> ${file.slice(root.length + 1)}`);
+    if (copyV2 && V2.has(name)) {
+      mkdirSync(v2Dir, { recursive: true });
+      copyFileSync(file, join(v2Dir, `${name}-${kind}.png`));
+    }
     await ctx.close();
   }
 } finally {

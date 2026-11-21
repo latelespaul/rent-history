@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Admin · Cities</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Admin console: cities</b> · <code>GET/POST/PATCH /admin/cities</code> · adding a city is a row, activation is one audited switch · D-20 D-83 D-84</div>
+<header data-topbar data-as="admin" data-active="cities"></header>
+<main class="container section">
+  <p class="eyebrow">Admin console</p>
+  <div class="row between" style="margin-top:6px"><div><h1 class="h1">Cities</h1><p class="muted small">Active cities appear in every city picker, on Home and in search at once. No release needed. <span class="spec">D-83</span></p></div>
+    <button class="btn btn-primary"><i data-icon="plus" data-size="18"></i>Add city</button></div>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="card card-flush">
+      <table class="table">
+        <thead><tr><th>City</th><th>Code</th><th class="hide-sm">Aliases</th><th class="hide-sm">Pincode prefixes</th><th class="r">Published</th><th>Active</th></tr></thead>
+        <tbody>
+          <tr><td><b>Bangalore</b><div class="xs muted">Karnataka</div></td><td><code>BLR</code></td><td class="hide-sm small">Bengaluru</td><td class="hide-sm"><code>56</code></td><td class="r num">4</td><td><span class="row" style="gap:8px"><span class="switch on"></span><span class="small">Active</span></span></td></tr>
+          <tr><td><b>Pune</b><div class="xs muted">Maharashtra</div></td><td><code>PNQ</code></td><td class="hide-sm small muted">—</td><td class="hide-sm"><code>41</code></td><td class="r num">4</td><td><span class="row" style="gap:8px"><span class="switch on"></span><span class="small">Active</span></span></td></tr>
+          <tr style="background:var(--rx-sunk)"><td><b>Chennai</b> <span class="badge">illustrative</span><div class="xs muted">Tamil Nadu · added 21 Nov 2026</div></td><td><code>MAA</code></td><td class="hide-sm small">Madras</td><td class="hide-sm"><code>60</code></td><td class="r num">0</td><td><span class="row" style="gap:8px"><span class="switch"></span><span class="small muted">Inactive</span></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <aside class="stack">
+      <div class="dialog">
+        <h2 class="h3">Add a city</h2>
+        <div class="stack">
+          <div class="grid-2"><div class="field"><span class="label">Code</span><input class="input" value="MAA"></div><div class="field"><span class="label">Name</span><input class="input" value="Chennai"></div></div>
+          <div class="field"><span class="label">Aliases</span><input class="input" value="Madras"><span class="hint">Comma list. Search matches them.</span></div>
+          <div class="field"><span class="label">State</span><input class="input" value="Tamil Nadu"></div>
+          <div class="field"><span class="label">Pincode prefixes</span><input class="input" value="60"><span class="hint">New properties must use a matching pincode. <span class="spec">D-84</span></span></div>
+        </div>
+        <p class="xs muted" style="margin-top:10px">Created <b>inactive</b>. Switch it on when localities and support are ready.</p>
+        <button class="btn btn-primary btn-block" style="margin-top:12px">Create city</button>
+      </div>
+      <div class="card"><h2 class="h3">Recent changes</h2>
+        <ul class="timeline"><li><b>Created</b> city MAA (inactive)<div class="when">Demo A. · 21 Nov 2026, 15:10 · illustrative</div></li></ul>
+        <p class="xs muted">Deactivating needs a reason. Existing properties stay readable by link. <span class="spec">D-83 · D-87</span></p></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

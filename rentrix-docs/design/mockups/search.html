@@ -7,13 +7,13 @@
 <link rel="stylesheet" href="mock.css">
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Search results</b> · signed in as tenant · <code>GET /properties?city=BLR&amp;sort=bayes</code> · D-52 "New" under 3 reviews · D-53 Top rated = Bayesian</div>
+<div class="mock-banner"><b>Mockup · Search results</b> · signed in as tenant · <code>GET /properties?city=BLR&amp;sort=bayes</code> · city picker from <code>GET /cities</code> (D-85) · D-52 "New" under 3 reviews · D-53 Top rated = Bayesian</div>
 <header data-topbar data-as="tenant" data-active="search"></header>
 
 <main class="container section">
   <form class="searchbar" onsubmit="return false">
     <div class="seg"><i data-icon="city"></i>
-      <div class="segmented"><span class="on">Bangalore</span><span>Pune</span></div></div>
+      <div data-citypicker data-bare data-value="BLR" data-cities="2"></div></div>
     <div class="seg grow"><i data-icon="map-pin"></i>
       <input class="input" style="border:0;height:36px;padding:0" placeholder="Locality or building" value=""></div>
     <button class="btn btn-primary"><i data-icon="search"></i>Search</button>
