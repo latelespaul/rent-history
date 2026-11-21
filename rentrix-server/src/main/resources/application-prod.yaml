@@ -4,6 +4,8 @@
 # built-in defaults here. Set CORS_ALLOWED_ORIGINS to the web origin(s): when it is
 # empty the API starts with a warning and allows no cross-origin browser request.
 # The Docker image defaults DB_URL to SQLite under /app/data.
+# Set GOOGLE_CLIENT_ID for "Sign in with Google": without it the API starts with a
+# warning and POST /auth/google answers 503 google_sign_in_disabled.
 # =============================================================================
 server:
   forward-headers-strategy: framework

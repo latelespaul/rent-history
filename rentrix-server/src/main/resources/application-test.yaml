@@ -25,5 +25,9 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   dev-login:
     enabled: ${DEV_LOGIN_ENABLED:false}
+  auth:
+    google:
+      # Not a real client id: tests use FakeGoogleTokenVerifier and never call Google (D-75).
+      client-id: ${GOOGLE_CLIENT_ID:fake-test-client-id}
   scheduling:
     enabled: false              # tests call jobs directly
