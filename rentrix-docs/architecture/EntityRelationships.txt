@@ -1,3 +1,5 @@
+OBSOLETE: superseded by rentrix-docs/architecture/SYSTEM_DESIGN.md (trust-platform redesign). Kept for history only.
+
 User
  ├── 1:1 UserDetail
  ├── 1:N Flat (owner)

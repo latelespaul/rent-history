@@ -1,3 +1,5 @@
+> **Obsolete.** Superseded by [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (trust-platform redesign). Kept for history only.
+
 # Rentrix — Roadmap
 
 ## v0.1.1 (in progress)

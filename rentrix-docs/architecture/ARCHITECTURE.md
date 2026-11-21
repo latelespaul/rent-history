@@ -1,3 +1,5 @@
+> **Obsolete.** Superseded by [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (trust-platform redesign). Kept for history only.
+
 # Mocks — how to switch from mock to real API
 
 ## Overview
