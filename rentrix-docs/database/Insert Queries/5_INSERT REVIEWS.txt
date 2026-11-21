@@ -1,3 +1,5 @@
+-- OBSOLETE: superseded by ../../architecture/SYSTEM_DESIGN.md (v1 rebuild, 2026-11-21). Do not run.
+
 INSERT INTO reviews
 (id,user_id,flat_id,title,content,rating,status,deleted,created_at,updated_at)
 VALUES

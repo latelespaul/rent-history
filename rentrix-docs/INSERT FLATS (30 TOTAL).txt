@@ -1,3 +1,5 @@
+-- OBSOLETE: superseded by architecture/SYSTEM_DESIGN.md (v1 rebuild, 2026-11-21). Do not run.
+
 INSERT INTO flats
 (id,rent,number_of_rooms,area,floor_number,total_floors,
 furnished,bathrooms,parking,available_from,
