@@ -32,7 +32,7 @@ The base URL is resolved per request, first match wins:
 3. `/api/v1` on the same origin.
 
 The refresh token is an `HttpOnly` cookie, so the web and the API must be same-site
-(e.g. `rentrix.in` and `api.rentrix.in`), and the API's `CORS_ALLOWED_ORIGINS` must list the web origin.
+(production: `doorwayliving.in` and `api.doorwayliving.in`), and the API's `CORS_ALLOWED_ORIGINS` must list the web origin.
 
 ## API client
 
