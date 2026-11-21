@@ -12,7 +12,7 @@ FROM node:22.12.0-alpine AS builder
 
 WORKDIR /build
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 COPY . .
