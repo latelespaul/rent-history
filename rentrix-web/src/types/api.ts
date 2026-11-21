@@ -11,8 +11,25 @@ import type { components } from "./api.gen"
 
 type Schemas = components["schemas"]
 
-/** `GET /cities`: a live city (D-20). Only Bangalore and Pune are live. */
+/** `GET /cities`: an active city (D-20, D-82). The list is data; the web never names a city. */
 export type City = Required<Schemas["CityResponse"]>
+
+/** Real counts for one active city inside `GET /stats` (D-03, D-85; hand-written until B4). */
+export interface CityStats {
+  /** City code, as in `City.code`. */
+  city: string
+  publishedProperties: number
+  confirmedTenancies: number
+  publishedReviews: number
+}
+
+/** `GET /stats`: real counts only, totals plus one row per active city (D-03). */
+export interface Stats {
+  publishedProperties: number
+  confirmedTenancies: number
+  publishedReviews: number
+  cities: CityStats[]
+}
 
 /** One invalid input field inside a Problem Details body (D-60). */
 export interface ProblemFieldError {

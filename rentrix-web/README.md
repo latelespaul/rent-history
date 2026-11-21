@@ -16,7 +16,7 @@ Start the API first: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run` in `ren
 | Script | Does |
 |---|---|
 | `npm run lint` | ESLint |
-| `npm test` | Vitest (`src/**/*.test.ts`) |
+| `npm test` | Vitest (`src/**/*.test.{ts,tsx}`; component tests run in jsdom) |
 | `npm run build` | Type-check and build `dist/` |
 | `npm run gen:api` | Regenerate `src/types/api.gen.ts` from `openapi/openapi.json` |
 | `npm run gen:api:fetch` | Refresh `openapi/openapi.json` from a running dev API, then regenerate (`OPENAPI_URL` overrides the source) |

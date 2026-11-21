@@ -1,48 +1,89 @@
-import { useQuery } from "@tanstack/react-query"
-import { MapPin } from "lucide-react"
-import { cityKeys, fetchCities } from "@/api/cities"
+import { useState, type FormEvent } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { MapPin, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CityCards } from "@/features/city/CityCards"
+import { CityPicker } from "@/features/city/CityPicker"
+import { LaunchCopy } from "@/features/city/LaunchCopy"
 
 /**
- * Placeholder until the new design system (W2) and Home (W4) land. It shows only data from
- * the API (D-03): no stats, testimonials or city counts are written into the page.
+ * Home until W4: the search entry with the city picker, the launch line and one card per
+ * active city. Every city and number comes from the API (D-03, D-85); none is written here.
  */
 export default function HomePage() {
-  const cities = useQuery({
-    queryKey: cityKeys.all,
-    queryFn: ({ signal }) => fetchCities(signal),
-  })
+  const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [locality, setLocality] = useState("")
+  const city = params.get("city")
+
+  function onSearch(event: FormEvent) {
+    event.preventDefault()
+    const next = new URLSearchParams()
+    if (city) next.set("city", city)
+    if (locality.trim()) next.set("locality", locality.trim())
+    navigate({ pathname: "/search", search: next.toString() })
+  }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-6 px-4 py-16">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Rentrix</h1>
-        <p className="text-muted-foreground">
-          Ratings for landlords, tenants and properties, tied to real tenancies. The new app is
-          being built.
-        </p>
-      </div>
+    <main className="mx-auto max-w-6xl space-y-14 px-4 py-16">
+      <section className="space-y-6">
+        <div className="max-w-3xl space-y-3">
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+            Renting, with receipts
+          </p>
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+            Check the landlord, the tenant and the flat before you sign.
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Every rating on Rentrix comes from a tenancy that both sides confirmed.
+          </p>
+        </div>
 
-      <section aria-labelledby="cities-heading" className="space-y-2">
-        <h2 id="cities-heading" className="text-sm font-medium">
-          Live cities
+        <form
+          role="search"
+          onSubmit={onSearch}
+          className="flex max-w-3xl flex-col gap-2 rounded-xl border bg-card p-2 shadow-sm sm:flex-row sm:items-center"
+        >
+          <CityPicker
+            label="City"
+            value={city}
+            onChange={(code) =>
+              setParams(
+                (prev) => {
+                  const next = new URLSearchParams(prev)
+                  next.set("city", code)
+                  return next
+                },
+                { replace: true },
+              )
+            }
+            className="sm:w-72"
+          />
+          <label className="flex min-h-14 flex-1 items-center gap-3 rounded-lg px-3">
+            <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs text-muted-foreground">Locality or building</span>
+              <input
+                value={locality}
+                onChange={(event) => setLocality(event.target.value)}
+                placeholder="Type a locality"
+                className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+            </span>
+          </label>
+          <Button type="submit" size="lg" className="h-12 px-5">
+            <Search aria-hidden />
+            Search
+          </Button>
+        </form>
+        <LaunchCopy className="block text-sm text-muted-foreground" />
+      </section>
+
+      <section aria-labelledby="cities-heading" className="space-y-4">
+        <h2 id="cities-heading" className="text-2xl font-semibold tracking-tight">
+          Pick a city
         </h2>
-        {cities.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {cities.isError && (
-          <p className="text-sm text-destructive">Could not load cities from the API.</p>
-        )}
-        {cities.isSuccess && (
-          <ul className="flex flex-wrap gap-2">
-            {cities.data.map((city) => (
-              <li
-                key={city.code}
-                className="inline-flex items-center gap-1 rounded-md border px-3 py-1 text-sm"
-              >
-                <MapPin className="h-4 w-4" aria-hidden />
-                {city.name}
-              </li>
-            ))}
-          </ul>
-        )}
+        <CityCards />
       </section>
     </main>
   )
