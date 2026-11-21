@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import static com.rentrix.rentrixserver.auth.AuthTestSupport.freshIp;
@@ -31,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /** Google sign-in, refresh rotation, logout, onboarding and the rate limit (§13, PLAN B3). */
@@ -51,6 +54,12 @@ class AuthFlowTest {
 	
 	@Autowired
 	AccessTokenService tokens;
+	
+	@Autowired
+	RefreshTokenRepository refreshTokens;
+	
+	@Autowired
+	TransactionTemplate transactions;
 	
 	private static String sub() {
 		return "sub-" + UUID.randomUUID();
@@ -179,8 +188,12 @@ class AuthFlowTest {
 		assertThat(users.findByGoogleSub(sub).orElseThrow().getEmail()).isNotEqualTo(seed.getEmail());
 	}
 	
+	private MockHttpServletResponse refresh(String token) throws Exception {
+		return mvc.perform(post("/auth/refresh").cookie(refreshCookie(token))).andReturn().getResponse();
+	}
+	
 	@Test
-	void refreshRotatesAndReuseRevokesTheWholeFamily() throws Exception {
+	void refreshRotatesAndReuseOfAnOlderTokenRevokesTheWholeFamily() throws Exception {
 		MockHttpServletResponse signIn = google(FakeGoogleTokenVerifier.token(sub(), email()), freshIp());
 		String first = refreshToken(signIn);
 		
@@ -191,14 +204,54 @@ class AuthFlowTest {
 			.andReturn().getResponse();
 		String second = refreshToken(refreshed);
 		assertThat(second).isNotBlank().isNotEqualTo(first);
+		String third = refreshToken(refresh(second));
+		assertThat(third).isNotBlank().isNotEqualTo(second);
 		
-		// The rotated token is presented again: theft is assumed and the family is revoked.
+		// The first token is two rotations old: theft is assumed and the family is revoked.
 		mvc.perform(post("/auth/refresh").cookie(refreshCookie(first)))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.code").value("refresh_token_invalid"));
-		mvc.perform(post("/auth/refresh").cookie(refreshCookie(second)))
-			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.code").value("refresh_token_invalid"));
+		assertThat(refresh(third).getStatus()).isEqualTo(401);
+	}
+	
+	@Test
+	void reuseOfTheLastRotatedTokenWithinGraceKeepsTheSuccessor() throws Exception {
+		MockHttpServletResponse signIn = google(FakeGoogleTokenVerifier.token(sub(), email()), freshIp());
+		String first = refreshToken(signIn);
+		String second = refreshToken(refresh(first));
+		
+		// A second tab refreshes with the cookie it still has: no logout, no new rotation.
+		MockHttpServletResponse racing = refresh(first);
+		assertThat(racing.getStatus()).isEqualTo(200);
+		assertThat(body(racing).get("accessToken").asString()).isNotBlank();
+		assertThat(body(racing).at("/user/id").asString()).isEqualTo(body(signIn).at("/user/id").asString());
+		assertThat(racing.getHeader(HttpHeaders.SET_COOKIE)).isNull();
+		
+		String third = refreshToken(refresh(second));
+		assertThat(third).isNotBlank().isNotEqualTo(second);
+		assertThat(refresh(third).getStatus()).isEqualTo(200);
+	}
+	
+	@Test
+	void reuseOfTheLastRotatedTokenAfterGraceRevokesTheWholeFamily() throws Exception {
+		String first = refreshToken(google(FakeGoogleTokenVerifier.token(sub(), email()), freshIp()));
+		String second = refreshToken(refresh(first));
+		RefreshToken rotated = refreshTokens.findByTokenHash(RefreshTokenService.hash(first)).orElseThrow();
+		rotated.setRevokedAt(rotated.getRevokedAt().minusSeconds(31));
+		refreshTokens.save(rotated);
+		
+		assertThat(refresh(first).getStatus()).isEqualTo(401);
+		assertThat(refresh(second).getStatus()).isEqualTo(401);
+	}
+	
+	@Test
+	void onlyOneOfTwoRotationsOfTheSameTokenCanRevokeIt() throws Exception {
+		String first = refreshToken(google(FakeGoogleTokenVerifier.token(sub(), email()), freshIp()));
+		Long id = refreshTokens.findByTokenHash(RefreshTokenService.hash(first)).orElseThrow().getId();
+		Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+		
+		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeIfActive(id, now))).isEqualTo(1);
+		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeIfActive(id, now))).isZero();
 	}
 	
 	@Test

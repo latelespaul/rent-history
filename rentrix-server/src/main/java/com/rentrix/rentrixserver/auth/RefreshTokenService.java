@@ -23,8 +23,11 @@ import java.util.UUID;
 
 /**
  * Refresh tokens (D-63): opaque 256-bit random values, stored only as a SHA-256 hash, 30-day lifetime,
- * rotated on every use. Presenting a token that was already rotated or revoked revokes its whole family
- * (theft detection).
+ * rotated on every use. Rotation is a conditional update, so two simultaneous rotations of one token
+ * cannot both succeed. Presenting the family's most recently rotated token again within the reuse grace
+ * window (default 30 s, e.g. two tabs refreshing at once) returns an access token for the current successor
+ * without rotating again. Any other reuse of a rotated or revoked token revokes its whole family (theft
+ * detection).
  */
 @Slf4j
 @Service
@@ -34,11 +37,13 @@ public class RefreshTokenService {
 	
 	private final RefreshTokenRepository tokens;
 	private final Duration ttl;
+	private final Duration reuseGrace;
 	private final Clock clock;
 	
 	public RefreshTokenService(RefreshTokenRepository tokens, AuthProperties properties, Clock clock) {
 		this.tokens = tokens;
 		this.ttl = properties.refreshTokenTtl();
+		this.reuseGrace = properties.refreshReuseGrace();
 		this.clock = clock;
 	}
 	
@@ -61,7 +66,10 @@ public class RefreshTokenService {
 		return raw;
 	}
 	
-	/** A rotated token: the owner and the raw value of its replacement in the same family. */
+	/**
+	 * A rotated token: the owner and the raw value of its replacement in the same family, or {@code null}
+	 * when a grace-window reuse kept the current successor (the caller keeps its cookie).
+	 */
 	public record Rotation(User user, String token) {
 	}
 	
@@ -73,24 +81,26 @@ public class RefreshTokenService {
 	public Rotation rotate(String raw) {
 		RefreshToken token = find(raw);
 		Instant now = now();
-		if (token.getRevokedAt() != null) {
-			log.warn("Refresh token reuse detected; revoking token family {}", token.getFamilyId());
-			revokeFamily(token.getFamilyId(), now);
-			throw invalid();
-		}
-		if (!token.getExpiresAt().isAfter(now)) {
-			throw invalid();
-		}
 		User user = token.getUser();
-		if (user.getStatus() != UserStatus.ACTIVE) {
-			revokeFamily(token.getFamilyId(), now);
-			throw suspended();
+		if (token.getRevokedAt() == null) {
+			if (!token.getExpiresAt().isAfter(now)) {
+				throw invalid();
+			}
+			requireActive(token, user, now);
+			if (tokens.revokeIfActive(token.getId(), now) == 1) {
+				return new Rotation(user, issue(user, token.getFamilyId()));
+			}
 		}
-		token.setRevokedAt(now);
-		return new Rotation(user, issue(user, token.getFamilyId()));
+		if (isLatestRotationWithinGrace(token, now)) {
+			requireActive(token, user, now);
+			return new Rotation(user, null);
+		}
+		log.warn("Refresh token reuse detected; revoking token family {}", token.getFamilyId());
+		revokeFamily(token.getFamilyId(), now);
+		throw invalid();
 	}
 	
-	/** Logout: revokes the token if it is known and still active; unknown values are ignored. */
+		/** Logout: revokes the token if it is known and still active; unknown values are ignored. */
 	@Transactional
 	public void revoke(String raw) {
 		if (!StringUtils.hasText(raw)) {
@@ -106,6 +116,21 @@ public class RefreshTokenService {
 			throw invalid();
 		}
 		return tokens.findByTokenHash(hash(raw)).orElseThrow(RefreshTokenService::invalid);
+	}
+	
+	/** The token was rotated within the grace window, no later rotation followed, and its successor is live. */
+	private boolean isLatestRotationWithinGrace(RefreshToken token, Instant now) {
+		Instant revokedAt = tokens.findRevokedAtById(token.getId());
+		return revokedAt != null && revokedAt.plus(reuseGrace).isAfter(now)
+			&& !tokens.existsByFamilyIdAndRevokedAtAfter(token.getFamilyId(), revokedAt)
+			&& tokens.existsByFamilyIdAndRevokedAtIsNullAndExpiresAtAfter(token.getFamilyId(), now);
+	}
+	
+	private void requireActive(RefreshToken token, User user, Instant now) {
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			revokeFamily(token.getFamilyId(), now);
+			throw suspended();
+		}
 	}
 	
 	private void revokeFamily(UUID familyId, Instant now) {

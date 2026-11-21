@@ -94,6 +94,7 @@ app:
       client-id: ${GOOGLE_CLIENT_ID:}
     admin-emails: ${ADMIN_EMAILS:}        # comma list of verified Google emails (D-19, D-78)
     refresh-token-ttl: 30d                # D-63
+    refresh-reuse-grace: 30s              # D-63: the last rotated token still answers this long (tabs racing)
     rate-limit:                           # POST /auth/google and /auth/dev-login, per client IP (§13)
       requests: 20
       period: 15m

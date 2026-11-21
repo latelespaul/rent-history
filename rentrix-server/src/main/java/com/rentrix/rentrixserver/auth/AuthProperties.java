@@ -12,13 +12,15 @@ import java.util.Locale;
  * committed default (D-74); {@code adminEmails} from {@code ADMIN_EMAILS} (D-78).
  */
 @ConfigurationProperties(prefix = "app.auth")
-public record AuthProperties(Google google, List<String> adminEmails, Duration refreshTokenTtl, RateLimit rateLimit) {
+public record AuthProperties(Google google, List<String> adminEmails, Duration refreshTokenTtl,
+	Duration refreshReuseGrace, RateLimit rateLimit) {
 	
 	public AuthProperties {
 		google = google == null ? new Google(null) : google;
 		adminEmails = adminEmails == null ? List.of() : adminEmails.stream()
 			.map(String::trim).filter(StringUtils::hasText).map(e -> e.toLowerCase(Locale.ROOT)).toList();
 		refreshTokenTtl = refreshTokenTtl == null ? Duration.ofDays(30) : refreshTokenTtl;
+		refreshReuseGrace = refreshReuseGrace == null ? Duration.ofSeconds(30) : refreshReuseGrace;
 		rateLimit = rateLimit == null ? new RateLimit(0, null) : rateLimit;
 	}
 	
