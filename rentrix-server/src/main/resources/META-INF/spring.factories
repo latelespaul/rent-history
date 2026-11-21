@@ -1,0 +1,1 @@
+org.springframework.context.ApplicationListener=com.rentrix.rentrixserver.config.StartupGuard

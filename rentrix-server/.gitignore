@@ -84,3 +84,5 @@ HELP.md
 # --- Test coverage ----------------------------------------------------------
 jacoco.exec
 *.exec
+# --- Local SQLite database and media (dev profile) ---------------------------
+data/

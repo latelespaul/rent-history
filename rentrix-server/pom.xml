@@ -16,14 +16,12 @@
     <version>0.0.1-SNAPSHOT</version>
 
     <name>rentrix-server</name>
-    <description>Rentrix: The story and history of a place before you move in.</description>
+    <description>Rentrix API: two-sided trust platform for renting (tenants, landlords, properties).</description>
 
     <properties>
         <java.version>21</java.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>3.1.1</springdoc.version>
-        <awssdk.version>2.55.1</awssdk.version>
-        <thumbnailator.version>0.4.20</thumbnailator.version>
         <jacoco.version>0.8.15</jacoco.version>
     </properties>
 
@@ -58,17 +56,31 @@
         </dependency>
 
         <!-- ============================================================== -->
-        <!-- Database                                                        -->
+        <!-- Database: SQLite by default, MySQL or PostgreSQL via DB_URL     -->
         <!-- ============================================================== -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+        </dependency>
+        <!-- Hibernate's SQLite dialect lives in the community dialects module. -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-community-dialects</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
-        
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Flyway -->
         <!-- Spring Boot 4 ships Flyway auto-configuration in its own starter;
-             flyway-core alone never runs the migrations. -->
+             flyway-core alone never runs the migrations. SQLite support is in core. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-flyway</artifactId>
@@ -77,6 +89,11 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <!-- ============================================================== -->
         <!-- Authentication / JWT                                            -->
         <!-- ============================================================== -->
@@ -101,7 +118,7 @@
         </dependency>
 
         <!-- ============================================================== -->
-        <!-- OpenAPI / Swagger                                               -->
+        <!-- OpenAPI / Swagger (enabled only in dev and test, D-64)          -->
         <!-- ============================================================== -->
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -110,39 +127,11 @@
         </dependency>
 
         <!-- ============================================================== -->
-        <!-- AWS S3 Storage                                                  -->
-        <!-- ============================================================== -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-            <version>${awssdk.version}</version>
-        </dependency>
-
-        <!-- ============================================================== -->
-        <!-- Image Processing                                                -->
-        <!-- ============================================================== -->
-        <dependency>
-            <groupId>net.coobird</groupId>
-            <artifactId>thumbnailator</artifactId>
-            <version>${thumbnailator.version}</version>
-        </dependency>
-
-        <!-- ============================================================== -->
         <!-- Lombok                                                          -->
         <!-- ============================================================== -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- ============================================================== -->
-        <!-- Development                                                     -->
-        <!-- ============================================================== -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
 
@@ -162,17 +151,35 @@
         </dependency>
 
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
+        <!-- H2 only parses the migrations in MySQL and PostgreSQL mode
+             (MigrationVendorParseTest); the app tests run on SQLite. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Real MySQL / PostgreSQL checks; skipped when Docker is absent. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
@@ -231,7 +238,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>@{surefireArgLine} -Xshare:off -ea</argLine>
+                    <argLine>@{surefireArgLine} -Xshare:off -ea -Xmx512m</argLine>
                 </configuration>
             </plugin>
 
