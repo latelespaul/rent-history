@@ -30,17 +30,17 @@ import java.util.UUID;
  */
 @IntegrationTest
 class ErrorShapeTest {
-	
+
 	@Autowired
 	MockMvc mvc;
-	
+
 	@Autowired
 	AccessTokenService tokens;
-	
+
 	private MockHttpServletRequestBuilder signedIn(MockHttpServletRequestBuilder request) {
 		return request.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.issue(UUID.randomUUID(), Set.of(Role.TENANT)));
 	}
-	
+
 	private ResultActions expectProblem(MockHttpServletRequestBuilder request, int status, String code, String path)
 		throws Exception {
 		return mvc.perform(request.header("X-Request-Id", "shape-test-0001"))
@@ -53,49 +53,49 @@ class ErrorShapeTest {
 			.andExpect(jsonPath("$.instance").value(path))
 			.andExpect(jsonPath("$.traceId").value("shape-test-0001"));
 	}
-	
+
 	@Test
 	void status400Malformed() throws Exception {
 		expectProblem(signedIn(post("/test-only/echo")).contentType(MediaType.APPLICATION_JSON).content("{oops"), 400,
 			"malformed_request", "/test-only/echo");
 		expectProblem(signedIn(get("/test-only/page?page=abc")), 400, "malformed_request", "/test-only/page");
 	}
-	
+
 	@Test
 	void status401WithoutOrWithBadToken() throws Exception {
 		expectProblem(get("/test-only/me"), 401, "unauthenticated", "/test-only/me");
 		expectProblem(get("/test-only/me").header(HttpHeaders.AUTHORIZATION, "Bearer nope"), 401, "token_invalid",
 			"/test-only/me");
 	}
-	
+
 	@Test
 	void status403MissingRole() throws Exception {
 		expectProblem(signedIn(get("/test-only/landlord-only")), 403, "forbidden", "/test-only/landlord-only");
 	}
-	
+
 	@Test
 	void status404UnknownRoute() throws Exception {
 		expectProblem(signedIn(get("/nothing-here")), 404, "not_found", "/nothing-here");
 	}
-	
+
 	@Test
 	void status405WrongMethod() throws Exception {
 		expectProblem(signedIn(delete("/test-only/echo")), 405, "method_not_allowed", "/test-only/echo");
 	}
-	
+
 	@Test
 	void status409Conflict() throws Exception {
 		expectProblem(signedIn(get("/test-only/conflict")), 409, "test_conflict", "/test-only/conflict")
 			.andExpect(jsonPath("$.title").value("Test conflict"))
 			.andExpect(jsonPath("$.detail").value("Already exists."));
 	}
-	
+
 	@Test
 	void status415UnsupportedMediaType() throws Exception {
 		expectProblem(signedIn(post("/test-only/echo")).contentType(MediaType.TEXT_PLAIN).content("hi"), 415,
 			"unsupported_media_type", "/test-only/echo");
 	}
-	
+
 	@Test
 	void status422ValidationHasFieldErrors() throws Exception {
 		expectProblem(signedIn(post("/test-only/echo")).contentType(MediaType.APPLICATION_JSON)
@@ -105,32 +105,32 @@ class ErrorShapeTest {
 			.andExpect(jsonPath("$.errors[?(@.field == 'rating')].code").value("min"))
 			.andExpect(jsonPath("$.errors[0].message").value(not(emptyOrNullString())));
 	}
-	
+
 	@Test
 	void status429HasRetryAfter() throws Exception {
 		expectProblem(signedIn(get("/test-only/rate-limited")), 429, "rate_limited", "/test-only/rate-limited")
 			.andExpect(header().string(HttpHeaders.RETRY_AFTER, "2"));
 	}
-	
+
 	@Test
 	void status500HidesTheCause() throws Exception {
 		expectProblem(signedIn(get("/test-only/boom")), 500, "internal_error", "/test-only/boom")
 			.andExpect(jsonPath("$.detail").value("Something went wrong."))
 			.andExpect(content().string(not(org.hamcrest.Matchers.containsString("internal secret detail"))));
 	}
-	
+
 	@Test
 	void successResponsesAreNotProblems() throws Exception {
 		mvc.perform(signedIn(get("/test-only/me")))
 			.andExpect(status().isOk())
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 	}
-	
+
 	@Test
 	void titleComesFromTheCode() {
 		org.assertj.core.api.Assertions.assertThat(ApiProblem.title("review_window_closed"))
 			.isEqualTo("Review window closed");
 		org.assertj.core.api.Assertions.assertThat(ApiProblem.title("")).isEqualTo("Error");
 	}
-	
+
 }

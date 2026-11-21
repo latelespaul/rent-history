@@ -30,13 +30,13 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 @Component
 public class JobLock {
-	
+
 	private final ScheduledJobLockRepository locks;
 	private final EntityManager entityManager;
 	private final TransactionTemplate tx;
 	private final Clock clock;
 	private final String instance;
-	
+
 	public JobLock(ScheduledJobLockRepository locks, EntityManager entityManager,
 		PlatformTransactionManager transactionManager, Clock clock) {
 		this.locks = locks;
@@ -46,7 +46,7 @@ public class JobLock {
 		this.clock = clock;
 		this.instance = instanceName();
 	}
-	
+
 	/**
 	 * Runs {@code job} if this instance gets the lock named {@code name}.
 	 *
@@ -69,7 +69,7 @@ public class JobLock {
 			tx.executeWithoutResult(status -> locks.release(name, instance, lockedAt, releaseAt));
 		}
 	}
-	
+
 	private boolean acquire(String name, Instant now, Instant until) {
 		Integer taken = tx.execute(status -> locks.takeIfFree(name, now, until, instance));
 		if (taken != null && taken > 0) {
@@ -94,26 +94,26 @@ public class JobLock {
 			return false;
 		}
 	}
-	
+
 	private Instant now() {
 		return clock.instant().truncatedTo(ChronoUnit.MILLIS);
 	}
-	
+
 	private static Instant later(Instant a, Instant b) {
 		return a.isAfter(b) ? a : b;
 	}
-	
+
 	private static String instanceName() {
 		String name = ManagementFactory.getRuntimeMXBean().getName(); // pid@host
 		return name.length() > 255 ? name.substring(0, 255) : name;
 	}
-	
+
 	private static final class LockHeld extends RuntimeException {
-		
+
 		LockHeld() {
 			super(null, null, false, false);
 		}
-		
+
 	}
-	
+
 }

@@ -59,31 +59,31 @@ import java.util.regex.Pattern;
 @Component
 @Order(SecurityFilterProperties.DEFAULT_FILTER_ORDER + 10)
 public class IdempotencyFilter extends OncePerRequestFilter {
-	
+
 	public static final String HEADER = "Idempotency-Key";
 	public static final String REPLAYED_HEADER = "Idempotent-Replayed";
 	/** Responses larger than this are not stored; the key is released instead. */
 	static final int MAX_STORED_BODY_BYTES = 64 * 1024;
-	
+
 	private static final Pattern VALID_KEY = Pattern.compile("[A-Za-z0-9._:-]{1,64}");
 	private static final Set<String> WRITE_METHODS = Set.of("POST", "PUT", "PATCH");
-	
+
 	private final IdempotencyStore store;
 	private final ProblemWriter problems;
 	private final ObjectProvider<RequestMappingHandlerMapping> handlerMapping;
-	
+
 	public IdempotencyFilter(IdempotencyStore store, ProblemWriter problems,
 		@Qualifier("requestMappingHandlerMapping") ObjectProvider<RequestMappingHandlerMapping> handlerMapping) {
 		this.store = store;
 		this.problems = problems;
 		this.handlerMapping = handlerMapping;
 	}
-	
+
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
 		return !WRITE_METHODS.contains(request.getMethod()) || request.getHeader(HEADER) == null;
 	}
-	
+
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 		throws ServletException, IOException {
@@ -100,7 +100,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 		}
 		CachedBodyRequest cached = new CachedBodyRequest(request);
 		String hash = requestHash(cached);
-		
+
 		Optional<IdempotencyRecord> existing = store.findLive(scope.get(), key);
 		if (existing.isPresent()) {
 			answerRepeat(existing.get(), hash, request, response);
@@ -113,7 +113,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			inProgress(request, response);
 			return;
 		}
-		
+
 		ContentCachingResponseWrapper captured = new ContentCachingResponseWrapper(response);
 		boolean keepReservation = false;
 		try {
@@ -147,7 +147,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			}
 		}
 	}
-	
+
 	/** Stores the response, retrying once if the database was locked (SQLite under concurrent writes). */
 	private void complete(IdempotencyRecord record, int status, String contentType, String location, String body) {
 		try {
@@ -157,7 +157,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			store.complete(record.getId(), status, contentType, location, body);
 		}
 	}
-	
+
 	private void answerRepeat(IdempotencyRecord record, String hash, HttpServletRequest request,
 		HttpServletResponse response) throws IOException {
 		if (!record.getRequestHash().equals(hash)) {
@@ -180,12 +180,12 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			inProgress(request, response);
 		}
 	}
-	
+
 	private void inProgress(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		problems.write(request, response, HttpStatus.CONFLICT, "idempotency_request_in_progress",
 			"A request with this Idempotency-Key is still running. Retry later.");
 	}
-	
+
 	private static Optional<String> callerScope() {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		if (auth != null && auth.getPrincipal() instanceof AuthenticatedUser user) {
@@ -193,7 +193,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 		}
 		return Optional.empty();
 	}
-	
+
 	private boolean isIdempotentEndpoint(HttpServletRequest request) {
 		RequestMappingHandlerMapping mapping = handlerMapping.getIfAvailable();
 		if (mapping == null) {
@@ -207,7 +207,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			return false; // no handler, wrong method, ...: let the dispatcher answer as usual
 		}
 	}
-	
+
 	/** SHA-256 over method, path, query and body. */
 	static String requestHash(CachedBodyRequest request) {
 		try {
@@ -226,17 +226,17 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			throw new IllegalStateException("SHA-256 is not available", e);
 		}
 	}
-	
+
 	/** Reads the body once so it can be hashed and still be read by the controller. */
 	static final class CachedBodyRequest extends HttpServletRequestWrapper {
-		
+
 		private final byte[] body;
-		
+
 		CachedBodyRequest(HttpServletRequest request) throws IOException {
 			super(request);
 			this.body = request.getInputStream().readAllBytes();
 		}
-		
+
 		@Override
 		public ServletInputStream getInputStream() {
 			ByteArrayInputStream in = new ByteArrayInputStream(body);
@@ -245,35 +245,35 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 				public int read() {
 					return in.read();
 				}
-				
+
 				@Override
 				public int read(byte[] b, int off, int len) {
 					return in.read(b, off, len);
 				}
-				
+
 				@Override
 				public boolean isFinished() {
 					return in.available() == 0;
 				}
-				
+
 				@Override
 				public boolean isReady() {
 					return true;
 				}
-				
+
 				@Override
 				public void setReadListener(ReadListener listener) {
 					throw new UnsupportedOperationException("Async reads are not supported");
 				}
 			};
 		}
-		
+
 		@Override
 		public BufferedReader getReader() {
 			String encoding = getCharacterEncoding() != null ? getCharacterEncoding() : "UTF-8";
 			return new BufferedReader(new InputStreamReader(getInputStream(), java.nio.charset.Charset.forName(encoding)));
 		}
-		
+
 	}
-	
+
 }

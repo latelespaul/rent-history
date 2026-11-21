@@ -39,30 +39,30 @@ import java.util.UUID;
 /** {@code Idempotency-Key} on {@link Idempotent} endpoints (§12.1), on the real V2 table. */
 @IntegrationTest
 class IdempotencyTest {
-	
+
 	private static final String ENDPOINT = "/test-only/idempotent";
-	
+
 	@Autowired
 	MockMvc mvc;
-	
+
 	@Autowired
 	AccessTokenService tokens;
-	
+
 	@MockitoSpyBean
 	IdempotencyStore store;
-	
+
 	@Autowired
 	IdempotencyCleanupJob cleanupJob;
-	
+
 	@Autowired
 	JdbcTemplate jdbc;
-	
+
 	private final UUID user = UUID.randomUUID();
-	
+
 	private String bearer(UUID who) {
 		return "Bearer " + tokens.issue(who, Set.of(Role.TENANT));
 	}
-	
+
 	private MvcResult send(UUID who, String key, String body) throws Exception {
 		var request = post(ENDPOINT).header(HttpHeaders.AUTHORIZATION, bearer(who))
 			.contentType(MediaType.APPLICATION_JSON).content(body);
@@ -71,22 +71,22 @@ class IdempotencyTest {
 		}
 		return mvc.perform(request).andReturn();
 	}
-	
+
 	private static String key() {
 		return "key-" + UUID.randomUUID();
 	}
-	
+
 	private static String body(String name) {
 		return "{\"name\":\"" + name + "\",\"rating\":4}";
 	}
-	
+
 	@Test
 	void sameKeyAndRequestReplaysTheFirstResponseWithoutWritingAgain() throws Exception {
 		String key = key();
 		MvcResult first = send(user, key, body("a"));
 		assertThat(first.getResponse().getStatus()).isEqualTo(201);
 		assertThat(first.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isNull();
-		
+
 		MvcResult replay = send(user, key, body("a"));
 		assertThat(replay.getResponse().getStatus()).isEqualTo(201);
 		assertThat(replay.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isEqualTo("true");
@@ -95,11 +95,11 @@ class IdempotencyTest {
 		assertThat(first.getResponse().getHeader(HttpHeaders.LOCATION)).startsWith("/test-only/items/");
 		assertThat(replay.getResponse().getHeader(HttpHeaders.LOCATION))
 			.isEqualTo(first.getResponse().getHeader(HttpHeaders.LOCATION));
-		
+
 		MvcResult fresh = send(user, key(), body("a"));
 		assertThat(fresh.getResponse().getContentAsString()).isNotEqualTo(first.getResponse().getContentAsString());
 	}
-	
+
 	@Test
 	void concurrentSameKeyRequestsWriteOnceAndStoreTheResponseForReplay() throws Exception {
 		for (int round = 0; round < 5; round++) {
@@ -128,7 +128,7 @@ class IdempotencyTest {
 				}
 				assertThat(written).hasSize(1); // the write ran once; later arrivals get 409 or a replay
 				assertThat(statuses).allMatch(s -> s == 201 || s == 409);
-				
+
 				assertThat(store.findLive(user.toString(), key).orElseThrow().getState())
 					.isEqualTo(IdempotencyState.COMPLETED);
 				MvcResult retry = send(user, key, body("a"));
@@ -140,7 +140,7 @@ class IdempotencyTest {
 			}
 		}
 	}
-	
+
 	@Test
 	void sameKeyWithADifferentRequestIs422() throws Exception {
 		String key = key();
@@ -152,7 +152,7 @@ class IdempotencyTest {
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 			.andExpect(jsonPath("$.code").value("idempotency_key_reused"));
 	}
-	
+
 	@Test
 	void keysAreScopedPerCaller() throws Exception {
 		String key = key();
@@ -162,7 +162,7 @@ class IdempotencyTest {
 		assertThat(theirs.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isNull();
 		assertThat(theirs.getResponse().getContentAsString()).isNotEqualTo(mine.getResponse().getContentAsString());
 	}
-	
+
 	@Test
 	void failedRequestReleasesTheKey() throws Exception {
 		String key = key();
@@ -170,7 +170,7 @@ class IdempotencyTest {
 		assertThat(store.findLive(user.toString(), key)).isEmpty();
 		assertThat(send(user, key, body("a")).getResponse().getStatus()).isEqualTo(201);
 	}
-	
+
 	@Test
 	void failingToStoreTheResponseStillReturnsItAndKeepsTheKeyReserved() throws Exception {
 		doThrow(new DataAccessResourceFailureException("db down")).when(store)
@@ -182,7 +182,7 @@ class IdempotencyTest {
 		assertThat(first.getResponse().getContentAsString()).contains("\"name\":\"a\"");
 		assertThat(send(user, key, body("a")).getResponse().getStatus()).isEqualTo(409);
 	}
-	
+
 	@Test
 	void failingToReleaseTheKeyStillReturnsTheErrorResponse() throws Exception {
 		doThrow(new DataAccessResourceFailureException("db down")).when(store).release(anyLong());
@@ -190,14 +190,14 @@ class IdempotencyTest {
 		assertThat(failed.getResponse().getStatus()).isEqualTo(422);
 		assertThat(failed.getResponse().getContentAsString()).isNotEmpty();
 	}
-	
+
 	@Test
 	void invalidRequestBodyDoesNotKeepTheKey() throws Exception {
 		String key = key();
 		assertThat(send(user, key, "{\"name\":\"\",\"rating\":4}").getResponse().getStatus()).isEqualTo(422);
 		assertThat(store.findLive(user.toString(), key)).isEmpty();
 	}
-	
+
 	@Test
 	void keyStillInProgressIs409() throws Exception {
 		String key = key();
@@ -211,7 +211,7 @@ class IdempotencyTest {
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("idempotency_request_in_progress"));
 	}
-	
+
 	@Test
 	void abandonedReservationPastItsLeaseIsTakenOver() throws Exception {
 		String key = key();
@@ -225,7 +225,7 @@ class IdempotencyTest {
 		assertThat(retry.getResponse().getContentAsString()).isNotEqualTo(first);
 		assertThat(store.findLive(user.toString(), key).orElseThrow().getState()).isEqualTo(IdempotencyState.COMPLETED);
 	}
-	
+
 	@Test
 	void malformedKeyIs400() throws Exception {
 		mvc.perform(post(ENDPOINT).header(HttpHeaders.AUTHORIZATION, bearer(user))
@@ -234,14 +234,14 @@ class IdempotencyTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("idempotency_key_invalid"));
 	}
-	
+
 	@Test
 	void withoutAKeyEveryRequestWrites() throws Exception {
 		String first = send(user, null, body("a")).getResponse().getContentAsString();
 		String second = send(user, null, body("a")).getResponse().getContentAsString();
 		assertThat(second).isNotEqualTo(first);
 	}
-	
+
 	@Test
 	void endpointsWithoutTheAnnotationIgnoreTheHeader() throws Exception {
 		String key = key();
@@ -252,7 +252,7 @@ class IdempotencyTest {
 			.andExpect(header().doesNotExist(IdempotencyFilter.REPLAYED_HEADER));
 		assertThat(store.findLive(user.toString(), key)).isEmpty();
 	}
-	
+
 	@Test
 	void expiredKeysAreForgottenAndPurged() throws Exception {
 		String key = key();
@@ -261,7 +261,7 @@ class IdempotencyTest {
 		MvcResult again = send(user, key, body("a"));
 		assertThat(again.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isNull();
 		assertThat(again.getResponse().getContentAsString()).isNotEqualTo(first);
-		
+
 		String other = key();
 		send(user, other, body("a"));
 		expire(other);
@@ -269,7 +269,7 @@ class IdempotencyTest {
 		assertThat(count(other)).isZero();
 		assertThat(count(key)).isOne();
 	}
-	
+
 	@Test
 	void storedRowKeepsTheResponseFor24Hours() throws Exception {
 		String key = key();
@@ -281,14 +281,14 @@ class IdempotencyTest {
 		assertThat(record.getExpiresAt()).isBetween(Instant.now().plus(23, ChronoUnit.HOURS),
 			Instant.now().plus(25, ChronoUnit.HOURS));
 	}
-	
+
 	private void expire(String key) {
 		jdbc.update("update idempotency_keys set expires_at = ? where idempotency_key = ?",
 			Timestamp.from(Instant.now().minus(2, ChronoUnit.DAYS)), key); // 2 days: safe for any JVM time zone
 	}
-	
+
 	private int count(String key) {
 		return jdbc.queryForObject("select count(*) from idempotency_keys where idempotency_key = ?", Integer.class, key);
 	}
-	
+
 }

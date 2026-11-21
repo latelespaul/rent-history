@@ -18,14 +18,14 @@ import java.util.Map;
 
 /** D-59: 0-based page, size 1–50 (default 20), sort only from the endpoint allow-list. */
 class PageRequestsTest {
-	
+
 	private static final Map<String, String> SORTS = Map.of("rating", "bayesScore", "rent", "currentRentInr");
 	private static final Sort DEFAULT = Sort.by(Sort.Direction.DESC, "createdAt");
-	
+
 	private static ApiException rejected(Integer page, Integer size, String sort) {
 		return catchThrowableOfType(ApiException.class, () -> PageRequests.of(page, size, sort, SORTS, DEFAULT));
 	}
-	
+
 	@Test
 	void defaultsToFirstPageOf20WithDefaultSort() {
 		Pageable p = PageRequests.of(null, null, null, SORTS, DEFAULT);
@@ -33,14 +33,14 @@ class PageRequestsTest {
 		assertThat(p.getPageSize()).isEqualTo(20);
 		assertThat(p.getSort()).isEqualTo(DEFAULT);
 	}
-	
+
 	@Test
 	void acceptsTheBounds() {
 		assertThat(PageRequests.of(0, 1, null, SORTS, DEFAULT).getPageSize()).isEqualTo(1);
 		assertThat(PageRequests.of(7, 50, null, SORTS, DEFAULT).getPageSize()).isEqualTo(50);
 		assertThat(PageRequests.of(7, 50, null, SORTS, DEFAULT).getPageNumber()).isEqualTo(7);
 	}
-	
+
 	@ParameterizedTest
 	@ValueSource(ints = {0, -1, 51, 1000})
 	void rejectsSizeOutsideOneToFifty(int size) {
@@ -49,13 +49,13 @@ class PageRequestsTest {
 		assertThat(ex.getCode()).isEqualTo("validation_failed");
 		assertThat(ex.getErrors()).singleElement().satisfies(e -> assertThat(e.field()).isEqualTo("size"));
 	}
-	
+
 	@Test
 	void rejectsNegativePage() {
 		assertThat(rejected(-1, 20, null).getErrors()).singleElement()
 			.satisfies(e -> assertThat(e.field()).isEqualTo("page"));
 	}
-	
+
 	@Test
 	void mapsAllowedSortNamesToProperties() {
 		assertThat(PageRequests.of(0, 20, "rating,desc", SORTS, DEFAULT).getSort())
@@ -65,7 +65,7 @@ class PageRequestsTest {
 		assertThat(PageRequests.of(0, 20, "rent,DESC", SORTS, DEFAULT).getSort())
 			.isEqualTo(Sort.by(Sort.Direction.DESC, "currentRentInr"));
 	}
-	
+
 	@ParameterizedTest
 	@ValueSource(strings = {"bayesScore,desc", "password", "rating,sideways", "rating,asc,extra", ",asc"})
 	void rejectsSortsOutsideTheAllowList(String sort) {
@@ -75,13 +75,13 @@ class PageRequestsTest {
 			assertThat(e.code()).isEqualTo("not_allowed");
 		});
 	}
-	
+
 	@Test
 	void reportsEveryBadParameterAtOnce() {
 		assertThat(rejected(-1, 99, "nope").getErrors()).extracting(e -> e.field())
 			.containsExactlyInAnyOrder("page", "size", "sort");
 	}
-	
+
 	@Test
 	void envelopeCarriesItemsAndPageInfo() {
 		Page<Integer> page = new PageImpl<>(List.of(1, 2, 3), PageRequest.of(1, 3), 8);
@@ -89,5 +89,5 @@ class PageRequestsTest {
 		assertThat(response.items()).containsExactly("item-1", "item-2", "item-3");
 		assertThat(response.page()).isEqualTo(new PageResponse.PageInfo(1, 3, 8, 3));
 	}
-	
+
 }

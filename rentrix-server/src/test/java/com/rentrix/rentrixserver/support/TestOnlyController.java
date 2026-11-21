@@ -32,13 +32,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RestController
 @RequestMapping("/test-only")
 class TestOnlyController {
-	
+
 	/** How many times the idempotent write really ran. */
 	static final AtomicInteger WRITES = new AtomicInteger();
-	
+
 	record EchoRequest(@NotBlank @Size(max = 10) String name, @Min(1) @Max(5) int rating) {
 	}
-	
+
 	@PostMapping("/idempotent")
 	@Idempotent
 	ResponseEntity<Map<String, Object>> idempotentWrite(@Valid @RequestBody EchoRequest request) {
@@ -49,49 +49,49 @@ class TestOnlyController {
 		return ResponseEntity.created(URI.create("/test-only/items/" + count))
 			.body(Map.of("write", count, "name", request.name()));
 	}
-	
+
 	@PostMapping("/not-idempotent")
 	Map<String, Object> plainWrite(@RequestBody EchoRequest request) {
 		return Map.of("write", WRITES.incrementAndGet());
 	}
-	
+
 	@GetMapping("/conflict")
 	void conflict() {
 		throw ApiException.conflict("test_conflict", "Already exists.");
 	}
-	
+
 	@GetMapping("/rate-limited")
 	void rateLimited() {
 		throw ApiException.rateLimited(Duration.ofMillis(1500));
 	}
-	
+
 	@GetMapping("/boom")
 	void boom() {
 		throw new IllegalStateException("internal secret detail");
 	}
-	
+
 	@GetMapping("/log")
 	Map<String, String> logSomething() {
 		log.info("structured log probe");
 		return Map.of("ok", "yes");
 	}
-	
+
 	@GetMapping("/me")
 	Map<String, Object> me(@AuthenticationPrincipal AuthenticatedUser user) {
 		return Map.of("publicId", user.publicId().toString(), "roles", user.roles());
 	}
-	
+
 	@GetMapping("/landlord-only")
 	@PreAuthorize("hasRole('LANDLORD')")
 	Map<String, String> landlordOnly() {
 		return Map.of("ok", "yes");
 	}
-	
+
 	@PostMapping("/echo")
 	EchoRequest echo(@Valid @RequestBody EchoRequest request) {
 		return request;
 	}
-	
+
 	@GetMapping("/page")
 	Map<String, Object> page(@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
@@ -99,5 +99,5 @@ class TestOnlyController {
 		return Map.of("page", pageable.getPageNumber(), "size", pageable.getPageSize(),
 			"sort", pageable.getSort().toString());
 	}
-	
+
 }

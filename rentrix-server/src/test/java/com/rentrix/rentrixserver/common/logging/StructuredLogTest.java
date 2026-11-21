@@ -23,23 +23,23 @@ import java.util.UUID;
 @IntegrationTest
 @ExtendWith(OutputCaptureExtension.class)
 class StructuredLogTest {
-	
+
 	@Autowired
 	MockMvc mvc;
-	
+
 	@Autowired
 	AccessTokenService tokens;
-	
+
 	@Autowired
 	ObjectMapper json;
-	
+
 	@Test
 	void logLinesAreJsonWithTheTraceId(CapturedOutput output) throws Exception {
 		mvc.perform(get("/test-only/log")
 				.header("X-Request-Id", "log-trace-4242")
 				.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.issue(UUID.randomUUID(), Set.of(Role.TENANT))))
 			.andExpect(status().isOk());
-		
+
 		String line = output.getOut().lines()
 			.filter(l -> l.contains("structured log probe"))
 			.findFirst()
@@ -49,5 +49,5 @@ class StructuredLogTest {
 		assertThat(node.path("traceId").asString()).isEqualTo("log-trace-4242");
 		assertThat(node.path("log").path("level").asString()).isEqualTo("INFO");
 	}
-	
+
 }

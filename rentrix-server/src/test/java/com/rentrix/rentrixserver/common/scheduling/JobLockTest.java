@@ -16,17 +16,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 /** D-08: a scheduled job runs on one instance at a time, on the real {@code scheduled_job_lock} table. */
 @IntegrationTest
 class JobLockTest {
-	
+
 	@Autowired
 	JobLock jobLock;
-	
+
 	@Autowired
 	ScheduledJobLockRepository locks;
-	
+
 	private static String job() {
 		return "test-" + UUID.randomUUID().toString().substring(0, 8);
 	}
-	
+
 	@Test
 	void runsTheJobAndRecordsTheLock() {
 		String name = job();
@@ -37,7 +37,7 @@ class JobLockTest {
 		assertThat(row.getLockedBy()).isNotBlank();
 		assertThat(row.getLockUntil()).isBeforeOrEqualTo(Instant.now().plusSeconds(1));
 	}
-	
+
 	@Test
 	void skipsWhileAnotherRunHoldsTheLock() {
 		String name = job();
@@ -50,14 +50,14 @@ class JobLockTest {
 		// released: the next tick runs again (the row now exists, so this takes the UPDATE path)
 		assertThat(jobLock.runLocked(name, Duration.ofMinutes(5), Duration.ZERO, () -> { })).isTrue();
 	}
-	
+
 	@Test
 	void lockAtLeastForKeepsTheNextTickOut() {
 		String name = job();
 		assertThat(jobLock.runLocked(name, Duration.ofMinutes(10), Duration.ofMinutes(5), () -> { })).isTrue();
 		assertThat(jobLock.runLocked(name, Duration.ofMinutes(10), Duration.ofMinutes(5), () -> { })).isFalse();
 	}
-	
+
 	@Test
 	void takesOverALockWhoseHolderDied() {
 		String name = job();
@@ -70,7 +70,7 @@ class JobLockTest {
 		assertThat(jobLock.runLocked(name, Duration.ofMinutes(5), Duration.ZERO, () -> { })).isTrue();
 		assertThat(locks.findById(name).orElseThrow().getLockedBy()).isNotEqualTo("dead-instance");
 	}
-	
+
 	@Test
 	void releasesTheLockWhenTheJobThrows() {
 		String name = job();
@@ -79,11 +79,11 @@ class JobLockTest {
 		})).hasMessage("job failed");
 		assertThat(jobLock.runLocked(name, Duration.ofMinutes(5), Duration.ZERO, () -> { })).isTrue();
 	}
-	
+
 	@Test
 	void rejectsLeastLongerThanMost() {
 		assertThatThrownBy(() -> jobLock.runLocked(job(), Duration.ofMinutes(1), Duration.ofMinutes(2), () -> { }))
 			.isInstanceOf(IllegalArgumentException.class);
 	}
-	
+
 }

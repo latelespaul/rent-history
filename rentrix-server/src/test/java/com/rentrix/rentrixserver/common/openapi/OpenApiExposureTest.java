@@ -22,14 +22,14 @@ import java.util.UUID;
 
 /** springdoc serves the OpenAPI contract (D-61) only when dev or test is active (D-64). */
 class OpenApiExposureTest {
-	
+
 	@Nested
 	@IntegrationTest
 	class TestProfile {
-		
+
 		@Autowired
 		MockMvc mvc;
-		
+
 		@Test
 		void apiDocsArePublishedWithoutSignIn() throws Exception {
 			mvc.perform(get("/v3/api-docs"))
@@ -37,9 +37,9 @@ class OpenApiExposureTest {
 				.andExpect(jsonPath("$.openapi").exists())
 				.andExpect(jsonPath("$.paths['/cities']").exists());
 		}
-		
+
 	}
-	
+
 	@Test
 	void prodProfileHidesApiDocsAndSwaggerUi() throws Exception {
 		try (ConfigurableApplicationContext app = new SpringApplicationBuilder(RentrixServerApplication.class)
@@ -59,10 +59,10 @@ class OpenApiExposureTest {
 			assertThat(statusOf(http, port, "/api/v1/swagger-ui/index.html")).isEqualTo(404);
 		}
 	}
-	
+
 	private static int statusOf(HttpClient http, int port, String path) throws Exception {
 		HttpRequest request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path)).GET().build();
 		return http.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
 	}
-	
+
 }

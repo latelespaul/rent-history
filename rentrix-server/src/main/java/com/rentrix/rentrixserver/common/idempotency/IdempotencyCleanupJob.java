@@ -13,12 +13,12 @@ import java.time.Duration;
 @Component
 @RequiredArgsConstructor
 public class IdempotencyCleanupJob {
-	
+
 	static final String JOB_NAME = "idempotency-cleanup";
-	
+
 	private final JobLock jobLock;
 	private final IdempotencyStore store;
-	
+
 	@Scheduled(cron = "0 17 * * * *", zone = "UTC")
 	public void run() {
 		jobLock.runLocked(JOB_NAME, Duration.ofMinutes(10), Duration.ofMinutes(1), () -> {
@@ -28,5 +28,5 @@ public class IdempotencyCleanupJob {
 			}
 		});
 	}
-	
+
 }
