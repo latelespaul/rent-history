@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Landlord dashboard</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .task { display: flex; gap: 14px; align-items: center; padding: 14px 0; border-bottom: var(--rx-border); flex-wrap: wrap; }
+  .task:last-child { border-bottom: 0; }
+  .task .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .task .grow { flex: 1; min-width: 220px; }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Landlord dashboard</b> · signed in as landlord · <code>GET /me/properties</code>, <code>/me/tenancies?role=LANDLORD</code>, <code>/me/enquiries?as=LANDLORD</code>, <code>/me/review-tasks</code></div>
+<header data-topbar data-as="landlord" data-active="dashboard"></header>
+
+<main class="container section">
+  <div class="row between">
+    <div><h1 class="h1">Good evening, Demo L.</h1><p class="muted">Your properties, tenants and reputation as a landlord.</p></div>
+    <div class="row"><button class="btn btn-secondary"><i data-icon="tenancy" data-size="18"></i>Invite a tenant</button><button class="btn btn-primary"><i data-icon="plus" data-size="18"></i>Add property</button></div>
+  </div>
+
+  <div class="grid-4" style="margin-top:20px">
+    <div class="stat"><div class="k">Published properties</div><div class="v">2</div></div>
+    <div class="stat"><div class="k">Active tenancies</div><div class="v">1</div></div>
+    <div class="stat"><div class="k">Open enquiries</div><div class="v">1</div></div>
+    <div class="stat"><div class="k">Rating as landlord</div><div class="v row" style="gap:8px">4.3 <span class="stars sm" data-stars="4"></span></div><div class="xs muted">3 reviews</div></div>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="stack">
+      <div class="card">
+        <h2 class="h3">Needs your action <span class="badge badge-warn">3</span></h2>
+        <div class="task">
+          <span class="ic" style="background:var(--rx-teal-50);color:var(--rx-teal-700)"><i data-icon="tenancy"></i></span>
+          <div class="grow"><b>Confirm tenancy request · Demo Heights B</b><div class="small muted">Demo T. says they rent from 1 Nov 2026 at ₹24,000 / month, deposit ₹60,000. Expires in 12 days. <span class="badge">illustrative</span> <span class="spec">D-34</span></div></div>
+          <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm">Decline</button><button class="btn btn-primary btn-sm">Review and confirm</button></div>
+        </div>
+        <div class="task">
+          <span class="ic" style="background:var(--rx-tenant-100);color:var(--rx-tenant-600)"><i data-icon="message"></i></span>
+          <div class="grow"><b>Enquiry · Demo Heights B</b><div class="small muted row" style="gap:6px">from Demo T. · tenant rating <span class="rating-new"><span class="pill">New</span>1 review</span> · email shared</div></div>
+          <a class="btn btn-secondary btn-sm" href="tenant-profile.html">View tenant profile</a>
+        </div>
+        <div class="task">
+          <span class="ic" style="background:var(--rx-marigold-100);color:var(--rx-marigold-600)"><i data-icon="star"></i></span>
+          <div class="grow"><b>Review your tenant · Demo Residency A</b><div class="small muted">Tenancy since May 2024. Your review stays hidden until reveal. <span class="spec">D-46</span></div></div>
+          <a class="btn btn-primary btn-sm" href="write-review.html">Write review</a>
+        </div>
+      </div>
+
+      <div class="card card-flush">
+        <div class="row between" style="padding:16px 20px 4px"><h2 class="h3" style="margin:0">My properties</h2><span class="small muted">All statuses</span></div>
+        <table class="table">
+          <thead><tr><th>Property</th><th class="hide-sm">Status</th><th>Tenancy</th><th class="r">Rent</th><th class="r hide-sm">Rating</th></tr></thead>
+          <tbody>
+            <tr><td><a href="property.html"><b>Demo Residency A</b></a><div class="xs muted">Koramangala · 2 BHK</div></td><td class="hide-sm"><span class="badge badge-success">Published</span></td><td><span class="badge badge-tenant">Occupied</span><div class="xs muted">since May 2024</div></td><td class="r num">₹36,500</td><td class="r hide-sm"><span class="rating-new"><span class="pill">New</span>2</span></td></tr>
+            <tr><td><a href="property.html"><b>Demo Heights B</b></a><div class="xs muted">HSR Layout · 1 BHK</div></td><td class="hide-sm"><span class="badge badge-success">Published</span></td><td><span class="badge">Vacant</span><div class="xs muted">since Jun 2025</div></td><td class="r num">₹23,500<div class="xs muted">last</div></td><td class="r hide-sm"><span class="rating-new"><span class="pill">New</span>1</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0">Latest reviews about you</h2><a class="small" href="landlord-profile.html">See public profile</a></div>
+        <div class="review">
+          <div class="meta"><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Jan 2023 – Jun 2025</span><span>Demo Heights B</span></div>
+          <div class="row" style="margin-top:6px;gap:8px"><span class="stars sm" data-stars="4"></span></div>
+          <p class="text small">Polite and easy to reach. The rent increase at renewal was explained in advance…</p>
+          <div class="actions"><span><i data-icon="reply" data-size="14"></i>Responded Jul 2025</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="meta"><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>since May 2024</span><span>Demo Residency A</span></div>
+          <div class="row" style="margin-top:6px;gap:8px"><span class="stars sm" data-stars="4"></span></div>
+          <p class="text small">Repairs are handled, though sometimes only after a reminder…</p>
+          <div class="actions"><button class="btn btn-secondary btn-sm"><i data-icon="reply" data-size="14"></i>Respond publicly</button><span>You cannot edit or hide reviews about you. <span class="spec">D-42</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <p class="eyebrow">Reputation as landlord</p>
+        <div class="row" style="margin-top:6px;gap:12px"><span class="score">4.3</span><div><span class="stars" data-stars="4"></span><div class="small muted">3 reviews</div></div></div>
+        <div class="dist" style="margin-top:14px">
+          <span>5</span><span class="bar"><i style="width:33%"></i></span><span>1</span>
+          <span>4</span><span class="bar"><i style="width:67%"></i></span><span>2</span>
+          <span>3</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>2</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>1</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+        </div>
+      </div>
+      <div class="card card-tight">
+        <b class="small">Invite a tenant</b>
+        <p class="xs muted" style="margin-top:4px">Pick your property, enter the tenant's email, dates and rent. They sign in with Google from the email and confirm. <span class="spec">D-34</span></p>
+        <div class="field" style="margin-top:10px"><span class="label xs">Tenant email</span><input class="input" placeholder="name@example.com"></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px">Continue</button>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

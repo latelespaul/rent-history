@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Write a review</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .subrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-bottom: var(--rx-border); }
+  .subrow:last-child { border-bottom: 0; }
+  .dir { display: flex; gap: 12px; align-items: center; padding: 14px; border: 1px solid var(--rx-line-strong); border-radius: var(--rx-radius-md); background: var(--rx-surface); }
+  .dir.on { border: 2px solid var(--rx-teal-600); background: var(--rx-teal-50); }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Write a review</b> · signed in as tenant · <code>POST /tenancies/{id}/reviews</code> · D-29 D-37–D-43 D-46 D-47</div>
+<header data-topbar data-as="tenant" data-active="reviews"></header>
+
+<main class="container section" style="max-width:860px">
+  <a class="small" href="my-tenancies.html"><i data-icon="chevron-right" data-size="14" style="transform:rotate(180deg)"></i> My tenancies</a>
+  <h1 class="h1" style="margin-top:8px">Review your tenancy</h1>
+
+  <div class="card card-tight" style="margin-top:16px">
+    <div class="row" style="gap:14px">
+      <span class="ph" style="width:72px;aspect-ratio:1;border-radius:10px"><i data-icon="building" data-size="24"></i></span>
+      <div style="flex:1">
+        <div style="font-weight:600">Demo Towers E <span class="badge badge-demo">Demo data</span></div>
+        <div class="small muted">Baner, Pune · landlord Demo L. · since Oct 2024 · ₹27,000 / month</div>
+      </div>
+      <span class="badge badge-verified"><i data-icon="shield-check"></i>Confirmed by both</span>
+    </div>
+  </div>
+
+  <h2 class="h3" style="margin-top:24px">What are you reviewing?</h2>
+  <div class="grid-2">
+    <div class="dir"><i data-icon="landlord" data-size="24"></i><div style="flex:1"><b>The landlord</b><div class="xs muted">Submitted 15 Nov 2026</div></div><span class="badge badge-warn"><i data-icon="clock"></i>Awaiting reveal</span></div>
+    <div class="dir on"><i data-icon="building" data-size="24"></i><div style="flex:1"><b>The home</b><div class="xs muted">Not written yet</div></div><span class="badge badge-info">Writing</span></div>
+  </div>
+  <p class="xs muted" style="margin-top:8px">Your landlord review stays hidden until Demo L. reviews you, or until 29 Nov 2026, so neither side can retaliate. <span class="spec">D-46</span></p>
+
+  <div class="card" style="margin-top:20px">
+    <div class="field"><span class="label">Overall, how was living here?</span>
+      <div class="row" style="gap:12px"><span class="stars lg" data-stars="4"></span><span class="small muted">4 · Good</span></div></div>
+    <hr class="divider">
+    <span class="label">Details <span class="hint" style="font-weight:400">(optional)</span></span>
+    <div class="subrow"><span class="small">Condition and maintenance</span><span class="stars" data-stars="4"></span></div>
+    <div class="subrow"><span class="small">Utilities (water, power)</span><span class="stars" data-stars="3"></span></div>
+    <div class="subrow"><span class="small">Neighbourhood</span><span class="stars" data-stars="5"></span></div>
+    <hr class="divider">
+    <div class="field"><span class="label">Your review</span>
+      <textarea class="textarea">Bright flat with good ventilation and a quiet side of the building. Water comes from the tanker twice a week in summer, so storage matters. Lift and gate security are reliable. Call me on 98xxxxxxx for details.</textarea>
+      <div class="row between"><span class="hint">30–2000 characters. About the home, not people.</span><span class="hint num">212 / 2000</span></div>
+    </div>
+    <div class="notice notice-warn" style="margin-top:10px"><i data-icon="alert"></i><span><b>Remove the phone number.</b> Reviews cannot contain phone numbers, emails, links or flat numbers, so personal data stays out of public text. <span class="spec">D-43</span></span></div>
+    <hr class="divider">
+    <ul class="small muted stack-sm" style="padding-left:18px;margin:0">
+      <li>Home reviews publish straight away; there is no counter-review. <span class="spec">D-47</span></li>
+      <li>You can edit for 7 days after publishing. Because the tenancy is still running, you can update it once more after it ends. <span class="spec">D-40 · D-41</span></li>
+      <li>You can withdraw it at any time; you cannot write a new one for this tenancy afterwards.</li>
+    </ul>
+    <div class="row between" style="margin-top:18px"><a class="btn btn-ghost" href="my-tenancies.html">Cancel</a><button class="btn btn-primary btn-lg">Publish review</button></div>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

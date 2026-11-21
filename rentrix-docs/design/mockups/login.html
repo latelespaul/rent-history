@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Sign in</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .auth { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rx-space-8); align-items: start; }
+  @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } }
+  .devlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .devuser { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--rx-line); border-radius: var(--rx-radius-md); background: var(--rx-surface); font-size: var(--rx-text-sm); }
+  .devuser .avatar { width: 30px; height: 30px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Sign in / sign up</b> · anonymous · <code>GET /auth/config</code> → <code>POST /auth/google</code> · dev: <code>GET /auth/dev-users</code>, <code>POST /auth/dev-login</code> · D-70–D-77</div>
+<header data-topbar data-as="anon"></header>
+
+<main class="container section">
+  <div class="auth">
+    <div class="card" style="padding:32px">
+      <span class="brand-mark" style="width:44px;height:44px;border-radius:12px"><i data-icon="tenancy" data-size="26"></i></span>
+      <h1 class="h1" style="margin-top:16px">Sign in to Rentrix</h1>
+      <p class="muted" style="margin-top:6px">Tenants and landlords use the same button. New here? It creates your account.</p>
+      <button class="btn btn-google btn-lg btn-block" style="margin-top:24px"><span class="g-mark">G</span>Sign in with Google</button>
+      <p class="xs muted" style="margin-top:8px">Mockup placeholder. The real button is rendered by Google Identity Services. <span class="spec">D-76</span></p>
+      <ul class="small muted stack-sm" style="padding-left:0;list-style:none;margin-top:20px">
+        <li class="row" style="gap:8px;flex-wrap:nowrap"><i data-icon="lock" data-size="18"></i>No Rentrix password. Google confirms your email.</li>
+        <li class="row" style="gap:8px;flex-wrap:nowrap"><i data-icon="eye-off" data-size="18"></i>Your email and phone are never shown publicly.</li>
+        <li class="row" style="gap:8px;flex-wrap:nowrap"><i data-icon="users" data-size="18"></i>One Google account = one Rentrix account. Be a tenant, a landlord, or both.</li>
+      </ul>
+      <p class="xs muted" style="margin-top:20px">By continuing you accept the Terms and Privacy notice.</p>
+    </div>
+
+    <div class="card notice-dev" style="padding:24px">
+      <div class="row between"><span class="badge badge-dev"><i data-icon="code"></i>DEV ONLY</span><span class="xs" style="font-family:var(--rx-font-mono)">devLogin: true</span></div>
+      <h2 class="h3" style="margin-top:12px">Dev login · seed users</h2>
+      <p class="small">Shown only when the API runs with the <code>dev</code> or <code>test</code> profile and <code>DEV_LOGIN_ENABLED=true</code>. Works only for demo users. In <code>prod</code> the endpoints do not exist and the app refuses to start with it on. <span class="spec">D-77</span></p>
+      <div class="segmented" style="margin-top:14px"><span class="on">All</span><span>Bangalore</span><span>Pune</span></div>
+      <p class="label" style="margin-top:14px">Landlords</p>
+      <div class="devlist" style="margin-top:6px">
+        <div class="devuser"><span class="avatar avatar-landlord">DL</span>Demo Landlord BLR-1</div>
+        <div class="devuser"><span class="avatar avatar-landlord">DL</span>Demo Landlord BLR-2</div>
+        <div class="devuser"><span class="avatar avatar-landlord">DL</span>Demo Landlord PNQ-1</div>
+        <div class="devuser"><span class="avatar avatar-landlord">DL</span>Demo Landlord PNQ-2</div>
+      </div>
+      <p class="label" style="margin-top:14px">Tenants <span class="hint" style="font-weight:400">(12)</span></p>
+      <div class="devlist" style="margin-top:6px">
+        <div class="devuser"><span class="avatar avatar-tenant">DT</span>Demo Tenant BLR-1</div>
+        <div class="devuser"><span class="avatar avatar-tenant">DT</span>Demo Tenant BLR-2</div>
+        <div class="devuser"><span class="avatar avatar-tenant">DT</span>Demo Tenant PNQ-1</div>
+        <div class="devuser"><span class="avatar avatar-tenant">DT</span>Demo Tenant PNQ-2</div>
+      </div>
+      <p class="xs" style="margin-top:6px">+ 8 more · scroll</p>
+      <p class="label" style="margin-top:14px">Staff</p>
+      <div class="devlist" style="margin-top:6px"><div class="devuser"><span class="avatar" style="background:var(--rx-ink-900);color:#fff">AD</span>demo-admin@example.test</div></div>
+      <button class="btn btn-dev btn-block" style="margin-top:16px"><i data-icon="login" data-size="18"></i>Sign in as selected seed user</button>
+    </div>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

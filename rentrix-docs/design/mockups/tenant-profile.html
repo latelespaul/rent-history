@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Tenant profile</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Tenant profile</b> · signed in as landlord, access through an open enquiry · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=TENANT</code> · D-31 D-54</div>
+<header data-topbar data-as="landlord" data-active="dashboard"></header>
+
+<main class="container section">
+  <div class="notice" style="margin-bottom:16px"><i data-icon="eye"></i><span>You can see this profile because <b>Demo T.</b> enquired about <b>Demo Heights B</b> on 12 Nov 2026. Access ends 10 Feb 2027 or when the enquiry closes. Tenants are not searchable. <span class="spec">D-54</span></span></div>
+
+  <div class="card">
+    <div class="row" style="gap:20px;align-items:flex-start">
+      <span class="avatar avatar-lg avatar-tenant">DT</span>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:8px"><h1 class="h1">Demo T.</h1><span class="badge badge-tenant"><i data-icon="tenant"></i>Tenant</span><span class="badge badge-demo">Demo data</span></div>
+        <p class="muted" style="margin-top:4px">On Rentrix since Jun 2021 · 1 confirmed tenancy · home city Bangalore</p>
+        <div class="sunk" style="margin-top:12px">
+          <div class="row" style="gap:8px"><i data-icon="mail" data-size="18"></i><span class="small">demo-tenant-blr5@example.test</span><span class="badge badge-success">shared with you</span></div>
+          <p class="xs muted" style="margin-top:4px">Contact appears only because the tenant ticked "share my contact" on the enquiry. <span class="spec">D-31</span></p>
+        </div>
+      </div>
+      <button class="btn btn-ghost"><i data-icon="flag" data-size="18"></i>Report</button>
+    </div>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="stack">
+      <div class="card">
+        <h2 class="h3"><i data-icon="message"></i> Enquiry</h2>
+        <p class="text muted">Looking for a 1 BHK near HSR from January for a 2-year stay. Working nearby, no pets, non-smoker. Happy to share my previous landlord's review.</p>
+        <div class="row" style="margin-top:12px"><span class="badge badge-info">Open</span><span class="small muted">about Demo Heights B · sent 12 Nov 2026</span></div>
+        <div class="row" style="margin-top:14px"><a class="btn btn-primary" href="landlord-dashboard.html"><i data-icon="tenancy" data-size="18"></i>Invite to a tenancy</a><button class="btn btn-secondary">Close enquiry</button></div>
+        <p class="xs muted" style="margin-top:8px">Reply by email; Rentrix has no chat in v1.</p>
+      </div>
+      <div class="card">
+        <h2 class="h3">Reviews from landlords</h2>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="who">Demo L.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · Jul 2021 – Jun 2023</span><span>Whitefield, Bangalore</span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="4"></span><span class="xs muted">Pays on time 5 · Care of property 4 · Communication 4</span></div>
+          <p class="text">Rent always arrived by the fifth. The garden was looked after. Gave a full two months' notice before leaving and handed over in good condition.</p>
+          <div class="actions"><span>Published Jul 2023</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="stack">
+      <div class="card">
+        <p class="eyebrow">Rating as tenant</p>
+        <div class="row" style="margin-top:8px"><span class="rating-new" style="font-size:var(--rx-text-lg)"><span class="pill" style="font-size:var(--rx-text-sm)">New</span>1 review</span></div>
+        <p class="small muted" style="margin-top:6px">No average until 3 reviews. Read the review instead. <span class="spec">D-52</span></p>
+        <hr class="divider">
+        <div class="subratings"><span>Pays on time</span><b class="num">5</b><span>Care of property</span><b class="num">4</b><span>Communication</span><b class="num">4</b></div>
+      </div>
+      <div class="card card-tight">
+        <p class="small"><i data-icon="lock" data-size="16"></i> <b>Not shown to you:</b> phone (not shared), exact tenancy dates, addresses, deposits, reviews this tenant wrote. <span class="spec">D-57</span></p>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

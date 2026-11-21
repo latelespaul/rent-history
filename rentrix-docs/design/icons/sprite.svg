@@ -1,0 +1,250 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="rx-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5 2.5 20h19z"/>
+    <path d="M12 10v4.5"/>
+    <path d="M12 17.5v.01"/>
+  </symbol>
+  <symbol id="rx-area" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 9V4h5"/>
+    <path d="M20 9V4h-5"/>
+    <path d="M4 15v5h5"/>
+    <path d="M20 15v5h-5"/>
+  </symbol>
+  <symbol id="rx-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14"/>
+    <path d="m13 6 6 6-6 6"/>
+  </symbol>
+  <symbol id="rx-bath" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12h18v2a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5z"/>
+    <path d="M6 12V5.5A2.5 2.5 0 0 1 10.5 4"/>
+    <path d="m7 19-1 2"/>
+    <path d="m17 19 1 2"/>
+  </symbol>
+  <symbol id="rx-bed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 19V6"/>
+    <path d="M3 15h18"/>
+    <path d="M21 19v-6a3 3 0 0 0-3-3h-7v5"/>
+    <path d="M7 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+  </symbol>
+  <symbol id="rx-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 21h20"/>
+    <path d="M4 21V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v16"/>
+    <path d="M16 9h3a1 1 0 0 1 1 1v11"/>
+    <path d="M8 8h4"/>
+    <path d="M8 12h4"/>
+    <path d="M8 16h4"/>
+  </symbol>
+  <symbol id="rx-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+    <path d="M3 10h18"/>
+    <path d="M8 3v4"/>
+    <path d="M16 3v4"/>
+  </symbol>
+  <symbol id="rx-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 17v-5l2.2-5.2A1.5 1.5 0 0 1 7.6 6h8.8a1.5 1.5 0 0 1 1.4.8L20 12v5"/>
+    <path d="M3 17h18"/>
+    <path d="M4 12h16"/>
+    <path d="M6 17v2"/>
+    <path d="M18 17v2"/>
+    <path d="M7 14.5h1.5"/>
+    <path d="M15.5 14.5H17"/>
+  </symbol>
+  <symbol id="rx-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 18v-6"/>
+    <path d="M12 18V6"/>
+    <path d="M18 18v-9"/>
+    <path d="M3 21h18"/>
+  </symbol>
+  <symbol id="rx-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4.5 12.5 5 5 10-11"/>
+  </symbol>
+  <symbol id="rx-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m6 9 6 6 6-6"/>
+  </symbol>
+  <symbol id="rx-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m9 6 6 6-6 6"/>
+  </symbol>
+  <symbol id="rx-city" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 21h18"/>
+    <path d="M5 21V8l6-3v16"/>
+    <path d="M11 21V10h8v11"/>
+    <path d="M7.5 10h1"/>
+    <path d="M7.5 13.5h1"/>
+    <path d="M7.5 17h1"/>
+    <path d="M14 13.5h2"/>
+    <path d="M14 17h2"/>
+  </symbol>
+  <symbol id="rx-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/>
+    <path d="M12 7v5l3 2"/>
+  </symbol>
+  <symbol id="rx-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m8 7-5 5 5 5"/>
+    <path d="m16 7 5 5-5 5"/>
+    <path d="m14 4-4 16"/>
+  </symbol>
+  <symbol id="rx-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+    <path d="M14 3v5h5"/>
+    <path d="M9 13h6"/>
+    <path d="M9 17h3"/>
+  </symbol>
+  <symbol id="rx-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/>
+    <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+  </symbol>
+  <symbol id="rx-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 3l18 18"/>
+    <path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1"/>
+    <path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/>
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+  </symbol>
+  <symbol id="rx-filter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.5 5h17l-6.5 8v6l-4-2v-4z"/>
+  </symbol>
+  <symbol id="rx-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 21V4"/>
+    <path d="M5 4h11l-2 4 2 4H5"/>
+  </symbol>
+  <symbol id="rx-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 10.5 12 3l9 7.5"/>
+    <path d="M5 9v11h14V9"/>
+    <path d="M10 20v-6h4v6"/>
+  </symbol>
+  <symbol id="rx-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/>
+    <path d="M12 11v5"/>
+    <path d="M12 7.5v.01"/>
+  </symbol>
+  <symbol id="rx-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+    <path d="M10.8 12.2 20 3"/>
+    <path d="m17 6 2.5 2.5"/>
+    <path d="m14.5 8.5 2 2"/>
+  </symbol>
+  <symbol id="rx-landlord" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 11 12 4l9 7"/>
+    <path d="M12 10.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+    <path d="M7.5 21a4.5 4.5 0 0 1 9 0"/>
+  </symbol>
+  <symbol id="rx-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/>
+    <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>
+  </symbol>
+  <symbol id="rx-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"/>
+    <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+  </symbol>
+  <symbol id="rx-login" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/>
+    <path d="m10 17 5-5-5-5"/>
+    <path d="M15 12H4"/>
+  </symbol>
+  <symbol id="rx-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/>
+    <path d="m15 17 5-5-5-5"/>
+    <path d="M20 12H9"/>
+  </symbol>
+  <symbol id="rx-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+    <path d="m3 7 9 6 9-6"/>
+  </symbol>
+  <symbol id="rx-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/>
+    <path d="M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+  </symbol>
+  <symbol id="rx-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 7h16"/>
+    <path d="M4 12h16"/>
+    <path d="M4 17h16"/>
+  </symbol>
+  <symbol id="rx-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/>
+  </symbol>
+  <symbol id="rx-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/>
+    <path d="m13.5 6.5 4 4"/>
+  </symbol>
+  <symbol id="rx-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 5v14"/>
+    <path d="M5 12h14"/>
+  </symbol>
+  <symbol id="rx-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m10 8-6 5 6 5"/>
+    <path d="M4 13h10a6 6 0 0 1 6 6"/>
+  </symbol>
+  <symbol id="rx-rupee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7 4h10"/>
+    <path d="M7 8.5h10"/>
+    <path d="M7 4h3.5a4.5 4.5 0 0 1 0 9H7l7.5 7.5"/>
+  </symbol>
+  <symbol id="rx-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"/>
+    <path d="m16.2 16.2 4.3 4.3"/>
+  </symbol>
+  <symbol id="rx-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/>
+    <path d="m8.5 12 2.5 2.5 4.5-5"/>
+  </symbol>
+  <symbol id="rx-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 6h9"/>
+    <path d="M17 6h3"/>
+    <path d="M4 12h3"/>
+    <path d="M11 12h9"/>
+    <path d="M4 18h11"/>
+    <path d="M19 18h1"/>
+    <path d="M15 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+    <path d="M9 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+    <path d="M17 16a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+  </symbol>
+  <symbol id="rx-sofa" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/>
+    <path d="M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>
+    <path d="M6 18v2"/>
+    <path d="M18 18v2"/>
+  </symbol>
+  <symbol id="rx-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>
+  </symbol>
+  <symbol id="rx-tenancy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 11 12 4l9 7"/>
+    <path d="M5 9.5V20h14V9.5"/>
+    <path d="m9 14.5 2 2 4-4"/>
+  </symbol>
+  <symbol id="rx-tenant" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17"/>
+    <path d="M3 21h18"/>
+    <path d="M12 6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+    <path d="M8.5 18a3.5 3.5 0 0 1 7 0"/>
+  </symbol>
+  <symbol id="rx-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 7h16"/>
+    <path d="M9 7V4h6v3"/>
+    <path d="M6 7l1 13h10l1-13"/>
+    <path d="M10 11v5"/>
+    <path d="M14 11v5"/>
+  </symbol>
+  <symbol id="rx-trend-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m3 17 6-6 4 4 8-8"/>
+    <path d="M15 7h6v6"/>
+  </symbol>
+  <symbol id="rx-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 16V4"/>
+    <path d="m7 9 5-5 5 5"/>
+    <path d="M4 20h16"/>
+  </symbol>
+  <symbol id="rx-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+    <path d="M4 21a8 8 0 0 1 16 0"/>
+  </symbol>
+  <symbol id="rx-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/>
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0"/>
+    <path d="M16 4.5a3.5 3.5 0 0 1 0 7"/>
+    <path d="M18 14a6.5 6.5 0 0 1 3.5 6"/>
+  </symbol>
+  <symbol id="rx-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 6l12 12"/>
+    <path d="M18 6 6 18"/>
+  </symbol>
+</svg>

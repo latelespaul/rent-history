@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix icon set</title>
+<link rel="stylesheet" href="mockups/mock.css">
+<style>
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--rx-space-3); }
+  .cell { background: var(--rx-surface); border: var(--rx-border); border-radius: var(--rx-radius-md); padding: var(--rx-space-4) var(--rx-space-2); text-align: center; }
+  .cell .big { color: var(--rx-ink-900); }
+  .cell .sizes { display: flex; gap: 10px; justify-content: center; align-items: end; margin-top: 10px; color: var(--rx-teal-600); }
+  .cell code { display: block; margin-top: 8px; font-size: var(--rx-text-xs); color: var(--rx-ink-500); }
+  .rules li { margin: 4px 0; }
+  .grid-demo { display: inline-block; background-image: linear-gradient(var(--rx-line) 1px, transparent 1px), linear-gradient(90deg, var(--rx-line) 1px, transparent 1px); background-size: 8px 8px; border: var(--rx-border); }
+</style>
+</head>
+<body>
+<main class="container section">
+  <p class="eyebrow">Rentrix design · v1</p>
+  <h1 class="display">Icon set</h1>
+  <p class="muted">Original set drawn for Rentrix. Source: <code>icons/icons.js</code> · files: <code>icons/&lt;name&gt;.svg</code> · sprite: <code>icons/sprite.svg</code>.</p>
+  <div class="card" style="margin: var(--rx-space-6) 0">
+    <h2 class="h3">Rules</h2>
+    <ul class="rules">
+      <li>24 × 24 grid, 2 px safe padding, artwork inside 20 × 20.</li>
+      <li>One stroke: 1.75 px, round caps, round joins. No fills (the star is filled by CSS only for its "on" state).</li>
+      <li>Colour is always <code>currentColor</code>; the icon takes the text colour of its parent.</li>
+      <li>Sizes: 16 (inline with small text), 20 (default, buttons and lists), 24 (headers, empty states). Never scale strokes.</li>
+      <li>An icon next to a text label is decorative (<code>aria-hidden</code>). An icon-only button needs an <code>aria-label</code>.</li>
+      <li>Role icons: <b>landlord</b> = person under a roof, <b>tenant</b> = person in a doorway, <b>tenancy</b> = house with a check (a confirmed tenancy).</li>
+    </ul>
+    <div style="display:flex;gap:16px;align-items:center;margin-top:12px">
+      <span class="grid-demo" style="color:var(--rx-ink-900)"><i data-icon="tenancy" data-size="96"></i></span>
+      <span class="muted">"tenancy" at 4× on the 24 px grid</span>
+    </div>
+  </div>
+  <div class="sheet" id="sheet"></div>
+</main>
+<script src="icons/icons.js"></script>
+<script>
+  (function () {
+    var names = Object.keys(RX_ICONS.ICONS);
+    document.getElementById('sheet').innerHTML = names.map(function (n) {
+      return '<div class="cell"><div class="big">' + RX_ICONS.svg(n, 32) + '</div>' +
+        '<div class="sizes">' + RX_ICONS.svg(n, 24) + RX_ICONS.svg(n, 20) + RX_ICONS.svg(n, 16) + '</div>' +
+        '<code>' + n + '</code></div>';
+    }).join('');
+  })();
+</script>
+</body>
+</html>

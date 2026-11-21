@@ -1,0 +1,14 @@
+{
+  "name": "rentrix-design-tools",
+  "private": true,
+  "type": "module",
+  "description": "Builds the Rentrix icon files and renders design mockups to PNG.",
+  "scripts": {
+    "icons": "node build-icons.mjs",
+    "render": "node build-icons.mjs && node render.mjs",
+    "browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}

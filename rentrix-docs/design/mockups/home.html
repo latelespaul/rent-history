@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Home</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .hero { padding: var(--rx-space-12) 0 var(--rx-space-10); background: radial-gradient(1200px 400px at 80% -10%, var(--rx-teal-50), transparent), var(--rx-bg); }
+  .hero .lead { font-size: var(--rx-text-lg); color: var(--rx-ink-700); max-width: 620px; margin-top: 12px; }
+  .city-card { display: flex; gap: 16px; align-items: center; }
+  .city-card .ic { width: 56px; height: 56px; border-radius: 14px; background: var(--rx-teal-50); color: var(--rx-teal-700); display: grid; place-items: center; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--rx-space-4); }
+  @media (max-width: 860px) { .three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Home / search entry</b> · anonymous visitor · D-03 no invented stats · D-20 two live cities</div>
+<header data-topbar data-as="anon"></header>
+
+<section class="hero">
+  <div class="container">
+    <p class="eyebrow">Renting, with receipts</p>
+    <h1 class="display" style="margin-top:8px;max-width:760px">Check the landlord, the tenant and the flat before you sign.</h1>
+    <p class="lead">Every rating on Rentrix comes from a tenancy that both sides confirmed. Tenants rate landlords and homes. Landlords rate tenants. Rent history is real rent that was paid.</p>
+
+    <form class="searchbar" style="margin-top:28px;max-width:820px" onsubmit="return false">
+      <div class="seg">
+        <i data-icon="city"></i>
+        <div><div class="k">City</div>
+          <div class="segmented" style="margin-top:2px"><span class="on">Bangalore</span><span>Pune</span></div></div>
+      </div>
+      <div class="seg grow">
+        <i data-icon="map-pin"></i>
+        <div style="flex:1"><div class="k">Locality or building</div>
+          <input class="input" style="border:0;height:28px;padding:0" placeholder="Koramangala, HSR Layout, Whitefield…"></div>
+      </div>
+      <a class="btn btn-primary btn-lg" href="search.html"><i data-icon="search"></i>Search</a>
+    </form>
+    <p class="small muted" style="margin-top:10px">Live only in Bangalore and Pune. More cities later.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="h2">Pick a city</h2>
+    <p class="muted small" style="margin-top:4px">Counts come from <code>GET /stats</code>. Shown as they are, even when small. <span class="spec">D-03</span></p>
+    <div class="grid-2" style="margin-top:16px">
+      <a class="card city-card" href="search.html">
+        <span class="ic"><i data-icon="city" data-size="28"></i></span>
+        <div style="flex:1">
+          <div class="h3" style="margin:0;color:var(--rx-ink-900)">Bangalore <span class="muted small" style="font-weight:400">Bengaluru · Karnataka</span></div>
+          <div class="small muted">4 properties · 6 confirmed tenancies</div>
+        </div>
+        <i data-icon="chevron-right"></i>
+      </a>
+      <a class="card city-card" href="search.html">
+        <span class="ic"><i data-icon="city" data-size="28"></i></span>
+        <div style="flex:1">
+          <div class="h3" style="margin:0;color:var(--rx-ink-900)">Pune <span class="muted small" style="font-weight:400">Maharashtra</span></div>
+          <div class="small muted">4 properties · 7 confirmed tenancies</div>
+        </div>
+        <i data-icon="chevron-right"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--rx-surface);border-top:var(--rx-border);border-bottom:var(--rx-border)">
+  <div class="container">
+    <h2 class="h2">How trust works</h2>
+    <div class="three" style="margin-top:20px">
+      <div class="step"><span class="n"><i data-icon="tenancy" data-size="24"></i></span>
+        <div><div class="h3" style="margin:0">1. Both sides confirm the tenancy</div>
+          <p class="small muted" style="margin-top:4px">Landlord or tenant records the tenancy: property, dates, rent. The other side confirms. Strangers cannot rate anyone.</p></div></div>
+      <div class="step"><span class="n"><i data-icon="eye-off" data-size="24"></i></span>
+        <div><div class="h3" style="margin:0">2. Reviews unlock together</div>
+          <p class="small muted" style="margin-top:4px">Landlord and tenant reviews stay hidden until both are in, or 14 days pass. No revenge reviews.</p></div></div>
+      <div class="step"><span class="n"><i data-icon="trend-up" data-size="24"></i></span>
+        <div><div class="h3" style="margin:0">3. Real rent history</div>
+          <p class="small muted" style="margin-top:4px">Rent that both sides confirmed builds the property's history. No tenant names on it, ever.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container grid-2">
+    <div class="card">
+      <span class="badge badge-tenant"><i data-icon="tenant"></i>For tenants</span>
+      <h3 class="h3" style="margin-top:10px">Know who you rent from</h3>
+      <p class="small muted">See a landlord's rating from past tenants, the home's rating and what rent it actually went for.</p>
+      <a class="btn btn-secondary" style="margin-top:14px" href="login.html">Sign in as tenant</a>
+    </div>
+    <div class="card">
+      <span class="badge badge-landlord"><i data-icon="landlord"></i>For landlords</span>
+      <h3 class="h3" style="margin-top:10px">Know who you rent to</h3>
+      <p class="small muted">When a tenant enquires, see their rating from previous landlords. Build your own reputation as a fair landlord.</p>
+      <a class="btn btn-secondary" style="margin-top:14px" href="login.html">Sign in as landlord</a>
+    </div>
+  </div>
+</section>
+
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

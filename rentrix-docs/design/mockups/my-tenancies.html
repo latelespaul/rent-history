@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · My tenancies</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .task { display: flex; gap: 14px; align-items: center; padding: 14px 0; border-bottom: var(--rx-border); }
+  .task:last-child { border-bottom: 0; }
+  .task .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .timeline { display: flex; gap: 0; margin-top: 14px; font-size: var(--rx-text-xs); }
+  .timeline span { flex: 1; padding-top: 10px; border-top: 3px solid var(--rx-line); color: var(--rx-ink-500); }
+  .timeline span.done { border-color: var(--rx-teal-600); color: var(--rx-ink-700); }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · My tenancies</b> · signed in as tenant · <code>GET /me/tenancies</code>, <code>/me/review-tasks</code> · D-25 D-34 D-39 D-54</div>
+<header data-topbar data-as="tenant" data-active="tenancies"></header>
+
+<main class="container section">
+  <div class="row between">
+    <div><h1 class="h1">My tenancies</h1><p class="muted">Homes you rent or rented through Rentrix-confirmed tenancies.</p></div>
+    <a class="btn btn-primary" href="#"><i data-icon="plus" data-size="18"></i>Record a tenancy</a>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="stack">
+      <div class="card">
+        <h2 class="h3">Needs your action <span class="badge badge-warn">2</span></h2>
+        <div class="task">
+          <span class="ic" style="background:var(--rx-marigold-100);color:var(--rx-marigold-600)"><i data-icon="star"></i></span>
+          <div style="flex:1"><b>Review the home: Demo Towers E</b><div class="small muted">Review window open while the tenancy runs. <span class="spec">D-39</span></div></div>
+          <a class="btn btn-primary btn-sm" href="write-review.html">Write review</a>
+        </div>
+        <div class="task">
+          <span class="ic" style="background:var(--rx-info-100);color:var(--rx-info-600)"><i data-icon="rupee"></i></span>
+          <div style="flex:1"><b>Confirm a rent change: ₹27,000 → ₹28,500 from Dec 2026</b><div class="small muted">Proposed by Demo L. on 18 Nov 2026. Only confirmed rent enters the public history. <span class="spec">D-25</span> <span class="badge">illustrative</span></div></div>
+          <div class="row" style="gap:6px"><button class="btn btn-secondary btn-sm">Dispute</button><button class="btn btn-primary btn-sm">Confirm</button></div>
+        </div>
+      </div>
+
+      <div class="tabs"><span class="on">Current (1)</span><span>Ended (0)</span><span>Pending (0)</span><span>Declined / expired (0)</span></div>
+
+      <div class="card">
+        <div class="row" style="gap:16px;align-items:flex-start">
+          <span class="ph" style="width:120px;aspect-ratio:4/3;border-radius:10px"><i data-icon="building" data-size="28"></i></span>
+          <div style="flex:1;min-width:220px">
+            <div class="row" style="gap:8px"><a class="h3" style="margin:0" href="property.html">Demo Towers E</a><span class="badge badge-success">Active</span><span class="badge badge-demo">Demo data</span></div>
+            <div class="small muted">Baner, Pune · Flat D-504 <i data-icon="lock" data-size="12"></i> · landlord <a href="landlord-profile.html">Demo L.</a></div>
+            <div class="facts" style="margin-top:8px"><span><i data-icon="calendar"></i>Since 1 Oct 2024</span><span><i data-icon="rupee"></i>₹27,000 / month</span><span><i data-icon="key"></i>Deposit ₹1,00,000</span><span><i data-icon="shield-check"></i>Mutual confirmation</span></div>
+          </div>
+        </div>
+        <div class="timeline"><span class="done">Requested by landlord</span><span class="done">Confirmed by you</span><span class="done">Review window open</span><span>Ended</span><span>Window closes (180 d)</span></div>
+        <hr class="divider">
+        <div class="grid-3">
+          <div class="sunk"><div class="xs muted">Landlord review</div><div class="small" style="font-weight:600;margin-top:2px"><i data-icon="clock" data-size="14"></i> Awaiting reveal · 29 Nov</div></div>
+          <div class="sunk"><div class="xs muted">Home review</div><div class="small" style="font-weight:600;margin-top:2px">Not written</div></div>
+          <div class="sunk"><div class="xs muted">Landlord's review of you</div><div class="small" style="font-weight:600;margin-top:2px">Not written yet</div></div>
+        </div>
+        <div class="row" style="margin-top:14px;gap:8px"><button class="btn btn-secondary btn-sm"><i data-icon="rupee" data-size="16"></i>Add rent change</button><button class="btn btn-secondary btn-sm"><i data-icon="upload" data-size="16"></i>Upload agreement (private)</button><button class="btn btn-ghost btn-sm">End tenancy</button><button class="btn btn-ghost btn-sm"><i data-icon="flag" data-size="16"></i>Report</button></div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <p class="eyebrow">Your reputation as tenant</p>
+        <div class="row" style="margin-top:8px"><span class="rating-new" style="font-size:var(--rx-text-lg)"><span class="pill" style="font-size:var(--rx-text-sm)">New</span>1 review</span></div>
+        <p class="small muted" style="margin-top:6px">Only you, your landlords and landlords you enquire with can see it. <span class="spec">D-54</span></p>
+        <a class="btn btn-secondary btn-block" style="margin-top:12px" href="tenant-profile.html"><i data-icon="eye" data-size="18"></i>See what landlords see</a>
+        <button class="btn btn-ghost btn-block" style="margin-top:6px"><i data-icon="link" data-size="18"></i>Create a share link (30 days)</button>
+      </div>
+      <div class="card card-tight">
+        <div class="row" style="gap:10px"><span class="avatar avatar-landlord" style="width:36px;height:36px"><i data-icon="landlord" data-size="18"></i></span><div style="flex:1"><b class="small">Also a landlord?</b><div class="xs muted">Add the landlord role to list a property. One account, two reputations.</div></div></div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px">Add landlord role</button>
+      </div>
+      <div class="card card-tight">
+        <b class="small">How "Record a tenancy" works</b>
+        <ol class="small muted" style="padding-left:18px;margin:6px 0 0">
+          <li>Pick a published property (or your landlord invites you by email).</li>
+          <li>Enter start date, end date if ended, and rent.</li>
+          <li>The landlord confirms within 14 days, or it expires.</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
