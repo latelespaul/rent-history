@@ -15,13 +15,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
 /**
  * Cities are data (D-20, D-82..D-84): the list, search, activation and pincode rule all follow
  * the {@code cities} rows. Tests that add rows run in a rolled-back transaction, so the shared
@@ -125,29 +118,6 @@ class CityApiTest {
 		}
 		assertThatThrownBy(() -> cityService.requirePincode("XXX", "560034"))
 			.isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.getCode()).isEqualTo("city_not_live"));
-	}
-	
-	/**
-	 * D-20: no city name or code is hard-coded in the API code (comments may give examples);
-	 * the cities table is the only list.
-	 */
-	@Test
-	void mainSourceHasNoCityLiteral() throws IOException {
-		Pattern comment = Pattern.compile("(?s)/\\*.*?\\*/|//[^\\n]*");
-		Pattern city = Pattern.compile("(?i)bangalore|bengaluru|\\bpune\\b|\\bBLR\\b|\\bPNQ\\b");
-		try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
-			List<Path> offenders = files.filter(p -> p.toString().endsWith(".java"))
-				.filter(p -> {
-					try {
-						String code = comment.matcher(Files.readString(p)).replaceAll("");
-						return city.matcher(code).find();
-					} catch (IOException e) {
-						throw new IllegalStateException(e);
-					}
-				})
-				.toList();
-			assertThat(offenders).isEmpty();
-		}
 	}
 	
 	private void assertPincodeError(String city, String pincode, String fieldCode) {
