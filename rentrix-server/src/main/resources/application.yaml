@@ -1,84 +1,90 @@
-# --- Rentrix - Common Configuration ------------------------------------------------
+# =============================================================================
+# Rentrix API: settings shared by every profile. All values come from env vars
+# (12-factor). Defaults here are safe for production; dev and test add local
+# defaults in their own files. See SYSTEM_DESIGN.md §17 for the full list.
+#
+# There is NO default profile: SPRING_PROFILES_ACTIVE must be dev, test or prod
+# or the API refuses to start (D-64, config/StartupGuard).
+# =============================================================================
 server:
   port: ${PORT:8080}
   servlet:
     context-path: /api/v1
+  shutdown: graceful
 
-
-# --- Spring Boot Configuration ------------------------------------------------
 spring:
-  # --- Application configuration ------------------------------------------------
   application:
     name: rentrix-server
+  main:
+    banner-mode: off
 
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+  # --- Database (D-09): DB_URL picks SQLite, MySQL or PostgreSQL ----------------
+  datasource:
+    url: ${DB_URL:}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+    hikari:
+      pool-name: rentrix
+      maximum-pool-size: ${DB_POOL_MAX:10}
 
-  # --- File upload configuration ------------------------------------------------
-  servlet:
-    multipart:
-      max-file-size: 15MB
-      max-request-size: 50MB
-      file-size-threshold: 0 # ← Force write-to-disk immediately
-  #--- Flyway Confinguration -----------------------------------------------------
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema (D-10)
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC          # D-14
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+
   flyway:
     enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
     locations: classpath:db/migration
     validate-on-migrate: true
-    out-of-order: false
 
-  # --- Output configuration -----------------------------------------------------
-  output:
-    ansi:
-      enabled: always
-
-  # --- Java Time / Jackson configuration ---------------------------------------------
   jackson:
     time-zone: UTC
-    default-property-inclusion: non_null
 
-
-# --- Actuator (lightweight health & metrics) -------------------------------
+# --- Ops (health, readiness) ---------------------------------------------------
 management:
   endpoints:
     web:
-      base-path: /actuator
       exposure:
-        include: health,info,metrics
-
+        include: health
   endpoint:
     health:
-      show-details: when_authorized   # safer default; overridden to 'always' in dev
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true             # /actuator/health/liveness and /readiness
+      group:
+        readiness:
+          include: readinessState,db
 
+# --- OpenAPI: only dev and test switch it on (D-64) ----------------------------
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
-# --- Logging -----------------------------------------------------------------
+# --- Logs: one JSON object per line (ECS), with the request id as traceId -------
 logging:
+  structured:
+    format:
+      console: ${LOG_FORMAT:ecs}
   level:
     root: INFO
     com.rentrix: INFO
-    org.springframework.security: WARN
     org.hibernate: WARN
-    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
 
-
-# --- Application-specific configuration --------------------------------------
-# ---- AWS S3 Storage Configuration --------------------------------------
+# --- Application ---------------------------------------------------------------
 app:
-  storage:
-    s3:
-      region: ${AWS_REGION}
-      access-key: ${AWS_ACCESS_KEY_ID}
-      secret-key: ${AWS_SECRET_ACCESS_KEY}
-
-      public-bucket: ${AWS_BUCKET}
-      private-bucket: ${AWS_PRIVATE_BUCKET}
-
-      public-base-url: ${AWS_PUBLIC_URL}
-      max-image-size-bytes: 15728640        # 15 MB
-
-      allowed-image-types:
-        - image/jpeg
-        - image/png
-        - image/webp
+  jwt:
+    secret: ${JWT_SECRET:}
+    access-token-ttl: 15m         # D-62
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  dev-login:
+    enabled: ${DEV_LOGIN_ENABLED:false}   # only dev/test may set true (D-77)

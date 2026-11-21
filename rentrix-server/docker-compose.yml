@@ -29,13 +29,13 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: rentrix
+      # The API accepts only dev, test or prod (D-64); this local stack runs prod on MySQL.
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://mysql:3306/rentrix?useSSL=false&allowPublicKeyRetrieval=true
       DB_USERNAME: rentrix
       DB_PASSWORD: rentrix123
       JWT_SECRET: local-dev-jwt-secret-32-chars-minimum-xxxxxxxx
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
     ports:
       - "8080:8080"
     restart: unless-stopped

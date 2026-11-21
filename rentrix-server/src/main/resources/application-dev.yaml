@@ -1,97 +1,30 @@
 # =============================================================================
-# Development Profile
+# dev profile: local development. Needs nothing but Java 21.
+#   SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+# SQLite file under ./data, Swagger UI on, built-in JWT secret (dev only).
 # =============================================================================
-#
-# Local Development:
-# - MySQL
-# - Swagger Enabled
-# - SQL Logging Enabled
-# - Relaxed Security Settings
-#
-# Activate:
-# SPRING_PROFILES_ACTIVE=dev
-#
-# =============================================================================
-
 server:
   address: ${SERVER_BIND:127.0.0.1}
 
-
-# -------------------- Spring Boot --------------------------------------------
 spring:
-
-  # -------------------- DataSource (MySQL) -----------------------------------
   datasource:
-    # Connection URL with common parameters
-    url: jdbc:mysql://localhost:3306/rentrix?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:admin}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      pool-name: MySQLHikariPool
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 300000                 # 5 minutes
-      connection-timeout: 20000            # 20 seconds
-      max-lifetime: 1800000                # 30 minutes
-      leak-detection-threshold: 60000      # 1 minute
+    url: ${DB_URL:jdbc:sqlite:./data/rentrix.db}
 
-  # -------------------- JPA / Hibernate (MySQL) ------------------------------
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
-        jdbc:
-          time_zone: UTC
-
-  # --------------------  Jackson -------------------------------------------
-  jackson:
-    time-zone: UTC
-
-
-# --- Application-specific configuration --------------------------------------
-app:
-  # --- JWT configuration --------------------------------
-  jwt:
-    secret: ${JWT_SECRET:fpxdHFQKBBgwymhg83om6FhTJlvtvK6RjCQ7pvOre4G}
-    access-token-expiry-ms: 900000                # 15 minutes
-    refresh-token-expiry-ms: 604800000            # 7 days
-    # 10 MB
-
-  # --- CORS --------------------------------
-  cors:
-    allowed-origins:
-      - http://localhost:5173
-
-
-# --- Logging ----------------------------------------------------------------
-logging:
-  level:
-    root: INFO
-    com.rentrix: DEBUG
-    # SQL Queries
-    org.hibernate.SQL: DEBUG
-    # Query Parameters
-    org.hibernate.orm.jdbc.bind: TRACE
-    org.springframework.security: INFO
-
-
-# --- Dev-only Actuator -------------------------------------------------------
-management:
-  endpoint:
-    health:
-      show-details: always
-
-
-# --- Swagger / OpenAPI -------------------------------------------------------
 springdoc:
   api-docs:
-    path: /v3/api-docs
     enabled: true
   swagger-ui:
-    path: /swagger-ui.html
     enabled: true
+
+logging:
+  level:
+    com.rentrix: DEBUG
+
+app:
+  jwt:
+    # Dev-only value, public in git. Any profile other than dev/test needs a real JWT_SECRET.
+    secret: ${JWT_SECRET:dev-only-jwt-secret-not-for-production-0123456789}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  dev-login:
+    enabled: ${DEV_LOGIN_ENABLED:true}
