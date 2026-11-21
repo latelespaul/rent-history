@@ -1,3 +1,5 @@
+-- OBSOLETE: superseded by architecture/SYSTEM_DESIGN.md (v1 rebuild, 2026-11-21). Do not run.
+
 CREATE INDEX idx_reviews_user ON reviews(user_id);
 CREATE INDEX idx_reviews_flat ON reviews(flat_id);
 CREATE INDEX idx_rent_history_flat ON rent_history(flat_id);

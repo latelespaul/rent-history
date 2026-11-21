@@ -1,3 +1,5 @@
+-- OBSOLETE: superseded by ../../architecture/SYSTEM_DESIGN.md (v1 rebuild, 2026-11-21). Do not run.
+
 INSERT INTO users (id, email, password, role, deleted, created_at, updated_at)
 VALUES
 (1,'admin@rentrix.com','$2a$12$bPVP41Sa2ntPVVXN/DPpdubgWpd5.Y/3ie9CFLs5jIFWkOCU60ZcS','ADMIN',false,NOW(),NOW()),

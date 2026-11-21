@@ -1,3 +1,5 @@
+-- OBSOLETE: superseded by ../../architecture/SYSTEM_DESIGN.md (v1 rebuild, 2026-11-21). Do not run.
+
 INSERT INTO rent_history
 (id,flat_id,landlord_id,tenant_id,rent_start_date,rent_end_date,
 created_at,updated_at)
