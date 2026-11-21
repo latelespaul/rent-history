@@ -13,6 +13,8 @@ export interface NavItem {
   to: string
   label: string
   icon: IconName
+  /** Active only on this exact path, not on its children. */
+  end?: boolean
 }
 
 /** The role-aware top bar links (DESIGN.md §3 routes, mockups' top bar). */
@@ -21,7 +23,7 @@ export function navFor(viewer: ShellViewer | null): NavItem[] {
   if (!viewer) return [search]
   if (viewer.roles.includes("ADMIN")) {
     return [
-      { to: "/admin", label: "Dashboard", icon: "chart" },
+      { to: "/admin", label: "Dashboard", icon: "chart", end: true },
       { to: "/admin/approvals", label: "Approvals", icon: "shield-check" },
       { to: "/admin/records/users", label: "Records", icon: "users" },
       { to: "/admin/cities", label: "Cities", icon: "city" },

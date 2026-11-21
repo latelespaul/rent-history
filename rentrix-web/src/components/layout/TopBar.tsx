@@ -73,6 +73,7 @@ export function TopBar({ viewer }: { viewer: ShellViewer | null }) {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
                   "inline-flex items-center gap-1.5 text-sm font-medium no-underline hover:no-underline",
@@ -121,13 +122,14 @@ export function TopBar({ viewer }: { viewer: ShellViewer | null }) {
                 )}
                 <div className="space-y-1.5">
                   <p className="text-xs font-semibold text-ink-500">City</p>
-                  <ShellCityPicker />
+                  <ShellCityPicker onNavigate={() => setMenuOpen(false)} />
                 </div>
                 <nav aria-label="Menu" className="flex flex-col">
                   {items.map((item) => (
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      end={item.end}
                       onClick={() => setMenuOpen(false)}
                       className={({ isActive }) =>
                         cn(

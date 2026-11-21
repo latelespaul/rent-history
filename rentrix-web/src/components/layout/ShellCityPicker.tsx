@@ -6,7 +6,13 @@ import { CityPicker } from "@/features/city/CityPicker"
  * choosing a city opens Search for it (keeping Search's other filters). The list is whatever
  * `GET /cities` returns; the shell adds no city of its own (D-20, D-85).
  */
-export function ShellCityPicker({ className }: { className?: string }) {
+export function ShellCityPicker({
+  className,
+  onNavigate,
+}: {
+  className?: string
+  onNavigate?: () => void
+}) {
   const [params] = useSearchParams()
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -15,6 +21,7 @@ export function ShellCityPicker({ className }: { className?: string }) {
     const next = pathname === "/search" ? new URLSearchParams(params) : new URLSearchParams()
     next.set("city", code)
     navigate({ pathname: "/search", search: next.toString() })
+    onNavigate?.()
   }
 
   return (

@@ -17,7 +17,7 @@ export function AppLayout({ viewer = null }: { viewer?: ShellViewer | null }) {
         Skip to content
       </a>
       <TopBar viewer={viewer} />
-      <div id="main" className="flex-1">
+      <div id="main" tabIndex={-1} className="flex-1 outline-none">
         <Outlet />
       </div>
       <Footer />
