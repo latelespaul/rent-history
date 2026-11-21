@@ -66,7 +66,10 @@ export function CityPicker({
 
   const list = useMemo(() => cities.data ?? [], [cities.data])
   const matches = useMemo(() => filterCities(list, query), [list, query])
-  const counts = useMemo(() => (stats.isSuccess ? statsByCity(stats.data.cities) : null), [stats])
+  const counts = useMemo(
+    () => (stats.isSuccess ? statsByCity(stats.data.cities) : null),
+    [stats.isSuccess, stats.data],
+  )
   const selected = list.find((city) => city.code === value) ?? null
   const activeCity: City | undefined = matches[Math.min(active, matches.length - 1)]
 

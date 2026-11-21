@@ -2,8 +2,8 @@ import type { City, Stats } from "@/types/api"
 
 /**
  * Test data only: mocked `GET /cities` and `GET /stats` responses. The two launch rows mirror
- * the seed; the other seven are illustrative, like the design v2 mockups. `src/test/` is the one
- * place under `src/` allowed to name a city (see `noCityLiterals.test.ts`).
+ * the seed; the other seven are illustrative, like the design v2 mockups. City names belong here,
+ * never in app source.
  */
 export const LAUNCH_CITIES: City[] = [
   { code: "BLR", name: "Bangalore", aliases: ["Bengaluru"], state: "Karnataka" },
