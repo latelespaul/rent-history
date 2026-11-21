@@ -1,0 +1,74 @@
+# =============================================================================
+# Rentrix local stack: API + static web, SQLite on a named volume.
+#   cp .env.example .env      # then set JWT_SECRET
+#   docker compose up --build
+# Web: http://localhost:8081  API: http://localhost:8080/api/v1
+#
+# Optional PostgreSQL instead of SQLite (D-09): set the postgres DB_* lines in
+# .env (see .env.example), then
+#   docker compose --profile postgres up --build
+# =============================================================================
+name: rentrix
+
+services:
+  api:
+    build:
+      context: ./rentrix-server
+    image: rentrix-server:local
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${DB_URL:-jdbc:sqlite:/app/data/rentrix.db}
+      DB_USERNAME: ${DB_USERNAME:-}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (at least 32 bytes) in .env}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8081}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      LOG_FORMAT: ${LOG_FORMAT:-ecs}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      # New v1 volume; never reuse the old mysql-data volume (fresh schema, D-01).
+      - rentrix-v1-sqlite-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./rentrix-web
+    image: rentrix-web:local
+    environment:
+      # The browser calls the API directly, so this must be a URL the browser can reach.
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080/api/v1}
+    ports:
+      - "${WEB_PORT:-8081}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_DB: rentrix
+      POSTGRES_USER: ${DB_USERNAME:-rentrix}
+      # The postgres image refuses to start with an empty password.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-}
+    volumes:
+      - rentrix-v1-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d rentrix"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  rentrix-v1-sqlite-data:
+  rentrix-v1-postgres-data:

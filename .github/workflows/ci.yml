@@ -73,3 +73,43 @@ jobs:
 
       - name: Build
         run: npm run build
+  docker-images:
+    name: Docker Images & Compose Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build images
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose build
+
+      - name: Start stack
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Smoke test
+        run: |
+          set -eu
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/actuator/health/readiness)
+          echo "API readiness: $code"
+          test "$code" = 200
+          curl -fsS http://localhost:8081/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:8081/config.js | tee /dev/stderr | grep -q 'apiBaseUrl: "http://localhost:8080/api/v1"'
+          # client-side routes fall back to index.html
+          curl -fsS http://localhost:8081/some/client/route | grep -q '<div id="root">'
+
+      - name: Logs on failure
+        if: failure()
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose logs --no-color
+
+      - name: Stop stack
+        if: always()
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose down -v

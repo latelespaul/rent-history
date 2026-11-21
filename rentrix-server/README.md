@@ -6,7 +6,7 @@ Rentrix v1 API (Spring Boot). Design and configuration: `rentrix-docs/architectu
 
 - v1 needs a fresh, empty database. Its Flyway `V1__baseline_schema.sql` replaces the old `V1__initial_schema.sql`, so the API will not start on a database that ran the old V1.
 - Point `DB_URL` at a new database. The old schema and data are not migrated; they are left as they are.
-- Do not reuse the old docker-compose `mysql-data` volume. `docker-compose.yml` now uses a new volume, `rentrix-v1-mysql-data`.
+- Do not reuse the old docker-compose `mysql-data` volume. The stack now lives in the root `docker-compose.yml` and keeps SQLite on a new volume, `rentrix-v1-sqlite-data` (the optional `postgres` profile uses `rentrix-v1-postgres-data`).
 
 Env contract changes:
 

@@ -1,28 +1,17 @@
-# --- Git ---
+# Only pom.xml and src/ are needed to build the image.
 .git
 .gitignore
-
-# --- Build artifacts ---
+.mvn
+mvnw
+mvnw.cmd
 target
-
-# --- IDE ---
+data
+logs
 .idea
 .vscode
 *.iml
-
-# --- Env ---
 .env
 .env.*
-!.env.example
-
-# --- Docker ---
 Dockerfile
-docker-compose.yml
 .dockerignore
-
-# --- Docs ---
 *.md
-logs
-
-# --- SQL ---
-.sql
