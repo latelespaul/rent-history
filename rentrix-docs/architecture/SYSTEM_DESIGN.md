@@ -5,7 +5,7 @@ It supersedes every older architecture, API and database doc in `rentrix-docs/` 
 Date: 2026-11-21.
 
 Each decision is recorded as a numbered line `D-xx`. Later work (UX, implementation plan,
-code) cites these numbers. To change a decision, edit its line here in the same PR as the change.
+code) cites these numbers. To change a decision, edit its line here in the same PR as the change. Numbers are stable IDs, not reading order: decisions added later get the next free number wherever they sit (e.g. D-70–D-79, Google sign-in).
 
 ---
 
@@ -51,6 +51,7 @@ What exists on `master` (v0.1.6) and what happens to it:
 | `rentrix-web` mock layer (`VITE_ENABLE_MOCKS`, `src/api/mock`) | Removed. The web talks only to the real API |
 | `HomePage.tsx` fake stats ("Now live in 18 cities", "Cities covered: 18", "2,400+ flats", "9,800+ reviews", "6,200+ tenants") and testimonials (incl. "Tenant · Mumbai") | Removed (D-03). Search hint names only Bangalore/Pune localities |
 | `rentrix-tests/` Postman collections | Obsolete; replaced by API integration tests in `rentrix-server` |
+| Email + password signup/login (`AuthController`, `AuthServiceImpl`, bcrypt, `SignupRequest`/`LoginRequest`, web `LoginForm`/`SignupForm`) | Replaced by "Sign in with Google" (§13.1). No passwords are stored in v1 |
 | Hard-coded `JWT_SECRET` default in `application-dev.yaml` | Allowed in `dev` only; `prod` refuses to start without `JWT_SECRET` (D-64) |
 
 Kept as-is in spirit: React + Vite + TypeScript + Tailwind/shadcn web stack, Spring Boot 4 / Java 21 API,
@@ -94,7 +95,7 @@ Flyway, JWT, context path `/api/v1`, GitHub Actions CI (backend tests + web lint
 
 ## 4. Roles
 
-- **D-16** A `User` has a role set: any of `TENANT`, `LANDLORD`, plus `ADMIN` for staff. One person can be both tenant and landlord with one account. A user picks at least one of `TENANT`/`LANDLORD` at signup and can add the other later from settings.
+- **D-16** A `User` has a role set: any of `TENANT`, `LANDLORD`, plus `ADMIN` for staff. One person can be both tenant and landlord with one account. A user picks at least one of `TENANT`/`LANDLORD` on first sign-in (onboarding, D-73) and can add the other later from settings. Roles are never removed by the user once they are attached to a tenancy.
 - **D-17** The role a user plays **in a tenancy** comes from the tenancy (`landlord_id` / `tenant_id`), not from the account. The account role set only gates actions such as "create a property" (needs `LANDLORD`) or "send an enquiry" (needs `TENANT`).
 - **D-18** A user has two separate reputations: **as landlord** and **as tenant**. They are aggregated and shown separately and never mixed.
 - **D-19** `ADMIN` is never self-assigned. It is granted at startup to the emails in `ADMIN_EMAILS` (env) or by another admin. Admins cannot write reviews in their admin capacity; an admin who is also a party to a tenancy acts as a normal user there.
@@ -128,16 +129,22 @@ Common columns on every table: `id BIGINT PK`, `created_at`, `updated_at`. Table
 ### 5.1 User (`users`, has `public_id`)
 | Column | Notes |
 |---|---|
-| `display_name` | 2–60 chars. Shown publicly as first word + last initial, e.g. "Demo L." |
-| `email` | unique, lower-cased, private |
-| `email_verified_at` | required before creating tenancies or reviews |
+| `google_sub` | Google OIDC subject id (`sub` claim); unique, not null for real users; the identity key (D-72). Null only for dev seed users |
+| `email` | from the Google `email` claim; unique, lower-cased, private; refreshed on each sign-in |
+| `email_verified_at` | set from Google's `email_verified=true` claim; sign-in is refused without it |
+| `google_name` | `name` claim as last received from Google |
+| `display_name` | 2–60 chars, initialised from `google_name`, user-editable. Shown publicly as first word + last initial, e.g. "Demo L." |
+| `avatar_url` | `picture` claim (Google-hosted URL, not copied to our storage); shown only where the full profile is visible (D-54, D-55) |
 | `phone` | optional, E.164, private; never shown publicly |
-| `password_hash` | bcrypt, cost 12 |
-| `roles` | separate `user_roles(user_id, role)` table |
+| `roles` | separate `user_roles(user_id, role)` table; empty until onboarding completes |
+| `onboarded_at` | null until the first-sign-in role pick (D-73) |
+| `last_login_at` | |
 | `home_city_code` | FK `cities.code`, optional |
 | `status` | `ACTIVE`, `SUSPENDED`, `DELETED` |
 | `is_demo` | true only for seed data (D-68) |
 | `deleted_at` | soft delete; see D-58 for anonymisation |
+
+There is no password column: v1 has no passwords (D-71).
 
 ### 5.2 City (`cities`)
 | Column | Notes |
@@ -245,7 +252,7 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
 - `moderation_actions(admin_id, action, target_type, target_id, report_id?, reason, created_at)`: append-only audit log of every admin action.
 
 ### 5.12 Supporting tables
-`user_roles`, `refresh_tokens` (D-63), `email_tokens` (verification, password reset; hashed, single use), `scheduled_job_lock` (D-08), `property_images` (§15).
+`user_roles`, `refresh_tokens` (D-63), `invite_tokens` (tenancy invites to people without an account; hashed, single use, 14-day expiry), `scheduled_job_lock` (D-08), `property_images` (§15).
 
 ---
 
@@ -266,7 +273,7 @@ Columns: `review_count`, `rating_sum`, `average` (decimal 3,2), `bayes_score` (d
 ```
 
 - **D-34** Two-party confirmation is the trust anchor. A tenancy starts as `PENDING_CONFIRMATION` and becomes `ACTIVE` (or `ENDED`, if created with an end date in the past) only when the **other** party confirms. Unconfirmed tenancies enable nothing: no reviews, no public rent history.
-  - Landlord-initiated: landlord picks own property, enters tenant email, dates, rent. Tenant gets an email invite; if they have no account they sign up from the link, then confirm.
+  - Landlord-initiated: landlord picks own property, enters tenant email, dates, rent. Tenant gets an email invite; they sign in with Google from the link (creating an account if needed), then confirm. The invite binds only to an account whose verified Google email equals `invite_email`.
   - Tenant-initiated: tenant picks a published property, enters dates and rent. The property's landlord confirms or declines.
   - The counterparty sees all fields before confirming and can decline with a reason; corrections are made by declining and re-creating (no counter-offer flow in v1).
 - **D-35** Guards at creation: both accounts email-verified; `landlord_id ≠ tenant_id`; dates valid; no overlapping tenancy for the same tenant + property; a user may create at most 5 pending tenancies at once; an invite email cannot be the initiator's own email or an existing account with a different email in the payload.
@@ -334,7 +341,7 @@ Worked example: landlord with reviews 5, 4, 4 → `n=3`, `average=4.3`, with `m=
 - **D-55** Landlord profiles (short name, landlord aggregate, published properties, reviews received as landlord) are visible to any **logged-in** user. Anonymous visitors see the landlord's short name and aggregate only on property pages.
 - **D-56** Property pages: anonymous visitors see city, locality, building/street, facts, images, aggregate rating and count. Logged-in users also see review texts, responses and the full rent history.
 - **D-57** Never shown to anyone except the user, the other party of a shared tenancy (where relevant) and admins: email, phone (unless shared via enquiry), `unit_label`, tenancy documents, exact tenancy dates of others (public views show month/year only), deposit amounts.
-- **D-58** Account deletion (DPDP Act 2023 aligned): personal data is erased (email, phone, name replaced, password hash removed). Reviews the user **wrote** stay, attributed to "Former Rentrix user", and keep counting. Reviews **about** the user are hidden with their profile. Property reviews and confirmed rent records stay (they describe the property, not the person).
+- **D-58** Account deletion (DPDP Act 2023 aligned): personal data is erased (email, phone, `google_sub`, `google_name`, `avatar_url` cleared, display name replaced). Signing in again with the same Google account creates a new, empty user. Reviews the user **wrote** stay, attributed to "Former Rentrix user", and keep counting. Reviews **about** the user are hidden with their profile. Property reviews and confirmed rent records stay (they describe the property, not the person).
 
 ---
 
@@ -400,17 +407,18 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Auth**
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/auth/signup` | `{displayName, email, password, roles:[TENANT|LANDLORD], homeCity?}` → sends verification email |
-| POST | `/auth/verify-email` | `{token}` |
-| POST | `/auth/login` | `{email, password}` → access token in body, refresh token cookie |
+| GET | `/auth/config` | public: `{googleClientId, devLogin: bool}` so the web needs no build-time Google config (D-76) |
+| POST | `/auth/google` | `{idToken}` → verifies the Google ID token (D-70), finds or creates the user, returns `{accessToken, user, needsOnboarding}` + refresh cookie |
 | POST | `/auth/refresh` | uses refresh cookie, rotates it |
 | POST | `/auth/logout` | revokes current refresh token |
-| POST | `/auth/password/forgot`, `/auth/password/reset` | email token flow |
+| GET | `/auth/dev-users` | **dev profile only** (D-77): seed users for the login picker |
+| POST | `/auth/dev-login` | **dev profile only** (D-77): `{userId}` of a seed user → same response as `/auth/google` |
 
 **Me**
 | Method | Path | Notes |
 |---|---|---|
-| GET / PATCH / DELETE | `/me` | profile, add role, account deletion (D-58) |
+| GET / PATCH / DELETE | `/me` | profile (display name, phone, home city), add role, account deletion (D-58) |
+| POST | `/me/onboarding` | once, first sign-in: `{roles:[TENANT|LANDLORD], homeCity?, acceptTerms:true}` (D-73) |
 | GET | `/me/tenancies?role=&status=` | |
 | GET | `/me/reviews/written`, `/me/reviews/received?as=LANDLORD|TENANT` | received includes own `AWAITING_REVEAL` state only as "pending" |
 | GET | `/me/review-tasks` | tenancies with an open review window and missing reviews |
@@ -483,15 +491,56 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 - **D-63** Refresh token: opaque random 256-bit value, 30-day lifetime, **rotated on every refresh**, stored only as a SHA-256 hash in `refresh_tokens(user_id, token_hash, family_id, expires_at, revoked_at)`. Reuse of a rotated token revokes the whole family (theft detection). Delivered as an `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` cookie. This keeps API instances stateless while allowing logout and revocation.
 - **D-64** `JWT_SECRET` (≥ 32 bytes) is required in every profile except `dev` and `test`; the `prod` profile fails at startup without it. Secrets come from env only, never from tracked files.
 - Web and API must be same-site for the cookie (e.g. `rentrix.in` and `api.rentrix.in`); in dev the Vite dev server proxies `/api` to the API. CORS allow-list from `CORS_ALLOWED_ORIGINS`.
-- Passwords: bcrypt cost 12, length 10–128, checked against a small common-password list. Login rate limit: 10 attempts per 15 min per email and per IP (`429`).
-- Suspended or deleted users: refresh fails; access tokens expire within 15 min (accepted window).
-- Social login, OTP login and KYC are not in v1 (§19).
+- Rate limit on `/auth/google` and `/auth/dev-login`: 20 requests per 15 min per IP (`429`).
+- Suspended or deleted users: sign-in and refresh fail (`403 account_suspended`); access tokens expire within 15 min (accepted window).
+
+### 13.1 Sign in with Google
+
+```
+ Browser (React)                     API                                Google
+   │ GET /auth/config ─────────────▶ │ {googleClientId, devLogin}
+   │ GIS button (client id) ──────────────────────────────────────────▶ │ user signs in
+   │ ◀─────────────────────────────────────────────── ID token (JWT) ── │
+   │ POST /auth/google {idToken} ──▶ │ verify signature (JWKS, cached) ─▶│ certs
+   │                                 │ check iss, aud, exp, email_verified
+   │                                 │ find user by google_sub, or create
+   │ ◀── accessToken + refresh cookie, needsOnboarding
+   │ (if needsOnboarding) POST /me/onboarding {roles}
+```
+
+- **D-70** "Sign in with Google" is the only production login, for tenants and landlords alike. The web uses Google Identity Services (GIS) to get an **ID token** in the browser and posts it to `POST /auth/google`. The API verifies it server-side: RS256 signature against Google's JWKS (`https://www.googleapis.com/oauth2/v3/certs`, cached per its `Cache-Control`), `iss` ∈ {`accounts.google.com`, `https://accounts.google.com`}, `aud` = `GOOGLE_CLIENT_ID`, `exp` not passed (60 s clock skew), `email_verified` = true. Any failure → `401 google_token_invalid`. The API then issues its **own** access + refresh tokens (D-62, D-63); the Google token is never stored or forwarded, so the API stays stateless.
+- **D-71** No passwords in v1: no password column, no signup form, no password reset, no email-verification flow (Google already verified the email). This removes a whole class of credential storage risk.
+- **D-72** One Google account = one Rentrix user, keyed by `google_sub`, never by email (Google emails can change; the `sub` does not). On every sign-in the API refreshes `email`, `email_verified_at`, `google_name` and `avatar_url` from the token; `display_name` is changed only by the user. If the token's email already belongs to a **different** user (rare: account recreated at Google, or a seed user email), sign-in fails with `409 account_email_conflict` and an admin resolves it; accounts are never merged automatically.
+- **D-73** First sign-in creates the user with no roles and `onboarded_at = null`; the response has `needsOnboarding: true`. The web then shows a one-step role pick (tenant, landlord, or both; optional home city; accept terms) that calls `POST /me/onboarding` once. Until onboarding completes, only `GET /me`, `POST /me/onboarding`, `DELETE /me`, `/auth/*` and public reads are allowed (`403 onboarding_required` otherwise). The other role can be added later via `PATCH /me` (D-16).
+- **D-74** The GIS ID-token flow needs only the OAuth **client ID** (no client secret, no authorization-code exchange, no redirect URI on the API). So `GOOGLE_CLIENT_ID` is the only Google setting. It comes from env only and is never committed, not even as a default (it is not a secret, but it identifies the captain's Google Cloud project). `GOOGLE_CLIENT_SECRET` is not used; if a later server-side flow (e.g. Google APIs on behalf of the user) needs it, it is added as env only.
+- **D-75** Token verification sits behind an interface so tests never call Google:
+  ```java
+  public interface GoogleTokenVerifier {
+      GoogleIdentity verify(String idToken);   // throws InvalidGoogleTokenException
+  }
+  record GoogleIdentity(String sub, String email, boolean emailVerified, String name, String pictureUrl) {}
+  ```
+  Production bean: `JwksGoogleTokenVerifier` (Spring Security `NimbusJwtDecoder` with the JWKS URL and the issuer/audience validators above). Test bean (`test` profile): `FakeGoogleTokenVerifier`, which accepts tokens shaped `fake:<sub>:<email>[:<name>]` and rejects anything else, so integration tests cover new-user, returning-user, unverified-email, wrong-audience (simulated) and email-conflict cases.
+- **D-76** The web has no Google build-time config: it reads `googleClientId` from `GET /auth/config` and loads the GIS script only when it is set. Pages that host the GIS popup are served with `Cross-Origin-Opener-Policy: same-origin-allow-popups` (GIS requirement); the CSP allows `https://accounts.google.com/gsi/`.
+- **D-77** Dev-only login: when the `dev` profile is active and `DEV_LOGIN_ENABLED=true` (default `true` in `dev`), the API exposes `GET /auth/dev-users` and `POST /auth/dev-login`, and the login page shows a "Dev login" picker listing the seed users (D-68), so the 4 Bangalore + 4 Pune demo data can be clicked through and screenshotted with no Google account and no network. The beans are not created in any other profile (the endpoints return `404`), and the app **refuses to start** if `DEV_LOGIN_ENABLED=true` with the `prod` profile. Dev login works only for `is_demo` users. When `GOOGLE_CLIENT_ID` is unset in dev, the Google button is hidden and dev login is the only way in; in `prod` the app refuses to start without `GOOGLE_CLIENT_ID`.
+- **D-78** Admins (D-19) are matched on the verified Google email in `ADMIN_EMAILS` at sign-in.
+
+### 13.2 Creating the Google OAuth client (setup steps)
+
+- **D-79** These steps go into the root `README.md` in the first implementation PR (this PR is design only):
+  1. Open Google Cloud Console → select or create a project (e.g. "rentrix-dev").
+  2. APIs & Services → OAuth consent screen: user type **External**, app name "Rentrix (dev)", support email, scopes `openid`, `email`, `profile` only. While in "Testing", add your own Google account as a test user.
+  3. APIs & Services → Credentials → **Create credentials → OAuth client ID** → application type **Web application**.
+  4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (GIS needs both for local dev). Add the production web origin later (e.g. `https://rentrix.in`). No redirect URIs are needed.
+  5. Copy the client ID (`…apps.googleusercontent.com`). Do **not** download or commit the JSON.
+  6. Export it for the API only: `export GOOGLE_CLIENT_ID=…apps.googleusercontent.com` (shell, or an untracked `.env` file; `.env` is git-ignored). The web picks it up from `/auth/config`.
+  7. Start the API and web; "Sign in with Google" appears on the login page.
 
 ---
 
 ## 14. Notifications
 
-- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: verify address, password reset, tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome. No in-app notification centre in v1.
+- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome. No in-app notification centre in v1.
 
 ---
 
@@ -516,7 +565,7 @@ enum Visibility { PUBLIC, PRIVATE }
 ## 16. Dev-only seed data
 
 - **D-68** A seeder runs only when the `dev` profile is active **and** `SEED_DEMO=true`, and only into an empty database. It refuses to run under `prod`. Every seeded user and property has `is_demo=true`, and the web shows a "Demo data" badge on such rows. Seeded rows go through the same service rules as real data (tenancies confirmed by both parties, reviews within windows) so the seed also exercises the trust rules.
-- **D-69** Seeded people are clearly fake: display names like "Demo Landlord BLR-1", "Demo Tenant PNQ-3"; emails `…@example.test` (reserved TLD, RFC 2606); **no phone numbers**; one shared documented dev password. Addresses use real locality names but fictional buildings ("Demo Residency A", unit "D-101").
+- **D-69** Seeded people are clearly fake: display names like "Demo Landlord BLR-1", "Demo Tenant PNQ-3"; emails `…@example.test` (reserved TLD, RFC 2606); **no phone numbers**; no Google ids and no passwords (seed users sign in only through dev login, D-77). Addresses use real locality names but fictional buildings ("Demo Residency A", unit "D-101").
 
 Seed plan (8 properties, 4 landlords, 12 tenants):
 
@@ -546,7 +595,9 @@ Every property has at least one ended tenancy with all three reviews published (
 | `JWT_SECRET` | dev-only default | required in prod (D-64) |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | comma list |
 | `APP_BASE_URL` | `http://localhost:5173` | links in emails |
-| `ADMIN_EMAILS` | empty | D-19 |
+| `ADMIN_EMAILS` | empty | D-19, D-78 |
+| `GOOGLE_CLIENT_ID` | none (never committed) | Google sign-in (D-70, D-74); required in `prod` |
+| `DEV_LOGIN_ENABLED` | `true` in `dev`, ignored elsewhere | D-77; `prod` refuses to start if `true` |
 | `STORAGE_BACKEND` | `local` | `local` or `s3` (D-66) |
 | `STORAGE_LOCAL_DIR` | `./data/media` | |
 | `S3_*` | — | only when `s3` |
@@ -554,7 +605,7 @@ Every property has at least one ended tenancy with all three reviews published (
 | `SEED_DEMO` | `false` | D-68 |
 | `VITE_API_BASE_URL` (web, build-time) | `/api/v1` | |
 
-A local developer needs nothing but Java 21 and Node: SQLite file + local media folder, no MySQL, no S3, no Docker.
+A local developer needs nothing but Java 21 and Node: SQLite file + local media folder + dev login, no MySQL, no S3, no Docker, no Google account. Google sign-in is optional locally (set `GOOGLE_CLIENT_ID`).
 
 ---
 
@@ -579,7 +630,8 @@ The v1 shape grows without a rewrite:
 - Listing marketplace features: availability calendars, visit booking, brokerage.
 - Tenancy verification by document alone when the other party is not on Rentrix ("unclaimed landlord"); v1 needs both parties (D-34).
 - Property ownership transfer, co-owners, agencies/property managers.
-- KYC (Aadhaar/PAN), OTP or social login.
+- Email/password login, phone OTP login, and social logins other than Google (D-70, D-71).
+- KYC (Aadhaar/PAN).
 - Native mobile apps (the web is responsive).
 - Push / in-app notifications (email only, D-65).
 - ML fraud detection (rule-based flags only, D-45).
