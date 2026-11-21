@@ -76,7 +76,7 @@ Flyway, JWT, context path `/api/v1`, GitHub Actions CI (backend tests + web lint
 ```
 
 ### 3.1 Web tier
-- **D-04** `rentrix-web` is a static SPA (React 19, Vite, TypeScript, TanStack Query, React Router, shadcn/ui). Build output is plain files; it can be served by any static host or CDN. The only config is the API base URL: `window.__RENTRIX_CONFIG__.apiBaseUrl` from `public/config.js` (a plain file the host may replace at deploy time, served `no-cache`), else `VITE_API_BASE_URL` baked in at build time, else same-origin `/api/v1`. *Changed in W1*: the runtime `config.js` override was added so one static build can be promoted across environments without a rebuild.
+- **D-04** `rentrix-web` is a static SPA (React 19, Vite, TypeScript, TanStack Query, React Router, shadcn/ui). Build output is plain files; it can be served by any static host or CDN. The only config is the API base URL: `window.__RENTRIX_CONFIG__.apiBaseUrl` from `public/config.js` (a plain file the host may replace at deploy time, served `no-cache`), else `VITE_API_BASE_URL` baked in at build time, else same-origin `/api/v1`. The web Docker image writes `/config.js` at container start from `API_BASE_URL`. *Changed in W1*: the runtime `config.js` override was added so one static build can be promoted across environments without a rebuild.
 - **D-05** The web holds no business rules that the API does not also enforce. Permission checks in the UI are cosmetic; the API is the authority.
 
 ### 3.2 API tier
@@ -611,7 +611,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 - **D-62** Access token: JWT, HS256, 15 min, claims `sub` (user public_id), `roles`, `iat`, `exp`, `jti`. Sent as `Authorization: Bearer`. The web keeps it in memory only (never `localStorage`). Role and onboarding checks read `roles` from the JWT; every call that changes the caller's roles (`POST /me/onboarding`, role-adding `PATCH /me`) returns a fresh access token and rotates the refresh cookie (D-73), so the claim is never stale for the caller.
 - **D-63** Refresh token: opaque random 256-bit value, 30-day lifetime, **rotated on every refresh**, stored only as a SHA-256 hash in `refresh_tokens(user_id, token_hash, family_id, expires_at, revoked_at)`. Reuse of a rotated token revokes the whole family (theft detection). Delivered as an `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` cookie. This keeps API instances stateless while allowing logout and revocation.
 - **D-64** Fail closed: `SPRING_PROFILES_ACTIVE` has no default (the `${SPRING_PROFILES_ACTIVE:dev}` default in `application.yaml` is removed), and the API refuses to start unless it is set explicitly to `dev`, `test` or `prod`. The hard-coded dev `JWT_SECRET` exists only when `dev` or `test` is explicitly active; any other profile refuses to start without a real `JWT_SECRET` of at least 32 bytes. Secrets come from env only, never from tracked files. Local run: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run`.
-- Web and API must be same-site for the cookie (e.g. `rentrix.in` and `api.rentrix.in`); in dev the Vite dev server proxies `/api` to the API. CORS allow-list from `CORS_ALLOWED_ORIGINS`.
+- Web and API must be same-site for the cookie (e.g. `rentrix.in` and `api.rentrix.in`); in dev the Vite dev server proxies `/api` to the API. CORS allow-list from `CORS_ALLOWED_ORIGINS`; when it is empty in `prod` the API starts with a warning and allows no cross-origin origin (an old Render deployment without the variable keeps starting).
 - Rate limit on `/auth/google` and `/auth/dev-login`: 20 requests per 15 min per IP (`429`).
 - Suspended or deleted users: sign-in and refresh fail (`403 account_suspended`); access tokens expire within 15 min (accepted window).
 
@@ -718,13 +718,13 @@ Every property has at least one tenancy with reviews in all three directions pub
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | none, required | `dev`, `test` or `prod`; the API refuses to start if unset (D-64) |
 | `PORT` | `8080` | |
-| `DB_URL` | `jdbc:sqlite:./data/rentrix.db` in `dev`; none (required) in `prod` | MySQL/Postgres URL switches DB (D-09) |
+| `DB_URL` | `jdbc:sqlite:./data/rentrix.db` in `dev`; none (required) in `prod`; the API Docker image sets `jdbc:sqlite:/app/data/rentrix.db` | MySQL/Postgres URL switches DB (D-09). The old `DB_HOST`/`DB_PORT`/`DB_NAME` are ignored. In `prod`, a `jdbc:sqlite:` URL logs one startup warning: the data lives inside the container and is lost on redeploy unless a persistent disk is mounted at `/app/data` or `DB_URL` points to a managed database |
 | `DB_POOL_MAX` | `10` | connection pool size |
 | `ID_NODE` | random per process | 0–1023, set per instance when running several (D-80) |
 | `LOG_FORMAT` | `ecs` | structured JSON console logs (`ecs`, `logstash` or `gelf`); every line carries the request id as `traceId` |
 | `DB_USERNAME`, `DB_PASSWORD` | empty | |
 | `JWT_SECRET` | built-in default only in `dev`/`test` | required (≥ 32 bytes) in any other profile (D-64) |
-| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` only in `dev`/`test`; none (required) in `prod` | comma list; the API refuses to start in `prod` if empty |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` only in `dev`/`test`; empty in `prod` | comma list; empty in `prod` logs one warning and allows no cross-origin browser request (fail closed without blocking start, so the existing Render deployment keeps starting) |
 | `APP_BASE_URL` | `http://localhost:5173` | links in emails |
 | `ADMIN_EMAILS` | empty | D-19, D-78 |
 | `ID_HASH_KEY` | built-in default only in `dev`/`test` | HMAC key for ID numbers (D-94); required (≥ 32 bytes) in any other profile, like `JWT_SECRET` |
@@ -740,6 +740,7 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `VITE_API_BASE_URL` (web, build-time) | `/api/v1` | overridden at runtime by `config.js` (D-04) |
 | `window.__RENTRIX_CONFIG__.apiBaseUrl` (web, runtime, `dist/config.js`) | empty (use build value) | D-04 |
 | `API_PROXY_TARGET` (web dev server only) | `http://localhost:8080` | where `npm run dev` proxies `/api` |
+| `API_BASE_URL` (web Docker image, run time) | empty | written into `/config.js` at container start; must be a URL the browser can reach (D-04) |
 
 **Upgrading from the old app**: v1 starts from a fresh, empty database (new Flyway V1 baseline); point `DB_URL` at a new database, because the old schema and data are not migrated and are left as they are. See `rentrix-server/README.md` for the env changes.
 
@@ -751,7 +752,7 @@ A local developer needs nothing but Java 21 and Node: SQLite file + local media 
 
 The v1 shape grows without a rewrite:
 
-1. **Single box** (launch): one API instance + SQLite + local media + static web on a CDN/static host.
+1. **Single box** (launch): one API instance + SQLite + local media + static web on a CDN/static host. Mount a persistent disk at `/app/data` (SQLite file and media); without one, a container redeploy loses all data, and `prod` logs a warning at startup.
 2. **Managed DB**: set `DB_URL` to Postgres (recommended) or MySQL; run 2+ API instances behind a load balancer (stateless, D-06). Switch `STORAGE_BACKEND=s3` with a CDN in front of the public bucket.
 3. **Read load**: property search and aggregates are already precomputed (D-33); add HTTP caching (`Cache-Control`, `ETag`) on public property and rating endpoints, then a DB read replica.
 4. **Search**: Postgres full-text on locality/building; move to OpenSearch only if needed.

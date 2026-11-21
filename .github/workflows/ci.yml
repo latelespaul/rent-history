@@ -73,3 +73,88 @@ jobs:
 
       - name: Build
         run: npm run build
+  docker-images:
+    name: Docker Images & Compose Smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build images
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose build
+
+      - name: Start stack
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose up -d --wait --wait-timeout 180
+
+      - name: Smoke test
+        run: |
+          set -eu
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/actuator/health/readiness)
+          echo "API readiness: $code"
+          test "$code" = 200
+          curl -fsS http://localhost:8081/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:8081/config.js | tee /dev/stderr | grep -q 'apiBaseUrl: "http://localhost:8080/api/v1"'
+          # client-side routes fall back to index.html
+          curl -fsS http://localhost:8081/some/client/route | grep -q '<div id="root">'
+
+      - name: Logs on failure
+        if: failure()
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose logs --no-color
+
+      - name: Stop stack
+        if: always()
+        env:
+          JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+        run: docker compose down -v
+
+  render-compat:
+    name: Render Compat (legacy build + env)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build API image without BuildKit (as Render does)
+        env:
+          DOCKER_BUILDKIT: "0"
+        run: docker build -t rentrix-server:render-compat -f rentrix-server/Dockerfile rentrix-server
+
+      - name: Run with only the old Render env names
+        # Dummy values. No DB_URL and no CORS_ALLOWED_ORIGINS, like the existing Render service.
+        run: |
+          docker run -d --name render-compat --memory=512m -p 10000:10000 \
+            -e PORT=10000 \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            -e DB_HOST=old-mysql.invalid -e DB_PORT=3306 -e DB_NAME=rentrix \
+            -e DB_USERNAME=dummy-user -e DB_PASSWORD=dummy-password \
+            -e JWT_SECRET=ci-render-compat-dummy-secret-0123456789 \
+            -e AWS_REGION=ap-south-1 -e AWS_ACCESS_KEY_ID=dummy-key-id -e AWS_SECRET_ACCESS_KEY=dummy-secret \
+            -e S3_PUBLIC_BUCKET=dummy-public -e S3_PRIVATE_BUCKET=dummy-private \
+            rentrix-server:render-compat
+
+      - name: Readiness 200 on port 10000
+        run: |
+          set -u
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:10000/api/v1/actuator/health/readiness || true)
+            if [ "$code" = 200 ]; then echo "readiness 200 after ${i} tries"; exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' render-compat)" != true ]; then echo "container exited"; exit 1; fi
+            sleep 3
+          done
+          echo "readiness never returned 200 (last: $code)"; exit 1
+
+      - name: Logs
+        if: always()
+        run: docker logs render-compat 2>&1 | tail -200
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f render-compat
