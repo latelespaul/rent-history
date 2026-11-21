@@ -79,6 +79,9 @@ class IdempotencyTest {
 		assertThat(replay.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isEqualTo("true");
 		assertThat(replay.getResponse().getContentType()).startsWith(MediaType.APPLICATION_JSON_VALUE);
 		assertThat(replay.getResponse().getContentAsString()).isEqualTo(first.getResponse().getContentAsString());
+		assertThat(first.getResponse().getHeader(HttpHeaders.LOCATION)).startsWith("/test-only/items/");
+		assertThat(replay.getResponse().getHeader(HttpHeaders.LOCATION))
+			.isEqualTo(first.getResponse().getHeader(HttpHeaders.LOCATION));
 		
 		MvcResult fresh = send(user, key(), body("a"));
 		assertThat(fresh.getResponse().getContentAsString()).isNotEqualTo(first.getResponse().getContentAsString());
@@ -133,6 +136,20 @@ class IdempotencyTest {
 				.contentType(MediaType.APPLICATION_JSON).content(body("a")))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("idempotency_request_in_progress"));
+	}
+	
+	@Test
+	void abandonedReservationPastItsLeaseIsTakenOver() throws Exception {
+		String key = key();
+		String first = send(user, key, body("a")).getResponse().getContentAsString();
+		// as if the instance running the first request died before finishing it
+		jdbc.update("update idempotency_keys set state = 'IN_PROGRESS', response_body = null, created_at = ?"
+			+ " where idempotency_key = ?", Timestamp.from(Instant.now().minus(2, ChronoUnit.DAYS)), key);
+		MvcResult retry = send(user, key, body("a"));
+		assertThat(retry.getResponse().getStatus()).isEqualTo(201);
+		assertThat(retry.getResponse().getHeader(IdempotencyFilter.REPLAYED_HEADER)).isNull();
+		assertThat(retry.getResponse().getContentAsString()).isNotEqualTo(first);
+		assertThat(store.findLive(user.toString(), key).orElseThrow().getState()).isEqualTo(IdempotencyState.COMPLETED);
 	}
 	
 	@Test

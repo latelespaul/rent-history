@@ -45,6 +45,9 @@ public class IdempotencyRecord extends BaseEntity {
 	@Column(name = "response_content_type")
 	private String responseContentType;
 	
+	@Column(name = "response_location", length = 2048)
+	private String responseLocation;
+	
 	@Column(name = "response_body", columnDefinition = "TEXT")
 	private String responseBody;
 	

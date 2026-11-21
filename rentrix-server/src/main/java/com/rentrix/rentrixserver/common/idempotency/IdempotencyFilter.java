@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterProperties;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -42,12 +43,14 @@ import java.util.regex.Pattern;
  * <ol>
  *   <li>No header, not a write, or not an {@code @Idempotent} endpoint: the request runs as usual.</li>
  *   <li>First request with a key: the key is reserved (unique per caller), the request runs, and a
- *       2xx response is stored for 24 h. A non-2xx response releases the key so the client can fix
+ *       2xx response (status, Content-Type, Location, body) is stored for 24 h. A non-2xx response releases the key so the client can fix
  *       and retry with it.</li>
  *   <li>Same key and same request again: the stored response is replayed with
  *       {@code Idempotent-Replayed: true}; the write does not run twice.</li>
  *   <li>Same key, different request: {@code 422 idempotency_key_reused}.</li>
- *   <li>Same key while the first request still runs: {@code 409 idempotency_request_in_progress}.</li>
+ *   <li>Same key while the first request still runs: {@code 409 idempotency_request_in_progress}. A
+ *       reservation older than {@link IdempotencyStore#IN_PROGRESS_LEASE} is taken to be abandoned (its
+ *       instance died) and the retry runs.</li>
  * </ol>
  * Keys are scoped to the authenticated caller, so it runs after the security filter chain.
  */
@@ -118,7 +121,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			byte[] body = captured.getContentAsByteArray();
 			if (status >= 200 && status < 300 && body.length <= MAX_STORED_BODY_BYTES) {
 				store.complete(record.getId(), status, captured.getContentType(),
-					new String(body, StandardCharsets.UTF_8));
+					captured.getHeader(HttpHeaders.LOCATION), new String(body, StandardCharsets.UTF_8));
 				stored = true;
 			} else if (status >= 200 && status < 300) {
 				log.warn("Idempotent response of {} bytes on {} is too large to store; key released", body.length,
@@ -141,6 +144,9 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 			response.setStatus(record.getResponseStatus());
 			if (record.getResponseContentType() != null) {
 				response.setContentType(record.getResponseContentType());
+			}
+			if (record.getResponseLocation() != null) {
+				response.setHeader(HttpHeaders.LOCATION, record.getResponseLocation());
 			}
 			response.setHeader(REPLAYED_HEADER, "true");
 			byte[] body = record.getResponseBody() == null ? new byte[0]

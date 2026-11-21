@@ -13,6 +13,10 @@ public interface IdempotencyRecordRepository extends JpaRepository<IdempotencyRe
 	Optional<IdempotencyRecord> findByScopeAndIdempotencyKey(String scope, String idempotencyKey);
 	
 	@Modifying
+	@Query("delete from IdempotencyRecord r where r.id = :id")
+	int deleteRecord(@Param("id") long id);
+	
+	@Modifying
 	@Query("delete from IdempotencyRecord r where r.expiresAt <= :now")
 	int deleteExpired(@Param("now") Instant now);
 	

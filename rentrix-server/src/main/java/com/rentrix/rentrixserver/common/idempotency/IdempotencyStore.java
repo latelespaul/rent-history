@@ -23,20 +23,30 @@ public class IdempotencyStore {
 	
 	/** How long a key is remembered (§12.1). */
 	public static final Duration RETENTION = Duration.ofHours(24);
+	/** An IN_PROGRESS reservation older than this was abandoned by a dead instance and may be taken over. */
+	public static final Duration IN_PROGRESS_LEASE = Duration.ofMinutes(5);
 	
 	private final IdempotencyRecordRepository records;
 	private final Clock clock;
 	
-	/** The live (not expired) record for this caller and key; an expired one is deleted. */
+	/**
+	 * The live record for this caller and key. An expired one, or an IN_PROGRESS one older than
+	 * {@link #IN_PROGRESS_LEASE}, is deleted.
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public Optional<IdempotencyRecord> findLive(String scope, String key) {
 		Optional<IdempotencyRecord> found = records.findByScopeAndIdempotencyKey(scope, key);
-		if (found.isPresent() && !found.get().getExpiresAt().isAfter(now())) {
-			records.delete(found.get());
-			records.flush();
+		if (found.isPresent() && isDead(found.get(), now())) {
+			records.deleteRecord(found.get().getId());
 			return Optional.empty();
 		}
 		return found;
+	}
+	
+	private static boolean isDead(IdempotencyRecord record, Instant now) {
+		return !record.getExpiresAt().isAfter(now)
+			|| record.getState() == IdempotencyState.IN_PROGRESS
+			&& !record.getCreatedAt().plus(IN_PROGRESS_LEASE).isAfter(now);
 	}
 	
 	/**
@@ -51,11 +61,12 @@ public class IdempotencyStore {
 	
 	/** Stores the successful response for replay. */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void complete(long recordId, int status, String contentType, String body) {
+	public void complete(long recordId, int status, String contentType, String location, String body) {
 		records.findById(recordId).ifPresent(record -> {
 			record.setState(IdempotencyState.COMPLETED);
 			record.setResponseStatus(status);
 			record.setResponseContentType(contentType);
+			record.setResponseLocation(location);
 			record.setResponseBody(body);
 		});
 	}
@@ -63,7 +74,7 @@ public class IdempotencyStore {
 	/** Forgets a reservation whose request failed, so the client may retry with the same key. */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void release(long recordId) {
-		records.findById(recordId).ifPresent(records::delete);
+		records.deleteRecord(recordId);
 	}
 	
 	/** Deletes every expired key; returns how many. */
