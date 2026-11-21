@@ -6,7 +6,6 @@ import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -44,10 +43,9 @@ class VendorDatabaseContainerTest {
 	
 	private static void assertAppRunsOn(JdbcDatabaseContainer<?> db) {
 		try (ConfigurableApplicationContext app = new SpringApplicationBuilder(RentrixServerApplication.class)
-			.web(WebApplicationType.NONE)
 			.profiles("test")
-			// the same env names a deployment uses (D-09)
-			.properties("DB_URL=" + db.getJdbcUrl(), "DB_USERNAME=" + db.getUsername(),
+			// the same env names a deployment uses (D-09); a random port, as the app is a servlet app
+			.properties("server.port=0", "DB_URL=" + db.getJdbcUrl(), "DB_USERNAME=" + db.getUsername(),
 				"DB_PASSWORD=" + db.getPassword())
 			.run()) {
 			assertThat(app.getBean(CityRepository.class).findByLiveTrueOrderByNameAsc()).hasSize(2);
