@@ -3,7 +3,9 @@
 #   docker build -t rentrix-server rentrix-server
 # Builds with a plain (non-BuildKit) docker build, as Render does: no syntax line,
 # no cache mounts. Runs as a non-root user. SQLite data and local media live under /app/data;
-# mount a volume there (docker-compose.yml does). Config is env only (§17).
+# mount a volume there (docker-compose.yml does). Without a volume or persistent disk at
+# /app/data (or a managed-database DB_URL), every redeploy loses all data; prod logs a
+# warning at startup when it runs on SQLite. Config is env only (§17).
 # =============================================================================
 
 # --- Build stage ------------------------------------------------------------
@@ -50,7 +52,9 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=5 \
   CMD curl -fsS "http://127.0.0.1:${PORT}/api/v1/actuator/health/readiness" > /dev/null || exit 1
 
 ENTRYPOINT ["java", \
-            "-XX:MaxRAMPercentage=75", \
+            "-XX:MaxRAMPercentage=70", \
+            "-XX:InitialRAMPercentage=50", \
+            "-XX:MaxMetaspaceSize=128m", \
             "-XX:+UseSerialGC", \
             "-XX:+ExitOnOutOfMemoryError", \
             "-jar", "/app/app.jar"]

@@ -2,8 +2,11 @@ package com.rentrix.rentrixserver.config;
 
 import com.rentrix.rentrixserver.RentrixServerApplication;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.mock.env.MockEnvironment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -12,6 +15,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.Map;
 
+@ExtendWith(OutputCaptureExtension.class)
 class StartupGuardTest {
 	
 	private static final String GOOD_SECRET = "a-production-secret-that-is-long-enough-0123456789";
@@ -85,6 +89,19 @@ class StartupGuardTest {
 		MockEnvironment weak = env("prod").withProperty("app.jwt.secret", "too-short")
 			.withProperty("spring.datasource.url", "jdbc:sqlite:/app/data/rentrix.db");
 		assertThatThrownBy(() -> StartupGuard.check(weak)).hasMessageContaining("JWT_SECRET");
+	}
+	
+	@Test
+	void prodWarnsWhenRunningOnSqlite(CapturedOutput output) {
+		assertThatCode(() -> StartupGuard.check(prod()
+			.withProperty("spring.datasource.url", "jdbc:sqlite:/app/data/rentrix.db"))).doesNotThrowAnyException();
+		assertThat(output).contains("DB_URL is SQLite (jdbc:sqlite:/app/data/rentrix.db)", "/app/data");
+	}
+	
+	@Test
+	void prodDoesNotWarnAboutSqliteOnManagedDatabase(CapturedOutput output) {
+		StartupGuard.check(prod());
+		assertThat(output).doesNotContain("DB_URL is SQLite");
 	}
 	
 	@Test

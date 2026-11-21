@@ -26,6 +26,8 @@ import java.util.Set;
  * <p>An empty {@code CORS_ALLOWED_ORIGINS} outside dev and test is allowed with one warning: the
  * allow-list stays empty, so no cross-origin browser call is accepted (still fail closed). This keeps
  * an existing deployment that predates the variable (Render) starting.
+ * <p>A {@code jdbc:sqlite:} {@code DB_URL} outside dev and test also starts with one warning: the
+ * data is lost on redeploy unless {@code /app/data} is on a persistent disk.
  * <p>Registered in {@code META-INF/spring.factories}, so it also guards tests.
  */
 public class StartupGuard implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
@@ -62,9 +64,15 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 			throw new IllegalStateException("Refusing to start: DEV_LOGIN_ENABLED=true is allowed only in the dev "
 				+ "and test profiles.");
 		}
-		if (!StringUtils.hasText(env.getProperty("spring.datasource.url"))) {
+		String dbUrl = env.getProperty("spring.datasource.url");
+		if (!StringUtils.hasText(dbUrl)) {
 			throw new IllegalStateException("Refusing to start: DB_URL is required in the '" + profile
 				+ "' profile (a jdbc:sqlite:, jdbc:mysql: or jdbc:postgresql: URL).");
+		}
+		if (dbUrl.startsWith("jdbc:sqlite:")) {
+			LOG.warn("DB_URL is SQLite ({}) in the '{}' profile: the data lives inside the container at that path "
+				+ "and is lost on redeploy unless a persistent disk is mounted at /app/data or DB_URL points to a "
+				+ "managed database.", dbUrl, profile);
 		}
 		boolean hasOrigin = Binder.get(env).bind("app.cors.allowed-origins", Bindable.listOf(String.class))
 			.orElse(List.of()).stream().anyMatch(StringUtils::hasText);

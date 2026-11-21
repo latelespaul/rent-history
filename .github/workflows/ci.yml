@@ -130,7 +130,7 @@ jobs:
       - name: Run with only the old Render env names
         # Dummy values. No DB_URL and no CORS_ALLOWED_ORIGINS, like the existing Render service.
         run: |
-          docker run -d --name render-compat -p 10000:10000 \
+          docker run -d --name render-compat --memory=512m -p 10000:10000 \
             -e PORT=10000 \
             -e SPRING_PROFILES_ACTIVE=prod \
             -e DB_HOST=old-mysql.invalid -e DB_PORT=3306 -e DB_NAME=rentrix \

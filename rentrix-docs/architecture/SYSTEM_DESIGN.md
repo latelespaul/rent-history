@@ -718,7 +718,7 @@ Every property has at least one tenancy with reviews in all three directions pub
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | none, required | `dev`, `test` or `prod`; the API refuses to start if unset (D-64) |
 | `PORT` | `8080` | |
-| `DB_URL` | `jdbc:sqlite:./data/rentrix.db` in `dev`; none (required) in `prod`; the API Docker image sets `jdbc:sqlite:/app/data/rentrix.db` | MySQL/Postgres URL switches DB (D-09). The old `DB_HOST`/`DB_PORT`/`DB_NAME` are ignored |
+| `DB_URL` | `jdbc:sqlite:./data/rentrix.db` in `dev`; none (required) in `prod`; the API Docker image sets `jdbc:sqlite:/app/data/rentrix.db` | MySQL/Postgres URL switches DB (D-09). The old `DB_HOST`/`DB_PORT`/`DB_NAME` are ignored. In `prod`, a `jdbc:sqlite:` URL logs one startup warning: the data lives inside the container and is lost on redeploy unless a persistent disk is mounted at `/app/data` or `DB_URL` points to a managed database |
 | `DB_POOL_MAX` | `10` | connection pool size |
 | `ID_NODE` | random per process | 0–1023, set per instance when running several (D-80) |
 | `LOG_FORMAT` | `ecs` | structured JSON console logs (`ecs`, `logstash` or `gelf`); every line carries the request id as `traceId` |
@@ -752,7 +752,7 @@ A local developer needs nothing but Java 21 and Node: SQLite file + local media 
 
 The v1 shape grows without a rewrite:
 
-1. **Single box** (launch): one API instance + SQLite + local media + static web on a CDN/static host.
+1. **Single box** (launch): one API instance + SQLite + local media + static web on a CDN/static host. Mount a persistent disk at `/app/data` (SQLite file and media); without one, a container redeploy loses all data, and `prod` logs a warning at startup.
 2. **Managed DB**: set `DB_URL` to Postgres (recommended) or MySQL; run 2+ API instances behind a load balancer (stateless, D-06). Switch `STORAGE_BACKEND=s3` with a CDN in front of the public bucket.
 3. **Read load**: property search and aggregates are already precomputed (D-33); add HTTP caching (`Cache-Control`, `ETag`) on public property and rating endpoints, then a DB read replica.
 4. **Search**: Postgres full-text on locality/building; move to OpenSearch only if needed.
