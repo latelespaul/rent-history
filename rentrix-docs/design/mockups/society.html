@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Society</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Society page (design v3)</b> · signed in as tenant · <code>GET /societies/{id}</code>, <code>/societies/{id}/reviews?tower=</code> · City › Area › Society › Tower › Wing › Unit · flat numbers stay private · D-107 D-111 D-112 D-57</div>
+<header data-topbar data-as="tenant" data-active="search"></header>
+
+<main class="container section" style="padding-top:20px">
+  <div class="crumbs"><a href="browse-areas.html">Bangalore</a><i data-icon="chevron-right" data-size="14"></i><a href="browse-areas.html">Koramangala</a><i data-icon="chevron-right" data-size="14"></i><span>Demo Greens</span></div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="row" style="gap:18px;align-items:flex-start">
+      <span class="ph" style="width:96px;height:96px;aspect-ratio:auto;border-radius:16px;flex:none"><i data-icon="building"></i></span>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:8px"><h1 class="h1">Demo Greens</h1><span class="badge badge-verified"><i data-icon="lock"></i>Gated community</span><span class="badge badge-demo">Demo data</span></div>
+        <p class="muted" style="margin-top:4px">by Demo Builders · 80 Feet Road, Koramangala, Bangalore 560034</p>
+        <div class="facts" style="margin-top:10px"><span><i data-icon="building"></i>2 towers · 4 wings</span><span><i data-icon="home"></i>1 home listed</span><span><i data-icon="users"></i>1 owner</span><span><i data-icon="tenancy"></i>2 confirmed tenancies</span></div>
+      </div>
+      <button class="btn btn-ghost"><i data-icon="flag" data-size="18"></i>Report</button>
+    </div>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="stack">
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0">Towers and wings</h2><span class="small muted">Homes listed on Rentrix, by building <span class="spec">D-107</span></span></div>
+        <div class="towers" style="margin-top:14px">
+          <div class="tower">
+            <div class="hd"><span><i data-icon="building" data-size="18"></i> Tower 1</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+            <div class="wing"><div class="wn">Wing A</div>
+              <div class="home-row"><a href="property.html"><b>Demo Residency A</b></a><span class="small muted">2 BHK · 1,050 sq ft</span><span class="rating-new"><span class="pill">New</span>2</span><span class="small num">₹36,500 / month</span></div></div>
+            <div class="wing"><div class="wn">Wing B</div><div class="small muted" style="padding-top:6px">No homes listed yet</div></div>
+          </div>
+          <div class="tower">
+            <div class="hd"><span><i data-icon="building" data-size="18"></i> Tower 2</span><span class="small muted">no reviews yet</span></div>
+            <div class="wing"><div class="wn">Wing A</div><div class="small muted" style="padding-top:6px">No homes listed yet</div></div>
+            <div class="wing"><div class="wn">Wing B</div><div class="small muted" style="padding-top:6px">No homes listed yet</div></div>
+          </div>
+        </div>
+        <p class="xs muted" style="margin-top:12px"><i data-icon="lock" data-size="14"></i> Flat numbers are visible only to the landlord and tenants of that flat. <span class="spec">D-57</span></p>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0"><i data-icon="star"></i> What tenants say about homes here</h2><span class="small muted">2 reviews</span></div>
+        <div class="row" style="gap:6px;margin-top:10px"><span class="chip on">All towers</span><span class="chip">Tower 1</span><span class="chip">Tower 2</span></div>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-tenant" style="width:28px;height:28px;font-size:11px">DT</span><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · Apr 2022 – Mar 2024</span><span>at <a href="property.html">Demo Residency A</a> · Tower 1 · Wing A</span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="4"></span><span class="xs muted">Condition 4 · Utilities 5 · Neighbourhood 4</span></div>
+          <p class="text">Water supply was steady through both summers and the lift was serviced on time. Kitchen cabinets were old but repaired when asked. Busy road noise in the front bedroom.</p>
+          <div class="actions"><span>Published Apr 2024</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-tenant" style="width:28px;height:28px;font-size:11px">DT</span><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn verified</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · since May 2024</span><span>at <a href="property.html">Demo Residency A</a> · Tower 1 · Wing A</span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="3"></span><span class="xs muted">Condition 3 · Utilities 3 · Neighbourhood 4</span></div>
+          <p class="text">Good location and the society is well run. Power cuts happen a few times a month and there is no backup for the bedrooms. Bathroom fittings need replacing.</p>
+          <div class="response"><b>Response from the landlord</b> · Aug 2024<br>Inverter backup for the bedrooms is being added this quarter. Fittings were replaced in July.</div>
+          <div class="actions"><span>Published Jul 2024 · edited</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <p class="eyebrow">Society rating</p>
+        <div class="row" style="margin-top:8px"><span class="rating-new" style="font-size:var(--rx-text-lg)"><span class="pill" style="font-size:var(--rx-text-sm)">New</span>2 reviews</span></div>
+        <p class="small muted" style="margin-top:6px">Combines the reviews of every home in Demo Greens. An average appears after 3 reviews. <span class="spec">D-52 · D-111</span></p>
+        <hr class="divider">
+        <p class="xs muted">Per tower: Tower 1 · 2 reviews · Tower 2 · none yet. Ranking among societies uses a Bayesian score. <span class="spec">D-53</span></p>
+      </div>
+      <div class="card">
+        <h2 class="h3">Owners here</h2>
+        <div class="row" style="gap:12px"><span class="avatar avatar-landlord">DL</span>
+          <div style="flex:1"><div style="font-weight:600">Demo L. <span class="badge badge-landlord">Landlord</span></div>
+            <div class="row" style="gap:6px;margin-top:4px"><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn verified</span></div>
+            <div class="row" style="gap:6px;margin-top:4px"><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> as landlord · 1 home here</span></div></div></div>
+        <a class="btn btn-secondary btn-block" style="margin-top:12px" href="landlord-profile.html">View owner profile<i data-icon="arrow-right" data-size="18"></i></a>
+      </div>
+      <div class="card">
+        <h2 class="h3">In this area</h2>
+        <p class="small muted">Koramangala · 560034, 560095</p>
+        <div class="row" style="gap:6px;margin-top:6px"><span class="rating-new"><span class="pill">New</span>2 reviews</span><span class="small muted">area rating</span></div>
+        <a class="small" href="browse-areas.html" style="display:inline-block;margin-top:8px">More societies and homes in Koramangala</a>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

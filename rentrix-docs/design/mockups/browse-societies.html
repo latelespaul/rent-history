@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Browse societies</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Browse by gated society (design v3)</b> · signed in as tenant · <code>GET /societies?city=BLR&amp;sort=top_rated</code> · Top rated = Bayesian (D-53) · society rating = all home reviews in the society · D-111 D-112 · <span class="spec">2 rows illustrative</span></div>
+<header data-topbar data-as="tenant" data-active="search"></header>
+
+<main class="container section">
+  <form class="searchbar" onsubmit="return false">
+    <div class="seg"><i data-icon="city"></i>
+      <div data-citypicker data-bare data-value="BLR" data-cities="2"></div></div>
+    <div class="seg grow"><i data-icon="building"></i>
+      <input class="input" style="border:0;height:36px;padding:0" placeholder="Society, developer or area" value=""></div>
+    <button class="btn btn-primary"><i data-icon="search"></i>Search</button>
+  </form>
+
+  <div class="tabs" style="margin-top:20px"><a href="search.html"><span><i data-icon="home" data-size="16"></i>Homes</span></a><a href="browse-areas.html"><span><i data-icon="map-pin" data-size="16"></i>Areas</span></a><span class="on"><i data-icon="building" data-size="16"></i>Societies</span></div>
+
+  <div class="layout-side" style="margin-top:20px">
+    <aside class="card stack">
+      <div class="row between"><h2 class="h3" style="margin:0">Filters</h2><a class="small" href="#">Clear</a></div>
+      <div class="field"><span class="label">Area</span>
+        <div class="row" style="gap:6px"><span class="chip on">All areas</span><span class="chip">Koramangala</span><span class="chip">HSR Layout</span><span class="chip">Whitefield</span></div>
+        <span class="hint">From <code>GET /areas</code>; type a PIN code to find more.</span></div>
+      <div class="field"><span class="label">Kind</span>
+        <div class="row" style="gap:6px"><span class="chip on">Any</span><span class="chip">Gated community</span><span class="chip">Apartment complex</span></div></div>
+      <div class="field"><span class="label">Society rating</span>
+        <select class="select"><option>Any (includes New)</option><option>4 ★ and up</option><option>3 ★ and up</option></select>
+        <span class="hint">Societies with fewer than 3 reviews have no average yet, so a minimum rating hides them.</span></div>
+      <div class="field"><span class="label">Homes in it</span>
+        <div class="segmented"><span class="on">Any</span><span>1</span><span>2</span><span>3+</span></div><span class="hint">Bedrooms of the listed homes.</span></div>
+    </aside>
+
+    <section class="stack">
+      <div class="row between">
+        <div><h1 class="h2">3 societies in Bangalore</h1><p class="small muted">Only societies with at least one published home.</p></div>
+        <div class="row"><span class="small muted">Sort</span><select class="select" style="width:auto;height:38px"><option>Top rated</option><option>Most reviewed</option><option>Recently reviewed</option><option>Name A–Z</option></select></div>
+      </div>
+
+      <article class="card loc-card illustrative">
+        <span class="ic"><i data-icon="building" data-size="24"></i></span>
+        <div style="flex:1">
+          <div class="row between"><span class="nm">Demo Lakeview <span class="spec">illustrative</span></span><span class="row" style="gap:6px"><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.2</b> (6)</span></span></div>
+          <div class="small muted">Gated community · HSR Layout · 560102</div>
+          <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>3 towers</span><span><i data-icon="home"></i>4 homes listed</span><span><i data-icon="users"></i>3 owners</span></div>
+        </div>
+      </article>
+
+      <article class="card loc-card illustrative">
+        <span class="ic"><i data-icon="building" data-size="24"></i></span>
+        <div style="flex:1">
+          <div class="row between"><span class="nm">Demo Orchid Court <span class="spec">illustrative</span></span><span class="row" style="gap:6px"><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.6</b> (3)</span></span></div>
+          <div class="small muted">Apartment complex · Whitefield · 560066</div>
+          <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>1 block</span><span><i data-icon="home"></i>2 homes listed</span><span><i data-icon="users"></i>2 owners</span></div>
+        </div>
+      </article>
+
+      <a class="card loc-card" href="society.html">
+        <span class="ic"><i data-icon="building" data-size="24"></i></span>
+        <div style="flex:1">
+          <div class="row between"><span class="nm">Demo Greens <span class="badge badge-demo">Demo data</span></span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+          <div class="small muted">Gated community · by Demo Builders · Koramangala · 560034</div>
+          <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>2 towers · 4 wings</span><span><i data-icon="home"></i>1 home listed</span><span><i data-icon="users"></i>1 owner</span></div>
+          <div class="row" style="gap:6px;margin-top:8px"><span class="xs muted">Owner</span><span class="small"><b>Demo L.</b></span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn verified</span></div>
+        </div>
+      </a>
+
+      <div class="notice"><i data-icon="info"></i><span>"Top rated" ranks by a Bayesian score, so a society with only 2 reviews does not jump ahead of one with 6. <span class="spec">D-53 · D-111</span></span></div>
+      <div class="notice notice-dev"><i data-icon="code"></i><span><b>Mockup note.</b> The two dashed rows are not in the seed; they show the average and sort states. The seed has one gated society per city (Demo Greens, Demo Meadows). <span class="spec">D-115</span></span></div>
+    </section>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

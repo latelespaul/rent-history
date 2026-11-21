@@ -8,32 +8,37 @@
 </head>
 <body>
 <main class="container section">
-  <p class="eyebrow">Rentrix design · v1 + v2</p>
+  <p class="eyebrow">Rentrix design · v1 + v2 + v3</p>
   <h1 class="display">Mockups</h1>
   <p class="muted" style="margin-top:6px">Static HTML, one per screen. Data comes from the dev seed in SYSTEM_DESIGN.md §16. Purple <span class="spec">D-xx</span> tags point to the decision each element follows; they are not product UI.</p>
   <div class="grid-3" style="margin-top:24px">
     <a class="card" href="home.html"><b>Home / search entry</b><div class="small muted">Anonymous · city picker + cards from the list (2 cities)</div></a>
     <a class="card" href="home-many-cities.html"><b>Home with 9 cities</b> <span class="badge badge-info">v2</span><div class="small muted">Same page, more rows from <code>GET /cities</code></div></a>
     <a class="card" href="city-picker.html"><b>City picker</b> <span class="badge badge-info">v2</span><div class="small muted">Combobox states: closed, open, alias search, no match</div></a>
-    <a class="card" href="search.html"><b>Search results</b><div class="small muted">Bangalore · filters, sort, "New" ratings</div></a>
-    <a class="card" href="property.html"><b>Property page</b><div class="small muted">Demo Residency A · rent history, reviews</div></a>
-    <a class="card" href="landlord-profile.html"><b>Landlord profile</b><div class="small muted">Demo Landlord BLR-1 · 4.3 from 3</div></a>
-    <a class="card" href="tenant-profile.html"><b>Tenant profile</b><div class="small muted">Seen by a landlord via enquiry</div></a>
+    <a class="card" href="search.html"><b>Search results</b> <span class="badge badge-verified">v3</span><div class="small muted">Bangalore · Homes / Areas / Societies tabs, area and society filters</div></a>
+    <a class="card" href="browse-areas.html"><b>Browse by area</b> <span class="badge badge-verified">v3</span><div class="small muted">Area by name or PIN code, area rating, sort</div></a>
+    <a class="card" href="browse-societies.html"><b>Browse by society</b> <span class="badge badge-verified">v3</span><div class="small muted">Gated societies, filters, Top rated</div></a>
+    <a class="card" href="society.html"><b>Society page</b> <span class="badge badge-verified">v3</span><div class="small muted">Demo Greens · towers, wings, homes, society rating</div></a>
+    <a class="card" href="property.html"><b>Property page</b> <span class="badge badge-verified">v3</span><div class="small muted">Demo Residency A · location breadcrumb, owner badges</div></a>
+    <a class="card" href="landlord-profile.html"><b>Landlord / owner profile</b> <span class="badge badge-verified">v3</span><div class="small muted">Demo Landlord BLR-1 · badges, 2 properties, Homes rating 3.7</div></a>
+    <a class="card" href="tenant-profile.html"><b>Tenant profile</b> <span class="badge badge-verified">v3</span><div class="small muted">Seen by a landlord via enquiry · ID verified badge</div></a>
     <a class="card" href="write-review.html"><b>Write review</b><div class="small muted">Home review, double-blind landlord review</div></a>
     <a class="card" href="my-tenancies.html"><b>My tenancies</b><div class="small muted">Tenant · tasks, tenancy card</div></a>
     <a class="card" href="landlord-dashboard.html"><b>Landlord dashboard</b><div class="small muted">Requests, enquiries, properties</div></a>
     <a class="card" href="login.html"><b>Sign in / sign up</b><div class="small muted">Google + dev-only seed login</div></a>
     <a class="card" href="onboarding.html"><b>First sign-in role pick</b><div class="small muted">Tenant, landlord or both, then verification</div></a>
     <a class="card" href="verify-profile.html"><b>Verify 1 · Profile</b> <span class="badge badge-info">v2</span><div class="small muted">Name, home city, phone</div></a>
-    <a class="card" href="verify-linkedin.html"><b>Verify 2 · LinkedIn</b> <span class="badge badge-info">v2</span><div class="small muted">URL, admin-checked</div></a>
-    <a class="card" href="verify-id.html"><b>Verify 3 · ID document</b> <span class="badge badge-info">v2</span><div class="small muted">PAN upload, masked number</div></a>
+    <a class="card" href="verify-id.html"><b>Verify 2 · Verify ID</b> <span class="badge badge-verified">v3</span><div class="small muted">Pick Aadhaar, PAN or phone OTP; one is enough</div></a>
+    <a class="card" href="verify-phone.html"><b>Verify 2 · Phone code</b> <span class="badge badge-verified">v3</span><div class="small muted">SMS OTP, masked number</div></a>
+    <a class="card" href="verify-aadhaar.html"><b>Verify 2 · Masked Aadhaar</b> <span class="badge badge-verified">v3</span><div class="small muted">Masked copy + last 4 only</div></a>
+    <a class="card" href="verify-linkedin.html"><b>Verify 3 · LinkedIn (optional)</b> <span class="badge badge-verified">v3</span><div class="small muted">Bonus badge, skippable</div></a>
     <a class="card" href="verify-agreement.html"><b>Verify 4 · Rental agreement</b> <span class="badge badge-info">v2</span><div class="small muted">Optional upload + submit</div></a>
     <a class="card" href="verify-pending.html"><b>Verification pending</b> <span class="badge badge-info">v2</span><div class="small muted">What you can do meanwhile</div></a>
     <a class="card" href="verify-rejected.html"><b>Verification rejected</b> <span class="badge badge-info">v2</span><div class="small muted">Reason + fix and resubmit</div></a>
     <a class="card" href="verify-approved.html"><b>Verification approved</b> <span class="badge badge-info">v2</span><div class="small muted">Trust writes open</div></a>
     <a class="card" href="write-review-pending.html"><b>Write review · pending</b> <span class="badge badge-info">v2</span><div class="small muted">"Your account is pending approval"</div></a>
     <a class="card" href="admin-dashboard.html"><b>Admin · Dashboard</b> <span class="badge badge-info">v2</span><div class="small muted">Queues, oldest waiting, recent decisions</div></a>
-    <a class="card" href="admin-approvals.html"><b>Admin · Approvals</b> <span class="badge badge-info">v2</span><div class="small muted">Queue + detail, approve / reject with reason</div></a>
+    <a class="card" href="admin-approvals.html"><b>Admin · Approvals</b> <span class="badge badge-verified">v3</span><div class="small muted">Queue + detail, identity checks per method, approve / reject</div></a>
     <a class="card" href="admin-records.html"><b>Admin · Records</b> <span class="badge badge-info">v2</span><div class="small muted">Tenants list, search and filters</div></a>
     <a class="card" href="admin-record.html"><b>Admin · Record detail</b> <span class="badge badge-info">v2</span><div class="small muted">Landlord BLR-1 with audit trail</div></a>
     <a class="card" href="admin-cities.html"><b>Admin · Cities</b> <span class="badge badge-info">v2</span><div class="small muted">Add a city, activate it</div></a>

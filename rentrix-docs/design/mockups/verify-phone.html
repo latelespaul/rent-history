@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Verify · Phone code</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Verify ID: phone OTP (design v3)</b> · Demo Tenant BLR-7 · <span class="spec">illustrative: the seed has no phone numbers</span> · <code>POST /me/identity/phone/start</code>, <code>/confirm</code> · code by SMS, 10 min, 5 tries · D-101 D-106</div>
+<header data-topbar data-as="tenant" data-active=""></header>
+<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Your account is not verified yet. You can read everything; writing reviews and confirming tenancies open after approval. <a href="verify-pending.html">See status</a></span></div></div>
+
+<main class="container section">
+  <p class="eyebrow">Verify your account · tenant</p>
+  <h1 class="h1" style="margin-top:6px">Step 2 of 4 · Phone number</h1>
+  <div class="card" style="margin-top:16px"><ol class="stepper" aria-label="Verification steps"><li class="done"><span class="t">Profile</span></li><li class="on"><span class="t">Verify ID</span></li><li class=""><span class="t">LinkedIn (optional)</span></li><li class=""><span class="t">Rental agreement</span></li></ol></div>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card">
+        <h2 class="h3">1 · Your mobile number</h2>
+        <div class="row" style="gap:10px">
+          <span class="input row" style="width:auto;min-width:240px;gap:8px;background:var(--rx-sunk)"><i data-icon="message" data-size="16"></i><span class="masked">+91 XXXXXX0007</span></span>
+          <span class="badge badge-info"><i data-icon="clock"></i>Code sent</span>
+          <a class="small" href="#">Change number</a>
+        </div>
+        <span class="hint" style="display:block;margin-top:6px">Indian mobile numbers only (+91, 10 digits). Private: never shown on your profile. <span class="spec">D-57 · D-101</span></span>
+      </div>
+      <div class="card">
+        <h2 class="h3">2 · Enter the 6-digit code</h2>
+        <p class="small muted" style="margin-top:-6px;margin-bottom:14px">We sent it by SMS. It works for 10 minutes.</p>
+        <div class="otp" aria-label="One-time code"><span>•</span><span>•</span><span>•</span><span class="on"></span><span></span><span></span></div>
+        <div class="row" style="gap:16px;margin-top:12px"><span class="small muted"><i data-icon="clock" data-size="14"></i> Resend code in 0:42</span><span class="small muted">5 tries left</span></div>
+        <div class="notice notice-dev" style="margin-top:16px"><i data-icon="code"></i><span><b>DEV ONLY.</b> In dev and test no SMS is sent: the code is written to the API log (<code>LogSmsSender</code>). Production uses an SMS provider set by <code>SMS_*</code> env. <span class="spec">D-101</span></span></div>
+        <div class="row between" style="margin-top:20px"><a class="btn btn-ghost" href="verify-id.html">Back</a><a class="btn btn-primary btn-lg" href="verify-id.html">Verify</a></div>
+      </div>
+    </div>
+    <aside class="stack">
+      <div class="card"><h2 class="h3">After the code</h2>
+        <ul class="checklist">
+          <li><i data-icon="check" class="yes"></i><span>Your phone is verified at once, no admin wait. Your profile shows <span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span></span></li>
+          <li><i data-icon="check" class="yes"></i><span>Rentrix keeps your number privately and shows you only <span class="masked">+91 XXXXXX0007</span>.</span></li>
+          <li><i data-icon="info" class="no"></i><span>Changing the number later needs a new code. <span class="spec">D-101</span></span></li>
+        </ul></div>
+      <div class="card"><h2 class="h3"><i data-icon="lock" data-size="18"></i> Not a login</h2>
+        <p class="small muted">This only verifies your phone. You still sign in with Google. <span class="spec">D-70</span></p></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

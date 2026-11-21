@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="mock.css">
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Landlord profile</b> · signed in as tenant · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=LANDLORD</code> · D-18 D-28 D-55</div>
+<div class="mock-banner"><b>Mockup · Landlord / owner profile</b> · signed in as tenant · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=LANDLORD</code>, <code>/users/{id}/properties</code> · design v3: badges, all properties of one owner with a Homes rating roll-up · D-18 D-28 D-55 D-100 D-111 D-113</div>
 <header data-topbar data-as="tenant" data-active="search"></header>
 
 <main class="container section">
@@ -16,7 +16,8 @@
       <span class="avatar avatar-lg avatar-landlord">DL</span>
       <div style="flex:1;min-width:240px">
         <div class="row" style="gap:8px"><h1 class="h1">Demo L.</h1><span class="badge badge-landlord"><i data-icon="landlord"></i>Landlord</span><span class="badge badge-demo">Demo data</span></div>
-        <p class="muted" style="margin-top:4px">On Rentrix since Jan 2022 · 2 published properties in Bangalore · 3 confirmed tenancies</p>
+        <div class="row" style="gap:6px;margin-top:8px"><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn verified</span><span class="xs muted">Badges only: which ID was used stays private. <span class="spec">D-100</span></span></div>
+        <p class="muted" style="margin-top:8px">On Rentrix since Jan 2022 · owns 2 published properties in Bangalore (1 in a gated society) · 3 confirmed tenancies</p>
         <p class="small muted" style="margin-top:8px"><i data-icon="lock" data-size="14"></i> Email and phone are never shown. Full profile visible to signed-in users; visitors see only the name and rating on property pages. <span class="spec">D-55 · D-57</span></p>
       </div>
       <button class="btn btn-ghost"><i data-icon="flag" data-size="18"></i>Report</button>
@@ -49,11 +50,11 @@
       </div>
 
       <div class="card">
-        <h2 class="h3">Published properties</h2>
-        <div class="grid-2">
-          <a class="pcard" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><span class="title" style="font-size:var(--rx-text-md)">Demo Residency A</span><span class="loc"><i data-icon="map-pin" data-size="14"></i>Koramangala · 2 BHK</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div></a>
-          <a class="pcard" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><span class="title" style="font-size:var(--rx-text-md)">Demo Heights B</span><span class="loc"><i data-icon="map-pin" data-size="14"></i>HSR Layout · 1 BHK</span><span class="rating-new"><span class="pill">New</span>1 review</span></div></a>
-        </div>
+        <div class="row between"><h2 class="h3" style="margin:0">Properties (2)</h2><span class="small muted">Every home this owner lists, grouped by area and society <span class="spec">D-113</span></span></div>
+        <div class="group-h" style="margin-top:14px">Bangalore · Koramangala · <a href="society.html">Demo Greens</a> (gated)</div>
+        <a class="pcard pcard-h" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><div class="row between"><span class="title" style="font-size:var(--rx-text-md)">Demo Residency A</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div><span class="loc"><i data-icon="map-pin" data-size="14"></i>Tower 1 · Wing A · 2 BHK apartment</span><span class="xs muted">in Demo Greens · 2 towers</span></div></a>
+        <div class="group-h" style="margin-top:16px">Bangalore · HSR Layout · standalone</div>
+        <a class="pcard pcard-h" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><div class="row between"><span class="title" style="font-size:var(--rx-text-md)">Demo Heights B</span><span class="rating-new"><span class="pill">New</span>1 review</span></div><span class="loc"><i data-icon="map-pin" data-size="14"></i>1 BHK apartment · building outside any society</span></div></a>
       </div>
     </div>
 
@@ -71,6 +72,18 @@
         <hr class="divider">
         <div class="subratings"><span>Responsiveness</span><b class="num">4.3</b><span>Fairness (deposit, charges)</span><b class="num">4.3</b><span>Respect for privacy</span><b class="num">4.7</b></div>
         <p class="xs muted" style="margin-top:12px">Only the latest tenancy per tenant counts. Sort order uses a ranking score (here 3.81). <span class="spec">D-44 · D-53</span></p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Homes rating · all properties</p>
+        <div class="row" style="margin-top:6px;gap:12px"><span class="score">3.7</span><div><span class="stars" data-stars="4"></span><div class="small muted">3 home reviews across 2 properties</div></div></div>
+        <div class="dist" style="margin-top:14px">
+          <span>5</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>4</span><span class="bar"><i style="width:67%"></i></span><span>2</span>
+          <span>3</span><span class="bar"><i style="width:33%"></i></span><span>1</span>
+          <span>2</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>1</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+        </div>
+        <p class="xs muted" style="margin-top:12px">Each property has fewer than 3 reviews, so none shows an average yet; together they do. This is about the homes, separate from the rating as landlord above. <span class="spec">D-18 · D-52 · D-111</span></p>
       </div>
       <div class="notice notice-teal"><i data-icon="shield-check"></i><span>Every review here comes from a tenancy that this landlord and the tenant both confirmed.</span></div>
     </aside>

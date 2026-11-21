@@ -1,6 +1,6 @@
 # Rentrix — UX design (v1)
 
-Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console.
+Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console. Revised 2026-11-22 (**design v3**): ID verified with any one of Aadhaar (masked), PAN or phone OTP, LinkedIn as an optional bonus badge; browse by area and by gated society, society page, owner profile with all properties and a Homes rating (§2.8, §2.9, §8.2).
 Scope: user flows, screen inventory, visual style, design tokens, icon set and static mockups for the v1 rebuild.
 Source of truth for roles, entities, permissions, API, auth and trust rules: [`../architecture/SYSTEM_DESIGN.md`](../architecture/SYSTEM_DESIGN.md).
 This document cites its decisions as `D-xx`. It introduces no deviation from them; UX-only choices are listed in §8.
@@ -15,7 +15,7 @@ rentrix-docs/design/
 ├── screenshots/         PNG renders: <screen>-desktop.png (1440 px), some also -mobile.png (390 px)
 └── tools/               build-icons.mjs, render.mjs (headless Chromium via Playwright)
 ```
-Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/screenshots/design-v2/`.
+Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/screenshots/design-v2/`; design-v3 renders to `rentrix-docs/screenshots/design-v3/`.
 
 ---
 
@@ -117,8 +117,9 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 - Every decision writes an audit row: who, when, what, why (D-87). An admin cannot decide their own records (D-88).
 
 ### 2.7 Verification (tenant and landlord)
+*Changed in design v3*: step 2 is "Verify ID" with three methods, LinkedIn moved to step 3 and is optional (D-99–D-105).
 ```
-[Role pick] ─▶ [1 Profile] ─▶ [2 LinkedIn] ─▶ [3 ID document] ─▶ [4 Rental agreement, tenant, optional] + Submit
+[Role pick] ─▶ [1 Profile] ─▶ [2 Verify ID: Aadhaar | PAN | phone OTP, ≥1] ─▶ [3 LinkedIn, optional] ─▶ [4 Rental agreement, tenant, optional] + Submit
                                                                                    │ POST /me/verification/{role}/submit
                                                                                    ▼
                        [Pending] ── admin approves ──▶ [Approved]  trust writes open, "ID verified" badge
@@ -128,6 +129,27 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 - Each step saves a draft; the stepper shows done / current / next.
 - While not approved, a slim banner on every page links to the status; gated actions (write review, record or confirm a tenancy, enquiry, submit a listing) show [Write review · pending] style states instead of an error (D-91).
 - Landlords do steps 1–3; each property is checked at listing time with a proof document (D-92), shown on the landlord's property form (W5).
+- Verify ID: phone OTP is verified at once (no admin); PAN and masked Aadhaar wait for an admin check, and the application can be submitted while they wait. "ID verified" shows as soon as any one method is verified; approval still opens trust writes (D-105).
+
+### 2.8 Browse by area and society (design v3)
+```
+[Search] tabs: Homes | Areas | Societies
+   Areas ─ city picker + name or PIN code ─▶ [Browse areas]  area cards, area rating (D-108, D-112)
+                                                │ open
+                                                ▼
+                                    area page (societies + standalone homes, same layout as [Browse societies])
+   Societies ─ filters: area, kind, rating ─▶ [Browse societies]  society cards, Top rated / Most reviewed
+                                                │ open
+                                                ▼
+                                    [Society page]  towers → wings → homes, society rating, reviews by tower
+                                                │ home                      │ owner
+                                                ▼                           ▼
+                                         [Property page]           [Landlord / owner profile]
+                                   breadcrumb City › Area › Society › Tower › Wing
+```
+
+### 2.9 Owner profile (design v3)
+One landlord can own many properties. The landlord profile lists them all, grouped by city → area → society (standalone homes under their area), with each property's rating, the owner's **Rating as landlord** and the **Homes rating** roll-up of all their homes side by side (D-111, D-113). Badges "ID verified" and "LinkedIn verified" sit under the name (D-100).
 
 ---
 
@@ -151,8 +173,8 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 11 | Home with many cities (v2) | `/` | anyone | `GET /cities`, `GET /stats` | D-83, D-85 | `mockups/home-many-cities.html` | `screenshots/home-many-cities-desktop.png`, `-mobile.png` |
 | 12 | City picker component (v2) | – | everywhere a city is chosen | `GET /cities` | D-20, D-82, D-85 | `mockups/city-picker.html` | `screenshots/city-picker-desktop.png` |
 | 13 | Verify 1 · Profile (v2) | `/verify/profile` | signed in, not approved | `PATCH /me` | D-89 | `mockups/verify-profile.html` | `screenshots/verify-profile-desktop.png` |
-| 14 | Verify 2 · LinkedIn (v2) | `/verify/linkedin` | same | `PUT /me/verification/{role}` | D-93 | `mockups/verify-linkedin.html` | `screenshots/verify-linkedin-desktop.png` |
-| 15 | Verify 3 · ID document (v2) | `/verify/id` | same | `POST /me/documents` | D-94, D-95 | `mockups/verify-id.html` | `screenshots/verify-id-desktop.png`, `-mobile.png` |
+| 14 | Verify 3 · LinkedIn, optional (v2, changed v3) | `/verify/linkedin` | same | `PUT /me/identity/linkedin` | D-93, D-100 | `mockups/verify-linkedin.html` | `screenshots/verify-linkedin-desktop.png` |
+| 15 | Verify 2 · Verify ID (v2, changed v3) | `/verify/id` | same | `GET /me/identity`, `POST /me/documents`, `POST /me/identity/pan` | D-99, D-102, D-105, D-106 | `mockups/verify-id.html` | `screenshots/verify-id-desktop.png`, `-mobile.png` |
 | 16 | Verify 4 · Rental agreement + submit (v2) | `/verify/agreement` | tenant | `POST /me/documents`, `POST /me/verification/TENANT/submit` | D-89, D-90 | `mockups/verify-agreement.html` | `screenshots/verify-agreement-desktop.png` |
 | 17 | Verification pending (v2) | `/verify` | `PENDING` | `GET /me/verification` | D-90, D-91 | `mockups/verify-pending.html` | `screenshots/verify-pending-desktop.png` |
 | 18 | Verification rejected (v2) | `/verify` | `REJECTED` | `GET /me/verification` | D-90 | `mockups/verify-rejected.html` | `screenshots/verify-rejected-desktop.png`, `-mobile.png` |
@@ -163,6 +185,13 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 23 | Admin · Records (v2) | `/admin/records/:type` | `ADMIN` | `GET /admin/users`, `/admin/properties`, `/admin/tenancies`, `/admin/reviews`, `/admin/reports` | D-59, D-86 | `mockups/admin-records.html` | `screenshots/admin-records-desktop.png` |
 | 24 | Admin · Record detail (v2) | `/admin/users/:id` (and other types) | `ADMIN` | `GET /admin/users/{id}` | D-86, D-87 | `mockups/admin-record.html` | `screenshots/admin-record-desktop.png` |
 | 25 | Admin · Cities (v2) | `/admin/cities` | `ADMIN` | `GET/POST/PATCH /admin/cities` | D-83, D-84 | `mockups/admin-cities.html` | `screenshots/admin-cities-desktop.png` |
+| 26 | Verify 2 · Phone code (v3) | `/verify/id/phone` | signed in | `POST /me/identity/phone/start`, `/confirm` | D-101, D-106 | `mockups/verify-phone.html` | `screenshots/verify-phone-desktop.png`, `-mobile.png` |
+| 27 | Verify 2 · Masked Aadhaar (v3) | `/verify/id/aadhaar` | signed in | `POST /me/documents`, `POST /me/identity/aadhaar` | D-103, D-106 | `mockups/verify-aadhaar.html` | `screenshots/verify-aadhaar-desktop.png` |
+| 28 | Browse areas (v3) | `/areas?city=` | anyone | `GET /areas` | D-108, D-111, D-112 | `mockups/browse-areas.html` | `screenshots/browse-areas-desktop.png` |
+| 29 | Browse societies (v3) | `/societies?city=&area=` | anyone | `GET /societies` | D-111, D-112 | `mockups/browse-societies.html` | `screenshots/browse-societies-desktop.png` |
+| 30 | Society page (v3) | `/s/:id` | anyone (review text signed in) | `GET /societies/{id}`, `/reviews` | D-107, D-111, D-112, D-57 | `mockups/society.html` | `screenshots/society-desktop.png`, `-mobile.png` |
+
+*Changed in design v3*: #2 Search (tabs, area and society filters, owner badges), #3 Property (location breadcrumb, owner badges), #4 Landlord profile (now the owner profile: badges, all properties grouped, Homes rating), #5 Tenant profile ("ID verified" badge), #13–#19 verification steps (#15 is now "Verify 2 · Verify ID", the method chooser, route `/verify/id`; #14 is "Verify 3 · LinkedIn, optional"), #22 Admin approvals (identity checks per method, "ID checks" tab). The area page reuses the Browse societies layout filtered to one area, with its standalone homes below.
 
 Screens named in flows but not mocked (they reuse the same components): property create/edit form (with proof upload and "Submit for review", D-92), record-a-tenancy form, tenancy detail (confirm/decline view), settings (profile, add role, verification status per role, share links, delete account), report dialog, admin reports queue (same queue + detail layout as Approvals).
 
@@ -177,6 +206,10 @@ All mockups use the dev seed of SYSTEM_DESIGN §16 (D-68, D-69): 4 Bangalore + 4
 | Verification rejected | Demo Tenant BLR-8 | `REJECTED`, `ID_UNREADABLE` with note |
 | Verification approved | Demo Tenant PNQ-2 | `APPROVED` tenant |
 | Admin screens | `demo-admin@example.test` | queues: landlord BLR-3, tenants BLR-7 (Duplicate ID) and PNQ-7, listing Demo Annex I; record Demo Landlord BLR-1 |
+| Verify ID, phone code (v3) | Demo Tenant BLR-7 | PAN `XXXXXX001D` being checked; phone code screen is **illustrative** (the seed has no phone numbers, D-69) |
+| Masked Aadhaar (v3) | Demo Tenant PNQ-7 | phone verified (`XXXXXX0001`), masked Aadhaar `XXXX XXXX 0007` (D-115) |
+| Browse areas / societies, Society page (v3) | anonymous / tenant | BLR areas with PIN codes; Demo Greens (Koramangala) with Tower 1 / Tower 2 × Wing A / Wing B, Demo Residency A in Tower 1 · Wing A; two **illustrative** societies on Browse societies (dashed outline) to show averages and sort |
+| Owner profile (v3) | tenant | Demo Landlord BLR-1: ID + LinkedIn verified; Residency A (4, 3) + Heights B (4) → Homes rating 3.7 from 3 |
 | Search | tenant | Demo Residency A, Villa C, Heights B, Studio D (Bangalore) |
 | Property | tenant | Demo Residency A: rent 32,000 → 34,000 → 36,500; 2 property reviews; landlord BLR-1 |
 | Landlord profile | tenant | Demo Landlord BLR-1: reviews 5, 4, 4 → 4.3 (the D-53 worked example, bayes 3.81) |
@@ -251,6 +284,14 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 | Status hero / pending banner (v2) | `.status-hero`, `.banner-pending` | verification state pages and the site-wide "not verified yet" banner |
 | Admin (v2) | `.admin-tabs`, `.queue`, `.qitem`, `.filters`, `.timeline`, `.switch`, `.dialog`, `.badge-admin` | queue + detail layout, filter bar, audit timeline, city activation switch |
 | Stat tile | `.stat` | only real numbers from the API |
+| LinkedIn badge (v3) | `.badge-linkedin` | info blue with the link icon; never the LinkedIn logo (§5) |
+| Identity method cards (v3) | `.methods`, `.method` (+ `.on`, `.done`) | Verify ID chooser: phone, PAN, masked Aadhaar |
+| OTP input (v3) | `.otp` | 6 boxes, mono digits, resend timer below |
+| Breadcrumb (v3) | `.crumbs` | City › Area › Society › Tower › Wing › home |
+| Location card (v3) | `.loc-card` | area and society cards on browse pages |
+| Towers grid (v3) | `.towers`, `.tower`, `.wing`, `.home-row` | society page: one block per tower, a row per wing |
+| Group heading (v3) | `.group-h` | owner portfolio groups (city · area · society) |
+| Illustrative outline (mockups only) | `.illustrative` | dashed purple outline on rows not in the seed |
 
 ### 4.5 State vocabulary
 
@@ -269,7 +310,11 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 | Verification `DRAFT` (v2) | neutral "Not submitted" + banner | – |
 | Verification `PENDING` (v2) | info "Pending approval" | clock |
 | Verification `REJECTED` (v2) | danger "Not approved" + reason notice | alert |
-| Verification `APPROVED` (v2) | success "Approved"; public: verified "ID verified" | shield-check |
+| Verification `APPROVED` (v2) | success "Approved" | shield-check |
+| ID verified, any of Aadhaar / PAN / phone (v3, public) | verified "ID verified" | shield-check |
+| LinkedIn verified (v3, public, optional) | info "LinkedIn verified" | link |
+| Identity method `PENDING` / `VERIFIED` / `REJECTED` (v3, owner + admin) | info "Being checked" / success "Verified" / danger "Not verified" + reason | clock / check / alert |
+| Location row `PENDING` (v3, proposer + admin) | info "Pending review" | clock |
 | Listing `PENDING_REVIEW` / `REJECTED` (v2) | info "In review" / danger "Not approved" + reason | clock / alert |
 | Flag `DUPLICATE_ID` (admin only, v2) | warn "Duplicate ID" | alert |
 | City inactive (admin only, v2) | switch off, "Inactive" | city |
@@ -315,6 +360,7 @@ npm install            # playwright 1.49.1
 npm run browsers       # once, if Chromium is not cached yet
 npm run render         # build icons, then write screenshots/*.png
 npm run render:v2      # same, and copy the design-v2 renders to rentrix-docs/screenshots/design-v2/
+npm run render:v3      # render only the design-v3 new and changed screens, copy them to rentrix-docs/screenshots/design-v3/
 ```
 
 Screenshots of implemented features (from the real app with dev login) go to `rentrix-docs/screenshots/` in the implementation PRs; this folder holds design renders only.
@@ -340,3 +386,14 @@ Screenshots of implemented features (from the real app with dev login) go to `re
 - **Pending users see a calm banner, not errors.** Gated pages show what is done, what is next and a link to the status; reading stays open (D-91).
 - **Admin approvals use a queue + detail layout** with approve and reject side by side; reject cannot be sent without a reason code and a note (D-87).
 - **Admin is visually distinct**: an ink "Admin" badge in the top bar and admin-only nav, so staff always know they are acting as admin.
+
+### 8.2 Design v3 choices
+- **"One is enough" is the headline of the ID step.** Three equal method cards (phone, PAN, masked Aadhaar) instead of a type picker, so users see at once that any one works. Phone comes first because it verifies instantly (D-99, D-101).
+- **LinkedIn is its own optional step with a "Skip" button**, placed after the ID step, and it never appears in reject reasons. Its only effect is the second badge (D-100).
+- **Aadhaar is masked-copy only.** The screen says how to download the masked copy from UIDAI, warns before the upload, and the input takes 4 digits only; the full number is never typed (D-103).
+- **ID files are deleted at decision.** The PAN and Aadhaar screens say the file is kept only until an admin decides and is then deleted; only the result and the last 4 stay (D-96, D-106).
+- **Badges, not details.** Public views show "ID verified" and "LinkedIn verified" only; the method, last 4 and phone stay with the owner and admins (D-100, D-106).
+- **Browse is three tabs of one search** (Homes, Areas, Societies) so the city picker and filters stay in one place (D-112).
+- **Society page is organised by building**: one block per tower, a row per wing, homes inside. Empty wings say "No homes listed yet" instead of hiding, so the structure is clear. Flat numbers never appear (D-57, D-107).
+- **Owner profile shows two ratings side by side**: "Rating as landlord" (the person) and "Homes rating" (all their homes). A roll-up often crosses the 3-review threshold before any single property does (D-52, D-111).
+- **No new icons**: phone uses `message`, PAN `document`, Aadhaar `user`, LinkedIn `link`, society and tower `building`, area `map-pin`. No third-party logos.

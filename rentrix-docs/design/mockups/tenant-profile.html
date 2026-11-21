@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="mock.css">
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Tenant profile</b> · signed in as landlord, access through an open enquiry · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=TENANT</code> · D-31 D-54</div>
+<div class="mock-banner"><b>Mockup · Tenant profile</b> · signed in as landlord, access through an open enquiry · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=TENANT</code> · design v3: ID verified badge (LinkedIn not added, optional) · D-31 D-54 D-100</div>
 <header data-topbar data-as="landlord" data-active="dashboard"></header>
 
 <main class="container section">
@@ -18,7 +18,8 @@
       <span class="avatar avatar-lg avatar-tenant">DT</span>
       <div style="flex:1;min-width:240px">
         <div class="row" style="gap:8px"><h1 class="h1">Demo T.</h1><span class="badge badge-tenant"><i data-icon="tenant"></i>Tenant</span><span class="badge badge-demo">Demo data</span></div>
-        <p class="muted" style="margin-top:4px">On Rentrix since Jun 2021 · 1 confirmed tenancy · home city Bangalore</p>
+        <div class="row" style="gap:6px;margin-top:8px"><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="xs muted">No LinkedIn badge: LinkedIn is optional and not required to be verified. <span class="spec">D-99 · D-100</span></span></div>
+        <p class="muted" style="margin-top:8px">On Rentrix since Jun 2021 · 1 confirmed tenancy · home city Bangalore</p>
         <div class="sunk" style="margin-top:12px">
           <div class="row" style="gap:8px"><i data-icon="mail" data-size="18"></i><span class="small">demo-tenant-blr5@example.test</span><span class="badge badge-success">shared with you</span></div>
           <p class="xs muted" style="margin-top:4px">Contact appears only because the tenant ticked "share my contact" on the enquiry. <span class="spec">D-31</span></p>
