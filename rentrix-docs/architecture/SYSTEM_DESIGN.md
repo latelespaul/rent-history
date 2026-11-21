@@ -528,7 +528,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 
 **Reference & stats**
 | GET | `/cities?q=` | active cities only, `{code, name, aliases[], state}`, by name; `q` matches code/name/alias/state (D-82) |
-| GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per active city |
+| GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per active city: `{publishedProperties, confirmedTenancies, publishedReviews, cities: [{city, publishedProperties, confirmedTenancies, publishedReviews}]}` (`city` is the code; every active city has a row, zeros included). Until B4 serves it the web shows no counts (D-03) |
 
 **Properties**
 | Method | Path | Notes |
