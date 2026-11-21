@@ -2,7 +2,7 @@ import { z } from "zod"
 
 const envSchema = z.object({
   // API origin, e.g. https://api.example.com. Optional: see src/lib/apiConfig.ts
-  // for the runtime override and the http://localhost:8080 default.
+  // for the runtime override and the same-origin default.
   VITE_API_BASE_URL: z.string().optional(),
   VITE_APP_NAME: z.string().min(1).default("Rentrix"),
 })

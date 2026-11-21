@@ -8,7 +8,8 @@ import { env } from "@/lib/env"
  *      `public/config.js`, editable after build so one bundle can target
  *      different APIs).
  *   2. Build time: `VITE_API_BASE_URL`.
- *   3. Default: `http://localhost:8080` (local Spring Boot server).
+ *   3. Default: empty, i.e. the same origin as the page (relative `/api/v1`).
+ *      In local dev the Vite proxy forwards `/api` to http://localhost:8080.
  *
  * The value is the API origin (e.g. `https://api.example.com`). The server's
  * context path `/api/v1` is appended here. A value that already ends with
@@ -21,7 +22,6 @@ declare global {
   }
 }
 
-export const DEFAULT_API_BASE_URL = "http://localhost:8080"
 export const API_PREFIX = "/api/v1"
 
 function readRuntimeBaseUrl(): string | undefined {
@@ -37,22 +37,7 @@ function normalizeOrigin(raw: string): string {
 }
 
 /** API origin without trailing slash; empty string means same origin as the page. */
-export const apiOrigin = normalizeOrigin(
-  readRuntimeBaseUrl() ?? env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL,
-)
+export const apiOrigin = normalizeOrigin(readRuntimeBaseUrl() ?? env.VITE_API_BASE_URL ?? "")
 
-/** Base URL for all REST calls, e.g. `http://localhost:8080/api/v1`. */
+/** Base URL for all REST calls, e.g. `/api/v1` or `https://api.example.com/api/v1`. */
 export const apiBaseUrl = `${apiOrigin}${API_PREFIX}`
-
-/**
- * Resolve a URL returned by (or built against) the API. Absolute URLs
- * (http, https, protocol-relative, data:, blob:) pass through unchanged;
- * root-relative paths are resolved against the API origin.
- */
-export function resolveApiUrl(url: string): string
-export function resolveApiUrl(url: string | null | undefined): string | undefined
-export function resolveApiUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined
-  if (/^([a-z][a-z\d+\-.]*:|\/\/)/i.test(url)) return url
-  return `${apiOrigin}${url.startsWith("/") ? "" : "/"}${url}`
-}

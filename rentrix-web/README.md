@@ -7,32 +7,35 @@ URL from `src/lib/apiConfig.ts`. The API origin is resolved in this order:
 
 1. `window.__RENTRIX_CONFIG__.apiBaseUrl` from `public/config.js` (runtime, no rebuild)
 2. `VITE_API_BASE_URL` (build time, see `.env.example`)
-3. `http://localhost:8080` (default for local dev)
+3. Empty: same origin as the page, so calls go to the relative path `/api/v1`
 
 The value is the origin only (for example `https://api.example.com`); the app
 appends the server context path `/api/v1`. A value that already ends in
-`/api/v1` also works. Image and proof URLs that the API returns as relative
-paths are resolved against the same origin; absolute URLs (S3/CDN) are used as-is.
+`/api/v1` also works.
 
-The API must allow the web app's origin in its CORS settings
-(`app.cors.allowed-origins` in `rentrix-server`; `http://localhost:5173` is
-allowed in the dev profile).
+When the web app and the API are on different origins, the API must allow the
+web app's origin in its CORS settings (`app.cors.allowed-origins` in
+`rentrix-server`).
 
 ## Run locally
 
 ```bash
-cp .env.example .env   # optional; defaults work for a local server on :8080
 npm ci
 npm run dev            # http://localhost:5173
 ```
+
+Leave `VITE_API_BASE_URL` empty. The Vite dev server proxies `/api` to the
+local Spring Boot server on `http://localhost:8080`, so no CORS setup is needed.
 
 ## Deploying as static files
 
 `npm run build` writes plain static files to `dist/`. Upload `dist/` to any
 static host or CDN; no server process is needed.
 
-- **API location**: set `VITE_API_BASE_URL` at build time, or edit
-  `config.js` in the deployed `dist/` to point the same bundle at another API.
+- **API location**: by default the bundle calls `/api/v1` on its own origin,
+  so route `/api` to the API (reverse proxy or CDN rule). For split hosting,
+  set `VITE_API_BASE_URL` at build time, or edit `config.js` in the deployed
+  `dist/` to point the same bundle at another API.
   Serve `config.js` with a short cache lifetime (for example
   `Cache-Control: no-cache`); hashed files in `assets/` can be cached forever.
 - **SPA fallback**: the app uses client-side routing, so the host must serve
