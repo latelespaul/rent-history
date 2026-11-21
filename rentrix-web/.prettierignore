@@ -11,3 +11,5 @@ coverage
 *.md
 .env
 .env.local
+src/types/api.gen.ts
+openapi/openapi.json
