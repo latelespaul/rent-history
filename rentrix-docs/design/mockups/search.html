@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Search results</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Search results</b> · signed in as tenant · <code>GET /properties?city=BLR&amp;sort=bayes</code> · D-52 "New" under 3 reviews · D-53 Top rated = Bayesian</div>
+<header data-topbar data-as="tenant" data-active="search"></header>
+
+<main class="container section">
+  <form class="searchbar" onsubmit="return false">
+    <div class="seg"><i data-icon="city"></i>
+      <div class="segmented"><span class="on">Bangalore</span><span>Pune</span></div></div>
+    <div class="seg grow"><i data-icon="map-pin"></i>
+      <input class="input" style="border:0;height:36px;padding:0" placeholder="Locality or building" value=""></div>
+    <button class="btn btn-primary"><i data-icon="search"></i>Search</button>
+  </form>
+
+  <div class="layout-side" style="margin-top:24px">
+    <aside class="card stack">
+      <div class="row between"><h2 class="h3" style="margin:0">Filters</h2><a class="small" href="#">Clear</a></div>
+      <div class="field"><span class="label">Locality</span>
+        <div class="row" style="gap:6px"><span class="chip">Koramangala</span><span class="chip">HSR Layout</span><span class="chip">Whitefield</span><span class="chip">Indiranagar</span></div>
+        <span class="hint">From localities that have published properties.</span></div>
+      <div class="field"><span class="label">Type</span>
+        <div class="row" style="gap:6px"><span class="chip on">Any</span><span class="chip">Apartment</span><span class="chip">Villa</span><span class="chip">Studio</span><span class="chip">House</span><span class="chip">Room / PG</span></div></div>
+      <div class="field"><span class="label">Bedrooms</span>
+        <div class="segmented"><span class="on">Any</span><span>1</span><span>2</span><span>3+</span></div></div>
+      <div class="field"><span class="label">Property rating</span>
+        <select class="select"><option>Any (includes New)</option><option>4 ★ and up</option><option>3 ★ and up</option></select>
+        <span class="hint">Properties with fewer than 3 reviews have no average yet.</span></div>
+      <div class="field"><span class="label">Landlord rating</span>
+        <select class="select"><option>Any</option><option>4 ★ and up</option></select></div>
+    </aside>
+
+    <section class="stack">
+      <div class="row between">
+        <div><h1 class="h2">4 properties in Bangalore</h1><p class="small muted">Published properties only. Archived ones open by direct link.</p></div>
+        <div class="row"><span class="small muted">Sort</span><select class="select" style="width:auto;height:38px"><option>Top rated</option><option>Most reviewed</option><option>Lowest rent</option><option>Newest</option></select></div>
+      </div>
+
+      <article class="pcard pcard-h">
+        <div class="ph"><span class="badge badge-demo">Demo data</span><i data-icon="building"></i></div>
+        <div class="body">
+          <div class="row between"><a class="title" href="property.html">Demo Residency A</a><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+          <div class="loc"><i data-icon="map-pin" data-size="16"></i>Koramangala, Bangalore · 560034</div>
+          <div class="facts"><span><i data-icon="building"></i>Apartment</span><span><i data-icon="bed"></i>2 BHK</span><span><i data-icon="area"></i>1,050 sq ft</span><span><i data-icon="sofa"></i>Semi-furnished</span></div>
+          <hr class="divider" style="margin:6px 0">
+          <div class="row between">
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span></div>
+            <div class="rent">₹36,500 <span class="small muted" style="font-weight:400">/ month · confirmed May 2024</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pcard pcard-h">
+        <div class="ph"><span class="badge badge-demo">Demo data</span><i data-icon="building"></i></div>
+        <div class="body">
+          <div class="row between"><a class="title" href="property.html">Demo Villa C</a><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+          <div class="loc"><i data-icon="map-pin" data-size="16"></i>Whitefield, Bangalore · 560066</div>
+          <div class="facts"><span><i data-icon="home"></i>Villa</span><span><i data-icon="bed"></i>3 BHK</span><span><i data-icon="area"></i>2,100 sq ft</span><span><i data-icon="car"></i>Parking</span></div>
+          <hr class="divider" style="margin:6px 0">
+          <div class="row between">
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span></div>
+            <div class="rent">₹55,000 <span class="small muted" style="font-weight:400">/ month · confirmed Aug 2023</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pcard pcard-h">
+        <div class="ph"><span class="badge badge-demo">Demo data</span><i data-icon="building"></i></div>
+        <div class="body">
+          <div class="row between"><a class="title" href="property.html">Demo Heights B</a><span class="rating-new"><span class="pill">New</span>1 review</span></div>
+          <div class="loc"><i data-icon="map-pin" data-size="16"></i>HSR Layout, Bangalore · 560102</div>
+          <div class="facts"><span><i data-icon="building"></i>Apartment</span><span><i data-icon="bed"></i>1 BHK</span><span><i data-icon="area"></i>620 sq ft</span><span><i data-icon="sofa"></i>Fully furnished</span></div>
+          <hr class="divider" style="margin:6px 0">
+          <div class="row between">
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span></div>
+            <div class="rent">₹23,500 <span class="small muted" style="font-weight:400">/ month · last confirmed, now vacant</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="pcard pcard-h">
+        <div class="ph"><span class="badge badge-demo">Demo data</span><i data-icon="building"></i></div>
+        <div class="body">
+          <div class="row between"><a class="title" href="property.html">Demo Studio D</a><span class="rating-new"><span class="pill">New</span>1 review</span></div>
+          <div class="loc"><i data-icon="map-pin" data-size="16"></i>Indiranagar, Bangalore · 560038</div>
+          <div class="facts"><span><i data-icon="building"></i>Studio</span><span><i data-icon="area"></i>420 sq ft</span><span><i data-icon="sofa"></i>Fully furnished</span></div>
+          <hr class="divider" style="margin:6px 0">
+          <div class="row between">
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span></div>
+            <div class="rent">₹19,000 <span class="small muted" style="font-weight:400">/ month · confirmed Feb 2025</span></div>
+          </div>
+        </div>
+      </article>
+
+      <div class="notice notice-teal"><i data-icon="info"></i><span>Ratings show an average only after 3 reviews, so one review cannot define a home or a person. Anonymous visitors see ratings and facts; rent appears after sign-in. <span class="spec">D-52 · D-56</span></span></div>
+    </section>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

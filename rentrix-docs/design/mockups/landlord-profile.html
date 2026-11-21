@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Landlord profile</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Landlord profile</b> · signed in as tenant · <code>GET /users/{id}</code>, <code>/users/{id}/reviews?as=LANDLORD</code> · D-18 D-28 D-55</div>
+<header data-topbar data-as="tenant" data-active="search"></header>
+
+<main class="container section">
+  <div class="card">
+    <div class="row" style="gap:20px;align-items:flex-start">
+      <span class="avatar avatar-lg avatar-landlord">DL</span>
+      <div style="flex:1;min-width:240px">
+        <div class="row" style="gap:8px"><h1 class="h1">Demo L.</h1><span class="badge badge-landlord"><i data-icon="landlord"></i>Landlord</span><span class="badge badge-demo">Demo data</span></div>
+        <p class="muted" style="margin-top:4px">On Rentrix since Jan 2022 · 2 published properties in Bangalore · 3 confirmed tenancies</p>
+        <p class="small muted" style="margin-top:8px"><i data-icon="lock" data-size="14"></i> Email and phone are never shown. Full profile visible to signed-in users; visitors see only the name and rating on property pages. <span class="spec">D-55 · D-57</span></p>
+      </div>
+      <button class="btn btn-ghost"><i data-icon="flag" data-size="18"></i>Report</button>
+    </div>
+  </div>
+
+  <div class="layout-main" style="margin-top:24px">
+    <div class="stack">
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0">Reviews from tenants</h2><span class="small muted">Rating as landlord only <span class="spec">D-18</span></span></div>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-tenant" style="width:28px;height:28px;font-size:11px">DT</span><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · Apr 2022 – Mar 2024</span><span>at <a href="property.html">Demo Residency A</a></span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="5"></span><span class="xs muted">Responsiveness 5 · Fairness 5 · Privacy 5</span></div>
+          <p class="text">Fixed problems within a day or two and never visited without asking first. The full deposit came back within a week of moving out, with a written list of checks.</p>
+          <div class="actions"><span>Published Apr 2024</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-tenant" style="width:28px;height:28px;font-size:11px">DT</span><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · Jan 2023 – Jun 2025</span><span>at <a href="property.html">Demo Heights B</a></span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="4"></span><span class="xs muted">Responsiveness 4 · Fairness 3 · Privacy 5</span></div>
+          <p class="text">Polite and easy to reach. The rent increase at renewal was explained in advance. Part of the deposit was held back for painting, which felt a bit high.</p>
+          <div class="response"><b>Response from Demo L.</b> · Jul 2025<br>The painting charge was the actual invoice amount; a copy was shared at handover.</div>
+          <div class="actions"><span>Published Jul 2025</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="meta"><span class="avatar avatar-tenant" style="width:28px;height:28px;font-size:11px">DT</span><span class="who">Demo T.</span><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenancy · since May 2024</span><span>at <a href="property.html">Demo Residency A</a></span></div>
+          <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="4"></span><span class="xs muted">Responsiveness 4 · Fairness 5 · Privacy 4</span></div>
+          <p class="text">Repairs are handled, though sometimes only after a reminder. Clear agreement and receipts for every payment.</p>
+          <div class="actions"><span>Published Jul 2024</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="h3">Published properties</h2>
+        <div class="grid-2">
+          <a class="pcard" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><span class="title" style="font-size:var(--rx-text-md)">Demo Residency A</span><span class="loc"><i data-icon="map-pin" data-size="14"></i>Koramangala · 2 BHK</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div></a>
+          <a class="pcard" href="property.html"><div class="ph" style="aspect-ratio:16/8"><i data-icon="building"></i></div><div class="body"><span class="title" style="font-size:var(--rx-text-md)">Demo Heights B</span><span class="loc"><i data-icon="map-pin" data-size="14"></i>HSR Layout · 1 BHK</span><span class="rating-new"><span class="pill">New</span>1 review</span></div></a>
+        </div>
+      </div>
+    </div>
+
+    <aside class="stack">
+      <div class="card">
+        <p class="eyebrow">Rating as landlord</p>
+        <div class="row" style="margin-top:6px;gap:12px"><span class="score">4.3</span><div><span class="stars" data-stars="4"></span><div class="small muted">3 reviews from confirmed tenancies</div></div></div>
+        <div class="dist" style="margin-top:14px">
+          <span>5</span><span class="bar"><i style="width:33%"></i></span><span>1</span>
+          <span>4</span><span class="bar"><i style="width:67%"></i></span><span>2</span>
+          <span>3</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>2</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+          <span>1</span><span class="bar"><i style="width:0"></i></span><span>0</span>
+        </div>
+        <hr class="divider">
+        <div class="subratings"><span>Responsiveness</span><b class="num">4.3</b><span>Fairness (deposit, charges)</span><b class="num">4.3</b><span>Respect for privacy</span><b class="num">4.7</b></div>
+        <p class="xs muted" style="margin-top:12px">Only the latest tenancy per tenant counts. Sort order uses a ranking score (here 3.81). <span class="spec">D-44 · D-53</span></p>
+      </div>
+      <div class="notice notice-teal"><i data-icon="shield-check"></i><span>Every review here comes from a tenancy that this landlord and the tenant both confirmed.</span></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

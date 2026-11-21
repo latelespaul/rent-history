@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Choose your role</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .role { display: flex; gap: 14px; align-items: flex-start; padding: 18px; border: 1px solid var(--rx-line-strong); border-radius: var(--rx-radius-lg); background: var(--rx-surface); }
+  .role.on { border: 2px solid var(--rx-teal-600); background: var(--rx-teal-50); }
+  .role .ic { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+</style>
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · First sign-in: pick a role</b> · <code>needsOnboarding: true</code> → <code>POST /me/onboarding</code> · D-16 D-73</div>
+<header data-topbar data-as="anon"></header>
+
+<main class="container section" style="max-width:720px">
+  <div class="row" style="gap:14px">
+    <span class="avatar avatar-lg" style="background:var(--rx-sunk);color:var(--rx-ink-700)"><i data-icon="user" data-size="32"></i></span>
+    <div><p class="eyebrow">Signed in with Google</p><h1 class="h1">Welcome to Rentrix</h1><p class="muted small">new.user@example.test · Google photo shows here</p></div>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <h2 class="h3">How will you use Rentrix?</h2>
+    <p class="small muted" style="margin-top:-6px;margin-bottom:14px">Pick one or both. You can add the other later in settings.</p>
+    <div class="stack">
+      <div class="role on">
+        <span class="box on"><i data-icon="check"></i></span>
+        <span class="ic" style="background:var(--rx-tenant-100);color:var(--rx-tenant-600)"><i data-icon="tenant" data-size="26"></i></span>
+        <div><b>I rent a home</b> <span class="badge badge-tenant">Tenant</span><p class="small muted">Check landlords and homes, record your tenancy, review your landlord and home, send enquiries.</p></div>
+      </div>
+      <div class="role">
+        <span class="box"></span>
+        <span class="ic" style="background:var(--rx-landlord-100);color:var(--rx-landlord-600)"><i data-icon="landlord" data-size="26"></i></span>
+        <div><b>I rent out a property</b> <span class="badge badge-landlord">Landlord</span><p class="small muted">List properties, invite and confirm tenants, review tenants, see the profile of tenants who enquire.</p></div>
+      </div>
+    </div>
+    <hr class="divider">
+    <div class="field"><span class="label">Home city <span class="hint" style="font-weight:400">(optional)</span></span>
+      <div class="segmented"><span class="on">Bangalore</span><span>Pune</span><span>Skip</span></div></div>
+    <div class="field" style="margin-top:14px"><span class="label">Display name</span><input class="input" value="New User"><span class="hint">Shown publicly as "New U.". From your Google name; you can change it.</span></div>
+    <div class="checkrow" style="margin-top:16px"><span class="box on"><i data-icon="check"></i></span><span>I accept the Terms and Privacy notice. I will review only tenancies I was part of.</span></div>
+    <button class="btn btn-primary btn-lg btn-block" style="margin-top:20px">Continue</button>
+    <p class="xs muted" style="margin-top:8px">Until you finish this step, only your profile and public pages are available. <span class="spec">403 onboarding_required</span></p>
+  </div>
+</main>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
