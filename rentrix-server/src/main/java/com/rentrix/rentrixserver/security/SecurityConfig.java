@@ -81,7 +81,7 @@ public class SecurityConfig {
 		config.setAllowedOrigins(cors.allowedOrigins());
 		config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"));
-		config.setExposedHeaders(List.of("X-Request-Id", "Retry-After"));
+		config.setExposedHeaders(List.of("X-Request-Id", "Retry-After", "Idempotent-Replayed"));
 		config.setAllowCredentials(true); // refresh cookie (D-63)
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
