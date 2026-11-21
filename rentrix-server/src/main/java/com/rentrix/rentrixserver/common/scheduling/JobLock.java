@@ -2,6 +2,8 @@ package com.rentrix.rentrixserver.common.scheduling;
 
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -87,7 +89,7 @@ public class JobLock {
 				entityManager.flush();
 			});
 			return true;
-		} catch (RuntimeException heldOrRaced) {
+		} catch (LockHeld | DataIntegrityViolationException | ConstraintViolationException heldOrRaced) {
 			// LockHeld, or another instance inserted the row first (primary key violation)
 			return false;
 		}

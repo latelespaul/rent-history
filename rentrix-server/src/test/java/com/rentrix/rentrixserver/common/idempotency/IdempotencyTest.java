@@ -5,12 +5,18 @@ import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.user.Role;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -35,7 +41,7 @@ class IdempotencyTest {
 	@Autowired
 	AccessTokenService tokens;
 	
-	@Autowired
+	@MockitoSpyBean
 	IdempotencyStore store;
 	
 	@Autowired
@@ -115,6 +121,26 @@ class IdempotencyTest {
 		assertThat(send(user, key, body("fail")).getResponse().getStatus()).isEqualTo(422);
 		assertThat(store.findLive(user.toString(), key)).isEmpty();
 		assertThat(send(user, key, body("a")).getResponse().getStatus()).isEqualTo(201);
+	}
+	
+	@Test
+	void failingToStoreTheResponseStillReturnsItAndKeepsTheKeyReserved() throws Exception {
+		doThrow(new DataAccessResourceFailureException("db down")).when(store)
+			.complete(anyLong(), anyInt(), any(), any(), any());
+		String key = key();
+		MvcResult first = send(user, key, body("a"));
+		assertThat(first.getResponse().getStatus()).isEqualTo(201);
+		assertThat(first.getResponse().getHeader(HttpHeaders.LOCATION)).startsWith("/test-only/items/");
+		assertThat(first.getResponse().getContentAsString()).contains("\"name\":\"a\"");
+		assertThat(send(user, key, body("a")).getResponse().getStatus()).isEqualTo(409);
+	}
+	
+	@Test
+	void failingToReleaseTheKeyStillReturnsTheErrorResponse() throws Exception {
+		doThrow(new DataAccessResourceFailureException("db down")).when(store).release(anyLong());
+		MvcResult failed = send(user, key(), body("fail"));
+		assertThat(failed.getResponse().getStatus()).isEqualTo(422);
+		assertThat(failed.getResponse().getContentAsString()).isNotEmpty();
 	}
 	
 	@Test

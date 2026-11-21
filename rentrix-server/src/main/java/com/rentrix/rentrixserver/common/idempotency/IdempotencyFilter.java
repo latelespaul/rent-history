@@ -114,24 +114,36 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 		}
 		
 		ContentCachingResponseWrapper captured = new ContentCachingResponseWrapper(response);
-		boolean stored = false;
+		boolean keepReservation = false;
 		try {
 			chain.doFilter(cached, captured);
 			int status = captured.getStatus();
 			byte[] body = captured.getContentAsByteArray();
 			if (status >= 200 && status < 300 && body.length <= MAX_STORED_BODY_BYTES) {
+				keepReservation = true;
 				store.complete(record.getId(), status, captured.getContentType(),
 					captured.getHeader(HttpHeaders.LOCATION), new String(body, StandardCharsets.UTF_8));
-				stored = true;
 			} else if (status >= 200 && status < 300) {
 				log.warn("Idempotent response of {} bytes on {} is too large to store; key released", body.length,
 					request.getRequestURI());
 			}
-		} finally {
-			if (!stored) {
-				store.release(record.getId());
+		} catch (RuntimeException bookkeeping) {
+			if (!keepReservation) {
+				throw bookkeeping;
 			}
-			captured.copyBodyToResponse();
+			log.warn("Could not store idempotent response on {}; key stays reserved until its lease ends",
+				request.getRequestURI(), bookkeeping);
+		} finally {
+			try {
+				if (!keepReservation) {
+					store.release(record.getId());
+				}
+			} catch (RuntimeException releaseFailed) {
+				log.warn("Could not release Idempotency-Key reservation {} on {}", record.getId(),
+					request.getRequestURI(), releaseFailed);
+			} finally {
+				captured.copyBodyToResponse();
+			}
 		}
 	}
 	
