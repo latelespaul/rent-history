@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Browse areas</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="mock-banner"><b>Mockup · Browse by area (design v3)</b> · anonymous · <code>GET /areas?city=BLR&amp;sort=most_reviewed</code> · find an area by name or PIN code · area rating = all home reviews in the area · D-108 D-111 D-112</div>
+<header data-topbar data-as="anon" data-active="search"></header>
+
+<main class="container section">
+  <form class="searchbar" onsubmit="return false">
+    <div class="seg"><i data-icon="city"></i>
+      <div data-citypicker data-bare data-value="BLR" data-cities="2"></div></div>
+    <div class="seg grow"><i data-icon="map-pin"></i>
+      <input class="input" style="border:0;height:36px;padding:0" placeholder="Area name or 6-digit PIN code, e.g. 560034" value=""></div>
+    <button class="btn btn-primary"><i data-icon="search"></i>Search</button>
+  </form>
+
+  <div class="tabs" style="margin-top:20px"><a href="search.html"><span><i data-icon="home" data-size="16"></i>Homes</span></a><span class="on"><i data-icon="map-pin" data-size="16"></i>Areas</span><a href="browse-societies.html"><span><i data-icon="building" data-size="16"></i>Societies</span></a></div>
+
+  <div class="row between" style="margin-top:20px">
+    <div><h1 class="h2">4 areas in Bangalore</h1><p class="small muted">Areas with at least one published home. A PIN code can cover more than one area. <span class="spec">D-108 · D-112</span></p></div>
+    <div class="filters">
+      <select class="select"><option>Any rating (includes New)</option><option>4 ★ and up</option><option>3 ★ and up</option></select>
+      <select class="select"><option>Any type</option><option>Has gated societies</option><option>Standalone homes only</option></select>
+      <span class="small muted">Sort</span><select class="select"><option>Most reviewed</option><option>Top rated</option><option>Recently reviewed</option><option>Name A–Z</option></select>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:16px">
+    <a class="card loc-card" href="browse-societies.html">
+      <span class="ic"><i data-icon="map-pin" data-size="24"></i></span>
+      <div style="flex:1">
+        <div class="row between"><span class="nm">Koramangala</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+        <div class="small muted">PIN 560034 · 560095</div>
+        <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>1 gated society</span><span><i data-icon="home"></i>1 home</span></div>
+        <div class="xs muted" style="margin-top:6px">Demo Greens · Tower 1, Tower 2</div>
+      </div>
+    </a>
+    <a class="card loc-card" href="search.html">
+      <span class="ic"><i data-icon="map-pin" data-size="24"></i></span>
+      <div style="flex:1">
+        <div class="row between"><span class="nm">Whitefield</span><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
+        <div class="small muted">PIN 560066</div>
+        <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>No societies yet</span><span><i data-icon="home"></i>1 standalone home</span></div>
+      </div>
+    </a>
+    <a class="card loc-card" href="search.html">
+      <span class="ic"><i data-icon="map-pin" data-size="24"></i></span>
+      <div style="flex:1">
+        <div class="row between"><span class="nm">HSR Layout</span><span class="rating-new"><span class="pill">New</span>1 review</span></div>
+        <div class="small muted">PIN 560102</div>
+        <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>No societies yet</span><span><i data-icon="home"></i>1 standalone home</span></div>
+      </div>
+    </a>
+    <a class="card loc-card" href="search.html">
+      <span class="ic"><i data-icon="map-pin" data-size="24"></i></span>
+      <div style="flex:1">
+        <div class="row between"><span class="nm">Indiranagar</span><span class="rating-new"><span class="pill">New</span>1 review</span></div>
+        <div class="small muted">PIN 560038</div>
+        <div class="facts" style="margin-top:8px"><span><i data-icon="building"></i>No societies yet</span><span><i data-icon="home"></i>1 standalone home</span></div>
+      </div>
+    </a>
+  </div>
+
+  <div class="grid-2" style="margin-top:20px">
+    <div class="notice"><i data-icon="info"></i><span>An area's rating combines the reviews of every home in it. An average appears after 3 reviews; until then you see "New" and can read each review. <span class="spec">D-52 · D-111</span></span></div>
+    <div class="notice"><i data-icon="search"></i><span>Searching <b>560034</b> finds Koramangala. An area with no published homes yet (e.g. Jayanagar) is not listed. <span class="spec">D-108 · D-112</span></span></div>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

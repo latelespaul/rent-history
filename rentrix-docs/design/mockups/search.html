@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="mock.css">
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Search results</b> · signed in as tenant · <code>GET /properties?city=BLR&amp;sort=bayes</code> · city picker from <code>GET /cities</code> (D-85) · D-52 "New" under 3 reviews · D-53 Top rated = Bayesian</div>
+<div class="mock-banner"><b>Mockup · Search results</b> · signed in as tenant · <code>GET /properties?city=BLR&amp;sort=bayes</code> · city picker from <code>GET /cities</code> (D-85) · D-52 "New" under 3 reviews · D-53 Top rated = Bayesian · design v3: Homes / Areas / Societies tabs, area and society filters, owner badges (D-100, D-112)</div>
 <header data-topbar data-as="tenant" data-active="search"></header>
 
 <main class="container section">
@@ -19,12 +19,16 @@
     <button class="btn btn-primary"><i data-icon="search"></i>Search</button>
   </form>
 
-  <div class="layout-side" style="margin-top:24px">
+  <div class="tabs" style="margin-top:20px"><span class="on"><i data-icon="home" data-size="16"></i>Homes</span><a href="browse-areas.html"><span><i data-icon="map-pin" data-size="16"></i>Areas</span></a><a href="browse-societies.html"><span><i data-icon="building" data-size="16"></i>Societies</span></a></div>
+
+  <div class="layout-side" style="margin-top:20px">
     <aside class="card stack">
       <div class="row between"><h2 class="h3" style="margin:0">Filters</h2><a class="small" href="#">Clear</a></div>
-      <div class="field"><span class="label">Locality</span>
+      <div class="field"><span class="label">Area</span>
         <div class="row" style="gap:6px"><span class="chip">Koramangala</span><span class="chip">HSR Layout</span><span class="chip">Whitefield</span><span class="chip">Indiranagar</span></div>
-        <span class="hint">From localities that have published properties.</span></div>
+        <span class="hint">Areas with published homes (<code>GET /areas</code>); a PIN code also works. <span class="spec">D-108</span></span></div>
+      <div class="field"><span class="label">Society</span>
+        <select class="select"><option>Any, incl. standalone</option><option>Demo Greens (Koramangala)</option><option>Standalone homes only</option></select></div>
       <div class="field"><span class="label">Type</span>
         <div class="row" style="gap:6px"><span class="chip on">Any</span><span class="chip">Apartment</span><span class="chip">Villa</span><span class="chip">Studio</span><span class="chip">House</span><span class="chip">Room / PG</span></div></div>
       <div class="field"><span class="label">Bedrooms</span>
@@ -46,11 +50,11 @@
         <div class="ph"><span class="badge badge-demo">Demo data</span><i data-icon="building"></i></div>
         <div class="body">
           <div class="row between"><a class="title" href="property.html">Demo Residency A</a><span class="rating-new"><span class="pill">New</span>2 reviews</span></div>
-          <div class="loc"><i data-icon="map-pin" data-size="16"></i>Koramangala, Bangalore · 560034</div>
+          <div class="loc"><i data-icon="map-pin" data-size="16"></i><a href="society.html">Demo Greens</a> · Tower 1 · Koramangala, Bangalore · 560034</div>
           <div class="facts"><span><i data-icon="building"></i>Apartment</span><span><i data-icon="bed"></i>2 BHK</span><span><i data-icon="area"></i>1,050 sq ft</span><span><i data-icon="sofa"></i>Semi-furnished</span></div>
           <hr class="divider" style="margin:6px 0">
           <div class="row between">
-            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span></div>
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn</span></div>
             <div class="rent">₹36,500 <span class="small muted" style="font-weight:400">/ month · confirmed May 2024</span></div>
           </div>
         </div>
@@ -64,7 +68,7 @@
           <div class="facts"><span><i data-icon="home"></i>Villa</span><span><i data-icon="bed"></i>3 BHK</span><span><i data-icon="area"></i>2,100 sq ft</span><span><i data-icon="car"></i>Parking</span></div>
           <hr class="divider" style="margin:6px 0">
           <div class="row between">
-            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span></div>
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span></div>
             <div class="rent">₹55,000 <span class="small muted" style="font-weight:400">/ month · confirmed Aug 2023</span></div>
           </div>
         </div>
@@ -78,7 +82,7 @@
           <div class="facts"><span><i data-icon="building"></i>Apartment</span><span><i data-icon="bed"></i>1 BHK</span><span><i data-icon="area"></i>620 sq ft</span><span><i data-icon="sofa"></i>Fully furnished</span></div>
           <hr class="divider" style="margin:6px 0">
           <div class="row between">
-            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span></div>
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>4.3</b> (3)</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn</span></div>
             <div class="rent">₹23,500 <span class="small muted" style="font-weight:400">/ month · last confirmed, now vacant</span></div>
           </div>
         </div>
@@ -92,7 +96,7 @@
           <div class="facts"><span><i data-icon="building"></i>Studio</span><span><i data-icon="area"></i>420 sq ft</span><span><i data-icon="sofa"></i>Fully furnished</span></div>
           <hr class="divider" style="margin:6px 0">
           <div class="row between">
-            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span></div>
+            <div class="row" style="gap:8px"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="small"><b>Demo L.</b> · landlord</span><span class="stars sm" data-stars="4"></span><span class="small num"><b>3.7</b> (3)</span><span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span></div>
             <div class="rent">₹19,000 <span class="small muted" style="font-weight:400">/ month · confirmed Feb 2025</span></div>
           </div>
         </div>

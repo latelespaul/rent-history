@@ -8,31 +8,31 @@
 
 </head>
 <body>
-<div class="mock-banner"><b>Mockup · Verification step 2: LinkedIn</b> · <code>PUT /me/verification/TENANT</code> · URL validated, never fetched; an admin checks it · D-93</div>
+<div class="mock-banner"><b>Mockup · Verification step 3: LinkedIn, optional (design v3)</b> · Demo Tenant BLR-7 · <code>PUT /me/identity/linkedin</code> · URL validated, never fetched; an admin checks it · bonus badge only, never required · D-93 D-100</div>
 <header data-topbar data-as="tenant" data-active=""></header>
 <div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Your account is not verified yet. You can read everything; writing reviews and confirming tenancies open after approval. <a href="verify-pending.html">See status</a></span></div></div>
 
 <main class="container section">
   <p class="eyebrow">Verify your account · tenant</p>
-  <h1 class="h1" style="margin-top:6px">Step 2 of 4</h1>
-  <div class="card" style="margin-top:16px"><ol class="stepper" aria-label="Verification steps"><li class="done"><span class="t">Profile</span></li><li class="on"><span class="t">LinkedIn</span></li><li class=""><span class="t">ID document</span></li><li class=""><span class="t">Rental agreement</span></li></ol></div>
+  <h1 class="h1" style="margin-top:6px">Step 3 of 4 <span class="badge" style="vertical-align:middle">Optional</span></h1>
+  <div class="card" style="margin-top:16px"><ol class="stepper" aria-label="Verification steps"><li class="done"><span class="t">Profile</span></li><li class="done"><span class="t">Verify ID</span></li><li class="on"><span class="t">LinkedIn (optional)</span></li><li class=""><span class="t">Rental agreement</span></li></ol></div>
   <div class="layout-main" style="margin-top:20px">
     <div class="stack"><div class="card">
-  <h2 class="h3">Your LinkedIn profile</h2>
-  <p class="small muted" style="margin-top:-6px;margin-bottom:14px">An admin opens it to check that the name and photo match. We never post or read anything else.</p>
+  <div class="row between"><h2 class="h3" style="margin:0">Add LinkedIn for an extra badge</h2><span class="badge badge-linkedin"><i data-icon="link"></i>LinkedIn verified</span></div>
+  <p class="small muted" style="margin-top:8px;margin-bottom:14px">Optional. Your account is verified with Aadhaar, PAN or phone; LinkedIn only adds a second badge that landlords and tenants can see. An admin opens the link to check that the name and photo match. We never post or read anything else.</p>
   <div class="field"><span class="label">Profile URL</span>
     <div class="input-icon"><i data-icon="link" data-size="18"></i><input class="input" value="https://www.linkedin.com/in/demo-tenant-blr-7"></div>
     <span class="hint" style="color:var(--rx-success-600)"><i data-icon="check" data-size="14"></i> Looks like a LinkedIn profile link.</span></div>
-  <div class="checkrow" style="margin-top:16px"><span class="box"></span><span>I don't have a LinkedIn profile. <span class="muted">The admin will check your ID document only.</span></span></div>
+  <p class="small muted" style="margin-top:12px">No LinkedIn? Skip this step. Nothing is lost: approval depends only on your ID check. <span class="spec">D-99 · D-105</span></p>
   <div class="notice notice-teal" style="margin-top:16px"><i data-icon="info"></i><span>Rentrix can't verify LinkedIn automatically: LinkedIn sign-in does not share the profile link, and reading profiles is against LinkedIn's terms. So a person checks it. <span class="spec">D-93</span></span></div>
-  <div class="row between" style="margin-top:20px"><a class="btn btn-ghost" href="verify-profile.html">Back</a><a class="btn btn-primary btn-lg" href="verify-id.html">Continue</a></div>
+  <div class="row between" style="margin-top:20px"><a class="btn btn-ghost" href="verify-id.html">Back</a><span class="row" style="gap:8px"><a class="btn btn-secondary btn-lg" href="verify-agreement.html">Skip</a><a class="btn btn-primary btn-lg" href="verify-agreement.html">Save and continue</a></span></div>
 </div></div>
     <aside class="stack"><div class="card"><h2 class="h3">Why we check</h2>
   <p class="small muted">Every rating on Rentrix comes from a real person. An admin checks each account once, usually within 48 hours. <span class="spec">D-89 · D-90</span></p>
   <hr class="divider">
   <ul class="checklist">
     <li><i data-icon="check" class="yes"></i><span><b>Now:</b> search, read every review and the rent history.</span></li>
-    <li><i data-icon="lock" class="no"></i><span><b>After approval:</b> record or confirm a tenancy, write reviews, send enquiries. <span class="spec">D-91</span></span></li>
+    <li><i data-icon="lock" class="no"></i><span><b>After approval:</b> record or confirm a tenancy, write reviews, send enquiries. LinkedIn is not needed for any of these. <span class="spec">D-91 · D-99</span></span></li>
   </ul></div><div class="card"><h2 class="h3"><i data-icon="lock" data-size="18"></i> Who sees this</h2>
   <p class="small muted">Only you and Rentrix admins. Never landlords, other tenants or the public. Files open through links that expire after 5 minutes, and every admin view is logged. Files are deleted 90 days after the decision. <span class="spec">D-95 · D-96</span></p></div></aside>
   </div>
