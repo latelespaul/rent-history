@@ -48,7 +48,7 @@ class ApiBasicsTest {
 	}
 	
 	@Test
-	void citiesListsOnlyBangaloreAndPune() throws Exception {
+	void citiesListsTheLiveSeedRows() throws Exception {
 		mvc.perform(get("/cities"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$", hasSize(2)))
