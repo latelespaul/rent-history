@@ -412,8 +412,8 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | POST | `/auth/google` | `{idToken}` → verifies the Google ID token (D-70), finds or creates the user, returns `{accessToken, user, needsOnboarding}` + refresh cookie |
 | POST | `/auth/refresh` | uses refresh cookie, rotates it |
 | POST | `/auth/logout` | revokes current refresh token |
-| GET | `/auth/dev-users` | **dev profile only** (D-77): seed users for the login picker |
-| POST | `/auth/dev-login` | **dev profile only** (D-77): `{userId}` of a seed user → same response as `/auth/google` |
+| GET | `/auth/dev-users` | **`dev`/`test` profile only** (D-77): seed users for the login picker |
+| POST | `/auth/dev-login` | **`dev`/`test` profile only** (D-77): `{userId}` of a seed user → same response as `/auth/google` |
 
 **Me**
 | Method | Path | Notes |
