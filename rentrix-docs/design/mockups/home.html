@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rentrix · Home and search (mockup)</title>
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/rentrix.css">
+<style>
+  .hero { background: var(--color-primary-soft); border-bottom: 1px solid var(--color-border); }
+  .hero-inner { max-width: var(--page-max); margin: 0 auto; padding: var(--space-12) var(--gutter); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-10); align-items: center; }
+  .hero h1 { font-size: var(--text-3xl); line-height: var(--leading-3xl); }
+  .searchbox { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: var(--space-5); }
+  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+  .who { border-top: 4px solid var(--color-border); }
+  .who.property { border-color: var(--color-subject-property); }
+  .who.landlord { border-color: var(--color-subject-landlord); }
+  .who.tenant { border-color: var(--color-subject-tenant); }
+  .step-n { width: 28px; height: 28px; border-radius: 50%; background: var(--color-primary); color: var(--color-on-primary); display: inline-flex; align-items: center; justify-content: center; font-weight: var(--weight-bold); font-size: var(--text-sm); }
+  @media (max-width: 720px) {
+    .hero-inner { grid-template-columns: minmax(0, 1fr); padding: var(--space-6) var(--gutter); gap: var(--space-5); }
+    .hero h1 { font-size: var(--text-2xl); line-height: var(--leading-2xl); }
+    .three { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body data-viewer="anon" data-active="home">
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="stack">
+      <span class="badge badge-verified"><i data-icon="verified"></i>Every rating comes from a confirmed tenancy</span>
+      <h1>Rent with people you can check first.</h1>
+      <p class="muted">Tenants rate landlords and homes. Landlords rate tenants. A review counts only when both sides confirm the tenancy: same property, same dates, same rent.</p>
+      <div class="row small muted"><i data-icon="map-pin"></i>Live in Bangalore and Pune</div>
+    </div>
+
+    <form class="searchbox stack" action="search-results.html">
+      <div class="segmented" role="group" aria-label="City">
+        <button type="button" aria-pressed="true"><i data-icon="map-pin"></i>Bangalore</button>
+        <button type="button" aria-pressed="false"><i data-icon="map-pin"></i>Pune</button>
+      </div>
+      <div class="field">
+        <label class="label" for="q">Locality, building or landlord</label>
+        <div class="input-icon"><i data-icon="search"></i><input class="input" id="q" placeholder="e.g. Koramangala, HSR Layout"></div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label class="label">Type</label><select class="select"><option>Any</option><option>1 BHK</option><option>2 BHK</option><option>3 BHK</option></select></div>
+        <div class="field"><label class="label">Max rent</label><select class="select"><option>Any</option><option>₹25,000</option><option>₹40,000</option><option>₹60,000</option></select></div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block" type="submit"><i data-icon="search"></i>Search homes</button>
+      <p class="xs muted">Checking a landlord or a tenant? Search by their Rentrix profile name.</p>
+    </form>
+  </div>
+</section>
+
+<main class="page">
+  <section class="stack">
+    <h2>Three ratings, both directions</h2>
+    <div class="three">
+      <div class="card who property stack-sm">
+        <span class="badge badge-property"><i data-icon="home"></i>Property</span>
+        <h3>Is the home as described?</h3>
+        <p class="small muted">Tenants rate the flat: condition, water and power, safety, value for rent. You also see the rent paid each year.</p>
+      </div>
+      <div class="card who landlord stack-sm">
+        <span class="badge badge-landlord"><i data-icon="landlord"></i>Landlord</span>
+        <h3>Will the landlord be fair?</h3>
+        <p class="small muted">Tenants rate deposit return, repairs, communication and respect for privacy.</p>
+      </div>
+      <div class="card who tenant stack-sm">
+        <span class="badge badge-tenant"><i data-icon="tenant"></i>Tenant</span>
+        <h3>Will the tenant look after it?</h3>
+        <p class="small muted">Landlords rate on-time rent, care of the property and communication. Tenants choose when to share their profile.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" style="margin: var(--space-10) 0">
+
+  <section class="stack">
+    <h2>How a review becomes trusted</h2>
+    <div class="grid-4">
+      <div class="stack-sm"><span class="step-n">1</span><h4>Add the tenancy</h4><p class="small muted">Tenant or landlord enters property, dates and monthly rent.</p></div>
+      <div class="stack-sm"><span class="step-n">2</span><h4>The other side confirms</h4><p class="small muted">They accept the same details, or correct them. No confirmation, no review.</p></div>
+      <div class="stack-sm"><span class="step-n">3</span><h4>Both sides review</h4><p class="small muted">One review per direction per tenancy. Both are revealed together, so nobody retaliates.</p></div>
+      <div class="stack-sm"><span class="step-n">4</span><h4>Ratings add up</h4><p class="small muted">Scores roll up per landlord, tenant and property. Abuse can be reported.</p></div>
+    </div>
+  </section>
+
+  <hr class="divider" style="margin: var(--space-10) 0">
+
+  <section class="grid-2">
+    <a class="card stack-sm" href="search-results.html">
+      <div class="row"><i data-icon="map-pin" class="icon-lg"></i><h3>Bangalore</h3></div>
+      <p class="small muted">Koramangala, Indiranagar, HSR Layout, Whitefield and more.</p>
+      <span class="small">Browse Bangalore <i data-icon="chevron-right" class="icon-sm"></i></span>
+    </a>
+    <a class="card stack-sm" href="search-results.html">
+      <div class="row"><i data-icon="map-pin" class="icon-lg"></i><h3>Pune</h3></div>
+      <p class="small muted">Kothrud, Baner, Viman Nagar, Hinjewadi and more.</p>
+      <span class="small">Browse Pune <i data-icon="chevron-right" class="icon-sm"></i></span>
+    </a>
+  </section>
+</main>
+
+<script src="assets/icons.js"></script>
+<script src="assets/mockup.js"></script>
+</body>
+</html>
