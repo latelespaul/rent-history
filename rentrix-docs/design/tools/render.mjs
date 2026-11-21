@@ -60,11 +60,13 @@ const PAGES = [
 ];
 const MOBILE = new Set(['home', 'property', 'home-many-cities', 'verify-id', 'verify-rejected', 'verify-phone', 'society']);
 // New or changed in design v2 (copied to rentrix-docs/screenshots/design-v2/ with --copy-v2).
-const V2 = new Set(['home', 'search', 'onboarding', ...PAGES.slice(PAGES.findIndex(([n]) => n === 'home-many-cities')).map(([n]) => n)]);
+const V2 = new Set(['home', 'search', 'onboarding', 'home-many-cities', 'city-picker', 'verify-profile', 'verify-linkedin', 'verify-id',
+  'verify-agreement', 'verify-pending', 'verify-rejected', 'verify-approved', 'write-review-pending', 'admin-dashboard',
+  'admin-approvals', 'admin-records', 'admin-record', 'admin-cities']);
 const copyV2 = process.argv.includes('--copy-v2');
 // New or changed in design v3 (copied to rentrix-docs/screenshots/design-v3/ with --copy-v3).
 const V3 = new Set(['search', 'property', 'landlord-profile', 'tenant-profile', 'verify-profile', 'verify-id', 'verify-linkedin',
-  'verify-agreement', 'verify-pending', 'verify-rejected', 'verify-approved', 'admin-approvals',
+  'verify-agreement', 'verify-pending', 'verify-rejected', 'verify-approved', 'admin-approvals', 'admin-record',
   'verify-phone', 'verify-aadhaar', 'browse-areas', 'browse-societies', 'society']);
 const copyV3 = process.argv.includes('--copy-v3');
 const onlyV3 = process.argv.includes('--only-v3');

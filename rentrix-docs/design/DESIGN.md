@@ -391,6 +391,7 @@ Screenshots of implemented features (from the real app with dev login) go to `re
 - **"One is enough" is the headline of the ID step.** Three equal method cards (phone, PAN, masked Aadhaar) instead of a type picker, so users see at once that any one works. Phone comes first because it verifies instantly (D-99, D-101).
 - **LinkedIn is its own optional step with a "Skip" button**, placed after the ID step, and it never appears in reject reasons. Its only effect is the second badge (D-100).
 - **Aadhaar is masked-copy only.** The screen says how to download the masked copy from UIDAI, warns before the upload, and the input takes 4 digits only; the full number is never typed (D-103).
+- **ID files are deleted at decision.** The PAN and Aadhaar screens say the file is kept only until an admin decides and is then deleted; only the result and the last 4 stay (D-96, D-106).
 - **Badges, not details.** Public views show "ID verified" and "LinkedIn verified" only; the method, last 4 and phone stay with the owner and admins (D-100, D-106).
 - **Browse is three tabs of one search** (Homes, Areas, Societies) so the city picker and filters stay in one place (D-112).
 - **Society page is organised by building**: one block per tower, a row per wing, homes inside. Empty wings say "No homes listed yet" instead of hiding, so the structure is clear. Flat numbers never appear (D-57, D-107).

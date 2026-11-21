@@ -16,7 +16,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | `V3__city_pincode_prefixes.sql` (design v2, merged) | C1 | `cities.pincode_prefixes` | unchanged by v3 |
 | `V<n>__identity_verifications.sql` | **B14** | `identity_verifications`, `phone_otp_challenges` | no change to `users` (`phone` exists in V1) |
 | `V<n>__verification_core.sql` (design v2) | B11 | `verification_applications`, `verification_events`, property review columns, `moderation_actions` rebuild | not merged yet, so written in the v3 shape: **no** `linkedin_url`, `linkedin_not_provided`, `linkedin_check` columns |
-| `V<n>__location_hierarchy.sql` | **B15** | `areas`, `area_pincodes`, `societies`, `society_towers`, `society_wings`; `properties` + `area_id`, `society_id`, `tower_id`, `wing_id` and 2 indexes | plus `vendor/mysql/V<n>_1__location_fks.sql` (see §3.6) |
+| `V<n>__location_hierarchy.sql` | **B15** | `areas`, `area_pincodes`, `societies`, `society_towers`, `society_wings`; `properties` + `area_id`, `society_id`, `tower_id`, `wing_id` and 2 indexes | plus `db/vendor/mysql/V<n>_1__location_fks.sql` (see §3.6) |
 | `V<n>__verification_documents.sql` (design v2) | B12 | `verification_documents` | not merged yet, so written in the v3 shape: `identity_verification_id`, `id_type` ∈ `PAN`, `AADHAAR_MASKED`; no `number_last4`/`number_hmac` |
 | none | B16 | `rating_aggregates` gains subject types `SOCIETY`, `AREA`, `OWNER_HOMES` | `subject_type VARCHAR(16)` has no `CHECK`, so no DDL |
 
@@ -98,7 +98,7 @@ A locked nightly job (D-08) deletes rows 24 h after `expires_at` or `consumed_at
 
 - `verification_applications` (B11): drop the design-v2 columns `linkedin_url`, `linkedin_not_provided`, `linkedin_check` from the planned DDL. `flags` may hold `DUPLICATE_ID` and `DUPLICATE_PHONE`. Reject codes per §5.13 of SYSTEM_DESIGN.
 - `verification_events` (B11): `event` adds `IDENTITY_CHECKED` (replaces `LINKEDIN_CHECKED`).
-- `verification_documents` (B12): add `identity_verification_id BIGINT` (FK `identity_verifications`, set for `ID_PROOF`); `id_type` ∈ `PAN`, `AADHAAR_MASKED`; remove `number_last4` and `number_hmac` from the planned DDL; indexes `(owner_id, kind)`, `(identity_verification_id)`, `(status, purge_after)`.
+- `verification_documents` (B12): add `identity_verification_id BIGINT` (FK `identity_verifications`, set for `ID_PROOF`); `id_type` ∈ `PAN`, `AADHAAR_MASKED`; remove `number_last4` and `number_hmac` from the planned DDL; `ID_PROOF` files are deleted when their identity check is decided, so `purge_after` is set only for `RENTAL_AGREEMENT` and `PROPERTY_PROOF` (D-96); indexes `(owner_id, kind)`, `(identity_verification_id)`, `(status, purge_after)`.
 - `moderation_actions` (B11 rebuild): new `action` values `VERIFY_IDENTITY`, `REJECT_IDENTITY`, `REVOKE_IDENTITY`, `CREATE_AREA`, `UPDATE_AREA`, `APPROVE_LOCATION`, `UPDATE_LOCATION`; new `target_type` values `IDENTITY`, `AREA`, `SOCIETY`, `TOWER`, `WING`. No DDL (enum columns have no `CHECK`).
 
 ---
@@ -250,14 +250,14 @@ CREATE INDEX ix_properties_society_status ON properties (society_id, status, tow
 
 ### 3.6 MySQL vendor file
 
-MySQL parses but ignores column-level `REFERENCES` in `ALTER TABLE … ADD COLUMN`. `db/migration/vendor/mysql/V<n>_1__location_fks.sql` (same `<n>` as the location migration) adds:
+MySQL parses but ignores column-level `REFERENCES` in `ALTER TABLE … ADD COLUMN`. `db/vendor/mysql/V<n>_1__location_fks.sql` (same `<n>` as the location migration) adds:
 ```sql
 ALTER TABLE properties ADD CONSTRAINT fk_properties_area    FOREIGN KEY (area_id)    REFERENCES areas (id);
 ALTER TABLE properties ADD CONSTRAINT fk_properties_society FOREIGN KEY (society_id) REFERENCES societies (id);
 ALTER TABLE properties ADD CONSTRAINT fk_properties_tower   FOREIGN KEY (tower_id)   REFERENCES society_towers (id);
 ALTER TABLE properties ADD CONSTRAINT fk_properties_wing    FOREIGN KEY (wing_id)    REFERENCES society_wings (id);
 ```
-Flyway loads `db/migration/vendor/{vendor}` per D-10; on SQLite and Postgres the `_1` version simply does not exist.
+The file lives outside `db/migration`, because Flyway scans every location recursively and a file under `db/migration` would run on SQLite too. The B15 PR sets `spring.flyway.locations` to `classpath:db/migration,classpath:db/vendor/{vendor}` (D-10), so only MySQL loads `db/vendor/mysql`; on SQLite and Postgres the `_1` version simply does not exist.
 
 ---
 
