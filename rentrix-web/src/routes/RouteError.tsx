@@ -1,30 +1,37 @@
-import { useRouteError, isRouteErrorResponse, Link } from "react-router-dom"
-import { AlertTriangle } from "lucide-react"
+import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom"
+import { Brand } from "@/components/layout/Brand"
+import { Container } from "@/components/layout/Container"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/ui/states"
 
+/** Router-level failure (loader, render): the error state under a bare brand bar. */
 export function RouteError() {
   const error = useRouteError()
-
-  let title = "Something went wrong"
-  let message = "An unexpected error occurred."
-
-  if (isRouteErrorResponse(error)) {
-    title = `${error.status} ${error.statusText}`
-    message = error.data?.message ?? "The page could not be loaded."
-  } else if (error instanceof Error) {
-    message = error.message
-  }
+  const response = isRouteErrorResponse(error) ? error : null
 
   return (
-    <div className="container mx-auto flex flex-col items-center gap-4 px-4 py-24 text-center">
-      <AlertTriangle className="h-10 w-10 text-destructive" />
-      <div className="space-y-1">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <p className="text-sm text-muted-foreground">{message}</p>
-      </div>
-      <Button asChild>
-        <Link to="/">Go home</Link>
-      </Button>
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-line bg-surface">
+        <Container className="flex h-topbar items-center">
+          <Brand />
+        </Container>
+      </header>
+      <main>
+        <Container className="py-16">
+          <ErrorState
+            title={response ? `${response.status} ${response.statusText}` : undefined}
+            error={response ? undefined : error}
+            description={
+              response ? (response.data?.message ?? "The page could not be loaded.") : undefined
+            }
+            action={
+              <Button asChild>
+                <Link to="/">Go home</Link>
+              </Button>
+            }
+          />
+        </Container>
+      </main>
     </div>
   )
 }

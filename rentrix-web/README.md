@@ -21,6 +21,20 @@ Start the API first: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run` in `ren
 | `npm run gen:api` | Regenerate `src/types/api.gen.ts` from `openapi/openapi.json` |
 | `npm run gen:api:fetch` | Refresh `openapi/openapi.json` from a running dev API, then regenerate (`OPENAPI_URL` overrides the source) |
 
+## Design system
+
+The look comes from `rentrix-docs/design` (DESIGN.md): tokens, icons, mockups.
+
+- `src/styles/tokens.css` is a copy of `rentrix-docs/design/tokens.css`; `src/index.css` maps the
+  `--rx-*` tokens onto the shadcn names and exposes them as Tailwind colours (`bg-teal-50`, `text-ink-500`,
+  `bg-tenant-100`, …). Components use tokens only, never raw colours.
+- Icons: `<Icon name="shield-check" />` or the named components (`ShieldCheckIcon`, …) from
+  `src/components/ui/icons.gen.ts`, generated from `rentrix-docs/design/icons/icons.js`. No third-party icon set.
+- After changing the design tokens or icons, run `npm run sync:design`; `src/test/design-sync.test.ts` fails
+  while the copies differ.
+- Shell: `src/components/layout` (top bar with the city picker, footer, `Container`);
+  `src/components/ui` has `Badge` (+ `DemoBadge`, `VerifiedBadge`), `Notice`, `EmptyState`, `ErrorState`.
+
 ## Pointing a build at an API
 
 The base URL is resolved per request, first match wins:
