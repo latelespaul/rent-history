@@ -8,7 +8,7 @@ This file only orders the work. If a PR must deviate from the design, it updates
 
 - Small and reviewable alone; master stays green after each merge (backend tests, web lint/build/test, migrations).
 - Branch from latest `master`; one concern per PR; passes no-mistakes before merge.
-- Backend tests run on the **real Flyway migrations** (SQLite by default; MySQL/Postgres via Testcontainers in CI from B1 on, see O2).
+- Backend tests run on the **real Flyway migrations** (SQLite by default; MySQL/Postgres via Testcontainers in CI from O2 on).
 - Google is never called in tests: `FakeGoogleTokenVerifier` (D-75).
 - Every UI PR body has: run command(s), URL, test logins (dev-login seed users, D-77), the pages to shoot, and the screenshots. Images are also committed to `rentrix-docs/screenshots/<pr-id>/` (`git add -f`, the root `.gitignore` ignores `rentrix-docs/`).
 - Screenshots come from a local headless browser (Playwright) against local dev servers only.
