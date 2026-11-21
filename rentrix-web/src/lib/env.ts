@@ -1,8 +1,10 @@
 import { z } from "zod"
 
 const envSchema = z.object({
-  VITE_API_BASE_URL: z.string().min(1, "VITE_API_BASE_URL is required"),
-  VITE_APP_NAME: z.string().min(1, "VITE_APP_NAME is required"),
+  // API origin, e.g. https://api.example.com. Optional: see src/lib/apiConfig.ts
+  // for the runtime override and the http://localhost:8080 default.
+  VITE_API_BASE_URL: z.string().optional(),
+  VITE_APP_NAME: z.string().min(1).default("Rentrix"),
 })
 
 const parsed = envSchema.safeParse(import.meta.env)

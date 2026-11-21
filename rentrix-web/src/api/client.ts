@@ -1,12 +1,12 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios"
-import { env } from "@/lib/env"
+import { apiBaseUrl } from "@/lib/apiConfig"
 
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retry?: boolean
 }
 
 export const api = axios.create({
-  baseURL: env.VITE_API_BASE_URL,
+  baseURL: apiBaseUrl,
   headers: { "Content-Type": "application/json" },
   // 90s — Render free tier can take up to ~130s to cold start; this
   // gives the request a fighting chance once the container wakes up.
@@ -63,7 +63,7 @@ api.interceptors.response.use(
       try {
         if (!refreshPromise) {
           refreshPromise = axios
-            .post<{ accessToken: string }>(`${env.VITE_API_BASE_URL}/auth/refresh`, {
+            .post<{ accessToken: string }>(`${apiBaseUrl}/auth/refresh`, {
               refreshToken,
             })
             .then((r) => {

@@ -1,4 +1,5 @@
 import type { CreateReviewRequest, Page, Review, ReviewProof, ReviewStatus } from "@/types"
+import { resolveApiUrl } from "@/lib/apiConfig"
 import { api } from "./client"
 
 export const reviewsApi = {
@@ -31,7 +32,9 @@ export const reviewsApi = {
   },
 
   getProofUrl: (reviewId: number, proofId: number): Promise<{ url: string }> =>
-    api.get(`/reviews/${reviewId}/proofs/${proofId}/url`).then((r) => r.data),
+    api
+      .get<{ url: string }>(`/reviews/${reviewId}/proofs/${proofId}/url`)
+      .then((r) => ({ url: resolveApiUrl(r.data.url) })),
 
   deleteProof: (reviewId: number, proofId: number): Promise<void> =>
     api.delete(`/reviews/${reviewId}/proofs/${proofId}`).then(() => undefined),
