@@ -9,8 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -29,17 +29,13 @@ public class CityService {
 	
 	private final CityRepository cities;
 	
-	public List<CityResponse> liveCities() {
-		return liveCities(null);
-	}
-	
 	/**
 	 * Live cities by name; a non-blank {@code q} keeps those where it is a case-insensitive prefix
-	 * of any word of the code, name, an alias or the state, so "beng" finds Bangalore through its
-	 * alias Bengaluru (D-82).
+	 * of the code, name, an alias or the state starting at any word, so "beng" finds Bangalore
+	 * through its alias Bengaluru and "navi mumbai" or "mumbai" find Navi Mumbai (D-82).
 	 */
 	public List<CityResponse> liveCities(String q) {
-		String query = q == null ? "" : q.strip().toLowerCase(Locale.ROOT);
+		String query = String.join(" ", words(q));
 		return cities.findByLiveTrueOrderByNameAsc().stream()
 			.filter(city -> query.isEmpty() || matches(city, query))
 			.map(CityResponse::from)
@@ -75,9 +71,15 @@ public class CityService {
 	
 	private static boolean matches(City city, String query) {
 		return Stream.concat(Stream.of(city.getCode(), city.getName(), city.getState()), city.aliasList().stream())
-			.filter(Objects::nonNull)
-			.flatMap(value -> WORD_SEPARATOR.splitAsStream(value.toLowerCase(Locale.ROOT)))
-			.anyMatch(word -> word.startsWith(query));
+			.map(CityService::words)
+			.anyMatch(words -> IntStream.range(0, words.size())
+				.anyMatch(i -> String.join(" ", words.subList(i, words.size())).startsWith(query)));
+	}
+	
+	private static List<String> words(String value) {
+		return value == null ? List.of() : WORD_SEPARATOR.splitAsStream(value.toLowerCase(Locale.ROOT))
+			.filter(word -> !word.isEmpty())
+			.toList();
 	}
 	
 	private static ApiException notLive() {

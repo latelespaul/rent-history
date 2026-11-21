@@ -71,6 +71,19 @@ class CityApiTest {
 	
 	@Test
 	@Transactional
+	void searchMatchesMultiWordNamesFromAnyWord() throws Exception {
+		insertCity("ZZN", "Navi Mumbai", null, "Maharashtra", true, null);
+		for (String q : new String[] {"navi mumbai", "  Navi   MUMBAI ", "navi mu", "mumbai"}) {
+			mvc.perform(get("/cities").param("q", q))
+				.andExpect(jsonPath("$", hasSize(1)))
+				.andExpect(jsonPath("$[0].code").value("ZZN"));
+		}
+		mvc.perform(get("/cities").param("q", "mumbai navi"))
+			.andExpect(jsonPath("$", hasSize(0)));
+	}
+	
+	@Test
+	@Transactional
 	void activatingARowNeedsNoCodeChange() throws Exception {
 		insertCity("HYD", "Hyderabad", "Cyberabad, Secunderabad", "Telangana", false, "50");
 		mvc.perform(get("/cities").param("q", "hyd")).andExpect(jsonPath("$", hasSize(0)));
