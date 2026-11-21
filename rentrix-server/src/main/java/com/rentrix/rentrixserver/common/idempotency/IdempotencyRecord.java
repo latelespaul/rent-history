@@ -31,6 +31,7 @@ public class IdempotencyRecord extends BaseEntity {
 	private String idempotencyKey;
 	
 	/** SHA-256 (hex) of method, path and body: the same key with another request is refused. */
+	@JdbcTypeCode(SqlTypes.CHAR)
 	@Column(name = "request_hash", nullable = false, length = 64)
 	private String requestHash;
 	
