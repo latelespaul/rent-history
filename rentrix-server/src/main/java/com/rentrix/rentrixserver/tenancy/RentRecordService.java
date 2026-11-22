@@ -112,6 +112,7 @@ public class RentRecordService {
 	 * {@code GET /properties/{id}/rent-history} (signed-in, D-56): confirmed records of confirmed tenancies as month
 	 * ranges, without tenant identity or exact dates (D-26, D-57). A record runs until the month before the next
 	 * confirmed record of its tenancy, or to the tenancy's end month; the latest of a current tenancy has no end.
+	 * On a whole home rows never overlap and at most the newest is open-ended (D-23).
 	 */
 	public RentHistory history(UUID propertyId, AuthenticatedUser caller) {
 		Property property = properties.findByPublicIdAndDeletedAtIsNull(propertyId)
@@ -139,6 +140,9 @@ public class RentRecordService {
 			}
 		}
 		rows.sort(Comparator.comparing(Row::from).thenComparing(Row::to, Comparator.nullsLast(Comparator.naturalOrder())));
+		if (!share) {
+			closeOverlaps(rows);
+		}
 		return new RentHistory(property.getPublicId(), rows.stream()
 			.map(row -> new RentHistory.Row(row.from().toString(), row.to() == null ? null : row.to().toString(),
 				row.record().getMonthlyRentInr(), row.record().getMaintenanceInr(), share))
@@ -146,6 +150,21 @@ public class RentRecordService {
 	}
 
 	private record Row(YearMonth from, YearMonth to, RentRecord record) {
+	}
+	
+	/**
+	 * A whole home is let to one tenancy at a time, so its rows never overlap: a row still open (or running past)
+	 * when the next one starts ends the month before it. Only data from before the overlap guard can need this.
+	 */
+	private static void closeOverlaps(List<Row> rows) {
+		for (int i = 0; i + 1 < rows.size(); i++) {
+			Row row = rows.get(i);
+			YearMonth next = rows.get(i + 1).from();
+			if (row.to() == null || !row.to().isBefore(next)) {
+				YearMonth to = next.minusMonths(1);
+				rows.set(i, new Row(row.from(), to.isBefore(row.from()) ? row.from() : to, row.record()));
+			}
+		}
 	}
 
 	private RentRecordView respond(UUID recordId, AuthenticatedUser caller, RentRecordStatus outcome) {

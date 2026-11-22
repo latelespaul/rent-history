@@ -6,6 +6,7 @@ import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
+import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateTenancyRequest;
@@ -31,13 +32,16 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -45,7 +49,8 @@ import java.util.UUID;
 /**
  * The tenancy lifecycle (§6): a request by either party, confirmed by the other within 14 days, then ended by
  * either party. Guards at creation and confirmation (D-35): approved verification for the acting side (D-91),
- * email-verified accounts, valid dates, no overlapping tenancy of the same tenant on the same property (D-23) and
+ * email-verified accounts, valid dates, no overlapping tenancy of the same tenant on the same property (D-23), on a
+ * whole home no overlap with any other confirmed tenancy (one tenancy at a time; ROOM and PG take flatmates) and
  * at most {@value #MAX_PENDING} pending requests started per user. Decline, cancel and end are never gated (D-91).
  * <p>A landlord names the tenant by email, and the answer never shows whether that email has an account: the
  * landlord sees only a masked email and no tenant until the tenancy is confirmed. An existing, email-verified account
@@ -151,6 +156,8 @@ public class TenancyService {
 				+ " tenancy requests waiting for confirmation. Wait for them or cancel one first.");
 		}
 
+		requireHomeFree(property, null, request.startDate(), request.endDate(), me);
+
 		Tenancy tenancy = new Tenancy();
 		tenancy.setProperty(property);
 		tenancy.setLandlord(property.getLandlord());
@@ -227,6 +234,7 @@ public class TenancyService {
 		requireEmailVerified(me);
 		approvals.require(me, roleOf(sideOf(tenancy, me)));
 		requireNoOverlap(tenancy, CONFIRMED);
+		requireHomeFree(tenancy.getProperty(), tenancy.getId(), tenancy.getStartDate(), tenancy.getEndDate(), me);
 		Instant now = now();
 		tenancy.setStatus(tenancy.getEndDate() == null ? TenancyStatus.ACTIVE : TenancyStatus.ENDED);
 		tenancy.setConfirmedAt(now);
@@ -429,6 +437,44 @@ public class TenancyService {
 	 * D-23: one tenant cannot hold two overlapping tenancies on the same property. A tenant's own request is checked
 	 * against pending ones too; claim and confirm only against confirmed ones, so a sibling pending request never blocks.
 	 */
+	/** Whether the property is let as a whole home, one tenancy at a time (D-23); ROOM and PG take flatmates. */
+	public static boolean wholeHome(Property property) {
+		return property.getPropertyType() != PropertyType.ROOM && property.getPropertyType() != PropertyType.PG;
+	}
+
+	/**
+	 * A whole home holds one tenancy at a time (D-23): a request or confirmation whose dates overlap a confirmed
+	 * tenancy on the same property, of any tenant, is refused with {@code 409 tenancy_overlap} naming that tenancy's
+	 * period. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
+	 * first. The property row lock serialises concurrent confirmations on one home. ROOM and PG are exempt.
+	 */
+	private void requireHomeFree(Property property, Long excludeId, LocalDate start, LocalDate end, User me) {
+		if (!wholeHome(property)) {
+			return;
+		}
+		properties.lockById(property.getId());
+		tenancies.findOverlappingOnProperty(property.getId(), excludeId == null ? -1L : excludeId, CONFIRMED, start,
+				end == null ? OPEN_END : end).stream()
+			.findFirst()
+			.ifPresent(clash -> {
+				Map<String, String> conflict = new LinkedHashMap<>();
+				conflict.put("from", YearMonth.from(clash.getStartDate()).toString());
+				if (clash.getEndDate() != null) {
+					conflict.put("to", YearMonth.from(clash.getEndDate()).toString());
+				}
+				conflict.put("status", clash.getStatus().name());
+				boolean ownersView = property.getLandlord().getId().equals(me.getId());
+				if (ownersView) {
+					conflict.put("tenancyId", clash.getPublicId().toString());
+				}
+				throw ApiException.tenancyOverlap(clash.getEndDate() == null
+					? "This home already has a current tenancy since " + clash.getStartDate()
+						+ ". It must end before a new one can start."
+					: "This home already has a tenancy from " + clash.getStartDate() + " to " + clash.getEndDate()
+						+ " that overlaps these dates.", conflict);
+			});
+	}
+
 	private void requireNoOverlap(Tenancy tenancy, Collection<TenancyStatus> against) {
 		users.lockByPublicId(tenancy.getTenant().getPublicId());
 		boolean overlap = !tenancies.lockOverlapping(tenancy.getProperty().getId(), tenancy.getTenant().getId(),
