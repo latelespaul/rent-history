@@ -96,7 +96,7 @@ A locked nightly job (D-08) deletes rows 24 h after `expires_at` or `consumed_at
 
 ### 2.3 Changes to the not-yet-merged design-v2 tables
 
-- `verification_applications` (B11): drop the design-v2 columns `linkedin_url`, `linkedin_not_provided`, `linkedin_check` from the planned DDL. `flags` may hold `DUPLICATE_ID` and `DUPLICATE_PHONE`. Reject codes per §5.13 of SYSTEM_DESIGN.
+- `verification_applications` (B11): drop the design-v2 columns `linkedin_url`, `linkedin_not_provided`, `linkedin_check` from the planned DDL. `flags` may hold `DUPLICATE_ID` and `DUPLICATE_PHONE`. Adds `version INTEGER NOT NULL DEFAULT 0` (optimistic lock, JPA `@Version`): a concurrent decision or resubmit of the same application loses with `409 invalid_transition`. Reject codes per §5.13 of SYSTEM_DESIGN.
 - `verification_events` (B11): `event` adds `IDENTITY_CHECKED` (replaces `LINKEDIN_CHECKED`).
 - `verification_documents` (B12): add `identity_verification_id BIGINT` (FK `identity_verifications`, set for `ID_PROOF`); `id_type` ∈ `PAN`, `AADHAAR_MASKED`; remove `number_last4` and `number_hmac` from the planned DDL; `ID_PROOF` files are deleted when their identity check is decided, so `purge_after` is set only for `RENTAL_AGREEMENT` and `PROPERTY_PROOF` (D-96); indexes `(owner_id, kind)`, `(identity_verification_id)`, `(status, purge_after)`.
 - `moderation_actions` (B11 rebuild): new `action` values `VERIFY_IDENTITY`, `REJECT_IDENTITY`, `REVOKE_IDENTITY`, `CREATE_AREA`, `UPDATE_AREA`, `APPROVE_LOCATION`, `UPDATE_LOCATION`; new `target_type` values `IDENTITY`, `AREA`, `SOCIETY`, `TOWER`, `WING`. No DDL (enum columns have no `CHECK`).

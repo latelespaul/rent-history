@@ -11,6 +11,8 @@ import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -136,11 +138,34 @@ public class VerificationService implements VerificationStatuses {
 		application.setSubmittedAt(now);
 		application.clearDecision();
 		application.setFlagSet(identity.flags(user));
-		applications.save(application);
+		save(application);
 		event(application, VerificationEventType.SUBMITTED, user, null, null, now);
 		log.info("Verification submitted: user {} role {} revision {}", user.getPublicId(), role,
 			application.getRevision());
 		return view(user, role, Optional.of(application), steps);
+	}
+	
+	/**
+	 * Writes the application now, so a concurrent decision or submit that changed it first (the {@code version}
+	 * check) or created it first (unique user + role) is {@code 409 invalid_transition} and nothing else is kept.
+	 */
+	void save(VerificationApplication application) {
+		boolean created = application.getId() == null;
+		try {
+			applications.saveAndFlush(application);
+		} catch (OptimisticLockingFailureException e) {
+			throw changedConcurrently();
+		} catch (DataIntegrityViolationException e) {
+			if (!created) {
+				throw e;
+			}
+			throw changedConcurrently();
+		}
+	}
+	
+	private static ApiException changedConcurrently() {
+		return ApiException.conflict("invalid_transition",
+			"This application was changed by another request at the same time. Reload it and try again.");
 	}
 	
 	VerificationEvent event(VerificationApplication application, VerificationEventType type, User actor, String code,

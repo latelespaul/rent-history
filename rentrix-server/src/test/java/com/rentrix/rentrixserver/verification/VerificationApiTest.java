@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.admin.ModerationAction;
 import com.rentrix.rentrixserver.admin.ModerationActionRepository;
 import com.rentrix.rentrixserver.admin.ModerationActionType;
 import com.rentrix.rentrixserver.admin.ModerationTargetType;
+import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.identity.CheckedBy;
 import com.rentrix.rentrixserver.identity.IdentityMethod;
 import com.rentrix.rentrixserver.identity.IdentityService;
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -87,6 +90,9 @@ class VerificationApiTest {
 	
 	@Autowired
 	RecordingEmailSender mail;
+	
+	@Autowired
+	VerificationService verification;
 	
 	private List<String> subjectsTo(User user) {
 		return mail.to(user.getEmail()).stream().map(EmailMessage::subject).toList();
@@ -406,6 +412,25 @@ class VerificationApiTest {
 		// Verifying another method lifts it without a new approval (D-105).
 		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
+	}
+
+	@Test
+	void aWriteBasedOnAStaleReadLosesWithInvalidTransition() throws Exception {
+		User user = applicant("Raced", Role.TENANT);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
+		UUID id = submitted(user, Role.TENANT);
+		VerificationApplication stale = applications.findByPublicId(id).orElseThrow();
+		decide(admin(), id, "approve", "{}").andExpect(status().isOk());
+
+		stale.setStatus(VerificationStatus.REJECTED);
+		assertThatThrownBy(() -> verification.save(stale))
+			.isInstanceOfSatisfying(ApiException.class, e -> {
+				assertThat(e.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+				assertThat(e.getCode()).isEqualTo("invalid_transition");
+			});
+		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.APPROVED);
+		assertThat(auditOf(id)).extracting(ModerationAction::getAction)
+			.containsExactly(ModerationActionType.APPROVE_APPLICATION);
 	}
 
 	@Test

@@ -25,6 +25,8 @@ CREATE TABLE verification_applications (
     decided_by      BIGINT,
     decision_code   VARCHAR(32),
     decision_note   VARCHAR(1000),
+    -- optimistic lock: a concurrent decision or resubmit loses with 409
+    version         INTEGER           NOT NULL DEFAULT 0,
     created_at      ${timestamp_type} NOT NULL,
     updated_at      ${timestamp_type} NOT NULL,
     CONSTRAINT pk_verification_applications PRIMARY KEY (id),

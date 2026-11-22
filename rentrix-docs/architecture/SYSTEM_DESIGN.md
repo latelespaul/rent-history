@@ -302,6 +302,7 @@ One per user per role; it carries the approval for that role (§7.3).
 | `flags` | comma list set by the API, e.g. `DUPLICATE_ID`, `DUPLICATE_PHONE` (D-102, D-101); shown to admins only |
 | `submitted_at`, `decided_at`, `decided_by` | |
 | `decision_code`, `decision_note` | on reject: `NO_VERIFIED_ID`, `ID_UNREADABLE`, `ID_NAME_MISMATCH`, `AADHAAR_NOT_MASKED`, `DOCUMENT_MISSING`, `DUPLICATE_ACCOUNT`, `OTHER`, plus a note shown to the user; on approve: optional note (admin only) |
+| `version` | optimistic lock (JPA `@Version`); a concurrent approve, reject, revoke or resubmit of the same application loses with `409 invalid_transition` and keeps nothing |
 
 *Changed in design v3*: the design-v2 columns `linkedin_url`, `linkedin_not_provided` and `linkedin_check` are gone. LinkedIn is one optional `identity_verifications` row per user (D-106), shared by both role applications, and `LINKEDIN_MISMATCH` is no longer a reason to reject an application: a mismatch only means no LinkedIn badge (D-100).
 

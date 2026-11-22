@@ -111,7 +111,7 @@ public class VerificationDecisions {
 	
 	private AdminApplicationView decided(User admin, VerificationApplication application, VerificationEventType type,
 		ModerationActionType action, VerificationDecisionCode code, String note, Instant now) {
-		applications.save(application);
+		verification.save(application);
 		verification.event(application, type, admin, code == null ? null : code.name(), note, now);
 		audit.record(admin, action, ModerationTargetType.APPLICATION, application.getId(),
 			application.getPublicId().toString(), code == null ? note : code.name() + ": " + note);

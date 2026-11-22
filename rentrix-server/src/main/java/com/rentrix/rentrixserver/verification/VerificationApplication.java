@@ -11,6 +11,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -74,7 +76,12 @@ public class VerificationApplication extends PublicEntity {
 	/** On reject or revoke: shown to the user. On approve: an optional note for admins only. */
 	@Column(name = "decision_note", length = 1000)
 	private String decisionNote;
-	
+
+	@Version
+	@Setter(AccessLevel.NONE)
+	@Column(name = "version", nullable = false)
+	private int version;
+
 	public Set<String> flagSet() {
 		if (flags == null || flags.isBlank()) {
 			return Set.of();
