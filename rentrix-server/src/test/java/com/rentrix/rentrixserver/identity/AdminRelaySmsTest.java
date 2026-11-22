@@ -65,6 +65,7 @@ class AdminRelaySmsTest {
 		String started = mvc.perform(post("/me/identity/phone/start").header(HttpHeaders.AUTHORIZATION, bearer(user))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"+919812345678\"}"))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.delivery").value("TEAM"))
 			.andReturn().getResponse().getContentAsString();
 		assertThat(started).doesNotContain("\"code\"");
 		

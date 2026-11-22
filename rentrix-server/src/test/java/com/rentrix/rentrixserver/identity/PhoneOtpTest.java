@@ -122,6 +122,7 @@ class PhoneOtpTest {
 	private JsonNode verify(User user, String phone, CapturedOutput output) throws Exception {
 		MockHttpServletResponse started = start(user, phone);
 		assertThat(started.getStatus()).as(started.getContentAsString()).isEqualTo(200);
+		assertThat(body(started).get("delivery").asString()).isEqualTo("SMS");
 		String challengeId = body(started).get("challengeId").asString();
 		MockHttpServletResponse confirmed = confirm(user, challengeId, codeSentTo(output, phone));
 		assertThat(confirmed.getStatus()).as(confirmed.getContentAsString()).isEqualTo(200);

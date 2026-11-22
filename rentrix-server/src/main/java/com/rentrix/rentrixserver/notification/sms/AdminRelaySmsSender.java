@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
  * the OTP lifetime, so an admin can read it in the admin console and pass it to a trusted first user. Nothing is
  * stored in the database beyond the code's HMAC (D-101), and a restart forgets every relayed code. The code is
  * logged only in {@code dev}. The startup guard refuses this sender under {@code prod} unless
- * {@code PREVIEW_MODE=true}, and every start with it logs one warning.
+ * {@code PREVIEW_MODE=true}, and every start with it logs one warning. Each held code also goes to the optional
+ * {@link RelayPush} (Telegram when configured); a push failure never breaks the OTP.
  */
 @Slf4j
 public class AdminRelaySmsSender implements SmsSender {
@@ -39,15 +40,24 @@ public class AdminRelaySmsSender implements SmsSender {
 	private final Duration ttl;
 	private final Clock clock;
 	private final boolean logCodes;
+	private final RelayPush push;
 	
 	/**
 	 * @param ttl      how long a code is kept: the OTP lifetime ({@code OTP_TTL_MINUTES})
 	 * @param logCodes true in {@code dev} only: also write the code to the log
 	 */
 	public AdminRelaySmsSender(Duration ttl, Clock clock, boolean logCodes) {
+		this(ttl, clock, logCodes, RelayPush.NONE);
+	}
+	
+	/**
+	 * @param push also called with each held code; {@link RelayPush#NONE} for none
+	 */
+	public AdminRelaySmsSender(Duration ttl, Clock clock, boolean logCodes, RelayPush push) {
 		this.ttl = ttl;
 		this.clock = clock;
 		this.logCodes = logCodes;
+		this.push = push;
 	}
 	
 	@Override
@@ -57,12 +67,18 @@ public class AdminRelaySmsSender implements SmsSender {
 			throw new SmsSendException("The admin relay found no code in the message.", null);
 		}
 		Instant now = clock.instant().truncatedTo(ChronoUnit.MILLIS);
-		pending.put(phoneE164, new RelayedCode(phoneE164, matcher.group(1), now, now.plus(ttl)));
+		RelayedCode held = new RelayedCode(phoneE164, matcher.group(1), now, now.plus(ttl));
+		pending.put(phoneE164, held);
 		if (logCodes) {
 			log.info("SMS to {} (SMS_BACKEND=admin-relay, not sent, held for admins): {}", PhoneMasks.mask(phoneE164),
 				text);
 		} else {
 			log.info("SMS code for {} held for admins (SMS_BACKEND=admin-relay, not sent)", PhoneMasks.mask(phoneE164));
+		}
+		try {
+			push.push(phoneE164, held.code(), held.expiresAt());
+		} catch (RuntimeException e) {
+			log.warn("Relay push failed for {} ({})", PhoneMasks.mask(phoneE164), e.getClass().getSimpleName());
 		}
 	}
 	

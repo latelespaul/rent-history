@@ -19,6 +19,7 @@ import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
 import { CityPicker } from "@/features/city/CityPicker"
+import { BRAND } from "@/lib/brand"
 import type {
   IdentityMethodView,
   IdentityView,
@@ -252,7 +253,7 @@ export function PhoneStep({
             {challenge ? (
               <>
                 <Badge variant="success" className="self-center">
-                  Code sent
+                  {challenge.delivery === "TEAM" ? "Code requested" : "Code sent"}
                 </Badge>
                 <Button
                   type="button"
@@ -289,7 +290,11 @@ export function PhoneStep({
             className="space-y-2"
           >
             <Label htmlFor="verify-code">2 · Enter the 6-digit code</Label>
-            <p className="text-sm text-ink-500">We sent it by SMS. It works for 10 minutes.</p>
+            <p className="text-sm text-ink-500">
+              {challenge.delivery === "TEAM"
+                ? `We'll message you the code shortly (WhatsApp/SMS from the ${BRAND.name} team). It works for 10 minutes.`
+                : "We sent it by SMS. It works for 10 minutes."}
+            </p>
             <Input
               id="verify-code"
               inputMode="numeric"
