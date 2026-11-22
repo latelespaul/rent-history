@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MySQL only (D-10): MySQL parses but ignores the column-level REFERENCES of
--- V8's ALTER TABLE ... ADD COLUMN, so the added_by FK is added here. Loaded from
+-- V9's ALTER TABLE ... ADD COLUMN, so the added_by FK is added here. Loaded from
 -- classpath:db/vendor/{vendor} (spring.flyway.locations), so SQLite and
 -- PostgreSQL, which enforce the inline REFERENCES, never see it.
 -- =============================================================================

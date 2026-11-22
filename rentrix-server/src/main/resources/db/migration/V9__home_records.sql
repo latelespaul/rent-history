@@ -6,7 +6,7 @@
 -- visibility switch per sensitive field, so masking can be turned on later
 -- without a migration. Existing rows keep today's rules: flat numbers stay
 -- MASKED (D-57), rent stays OPEN to signed-in users (D-26, D-56). MySQL ignores
--- the inline REFERENCES, so db/vendor/mysql/V8_1__home_records_fks.sql adds it.
+-- the inline REFERENCES, so db/vendor/mysql/V9_1__home_records_fks.sql adds it.
 -- Same portable subset as V1 (D-10).
 -- =============================================================================
 ALTER TABLE properties ADD COLUMN added_by BIGINT REFERENCES users (id);

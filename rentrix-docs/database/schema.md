@@ -23,7 +23,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | `V<n>__rental_agreements.sql` (design v4) | **B18** | `rental_agreements` | §6 |
 | none (design v4) | B17 | phone required for submit, approve and the gate (D-117) | rules only, no DDL |
 | `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
-| `V8__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V8_1__home_records_fks.sql` for `added_by` |
+| `V9__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V9_1__home_records_fks.sql` for `added_by` |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 
