@@ -31,12 +31,13 @@ public final class ReviewContentRules {
 	/**
 	 * Only explicit unit markers: "flat no 302", "house no. 12", "unit #5", "room number 4B"; block-unit codes tied
 	 * to a unit, tower, wing or block word ("flat B 402", "tower C-1204", "wing #1203"); and bare codes of one capital
-	 * letter and 3-4 digits ("A-1203", "B 402"), never multi-letter road codes like "NH-48".
+	 * letter and 3-4 digits ("A-1203", "B 402"), never multi-letter road codes like "NH-48" nor "A" or "I" then a
+	 * space ("A 1200 sq ft").
 	 */
 	private static final Pattern UNIT = Pattern.compile(
 		"(?i)\\b(" + UNIT_WORD + ")\\s*(no\\.?|number|#)\\s*[a-z]?-?\\d{1,4}[a-z]?\\b" + NOT_MEASURE
 			+ "|\\b(" + UNIT_WORD + "|tower|wing|block)\\s+(#\\s*|[a-z](\\s?-\\s?|\\s))\\d{2,4}\\b" + NOT_MEASURE
-			+ "|(?-i:\\b[A-Z][- ]?\\d{3,4}\\b)" + NOT_MEASURE);
+			+ "|(?-i:\\b([A-Z]-?|[B-HJ-Z] )\\d{3,4}\\b)" + NOT_MEASURE);
 	/** A basic list, English and common Hindi transliterations; matched as whole words. */
 	private static final Pattern PROFANITY = Pattern.compile("(?i)\\b(fuck\\w*|shit\\w*|bitch\\w*|bastard\\w*|"
 		+ "asshole\\w*|cunt\\w*|dickhead\\w*|motherfuck\\w*|chutiya\\w*|madarchod\\w*|behenchod\\w*|bhenchod\\w*|"

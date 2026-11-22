@@ -22,6 +22,8 @@ class ReviewContentRulesTest {
 		"The flat is 10 min from the metro and 2 km from the market",
 		"Close to NH-48 and the IT park, easy commute",
 		"The house is right on SH-17 near the bus stand",
+		"A 1200 sq ft flat with good light",
+		"A 1500 rent hike every year",
 	})
 	void honestSentencesPass(String text) {
 		assertThat(ReviewContentRules.review(text + PAD, null)).isEqualTo(text + PAD);
