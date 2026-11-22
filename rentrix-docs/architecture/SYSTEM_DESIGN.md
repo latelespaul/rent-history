@@ -142,7 +142,7 @@ Property 1───N PropertyImage          Tenancy 1───N TenancyDocument
 Tenant  1───N Enquiry N───1 Property
 Report N───1 (Review | ReviewResponse | User | Property | Tenancy)
 User 1───0..2 VerificationApplication (one per role)
-User 1───0..4 IdentityVerification (one per method: AADHAAR, PAN, PHONE_OTP, LINKEDIN)
+User 1───0..5 IdentityVerification (one per method: AADHAAR, PAN, PHONE_OTP, LINKEDIN, TRUECALLER)
 User 1───N VerificationDocument N───0..1 VerificationApplication | IdentityVerification | Property (listing proof)
 User 1───N PhoneOtpChallenge
 User 1───N RentalAgreement N───0..1 Tenancy | VerificationApplication   (design v4, §5.20)
@@ -313,7 +313,7 @@ One per user per role; it carries the approval for that role (§7.3).
 
 *Changed in design v3*: the design-v2 columns `linkedin_url`, `linkedin_not_provided` and `linkedin_check` are gone. LinkedIn is one optional `identity_verifications` row per user (D-106), shared by both role applications, and `LINKEDIN_MISMATCH` is no longer a reason to reject an application: a mismatch only means no LinkedIn badge (D-100).
 
-Previous revisions are not overwritten. `verification_events(application_id, revision, event, actor_id, code, note, created_at)`, append-only, keeps the history: `event` ∈ `SUBMITTED`, `APPROVED`, `REJECTED`, `REVOKED`, `IDENTITY_CHECKED`, and from design v4 `AGREEMENT_CHECKED` (D-130). Admin events are also written to `moderation_actions` (D-87) in the same transaction; the record detail merges both into one timeline.
+Previous revisions are not overwritten. `verification_events(application_id, revision, event, actor_id, code, note, created_at)`, append-only, keeps the history: `event` ∈ `SUBMITTED`, `APPROVED`, `REJECTED`, `REVOKED`, `IDENTITY_CHECKED`, `PHONE_VERIFIED` (phone verified with Truecaller, D-138), and from design v4 `AGREEMENT_CHECKED` (D-130). Admin events are also written to `moderation_actions` (D-87) in the same transaction; the record detail merges both into one timeline.
 
 ### 5.14 VerificationDocument (`verification_documents`, has `public_id`, verification-documents migration)
 Private files uploaded for verification (D-95).
@@ -333,9 +333,9 @@ Private files uploaded for verification (D-95).
 One row per user per method; the user-level record behind the "ID verified" and "LinkedIn verified" badges (D-99, D-100). It serves both roles: a user who is tenant and landlord verifies once.
 | Column | Notes |
 |---|---|
-| `user_id`, `method` | unique together; `method` ∈ `AADHAAR`, `PAN`, `PHONE_OTP` (ID methods) and `LINKEDIN` (bonus, never counts as ID) |
+| `user_id`, `method` | unique together; `method` ∈ `AADHAAR`, `PAN`, `PHONE_OTP` (ID methods), `LINKEDIN` (bonus, never counts as ID) and `TRUECALLER` (a phone method like `PHONE_OTP`, D-138) |
 | `status` | `PENDING` (submitted, waiting for an admin check), `VERIFIED`, `REJECTED`, `REVOKED` |
-| `last4` | `PAN`: last 4 characters; `AADHAAR`: the last 4 digits printed on the masked Aadhaar; `PHONE_OTP`: last 4 digits of the phone; null for `LINKEDIN`. The full value is never stored (D-106) |
+| `last4` | `PAN`: last 4 characters; `AADHAAR`: the last 4 digits printed on the masked Aadhaar; `PHONE_OTP` and `TRUECALLER`: last 4 digits of the phone; null for `LINKEDIN`. The full value is never stored (D-106) |
 | `value_hmac` | HMAC-SHA256 of the normalised PAN or E.164 phone with `ID_HASH_KEY`, for duplicate detection; **null for `AADHAAR`** (Rentrix never receives the full number) and `LINKEDIN` |
 | `linkedin_url` | `LINKEDIN` only: normalised `https://www.linkedin.com/in/<slug>`, private (D-93) |
 | `checked_by` | `ADMIN` (admin compared the upload or profile), `OTP` (code confirmed), `PROVIDER` (later, D-104) |
@@ -769,7 +769,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET / POST / DELETE | `/me/share-links` | tenant reputation share links |
 | GET | `/me/properties` | landlord's own, all statuses |
 | GET | `/me/verification` | one entry per held role: `{id?, role, status, revision, steps: {profile, phone, identity, linkedin, rentalAgreement}, submittedAt?, decision: {code, note, decidedAt}?}`; `id` is the application's `public_id` (absent until the first submit); each step is `DONE`, `PENDING`, `MISSING`, `REJECTED`, `SKIPPED` or `NOT_APPLICABLE`; `decision` carries code and note for `REJECTED`, only `decidedAt` for `APPROVED` (the approve note is admin-only); `GET /me` carries a short `verification: {TENANT: status, LANDLORD: status}` (a held role without an application reports `DRAFT`) and `badges: {idVerified, linkedinVerified}`. *Design v4*: `phone` added and step meanings per D-120 |
-| POST | `/me/verification/{role}/submit` | `DRAFT` or `REJECTED` → `PENDING`; `422 verification_incomplete` with the missing steps in `missing` (`profile` without a display name and home city; *design v4*: `phone` when `PHONE_OTP` is not `VERIFIED`, D-117, replacing design v3's `identity` rule); `409 invalid_transition` when already `PENDING`/`APPROVED`; `429` with `Retry-After` after 3 submits in 24 h; a role the caller does not hold is `404`. *Design v3*: the design-v2 `PUT /me/verification/{role}` (LinkedIn fields) is replaced by `/me/identity/linkedin` |
+| POST | `/me/verification/{role}/submit` | `DRAFT` or `REJECTED` → `PENDING`; `422 verification_incomplete` with the missing steps in `missing` (`profile` without a display name and home city; *design v4*: `phone` when neither `PHONE_OTP` nor `TRUECALLER` is `VERIFIED`, D-117, D-138, replacing design v3's `identity` rule); `409 invalid_transition` when already `PENDING`/`APPROVED`; `429` with `Retry-After` after 3 submits in 24 h; a role the caller does not hold is `404`. *Design v3*: the design-v2 `PUT /me/verification/{role}` (LinkedIn fields) is replaced by `/me/identity/linkedin` |
 | GET | `/me/identity` | `{idVerified, linkedinVerified, methods: [{method, status, masked, checkedBy, verifiedAt?, reject: {code, note}?, available}]}`; masked values only (D-106) |
 | POST | `/me/identity/phone/start` | `{phone}` (Indian mobile; `+91`, `91` or bare 10 digits, spaces allowed) → `{challengeId, expiresAt, delivery}` (`delivery`: `SMS`, or `TEAM` under `admin-relay`, D-137, where the web says the team will message the code); sends an SMS code; limits and `429` per D-101; `409 phone_already_verified` for the number already verified on this account; `503 phone_otp_unavailable` without a provider in prod; `503 sms_send_failed` when the provider refuses (that code is used up and still counts toward the limits); `429 rate_limited` with `Retry-After` also when parallel starts for the same number queue up for more than a few seconds |
 | POST | `/me/identity/phone/confirm` | `{challengeId, code}` → `PHONE_OTP` `VERIFIED`, returns the `GET /me/identity` body; wrong code `422 otp_invalid` (attempts left), after 5 wrong codes `422 otp_attempts_exceeded`, expired or already used `422 otp_expired`; another user's challenge `404` |
