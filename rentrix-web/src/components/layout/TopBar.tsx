@@ -3,7 +3,15 @@ import { Link, NavLink } from "react-router-dom"
 import { Badge, DemoBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
-import { LoginIcon, MenuIcon } from "@/components/ui/icons.gen"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { LoginIcon, LogoutIcon, MenuIcon, UserIcon } from "@/components/ui/icons.gen"
 import {
   Sheet,
   SheetContent,
@@ -43,6 +51,39 @@ function ViewerChip({ viewer, compact }: { viewer: ShellViewer; compact?: boolea
   )
 }
 
+/** The viewer chip as a menu: settings and sign out. */
+function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Account menu for ${viewer.shortName}`}
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+        >
+          <ViewerChip viewer={viewer} compact />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-48">
+        <DropdownMenuLabel>{viewer.shortName}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/settings">
+            <UserIcon />
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        {onSignOut && (
+          <DropdownMenuItem onSelect={() => onSignOut()}>
+            <LogoutIcon />
+            Sign out
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 function SignIn({ block }: { block?: boolean }) {
   return (
     <Button asChild size={block ? "block" : "default"}>
@@ -59,7 +100,13 @@ function SignIn({ block }: { block?: boolean }) {
  * "Admin" and "Demo data" badges, and the viewer or "Sign in". Under 860 px the nav, picker and
  * sign-in fold into a menu sheet behind the hamburger.
  */
-export function TopBar({ viewer }: { viewer: ShellViewer | null }) {
+export function TopBar({
+  viewer,
+  onSignOut,
+}: {
+  viewer: ShellViewer | null
+  onSignOut?: () => void
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const items = navFor(viewer)
   const isAdmin = viewer?.roles.includes("ADMIN") ?? false
@@ -92,7 +139,7 @@ export function TopBar({ viewer }: { viewer: ShellViewer | null }) {
           {isAdmin && <Badge variant="admin">Admin</Badge>}
           {viewer?.isDemo && <DemoBadge className="max-sm:hidden" />}
           {viewer ? (
-            <ViewerChip viewer={viewer} compact />
+            <AccountMenu viewer={viewer} onSignOut={onSignOut} />
           ) : (
             <span className="hidden nav:inline-flex">
               <SignIn />
@@ -143,7 +190,31 @@ export function TopBar({ viewer }: { viewer: ShellViewer | null }) {
                     </NavLink>
                   ))}
                 </nav>
-                {!viewer && <SignIn block />}
+                {viewer ? (
+                  <div className="flex flex-col gap-2 border-t border-line pt-4">
+                    <Button asChild variant="outline" size="block">
+                      <Link to="/settings" onClick={() => setMenuOpen(false)}>
+                        <UserIcon />
+                        Settings
+                      </Link>
+                    </Button>
+                    {onSignOut && (
+                      <Button
+                        variant="ghost"
+                        size="block"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          onSignOut()
+                        }}
+                      >
+                        <LogoutIcon />
+                        Sign out
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <SignIn block />
+                )}
               </div>
             </SheetContent>
           </Sheet>

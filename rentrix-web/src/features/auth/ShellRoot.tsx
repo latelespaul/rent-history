@@ -1,0 +1,21 @@
+import { useNavigate } from "react-router-dom"
+import { AppLayout } from "@/components/layout/AppLayout"
+import type { ShellViewer } from "@/components/layout/nav"
+import { useAuth } from "./authContext"
+import { shortName } from "./paths"
+
+/** The app shell drawn for whoever is signed in (W3 fills the viewer W2 left null). */
+export function ShellRoot() {
+  const { state, signOut } = useAuth()
+  const navigate = useNavigate()
+  const user = state.user
+  const viewer: ShellViewer | null = user
+    ? { shortName: shortName(user.displayName), roles: user.roles, isDemo: user.demo }
+    : null
+  // Leave the page first: on a guarded page the guard would otherwise send the user to /login.
+  const onSignOut = () => {
+    navigate("/", { replace: true })
+    void signOut()
+  }
+  return <AppLayout viewer={viewer} onSignOut={user ? onSignOut : undefined} />
+}

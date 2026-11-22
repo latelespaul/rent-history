@@ -1,0 +1,309 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { cleanup, configure, render, screen, waitFor, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import type { AuthConfig, CurrentUser } from "@/types/api"
+import { LAUNCH_CITIES } from "@/test/cities"
+import { DEV_USERS, NEW_USER, makeUser } from "@/test/users"
+import { AuthProvider } from "./AuthProvider"
+
+// The API is mocked at the module edge: `@/api/client` (token store) and `@/api/auth` (endpoints).
+const h = vi.hoisted(() => ({
+  config: { googleClientId: null, devLogin: false } as AuthConfig,
+  restored: null as CurrentUser | null,
+  gis: null as null | {
+    initialize: ReturnType<typeof vi.fn>
+    renderButton: ReturnType<typeof vi.fn>
+    disableAutoSelect: ReturnType<typeof vi.fn>
+  },
+}))
+
+vi.mock("@/api/client", () => ({
+  api: {
+    restoreSession: vi.fn(async () => h.restored !== null),
+    setAccessToken: vi.fn(),
+    clearSession: vi.fn(),
+  },
+  setSessionExpiredHandler: vi.fn(),
+}))
+
+vi.mock("@/api/auth", () => ({
+  authKeys: { config: ["auth", "config"], devUsers: ["auth", "dev-users"] },
+  fetchAuthConfig: vi.fn(async () => h.config),
+  fetchDevUsers: vi.fn(async () => DEV_USERS),
+  fetchMe: vi.fn(async () => h.restored),
+  signInWithGoogle: vi.fn(),
+  devLogin: vi.fn(),
+  logout: vi.fn(async () => undefined),
+  completeOnboarding: vi.fn(),
+  updateMe: vi.fn(),
+}))
+
+vi.mock("@/api/cities", () => ({
+  cityKeys: { all: ["cities"] },
+  fetchCities: vi.fn(async () => LAUNCH_CITIES),
+}))
+
+vi.mock("@/api/stats", () => ({
+  statsKeys: { all: ["stats"] },
+  fetchStats: vi.fn(async () => {
+    throw new Error("no stats")
+  }),
+}))
+
+vi.mock("./gis", () => ({
+  loadGis: vi.fn(async () => h.gis),
+}))
+
+// Full-app renders on a busy CI runner: give async queries room before they count as failures.
+configure({ asyncUtilTimeout: 5000 })
+vi.setConfig({ testTimeout: 30_000 })
+
+const { api } = await import("@/api/client")
+const auth = await import("@/api/auth")
+const { loadGis } = await import("./gis")
+const { routes } = await import("@/routes/router")
+
+function renderApp(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
+  render(
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>,
+  )
+  return router
+}
+
+const where = (router: ReturnType<typeof renderApp>) =>
+  `${router.state.location.pathname}${router.state.location.search}`
+
+beforeEach(() => {
+  h.config = { googleClientId: null, devLogin: false }
+  h.restored = null
+  h.gis = {
+    initialize: vi.fn(),
+    renderButton: vi.fn(),
+    disableAutoSelect: vi.fn(),
+  }
+})
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+describe("login page", () => {
+  it("hides the Google button when the API has no client id", async () => {
+    renderApp("/login")
+
+    expect(await screen.findByText(/google sign-in is not set up/i)).toBeTruthy()
+    expect(screen.queryByTestId("google-button")).toBeNull()
+    expect(screen.queryByText(/dev login · seed users/i)).toBeNull()
+    expect(loadGis).not.toHaveBeenCalled()
+  })
+
+  it("renders GIS with the client id from /auth/config and signs in with its ID token", async () => {
+    h.config = { googleClientId: "test-client.apps.googleusercontent.com", devLogin: false }
+    vi.mocked(auth.signInWithGoogle).mockResolvedValue({
+      accessToken: "google-token",
+      user: NEW_USER,
+      needsOnboarding: true,
+    })
+    const router = renderApp("/login")
+
+    await screen.findByTestId("google-button")
+    await waitFor(() => expect(h.gis!.renderButton).toHaveBeenCalled())
+    const [{ client_id, callback }] = h.gis!.initialize.mock.calls[0]
+    expect(client_id).toBe("test-client.apps.googleusercontent.com")
+
+    callback({ credential: "google-id-token" })
+
+    expect(await screen.findByRole("heading", { name: /welcome to rentrix/i })).toBeTruthy()
+    expect(auth.signInWithGoogle).toHaveBeenCalledWith("google-id-token")
+    expect(api.setAccessToken).toHaveBeenCalledWith("google-token")
+    expect(where(router)).toBe("/welcome")
+  })
+
+  it("lists seed users in the dev picker and signs in as the chosen one", async () => {
+    h.config = { googleClientId: null, devLogin: true }
+    const landlord = DEV_USERS[1]
+    vi.mocked(auth.devLogin).mockResolvedValue({
+      accessToken: "dev-token",
+      user: landlord,
+      needsOnboarding: false,
+    })
+    const router = renderApp("/login?next=%2Fsettings")
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole("region", { name: /dev login/i })
+    await within(panel).findByText("Demo Landlord BLR-1")
+    expect(within(panel).getByRole("group", { name: "Staff (1)" })).toBeTruthy()
+    expect(within(panel).getByRole("group", { name: "Landlords (2)" })).toBeTruthy()
+    expect(within(panel).getByText("Landlord pending")).toBeTruthy()
+    expect(within(panel).getByText("Tenant rejected")).toBeTruthy()
+
+    // City tabs come from the users' home cities, named by GET /cities.
+    await user.click(within(panel).getByRole("button", { name: "Pune" }))
+    expect(within(panel).queryByText("Demo Landlord BLR-1")).toBeNull()
+    expect(within(panel).getByText("Demo Tenant PNQ-1")).toBeTruthy()
+    await user.click(within(panel).getByRole("button", { name: "All" }))
+
+    const submit = within(panel).getByRole("button", { name: /sign in as selected seed user/i })
+    expect((submit as HTMLButtonElement).disabled).toBe(true)
+    await user.click(within(panel).getByLabelText(/demo landlord blr-1/i))
+    await user.click(submit)
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
+    expect(auth.devLogin).toHaveBeenCalledWith("l1")
+    expect(api.setAccessToken).toHaveBeenCalledWith("dev-token")
+    expect(where(router)).toBe("/settings")
+  })
+
+  it("sends a signed-in visitor on to next", async () => {
+    h.restored = makeUser()
+    const router = renderApp("/login?next=%2Fsettings")
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
+    expect(where(router)).toBe("/settings")
+  })
+})
+
+describe("guarded routes", () => {
+  it("sends anonymous visitors to /login with next", async () => {
+    const router = renderApp("/settings")
+
+    expect(await screen.findByRole("heading", { name: /sign in to rentrix/i })).toBeTruthy()
+    expect(where(router)).toBe("/login?next=%2Fsettings")
+  })
+
+  it("sends users without a role to the role pick first", async () => {
+    h.restored = NEW_USER
+    const router = renderApp("/me/tenancies")
+
+    expect(await screen.findByRole("heading", { name: /welcome to rentrix/i })).toBeTruthy()
+    expect(where(router)).toBe("/welcome?next=%2Fme%2Ftenancies")
+  })
+
+  it("shows No access on admin pages for non-admins", async () => {
+    h.restored = makeUser()
+    renderApp("/admin")
+
+    expect(await screen.findByText("No access")).toBeTruthy()
+  })
+
+  it("opens admin pages for admins", async () => {
+    h.restored = makeUser({ roles: ["ADMIN"], needsOnboarding: true })
+    renderApp("/admin")
+
+    expect(await screen.findByText("Admin console")).toBeTruthy()
+  })
+})
+
+describe("onboarding", () => {
+  it("posts the role pick, swaps in the fresh token and continues to next", async () => {
+    h.restored = NEW_USER
+    const onboarded = makeUser({
+      ...NEW_USER,
+      roles: ["LANDLORD"],
+      needsOnboarding: false,
+      verification: { LANDLORD: "DRAFT" },
+    })
+    vi.mocked(auth.completeOnboarding).mockResolvedValue({
+      user: onboarded,
+      accessToken: "fresh-token",
+    })
+    vi.mocked(auth.updateMe).mockResolvedValue({
+      user: { ...onboarded, displayName: "Neha User" },
+      accessToken: "fresher-token",
+    })
+    const router = renderApp("/welcome?next=%2Fsettings")
+    const user = userEvent.setup()
+
+    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await user.click(screen.getByRole("button", { name: "Continue" }))
+    expect(screen.getByText("Pick tenant, landlord or both.")).toBeTruthy()
+    expect(auth.completeOnboarding).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("checkbox", { name: /i rent out a property/i }))
+    await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
+    const name = screen.getByLabelText("Display name")
+    await user.clear(name)
+    await user.type(name, "Neha User")
+    await user.click(screen.getByRole("button", { name: "Continue" }))
+
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
+    expect(auth.completeOnboarding).toHaveBeenCalledWith({
+      roles: ["LANDLORD"],
+      homeCity: null,
+      acceptTerms: true,
+    })
+    expect(auth.updateMe).toHaveBeenCalledWith({ displayName: "Neha User" })
+    expect(vi.mocked(api.setAccessToken).mock.calls.map(([t]) => t)).toEqual([
+      "fresh-token",
+      "fresher-token",
+    ])
+    expect(where(router)).toBe("/settings")
+  })
+
+  it("lands a new landlord on the dashboard without next", async () => {
+    h.restored = NEW_USER
+    vi.mocked(auth.completeOnboarding).mockResolvedValue({
+      user: makeUser({ ...NEW_USER, roles: ["LANDLORD", "TENANT"], needsOnboarding: false }),
+      accessToken: "fresh-token",
+    })
+    const router = renderApp("/welcome")
+    const user = userEvent.setup()
+
+    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await user.click(screen.getByRole("checkbox", { name: /i rent a home/i }))
+    await user.click(screen.getByRole("checkbox", { name: /i rent out a property/i }))
+    await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
+    await user.click(screen.getByRole("button", { name: "Continue" }))
+
+    await waitFor(() => expect(where(router)).toBe("/me/dashboard"))
+    expect(auth.updateMe).not.toHaveBeenCalled()
+  })
+})
+
+describe("settings", () => {
+  it("adds the other role and stores the fresh token", async () => {
+    h.restored = makeUser()
+    vi.mocked(auth.updateMe).mockResolvedValue({
+      user: makeUser({
+        roles: ["LANDLORD", "TENANT"],
+        verification: { TENANT: "APPROVED", LANDLORD: "DRAFT" },
+      }),
+      accessToken: "role-token",
+    })
+    renderApp("/settings")
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole("button", { name: /add landlord role/i }))
+
+    await waitFor(() => expect(screen.getAllByText("You have this role")).toHaveLength(2))
+    expect(auth.updateMe).toHaveBeenCalledWith({ addRoles: ["LANDLORD"] })
+    expect(api.setAccessToken).toHaveBeenCalledWith("role-token")
+    expect(screen.getByText("Not verified yet")).toBeTruthy()
+  })
+
+  it("signs out and returns home", async () => {
+    h.restored = makeUser()
+    const router = renderApp("/settings")
+    const user = userEvent.setup()
+
+    await screen.findByRole("heading", { name: "Settings" })
+    await user.click(within(screen.getByRole("main")).getByRole("button", { name: /sign out/i }))
+
+    await waitFor(() => expect(where(router)).toBe("/"))
+    expect(auth.logout).toHaveBeenCalled()
+    expect(api.clearSession).toHaveBeenCalled()
+    expect(
+      within(screen.getByRole("banner")).getAllByRole("link", { name: /sign in/i }).length,
+    ).toBeGreaterThan(0)
+  })
+})
