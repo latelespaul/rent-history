@@ -11,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -21,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 /**
@@ -29,6 +32,10 @@ import java.util.regex.Pattern;
  * {@code OTP_TTL_MINUTES} (10) and allows 5 attempts. A user can request 3 codes per hour and 10 per day; one number
  * gets at most 5 codes per day across all accounts. Neither the code nor the full number is ever logged or
  * returned (the owner sees the masked number only). This verifies a phone; it is not a sign-in method (D-70).
+ * <p>
+ * Sends are counted and recorded under a lock on the user row, so one user's parallel requests queue up, and under
+ * an in-process lock keyed by the number. The cross-account per-number cap is therefore per instance until a shared
+ * store exists.
  */
 @Slf4j
 @Service
@@ -48,6 +55,13 @@ public class PhoneOtpService {
 	private static final Duration HOUR = Duration.ofHours(1);
 	private static final Duration DAY = Duration.ofDays(1);
 	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final ReentrantLock[] PHONE_LOCKS = new ReentrantLock[64];
+	
+	static {
+		for (int i = 0; i < PHONE_LOCKS.length; i++) {
+			PHONE_LOCKS[i] = new ReentrantLock();
+		}
+	}
 	
 	private final PhoneOtpChallengeRepository challenges;
 	private final IdentityVerificationRepository checks;
@@ -57,6 +71,7 @@ public class PhoneOtpService {
 	private final IdHasher hasher;
 	private final IdentityProperties properties;
 	private final Clock clock;
+	private final PlatformTransactionManager transactionManager;
 	
 	/** The answer to {@code POST /me/identity/phone/start}. */
 	public record Started(UUID challengeId, Instant expiresAt) {
@@ -79,13 +94,25 @@ public class PhoneOtpService {
 		return INDIAN_MOBILE.matcher(digits).matches() ? Optional.of(digits) : Optional.empty();
 	}
 	
-	@Transactional
 	public Started start(UUID userId, String phoneInput) {
 		SmsSender sender = availability.sender().orElseThrow(PhoneOtpService::unavailable);
-		User user = load(userId);
 		String phone = normalisePhone(phoneInput).orElseThrow(() -> ApiException.validation(List.of(
 			new ApiProblem.FieldError("phone", "pattern", "Use an Indian mobile number, e.g. +919876543210."))));
 		String phoneHmac = hasher.hmac(phone);
+		ReentrantLock phoneLock = PHONE_LOCKS[Math.floorMod(phoneHmac.hashCode(), PHONE_LOCKS.length)];
+		phoneLock.lock();
+		try {
+			return new TransactionTemplate(transactionManager)
+				.execute(status -> startLocked(sender, userId, phone, phoneHmac));
+		} finally {
+			phoneLock.unlock();
+		}
+	}
+	
+	private Started startLocked(SmsSender sender, UUID userId, String phone, String phoneHmac) {
+		User user = users.lockByPublicId(userId)
+			.filter(u -> u.getStatus() != UserStatus.DELETED)
+			.orElseThrow(() -> ApiException.notFound("User"));
 		boolean alreadyVerified = checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
 			.filter(row -> row.getStatus() == IdentityStatus.VERIFIED)
 			.filter(row -> IdHasher.same(row.getValueHmac(), phoneHmac))

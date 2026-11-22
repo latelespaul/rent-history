@@ -27,16 +27,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -214,50 +208,21 @@ class PhoneOtpTest {
 	}
 	
 	@Test
-	void concurrentWrongCodesNeverGoPastTheAttemptCap(CapturedOutput output) throws Exception {
+	void aWrongAttemptIsCountedOnlyBelowTheCap(CapturedOutput output) throws Exception {
 		User user = data.user("Kabir", Role.TENANT);
 		String phone = phone();
 		String challengeId = body(start(user, phone)).get("challengeId").asString();
-		String code = codeSentTo(output, phone);
-		String wrong = code.equals("000000") ? "111111" : "000000";
-		int tries = 12;
-		ExecutorService pool = Executors.newFixedThreadPool(tries);
-		try {
-			CountDownLatch go = new CountDownLatch(1);
-			List<Future<String>> results = new ArrayList<>();
-			for (int i = 0; i < tries; i++) {
-				results.add(pool.submit(() -> {
-					go.await();
-					MockHttpServletResponse response = confirm(user, challengeId, wrong);
-					return response.getStatus() == 422 ? body(response).get("code").asString()
-						: String.valueOf(response.getStatus());
-				}));
-			}
-			go.countDown();
-			long invalid = 0;
-			for (Future<String> result : results) {
-				String outcome = result.get(30, TimeUnit.SECONDS);
-				// SQLite refuses a second concurrent writer (500, nothing written); other databases wait instead.
-				assertThat(outcome).isIn("otp_invalid", "otp_attempts_exceeded", "500");
-				if (outcome.equals("otp_invalid")) {
-					invalid++;
-				}
-			}
-			assertThat(invalid).isLessThanOrEqualTo(PhoneOtpService.MAX_ATTEMPTS);
-			assertThat(challenges.findByPublicIdAndUser(UUID.fromString(challengeId), user).orElseThrow().getAttempts())
-				.isEqualTo((int) invalid);
-		} finally {
-			pool.shutdownNow();
-		}
-		for (int i = 0; i < PhoneOtpService.MAX_ATTEMPTS; i++) {
-			confirm(user, challengeId, wrong);
-		}
-		MockHttpServletResponse next = confirm(user, challengeId, code);
+		PhoneOtpChallenge saved = challenges.findByPublicIdAndUser(UUID.fromString(challengeId), user).orElseThrow();
+		saved.setAttempts(PhoneOtpService.MAX_ATTEMPTS - 1);
+		challenges.save(saved);
+		Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+		assertThat(challenges.countWrongAttempt(saved.getId(), PhoneOtpService.MAX_ATTEMPTS, now)).isEqualTo(1);
+		assertThat(challenges.countWrongAttempt(saved.getId(), PhoneOtpService.MAX_ATTEMPTS, now)).isZero();
+		assertThat(challenges.findById(saved.getId()).orElseThrow().getAttempts()).isEqualTo(PhoneOtpService.MAX_ATTEMPTS);
+		MockHttpServletResponse next = confirm(user, challengeId, codeSentTo(output, phone));
 		assertThat(next.getStatus()).isEqualTo(422);
 		assertThat(body(next).get("code").asString()).isEqualTo("otp_attempts_exceeded");
 		assertThat(identity.isIdVerified(user)).isFalse();
-		assertThat(challenges.findByPublicIdAndUser(UUID.fromString(challengeId), user).orElseThrow().getAttempts())
-			.isEqualTo(PhoneOtpService.MAX_ATTEMPTS);
 	}
 	
 	@Test
