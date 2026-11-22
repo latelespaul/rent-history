@@ -15,11 +15,11 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * {@code POST /me/homes} (D-138): "Add your home" in one step. Either {@code propertyId} (a published home the user
+ * {@code POST /me/homes} (D-139): "Add your home" in one step. Either {@code propertyId} (a published home the user
  * picked from "Is it this one?") or {@code home} (a new one, through the location hierarchy, D-107). With
  * {@code relation} {@code RENT} the tenancy fields are required and {@code owner} is optional; with {@code OWN} only a
  * new home is allowed (claiming an existing one is an admin step) and the tenancy and owner fields must be absent.
- * {@code newCity} is a city not in the list (D-142): it is found by name or created pending admin approval, and
+ * {@code newCity} is a city not in the list (D-143): it is found by name or created pending admin approval, and
  * {@code home.city} is then ignored (send any placeholder, e.g. {@code "OTHER"}).
  */
 public record AddHomeRequest(
@@ -34,14 +34,14 @@ public record AddHomeRequest(
 	@Valid NewCity newCity
 ) {
 	
-	/** A city the user typed because it is not in the list (D-142). */
+	/** A city the user typed because it is not in the list (D-143). */
 	public record NewCity(
 		@NotBlank @Size(max = 80) String name,
 		@NotBlank @Size(max = 80) String state
 	) {
 	}
 	
-	/** The owner as the tenant knows them; stored privately for a later claim and invite (D-139). */
+	/** The owner as the tenant knows them; stored privately for a later claim and invite (D-140). */
 	public record Owner(
 		@Size(max = 80) String name,
 		@Email @Size(max = 320) String email,

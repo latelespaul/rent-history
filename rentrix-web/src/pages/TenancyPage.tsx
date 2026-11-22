@@ -38,7 +38,7 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
     return <Notice tone="warn">Declined: {tenancy.declineReason}</Notice>
   }
   if (tenancy.status === "ACTIVE" || tenancy.status === "ENDED") {
-    // A tenant's own record (D-141) stands without the owner; the team verifies it later.
+    // A tenant's own record (D-142) stands without the owner; the team verifies it later.
     return tenancy.confirmedAt ? (
       <Notice tone="teal">
         Confirmed on {dateLabel(tenancy.confirmedAt)}. Its confirmed rent shows in the home&apos;s

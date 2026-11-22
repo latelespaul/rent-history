@@ -42,7 +42,7 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 	@EntityGraph(attributePaths = {"city", "landlord"})
 	Page<Property> findByLandlordIdAndDeletedAtIsNull(Long landlordId, Pageable pageable);
 	
-	/** Candidates for the "Is it this one?" check of {@code POST /me/homes} (D-138). */
+	/** Candidates for the "Is it this one?" check of {@code POST /me/homes} (D-139). */
 	List<Property> findByCityCodeAndPincodeAndStatusAndDeletedAtIsNull(String cityCode, String pincode,
 		PropertyStatus status);
 	

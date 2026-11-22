@@ -122,7 +122,7 @@ public class RentRecordService {
 			.orElseThrow(() -> ApiException.notFound("Property"));
 		boolean share = property.getPropertyType() == PropertyType.ROOM || property.getPropertyType() == PropertyType.PG;
 		Map<Long, List<RentRecord>> byTenancy = new LinkedHashMap<>();
-		// A one-sided tenancy (D-138, D-141) has nobody who confirmed its rent, so its tenant's own records show,
+		// A one-sided tenancy (D-139, D-142) has nobody who confirmed its rent, so its tenant's own records show,
 		// marked not confirmed; proposals on a tenancy both sides confirmed stay hidden until confirmed (D-25).
 		rentRecords.findByTenancyPropertyIdAndStatusInAndTenancyStatusInOrderByEffectiveFromAsc(property.getId(),
 				List.of(RentRecordStatus.CONFIRMED, RentRecordStatus.PROPOSED), TenancyService.CONFIRMED)
@@ -150,7 +150,7 @@ public class RentRecordService {
 		}
 		return new RentHistory(property.getPublicId(), rows.stream()
 			.map(row -> {
-				// D-139: a MASKED rent shows its months but not the amount.
+				// D-140: a MASKED rent shows its months but not the amount.
 				boolean open = row.record().getTenancy().getRentVisibility() == FieldVisibility.OPEN;
 				return new RentHistory.Row(row.from().toString(), row.to() == null ? null : row.to().toString(),
 					open ? row.record().getMonthlyRentInr() : null, open ? row.record().getMaintenanceInr() : null, share,

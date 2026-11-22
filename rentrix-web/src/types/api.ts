@@ -187,17 +187,17 @@ export interface PropertyDetail {
   updatedAt: string
   /** Place in the hierarchy (D-107); absent for a home placed by free-text locality only. */
   location?: PropertyLocation
-  /** A tenant added it while its landlord is not on the platform (D-138). */
+  /** A tenant added it while its landlord is not on the platform (D-139). */
   addedByTenant?: boolean
-  /** The flat number is shown to everyone who may see the home (D-139); else only to the owner and admins. */
+  /** The flat number is shown to everyone who may see the home (D-140); else only to the owner and admins. */
   unitLabelPublic?: boolean
   /** The green tick (D-134). */
   verification?: VerificationState
-  /** The owner as the adding tenant named them; only for that tenant and admins (D-139). */
+  /** The owner as the adding tenant named them; only for that tenant and admins (D-140). */
   ownerContact?: OwnerContact
 }
 
-/** The owner's details a tenant typed when adding a home (D-138); private (D-139). */
+/** The owner's details a tenant typed when adding a home (D-139); private (D-140). */
 export interface OwnerContact {
   name?: string
   email?: string
@@ -207,7 +207,7 @@ export interface OwnerContact {
 /** Green tick state of a property, tenancy or review (D-134). */
 export type VerificationState = "UNVERIFIED" | "VERIFIED" | "REJECTED"
 
-/** `POST /me/homes` (D-138): a new home or a picked one, and how the caller is related to it. */
+/** `POST /me/homes` (D-139): a new home or a picked one, and how the caller is related to it. */
 export interface AddHomeInput {
   propertyId?: string
   home?: PropertyInput
@@ -217,7 +217,7 @@ export interface AddHomeInput {
   monthlyRentInr?: number
   depositInr?: number
   owner?: OwnerContact
-  /** A city not in the list (D-142): created pending admin approval; `home.city` is then ignored. */
+  /** A city not in the list (D-143): created pending admin approval; `home.city` is then ignored. */
   newCity?: { name: string; state: string }
 }
 
@@ -336,11 +336,11 @@ export type PropertyPatch = Partial<PropertyInput> & { status?: "ARCHIVED" }
 export interface RentHistoryRow {
   fromMonth: string
   toMonth?: string | null
-  /** Absent where the tenancy's rent is masked (D-139). */
+  /** Absent where the tenancy's rent is masked (D-140). */
   monthlyRentInr?: number | null
   maintenanceInr?: number | null
   share: boolean
-  /** False for a tenant's own rent on an unclaimed home, which nobody confirmed (D-138). */
+  /** False for a tenant's own rent on an unclaimed home, which nobody confirmed (D-139). */
   confirmed?: boolean
 }
 

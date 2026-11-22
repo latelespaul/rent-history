@@ -9,12 +9,12 @@ import type { AddHomeInput, PropertyType } from "@/types/api"
 import type { HomeMatchQuery } from "@/api/homes"
 
 /**
- * "Add your home" (D-138), one stepped form: where it is, how you are related to it, the tenancy
+ * "Add your home" (D-139), one stepped form: where it is, how you are related to it, the tenancy
  * (renters only), the owner (renters only). An optional review follows once it is saved.
  */
 export type HomeStep = "address" | "relation" | "tenancy" | "owner"
 
-/** The city select's value for a city that is not in the list (D-142). */
+/** The city select's value for a city that is not in the list (D-143). */
 export const OTHER_CITY = "OTHER"
 
 export interface HomeDraft {

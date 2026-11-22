@@ -13,10 +13,10 @@ import java.util.UUID;
  * A property page ({@code GET /properties/{id}}), and the owner's view of their own listings. Fields follow
  * D-56 and D-57: {@code unitLabel} (flat or house number) is present only for the owner and admins.
  * {@code location} is the place in the hierarchy (D-107); absent for a B4a home placed by free-text locality only.
- * {@code addedByTenant} marks a home a tenant added while its landlord is not on the platform (D-138), shown "Added
+ * {@code addedByTenant} marks a home a tenant added while its landlord is not on the platform (D-139), shown "Added
  * by a tenant · not verified yet". {@code verification} is the green tick (D-134). {@code ownerContact} is what that
- * tenant entered about the owner: private, present only for them and admins (D-139). Where
- * {@code unitLabelPublic} is true (flat number {@code OPEN}, D-139), the flat number is shown to everyone who may
+ * tenant entered about the owner: private, present only for them and admins (D-140). Where
+ * {@code unitLabelPublic} is true (flat number {@code OPEN}, D-140), the flat number is shown to everyone who may
  * see the home.
  */
 public record PropertyDetail(
@@ -47,7 +47,7 @@ public record PropertyDetail(
 	@JsonInclude(JsonInclude.Include.NON_NULL) OwnerContact ownerContact
 ) {
 	
-	/** This page with the owner contact a tenant entered (D-139), for that tenant and admins only. */
+	/** This page with the owner contact a tenant entered (D-140), for that tenant and admins only. */
 	public PropertyDetail withOwnerContact(OwnerContact contact) {
 		return new PropertyDetail(id, city, locality, buildingName, street, pincode, unitLabel, unitLabelPublic, propertyType, bedrooms,
 			bathrooms, areaSqft, furnishing, parking, description, status, demo, rating, landlord, createdAt, updatedAt,

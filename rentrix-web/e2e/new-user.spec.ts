@@ -30,7 +30,7 @@ test("a new landlord picks the role, adds a property and sees its page", async (
   await expect(page.getByRole("link", { name: "Edit listing" })).toBeVisible()
 })
 
-// The "+ Add your home" journey (captain 2026-11-22 21:38 / 22:22; D-138–D-141): a brand-new
+// The "+ Add your home" journey (captain 2026-11-22 21:38 / 22:22; D-139–D-142): a brand-new
 // tenant verifies the phone, adds the flat through the hierarchy with a society typed in, records
 // the tenancy and the owner's contact, reviews the home and finds it, "not verified yet".
 test("a new tenant adds their home, records the tenancy, reviews it and finds it in search", async ({

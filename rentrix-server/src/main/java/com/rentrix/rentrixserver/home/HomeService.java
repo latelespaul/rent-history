@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * "Add your home" (D-138): one call stores the home, the caller's tenancy and its first rent record, and the owner's
+ * "Add your home" (D-139): one call stores the home, the caller's tenancy and its first rent record, and the owner's
  * contact as the tenant gave it. Open by default (D-132): everything shows at once without the green tick, and the
  * only gate is the verified phone. A tenant who adds a home they own gets the {@code LANDLORD} role (D-16).
  */

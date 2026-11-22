@@ -75,7 +75,7 @@ class TenancyNotifier {
 			tenancy.getEndDate(), link(tenancy)));
 	}
 	
-	/** To a real landlord: a tenant recorded their own tenancy on the landlord's home (D-141). */
+	/** To a real landlord: a tenant recorded their own tenancy on the landlord's home (D-142). */
 	void recordedByTenant(Tenancy tenancy, User to) {
 		send(to, "A tenant recorded a tenancy on your home", """
 			%s recorded a tenancy at %s, from %s at Rs %d a month.

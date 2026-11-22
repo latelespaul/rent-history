@@ -1,6 +1,6 @@
 # New-user journey screenshots (390 px)
 
-The captain's journey (2026-11-22 21:38 / 22:22; D-138 – D-142), taken at 390 px wide with a
+The captain's journey (2026-11-22 21:38 / 22:22; D-139 – D-143), taken at 390 px wide with a
 headless Chromium (throwaway profile) against the local dev stack: API in the `dev` profile with
 the demo seed and dev login, Vite on :5173. Phone codes came from the API log (`SMS_BACKEND=log`,
 dev only). "Sign in as a new user" stands in for Google sign-up.

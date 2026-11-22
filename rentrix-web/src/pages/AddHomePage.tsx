@@ -67,7 +67,7 @@ function Field({
 
 const optional = <span className="font-normal text-ink-500">(optional)</span>
 
-/** "Is it this one?" (D-138): homes that match the PIN code, society and flat number. */
+/** "Is it this one?" (D-139): homes that match the PIN code, society and flat number. */
 function Matches({
   matches,
   onPick,
@@ -111,7 +111,7 @@ function Matches({
   )
 }
 
-/** The saved home, with the optional review as the next step (D-138, captain 21:38 / 22:22). */
+/** The saved home, with the optional review as the next step (D-139, captain 21:38 / 22:22). */
 function Added({ result }: { result: AddHomeResult }) {
   const { property, tenancy } = result
   const reviews = tenancy ? reviewWindow(tenancy, today()) : null
@@ -170,7 +170,7 @@ function Added({ result }: { result: AddHomeResult }) {
 }
 
 /**
- * `/homes/new`, "Add your home" (D-138, D-141; captain 2026-11-22 21:38 and 22:22): one stepped,
+ * `/homes/new`, "Add your home" (D-139, D-142; captain 2026-11-22 21:38 and 22:22): one stepped,
  * mobile-first form for a home the user rents or rented, or owns. 1) where it is, through the
  * location hierarchy, with a new society typed in when it is not listed; a duplicate check offers
  * "Is it this one?". 2) I rent(ed) it / I own it. 3) the tenancy: from-to or "I still live here",
@@ -184,7 +184,7 @@ export default function AddHomePage() {
   const queryClient = useQueryClient()
   const refreshTenancies = useRefreshTenancyData()
   const [params] = useSearchParams()
-  // From a home's page ("I rent or rented this home", D-141): that home, as its tenant.
+  // From a home's page ("I rent or rented this home", D-142): that home, as its tenant.
   const fromPage = params.get("property")
   const [draft, setDraft, clearDraft] = useSessionDraft<HomeDraft>(
     fromPage ? `home:${fromPage}` : "home:new",

@@ -25,7 +25,7 @@ function rowsWithChange(rows: RentHistoryRow[]) {
  */
 export function RentHistory({ propertyId, signedIn }: { propertyId: string; signedIn: boolean }) {
   const history = useRentHistory(propertyId, signedIn)
-  // An unclaimed home (D-138) shows its tenant's rent before anyone could confirm it.
+  // An unclaimed home (D-139) shows its tenant's rent before anyone could confirm it.
   const unconfirmed = history.data?.some((row) => row.confirmed === false) ?? false
 
   let body

@@ -1,7 +1,7 @@
 package com.rentrix.rentrixserver.property;
 
 /**
- * Who sees one sensitive field (D-139): the flat number, the exact rent, the owner's contact. Stored per row, so a
+ * Who sees one sensitive field (D-140): the flat number, the exact rent, the owner's contact. Stored per row, so a
  * field can be masked later by changing data and code, never the schema.
  */
 public enum FieldVisibility {

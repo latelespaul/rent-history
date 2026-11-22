@@ -1,5 +1,5 @@
 -- =============================================================================
--- Homes added by their tenant or owner (SYSTEM_DESIGN.md D-138, D-139; design
+-- Homes added by their tenant or owner (SYSTEM_DESIGN.md D-139, D-140; design
 -- v4, open by default). A tenant can add the home they rent when its landlord is
 -- not on the platform: who added it, the owner's name and contact as the tenant
 -- gave them (private: only the person who entered them and admins), and one

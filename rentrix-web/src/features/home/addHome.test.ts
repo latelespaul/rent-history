@@ -24,7 +24,7 @@ const address: HomeDraft = {
   pincode: "560034",
 }
 
-describe("add your home form (D-138)", () => {
+describe("add your home form (D-139)", () => {
   it("asks for the area, PIN code and flat number before going on", () => {
     expect(checkStep("address", { ...EMPTY_HOME, city: "BLR" }, TODAY)).toEqual({
       area: "Pick or type the area.",
@@ -68,7 +68,7 @@ describe("add your home form (D-138)", () => {
     ).toMatch(/already listed/)
   })
 
-  it("a city not in the list goes with its name, state and a typed locality (D-142)", () => {
+  it("a city not in the list goes with its name, state and a typed locality (D-143)", () => {
     const other: HomeDraft = {
       ...EMPTY_HOME,
       city: OTHER_CITY,

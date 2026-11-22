@@ -199,7 +199,7 @@ public class DemoSeeder implements ApplicationRunner {
 	/** Seeds an empty database; returns false (and changes nothing) when any user, property or area exists. */
 	public boolean seed() {
 		Boolean seeded = tx.execute(status -> {
-			// The unclaimed-homes account (D-138) is created at startup and does not count as data.
+			// The unclaimed-homes account (D-139) is created at startup and does not count as data.
 			if (users.countByEmailNot(UnclaimedLandlord.EMAIL) > 0 || properties.count() > 0 || areas.count() > 0) {
 				log.info("Demo seed skipped: the database is not empty.");
 				return false;

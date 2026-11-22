@@ -7,7 +7,7 @@ import type {
 } from "@/types/api"
 import { api } from "./client"
 
-/** What "Is it this one?" searches by (D-138): PIN code, society and flat number. */
+/** What "Is it this one?" searches by (D-139): PIN code, society and flat number. */
 export interface HomeMatchQuery {
   city: string
   pincode: string
@@ -21,7 +21,7 @@ export function fetchHomeMatches(query: HomeMatchQuery, signal?: AbortSignal) {
   return api.get<PropertyCard[]>("/me/homes/matches", { query: { ...query }, signal })
 }
 
-/** `POST /me/homes`: the home, the caller's tenancy and rent, and the owner's contact (D-138). */
+/** `POST /me/homes`: the home, the caller's tenancy and rent, and the owner's contact (D-139). */
 export function addHome(body: AddHomeInput): Promise<AddHomeResult> {
   return api.post<AddHomeResult>("/me/homes", body)
 }

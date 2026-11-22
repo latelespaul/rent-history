@@ -238,7 +238,7 @@ export function TopBar({
           {isAdmin && <Badge variant="admin">Admin</Badge>}
           {viewer?.isDemo && <DemoBadge className="max-sm:hidden" />}
           {viewer && (
-            // "+ Add your home" (D-138, captain 22:22): in both modes, on every page.
+            // "+ Add your home" (D-139, captain 22:22): in both modes, on every page.
             <Button asChild size="sm" data-testid="add-home-button">
               <Link to="/homes/new">
                 <PlusIcon />

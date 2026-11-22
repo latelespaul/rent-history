@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rentrix.rentrixserver.property.Property;
 
 /**
- * The owner of a tenant-added home as that tenant named them (D-138): stored for a later claim and invite, private to
- * the tenant who entered it and admins (D-139). Absent fields were not given.
+ * The owner of a tenant-added home as that tenant named them (D-139): stored for a later claim and invite, private to
+ * the tenant who entered it and admins (D-140). Absent fields were not given.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record OwnerContact(String name, String email, String phone) {

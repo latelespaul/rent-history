@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 import { devLogin } from "./support"
 
 // E2E-notes bug B3: a tenant whose home is not listed had no way to record the tenancy. The
-// "+ Add your home" flow (D-138) now takes them there; new-user.spec.ts walks the whole flow.
+// "+ Add your home" flow (D-139) now takes them there; new-user.spec.ts walks the whole flow.
 test("a tenant whose home is not listed is sent to Add your home [E2E notes: unlisted home]", async ({
   page,
 }) => {

@@ -92,7 +92,7 @@ public class Tenancy extends PublicEntity {
 	@Column(name = "verification_status", length = 16)
 	private VerificationState verificationStatus;
 	
-	/** Who sees the exact rent of this tenancy in the property's rent history (D-139); {@code OPEN} today. */
+	/** Who sees the exact rent of this tenancy in the property's rent history (D-140); {@code OPEN} today. */
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "rent_visibility", nullable = false, length = 16)

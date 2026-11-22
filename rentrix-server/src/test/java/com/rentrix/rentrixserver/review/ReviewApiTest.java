@@ -329,7 +329,7 @@ class ReviewApiTest {
 		write(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 9, GOOD)
 			.andExpect(status().isUnprocessableContent());
 
-		// D-140: the verified phone replaces the old 7-day wait, so a brand-new account reviews at once.
+		// D-141: the verified phone replaces the old 7-day wait, so a brand-new account reviews at once.
 		User fresh = data.approved("Fay Fresh", Role.TENANT);
 		Tenancy own = active(home(landlord), fresh);
 		write(fresh, own, ReviewDirection.TENANT_TO_PROPERTY, 4, GOOD)

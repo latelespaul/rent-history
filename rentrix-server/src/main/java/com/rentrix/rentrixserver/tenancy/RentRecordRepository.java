@@ -16,7 +16,7 @@ public interface RentRecordRepository extends JpaRepository<RentRecord, Long> {
 	
 	/**
 	 * Public rent history of a property: rows in the given states of its confirmed tenancies (D-26; also
-	 * {@code PROPOSED} on an unclaimed home, D-138).
+	 * {@code PROPOSED} on an unclaimed home, D-139).
 	 */
 	List<RentRecord> findByTenancyPropertyIdAndStatusInAndTenancyStatusInOrderByEffectiveFromAsc(Long propertyId,
 		Collection<RentRecordStatus> statuses, List<TenancyStatus> tenancyStatuses);

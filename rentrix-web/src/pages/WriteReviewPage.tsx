@@ -85,7 +85,7 @@ function Submitted({ review, propertyId }: { review: PropertyReview; propertyId:
 /**
  * `/tenancies/:id/review`: the tenant reviews the home of one of their tenancies (D-27, D-43). It is
  * published at once without the green tick (D-132, D-134). The landlord review is left out while
- * the landlord is not on the platform (D-138); the society review comes later.
+ * the landlord is not on the platform (D-139); the society review comes later.
  */
 export default function WriteReviewPage() {
   const { id = "" } = useParams()

@@ -125,7 +125,7 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
 /**
  * The next step on a home for the signed-in viewer: its owner edits it or invites a tenant; a
  * tenant who rents or rented it records their tenancy through "Add your home", at once and without
- * waiting for the owner (D-141).
+ * waiting for the owner (D-142).
  */
 function PropertyActions({ property }: { property: PropertyDetail }) {
   const { state } = useAuth()

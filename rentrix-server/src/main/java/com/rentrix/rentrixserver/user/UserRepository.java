@@ -23,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	
 	Optional<User> findByEmail(String email);
 	
-	/** Users other than the given (system) account; the demo seed treats only those as data (D-138). */
+	/** Users other than the given (system) account; the demo seed treats only those as data (D-139). */
 	long countByEmailNot(String email);
 	
 	/** Seed users for the dev-login picker (D-77). */

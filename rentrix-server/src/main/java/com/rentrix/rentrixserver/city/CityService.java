@@ -43,7 +43,7 @@ public class CityService {
 	}
 	
 	/**
-	 * The city a user typed in "Add your home" (D-142): an existing row with that name or alias (live or not), else
+	 * The city a user typed in "Add your home" (D-143): an existing row with that name or alias (live or not), else
 	 * a new pending row ({@code live = false}) for an admin to approve. Its code is the first letters of the name,
 	 * made unique with a number.
 	 */

@@ -198,7 +198,7 @@ class DemoSeederTest {
 				.allMatch(a -> a.pincodeList().stream()
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));
 			
-			// The unclaimed-homes system account (D-138) is not demo data.
+			// The unclaimed-homes system account (D-139) is not demo data.
 			List<User> people = users.findAll().stream().filter(u -> !UnclaimedLandlord.is(u)).toList();
 			// 4 landlords + 8 tenants with homes, the demo admin and 4 verification-queue users
 			assertThat(people).hasSize(17).allMatch(User::isDemo)

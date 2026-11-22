@@ -120,8 +120,8 @@ public class TenancyService {
 	}
 	
 	/**
-	 * A tenancy the tenant records themselves through "Add your home" (D-138, D-141): it stands at once, one-sided,
-	 * without waiting for the owner; the team verifies it later from the rental agreement (D-141).
+	 * A tenancy the tenant records themselves through "Add your home" (D-139, D-142): it stands at once, one-sided,
+	 * without waiting for the owner; the team verifies it later from the rental agreement (D-142).
 	 */
 	@Transactional
 	public TenancyView recordOwn(CreateTenancyRequest request, AuthenticatedUser caller) {
@@ -137,8 +137,8 @@ public class TenancyService {
 			.filter(p -> p.getStatus().isPublic() || p.getLandlord().getId().equals(me.getId()))
 			.orElseThrow(() -> ApiException.notFound("Property"));
 		boolean asLandlord = property.getLandlord().getId().equals(me.getId());
-		// A home a tenant added while its landlord is not on the platform (D-138) has nobody to confirm, and a
-		// tenant's own "Add your home" record never waits for the owner (D-141): the period stands at once,
+		// A home a tenant added while its landlord is not on the platform (D-139) has nobody to confirm, and a
+		// tenant's own "Add your home" record never waits for the owner (D-142): the period stands at once,
 		// one-sided and without the green tick (D-132).
 		boolean oneSided = !asLandlord && (selfRecorded || UnclaimedLandlord.is(property.getLandlord()));
 		requireDates(request.startDate(), request.endDate());
@@ -277,7 +277,7 @@ public class TenancyService {
 	}
 
 	/**
-	 * A one-sided tenant period (D-138, D-141): {@code ACTIVE}, or {@code ENDED} with an end date, at once and
+	 * A one-sided tenant period (D-139, D-142): {@code ACTIVE}, or {@code ENDED} with an end date, at once and
 	 * without {@code confirmedAt}; the initial rent is a {@code PROPOSED} record (one side only, D-25). Owner
 	 * confirmation is optional and not asked for; a real landlord is only told the record exists.
 	 */
@@ -487,7 +487,7 @@ public class TenancyService {
 	 * A whole home holds one tenancy at a time (D-23): a request or confirmation whose dates overlap a confirmed
 	 * tenancy on the same property, of any tenant, is refused with {@code 409 tenancy_overlap} naming that tenancy's
 	 * period. On a home with a real landlord only tenancies both sides confirmed or the landlord started hold dates:
-	 * a tenant's one-sided record (D-141) never blocks the landlord's tenancies. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
+	 * a tenant's one-sided record (D-142) never blocks the landlord's tenancies. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
 	 * first. The property row lock serialises concurrent confirmations on one home. ROOM and PG are exempt.
 	 */
 	private void requireHomeFree(Property property, Long excludeId, LocalDate start, LocalDate end, User me) {

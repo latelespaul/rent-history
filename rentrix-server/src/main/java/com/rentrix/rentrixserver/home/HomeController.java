@@ -19,7 +19,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-/** "Add your home" for any signed-in user (D-138): the duplicate check and the one-step add. */
+/** "Add your home" for any signed-in user (D-139): the duplicate check and the one-step add. */
 @RestController
 @RequiredArgsConstructor
 public class HomeController {

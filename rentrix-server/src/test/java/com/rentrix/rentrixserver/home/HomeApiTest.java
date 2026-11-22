@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * "Add your home" (D-138, D-139): a tenant with a verified phone adds the home they rent while its landlord is not on
+ * "Add your home" (D-139, D-140): a tenant with a verified phone adds the home they rent while its landlord is not on
  * the platform; it is published at once without the green tick, their tenancy stands at once, its rent shows
  * unconfirmed, the home can be reviewed, and the owner contact they typed stays private.
  */
@@ -122,7 +122,7 @@ class HomeApiTest {
 		assertThat(property.at("/landlord/shortName").asString()).isEqualTo(UnclaimedLandlord.PUBLIC_NAME);
 		assertThat(property.at("/landlord/id").isMissingNode()).isTrue();
 		assertThat(property.at("/location/society/name").asString()).isEqualTo("Lakeside Habitat");
-		// The tenant who typed it sees the owner contact; nobody else does (D-139).
+		// The tenant who typed it sees the owner contact; nobody else does (D-140).
 		assertThat(property.at("/ownerContact/email").asString()).isEqualTo("ravi.owner@example.test");
 
 		JsonNode tenancy = result.get("tenancy");
@@ -214,7 +214,7 @@ class HomeApiTest {
 		JsonNode result = added(tenant, """
 			{"propertyId": "%s", "relation": "RENT", "startDate": "%s", "monthlyRentInr": 30000}"""
 			.formatted(listed.getPublicId(), TODAY.minusMonths(5)));
-		// D-141: owner confirmation is optional, so the tenant's period stands at once.
+		// D-142: owner confirmation is optional, so the tenant's period stands at once.
 		assertThat(result.at("/tenancy/status").asString()).isEqualTo("ACTIVE");
 		assertThat(result.at("/property/addedByTenant").asBoolean()).isFalse();
 		mvc.perform(get("/properties/" + listed.getPublicId() + "/rent-history")
@@ -223,7 +223,7 @@ class HomeApiTest {
 			.andExpect(jsonPath("$.rows[0].confirmed").value(false));
 		assertThat(mail.last(landlord.getEmail()).subject()).isEqualTo("A tenant recorded a tenancy on your home");
 
-		// The one-sided record holds no dates against the landlord's own tenancies (D-141).
+		// The one-sided record holds no dates against the landlord's own tenancies (D-142).
 		User real = data.approved("Real Tenant", Role.TENANT);
 		String invite = """
 			{"propertyId": "%s", "counterpartyEmail": "%s", "startDate": "%s", "endDate": "%s", "initialRentInr": 28000}"""
@@ -247,7 +247,7 @@ class HomeApiTest {
 		JsonNode first = added(tenant, body);
 		assertThat(first.at("/property/city/name").asString()).isEqualTo("Zq Mysuru");
 		String code = first.at("/property/city/code").asString();
-		// D-142: pending until an admin sets it live, so it is not offered in the city list yet.
+		// D-143: pending until an admin sets it live, so it is not offered in the city list yet.
 		assertThat(cities.findById(code)).get().extracting(City::isLive).isEqualTo(false);
 		mvc.perform(get("/cities")).andExpect(jsonPath("$[?(@.code == '%s')]".formatted(code)).isEmpty());
 		
@@ -272,7 +272,7 @@ class HomeApiTest {
 		assertThat(result.at("/property/landlord/shortName").asString()).isEqualTo("Owner T.");
 		assertThat(result.has("tenancy")).isFalse();
 		assertThat(result.get("accessToken").asString()).isNotBlank();
-		// An owner's flat number stays MASKED like any listing (D-57, D-139): others do not see it.
+		// An owner's flat number stays MASKED like any listing (D-57, D-140): others do not see it.
 		User other = tenant("Owner Reader");
 		mvc.perform(get("/properties/" + result.at("/property/id").asString())
 				.header("Authorization", support.bearer(other)))

@@ -171,7 +171,7 @@ public class PropertyService {
 	}
 	
 	/**
-	 * A home added through {@code POST /me/homes} (D-138, D-139): open by default it is {@code PUBLISHED} at once,
+	 * A home added through {@code POST /me/homes} (D-139, D-140): open by default it is {@code PUBLISHED} at once,
 	 * without the green tick. Its flat number is {@code OPEN} when a tenant added it, {@code MASKED} like any listing
 	 * when the owner did (D-57). {@code owner} is the caller when they own it, else the unclaimed-homes account; {@code proposer} files any new area, society, tower or wing as a proposal (D-109).
 	 */
@@ -196,7 +196,7 @@ public class PropertyService {
 	}
 	
 	/**
-	 * {@code GET /me/homes/matches} (D-138): published homes in the same city, PIN code and society (by id, or by name
+	 * {@code GET /me/homes/matches} (D-139): published homes in the same city, PIN code and society (by id, or by name
 	 * when the society is typed as free text). A home whose flat number is {@code OPEN} must also have the flat
 	 * number typed; a {@code MASKED} one matches on the society alone, so its flat number can never be probed.
 	 * Shown as "Is it this one?" before a duplicate is added. At most 10.
@@ -235,7 +235,7 @@ public class PropertyService {
 	
 	/**
 	 * A new property from the request, owned by {@code owner}; {@code proposer} files any location proposals. A home
-	 * in a pending city (D-142) has no hierarchy yet: it is placed by its free-text locality only.
+	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only.
 	 */
 	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
 		String city = request.city().trim();
@@ -482,7 +482,7 @@ public class PropertyService {
 			aggregate(RatingSubjectType.LANDLORD, property.getLandlord().getId()));
 		PropertyDetail base = detail(property, rating, landlordRating, caller != null,
 			isOwner(property, caller) || isAdmin(caller));
-		// The owner contact a tenant entered stays private to them and admins (D-139).
+		// The owner contact a tenant entered stays private to them and admins (D-140).
 		boolean adder = caller != null && property.getAddedBy() != null
 			&& property.getAddedBy().getPublicId().equals(caller.publicId());
 		return adder || isAdmin(caller) ? base.withOwnerContact(OwnerContact.of(property)) : base;
@@ -495,7 +495,7 @@ public class PropertyService {
 	private static PropertyDetail detail(Property p, RatingSummary rating, RatingSummary landlordRating,
 		boolean signedIn, boolean privileged) {
 		User landlord = p.getLandlord();
-		// An unclaimed home (D-138) has no landlord profile to link to or rate.
+		// An unclaimed home (D-139) has no landlord profile to link to or rate.
 		LandlordSummary owner = UnclaimedLandlord.is(landlord)
 			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null)
 			: new LandlordSummary(signedIn ? landlord.getPublicId() : null,

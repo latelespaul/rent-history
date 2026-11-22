@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The one system account that holds homes a tenant added while their landlord is not on the platform (D-138). It
+ * The one system account that holds homes a tenant added while their landlord is not on the platform (D-139). It
  * never signs in (no Google subject, a reserved {@code .invalid} email), is never listed or emailed, and shows as
  * {@value #PUBLIC_NAME} wherever a landlord's name would. Keeping it a real row keeps every {@code landlord_id}
  * {@code NOT NULL}; a real landlord claims a home later by taking it over (an admin action).
