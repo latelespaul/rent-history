@@ -16,8 +16,10 @@ the problem (tenants, landlords, no trusted record); how it works in 3 steps; tw
 coverage (Bangalore and Pune with their localities); FAQ; final call to action; footer.
 
 Trust copy follows the open-by-default model (design v4): anyone with a verified phone can post,
-posts show as "Not verified yet", the green tick means "Verified by Doorway Living"; phone OTP is
-required, Aadhaar or PAN and LinkedIn are optional badges.
+posts show as "Not verified yet", the green tick means "Verified by Doorway Living". *Changed in
+the build (2026-11-22)*: the landing now says "Verify with any one: phone, Aadhaar or LinkedIn" and
+"Green tick = approved by the Doorway Living team after an ID check"; this mockup still shows the
+older "phone required" copy. Current build: `../../screenshots/verify-anyone/README.md`.
 
 No invented numbers (D-03): in the build the carousel reads `GET /properties` (seed rows carry
 "Demo data") and the seeded review text; cities come from `GET /cities`. The ratings and counts

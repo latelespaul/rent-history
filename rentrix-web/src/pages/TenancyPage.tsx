@@ -32,8 +32,8 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
   if (tenancy.status === "ACTIVE" || tenancy.status === "ENDED") {
     return (
       <Notice tone="teal">
-        Confirmed by both sides{tenancy.confirmedAt ? ` on ${dateLabel(tenancy.confirmedAt)}` : ""}.
-        Its confirmed rent shows in the home&apos;s public rent history, with no names.
+        Confirmed{tenancy.confirmedAt ? ` on ${dateLabel(tenancy.confirmedAt)}` : ""}. Its confirmed
+        rent shows in the home&apos;s public rent history, with no names.
       </Notice>
     )
   }
