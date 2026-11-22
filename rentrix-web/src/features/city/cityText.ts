@@ -13,9 +13,11 @@ export const CITY_CARDS_VISIBLE = 8
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase()
 
-/** The searchable text of a city: code, name, every alias and the state (D-82). */
+/** The searchable text of a city: code, name, every alias, the state and the region (D-82). */
 function fields(city: City): string[] {
-  return [city.code, city.name, ...city.aliases, city.state].filter(Boolean)
+  return [city.code, city.name, ...city.aliases, city.state, city.region].filter(
+    (field): field is string => Boolean(field),
+  )
 }
 
 /**

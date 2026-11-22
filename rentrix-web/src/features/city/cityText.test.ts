@@ -28,6 +28,17 @@ describe("filterCities", () => {
     expect(filterCities(NINE_CITIES, "galore")).toEqual([])
   })
 
+  it("finds the cities of a region by the region's name", () => {
+    const ncr: City[] = [
+      { code: "DEL", name: "Delhi", aliases: ["New Delhi"], state: "Delhi", region: "Delhi NCR" },
+      { code: "GGN", name: "Gurugram", aliases: ["Gurgaon"], state: "Haryana", region: "Delhi NCR" },
+      { code: "HYD", name: "Hyderabad", aliases: [], state: "Telangana", region: null },
+      { code: "NOI", name: "Noida", aliases: [], state: "Uttar Pradesh", region: "Delhi NCR" },
+    ]
+    expect(filterCities(ncr, "ncr").map((c) => c.code)).toEqual(["DEL", "GGN", "NOI"])
+    expect(filterCities(ncr, "Delhi NCR").map((c) => c.code)).toEqual(["DEL", "GGN", "NOI"])
+  })
+
   it("returns every city for a blank query and none for an unknown one", () => {
     expect(filterCities(NINE_CITIES, "  ")).toHaveLength(9)
     expect(filterCities(NINE_CITIES, "Goa")).toEqual([])
