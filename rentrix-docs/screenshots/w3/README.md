@@ -15,18 +15,18 @@
 | `home-signed-in-admin-desktop.png` | Home signed in as the demo admin: admin nav and badge |
 
 Taken with headless Chromium (Playwright 1.49.1) against `npm run dev` in `rentrix-web` and the B3 API
-(`SPRING_PROFILES_ACTIVE=dev`, SQLite) with hand-inserted demo users (`is_demo`), since the B10 seeder is not
-built yet. The Google shot answers `GET /auth/config` with a placeholder client id in the browser.
+(`SPRING_PROFILES_ACTIVE=dev`, SQLite) with hand-inserted demo users (`is_demo`): the shots were taken before
+the demo seeder merged. The current seeder adds the 4 + 4 Bangalore/Pune landlords and tenants. The Google shot answers `GET /auth/config` with a placeholder client id in the browser.
 
 ## Run it locally
 
 ```bash
-# API (needs Java 21; dev login is on by default in the dev profile)
-cd rentrix-server && SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run     # http://localhost:8080/api/v1
+# API (needs Java 21; dev login is on by default in the dev profile; SEED_DEMO=true seeds an empty DB)
+cd rentrix-server && SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run   # http://localhost:8080/api/v1
 # Web
 cd rentrix-web && npm ci && npm run dev                                     # http://localhost:5173/login
 ```
 
-Open http://localhost:5173/login and pick a seed user in the DEV ONLY panel (any `is_demo` user; the B10
-seeder adds the 4 + 4 Bangalore/Pune users). For Google, set `GOOGLE_CLIENT_ID` on the API (root README,
+Open http://localhost:5173/login and pick a seed user in the DEV ONLY panel (any `is_demo` user; `SEED_DEMO=true`
+adds the 4 + 4 Bangalore/Pune landlords and tenants on an empty database). For Google, set `GOOGLE_CLIENT_ID` on the API (root README,
 "Create a Google OAuth client", authorized JavaScript origin `http://localhost:5173`) and restart it.

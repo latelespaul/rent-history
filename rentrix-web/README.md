@@ -11,7 +11,8 @@ npm ci                 # .npmrc sets legacy-peer-deps (openapi-typescript still 
 npm run dev            # http://localhost:5173, proxies /api to API_PROXY_TARGET (default http://localhost:8080)
 ```
 
-Start the API first: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run` in `rentrix-server`.
+Start the API first: `SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run` in `rentrix-server`
+(`SEED_DEMO=true` adds the demo users and homes on an empty database).
 
 | Script | Does |
 |---|---|
@@ -31,7 +32,8 @@ of its own and nothing to commit:
   returns its own access token. Set `GOOGLE_CLIENT_ID` on the API (root README, "Create a Google OAuth
   client"; authorized JavaScript origin `http://localhost:5173` for dev). Without it the button is hidden.
 - **Dev login** (`devLogin: true`, API in the `dev` profile with `DEV_LOGIN_ENABLED=true`): a purple
-  "DEV ONLY" picker lists the demo seed users (`GET /auth/dev-users`); pick one and sign in, no Google needed.
+  "DEV ONLY" picker lists the demo seed users (`GET /auth/dev-users`, seeded by `SEED_DEMO=true` on an empty
+  database); pick one and sign in, no Google needed.
 - A first sign-in goes to `/welcome` to pick tenant, landlord or both (+ optional home city), which posts
   `/me/onboarding` and swaps in the fresh token. `/settings` edits the profile, adds the other role and
   signs out. `/settings`, `/me/*` and `/welcome` need a session; `/admin/*` needs `ADMIN`.

@@ -250,6 +250,24 @@ describe("onboarding", () => {
     expect(where(router)).toBe("/settings")
   })
 
+  it("rejects a display name shorter than 2 characters before submitting", async () => {
+    h.restored = NEW_USER
+    renderApp("/welcome")
+    const user = userEvent.setup()
+
+    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await user.click(screen.getByRole("checkbox", { name: /i rent a home/i }))
+    await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
+    const name = screen.getByLabelText("Display name")
+    await user.clear(name)
+    await user.type(name, " N ")
+    await user.click(screen.getByRole("button", { name: "Continue" }))
+
+    expect(screen.getByText("Use 2 to 60 characters for your display name.")).toBeTruthy()
+    expect(auth.completeOnboarding).not.toHaveBeenCalled()
+    expect(auth.updateMe).not.toHaveBeenCalled()
+  })
+
   it("lands a new landlord on the dashboard without next", async () => {
     h.restored = NEW_USER
     vi.mocked(auth.completeOnboarding).mockResolvedValue({

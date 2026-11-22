@@ -36,7 +36,7 @@ export default function OnboardingPage() {
     mutationFn: async () => {
       let done = acceptUpdate(await completeOnboarding({ roles, homeCity, acceptTerms }))
       const name = displayName.trim()
-      if (name && name !== done.displayName) {
+      if (name !== done.displayName) {
         try {
           done = acceptUpdate(await updateMe({ displayName: name }))
         } catch {
@@ -62,6 +62,9 @@ export default function OnboardingPage() {
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (roles.length === 0) return setProblem("Pick tenant, landlord or both.")
+    const nameLength = displayName.trim().length
+    if (nameLength < 2 || nameLength > 60)
+      return setProblem("Use 2 to 60 characters for your display name.")
     if (!acceptTerms) return setProblem("Accept the Terms and Privacy notice to continue.")
     setProblem(null)
     submit.mutate()
