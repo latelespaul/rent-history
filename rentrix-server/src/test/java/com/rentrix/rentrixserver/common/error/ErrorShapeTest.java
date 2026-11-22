@@ -91,6 +91,13 @@ class ErrorShapeTest {
 	}
 
 	@Test
+	void status409WhenTheDatabaseRefusesALock() throws Exception {
+		expectProblem(signedIn(get("/test-only/lock-busy")), 409, "concurrent_update", "/test-only/lock-busy")
+			.andExpect(jsonPath("$.detail").value("Another change was saved at the same time. Try again."))
+			.andExpect(content().string(not(org.hamcrest.Matchers.containsString("SQLITE_BUSY"))));
+	}
+
+	@Test
 	void status415UnsupportedMediaType() throws Exception {
 		expectProblem(signedIn(post("/test-only/echo")).contentType(MediaType.TEXT_PLAIN).content("hi"), 415,
 			"unsupported_media_type", "/test-only/echo");
