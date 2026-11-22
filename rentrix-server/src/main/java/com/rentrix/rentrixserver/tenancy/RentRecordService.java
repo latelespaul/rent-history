@@ -113,7 +113,8 @@ public class RentRecordService {
 	 * {@code GET /properties/{id}/rent-history} (signed-in, D-56): confirmed records of confirmed tenancies as month
 	 * ranges, without tenant identity or exact dates (D-26, D-57). A record runs until the month before the next
 	 * confirmed record of its tenancy, or to the tenancy's end month; the latest of a current tenancy has no end.
-	 * On a whole home rows never overlap and at most the newest is open-ended (D-23).
+	 * On a whole home the rows of mutual tenancies never overlap and at most the newest is open-ended (D-23); a
+	 * tenant's one-sided rows (D-142) are listed as they are and never shorten them.
 	 */
 	public RentHistory history(UUID propertyId, AuthenticatedUser caller) {
 		Property property = properties.findByPublicIdAndDeletedAtIsNull(propertyId)
@@ -144,9 +145,16 @@ public class RentRecordService {
 				rows.add(new Row(from, to, record));
 			}
 		}
-		rows.sort(Comparator.comparing(Row::from).thenComparing(Row::to, Comparator.nullsLast(Comparator.naturalOrder())));
+		Comparator<Row> order = Comparator.comparing(Row::from)
+			.thenComparing(Row::to, Comparator.nullsLast(Comparator.naturalOrder()));
+		rows.sort(order);
 		if (!share) {
-			closeOverlaps(rows);
+			List<Row> held = new ArrayList<>(rows.stream().filter(r -> TenancyService.mutual(r.record().getTenancy()))
+				.toList());
+			closeOverlaps(held);
+			rows.removeIf(r -> TenancyService.mutual(r.record().getTenancy()));
+			rows.addAll(held);
+			rows.sort(order);
 		}
 		return new RentHistory(property.getPublicId(), rows.stream()
 			.map(row -> {

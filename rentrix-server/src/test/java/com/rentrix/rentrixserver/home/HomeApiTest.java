@@ -26,6 +26,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -234,6 +235,17 @@ class HomeApiTest {
 		mvc.perform(post("/tenancies/" + id + "/confirm").header("Authorization", support.bearer(real)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("ENDED"));
+		// Its rent row keeps its own months; the one-sided row is listed next to it, unconfirmed.
+		mvc.perform(get("/properties/" + listed.getPublicId() + "/rent-history")
+				.header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.rows.length()").value(2))
+			.andExpect(jsonPath("$.rows[0].fromMonth").value(YearMonth.from(TODAY.minusYears(1)).toString()))
+			.andExpect(jsonPath("$.rows[0].toMonth").value(YearMonth.from(TODAY.minusMonths(1)).toString()))
+			.andExpect(jsonPath("$.rows[0].monthlyRentInr").value(28000))
+			.andExpect(jsonPath("$.rows[0].confirmed").value(true))
+			.andExpect(jsonPath("$.rows[1].fromMonth").value(YearMonth.from(TODAY.minusMonths(5)).toString()))
+			.andExpect(jsonPath("$.rows[1].toMonth").doesNotExist())
+			.andExpect(jsonPath("$.rows[1].confirmed").value(false));
 	}
 	
 	@Test

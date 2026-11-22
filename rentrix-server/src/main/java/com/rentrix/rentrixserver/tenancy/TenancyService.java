@@ -420,6 +420,11 @@ public class TenancyService {
 		return null;
 	}
 
+	/** Both sides confirmed it, or the landlord started it: not a tenant's one-sided record (D-142). */
+	static boolean mutual(Tenancy tenancy) {
+		return tenancy.getConfirmedAt() != null || tenancy.getInitiatedBy() == TenancyParty.LANDLORD;
+	}
+
 	static Role roleOf(TenancyParty side) {
 		return side == TenancyParty.LANDLORD ? Role.LANDLORD : Role.TENANT;
 	}
@@ -497,8 +502,7 @@ public class TenancyService {
 		properties.lockById(property.getId());
 		tenancies.findOverlappingOnProperty(property.getId(), excludeId == null ? -1L : excludeId, CONFIRMED, start,
 				end == null ? OPEN_END : end).stream()
-			.filter(t -> t.getConfirmedAt() != null || t.getInitiatedBy() == TenancyParty.LANDLORD
-				|| UnclaimedLandlord.is(property.getLandlord()))
+			.filter(t -> mutual(t) || UnclaimedLandlord.is(property.getLandlord()))
 			.findFirst()
 			.ifPresent(clash -> {
 				Map<String, String> conflict = new LinkedHashMap<>();
