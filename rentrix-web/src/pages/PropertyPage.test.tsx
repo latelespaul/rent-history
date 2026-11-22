@@ -119,6 +119,6 @@ describe("PropertyPage", () => {
     api.property = new ApiError({ status: 404, code: "not_found" })
     renderPage()
 
-    expect(await screen.findByText("This home is not on Rentrix")).toBeTruthy()
+    expect(await screen.findByText("This home is not on Doorway Living")).toBeTruthy()
   })
 })

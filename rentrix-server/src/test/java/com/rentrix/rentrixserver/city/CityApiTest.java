@@ -126,7 +126,7 @@ class CityApiTest {
 			assertThatThrownBy(() -> cityService.requireLive(code))
 				.isInstanceOfSatisfying(ApiException.class, e -> {
 					assertThat(e.getCode()).isEqualTo("city_not_live");
-					assertThat(e.getMessage()).isEqualTo("Rentrix is not live in this city yet.");
+					assertThat(e.getMessage()).isEqualTo("We are not live in this city yet.");
 				});
 		}
 		assertThatThrownBy(() -> cityService.requirePincode("XXX", "560034"))

@@ -1,4 +1,4 @@
-# Rentrix
+# Doorway Living
 
 Two-sided rental trust platform: tenants rate landlords and properties, landlords rate tenants, all tied to confirmed tenancies.
 

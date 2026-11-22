@@ -46,7 +46,7 @@ class ErrorShapeTest {
 		return mvc.perform(request.header("X-Request-Id", "shape-test-0001"))
 			.andExpect(status().is(status))
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-			.andExpect(jsonPath("$.type").value("https://rentrix.in/problems/" + code.replace('_', '-')))
+			.andExpect(jsonPath("$.type").value("https://doorwayliving.in/problems/" + code.replace('_', '-')))
 			.andExpect(jsonPath("$.title").value(not(emptyOrNullString())))
 			.andExpect(jsonPath("$.status").value(status))
 			.andExpect(jsonPath("$.code").value(code))

@@ -10,7 +10,7 @@ public final class PublicNames {
 	
 	public static String shortName(String displayName) {
 		if (displayName == null || displayName.isBlank()) {
-			return "Rentrix user";
+			return "Member";
 		}
 		String[] words = displayName.trim().split("\\s+");
 		if (words.length == 1) {

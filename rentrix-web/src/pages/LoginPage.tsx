@@ -10,13 +10,14 @@ import { useAuth } from "@/features/auth/authContext"
 import { DevLoginPanel } from "@/features/auth/DevLoginPanel"
 import { GoogleButton } from "@/features/auth/GoogleButton"
 import { afterSignInPath, safeNext } from "@/features/auth/paths"
+import { BRAND } from "@/lib/brand"
 
 const PROMISES = [
-  { icon: "lock", text: "No Rentrix password. Google confirms your email." },
+  { icon: "lock", text: `No ${BRAND.name} password. Google confirms your email.` },
   { icon: "eye-off", text: "Your email and phone are never shown publicly." },
   {
     icon: "users",
-    text: "One Google account = one Rentrix account. Be a tenant, a landlord, or both.",
+    text: `One Google account = one ${BRAND.name} account. Be a tenant, a landlord, or both.`,
   },
 ] as const
 
@@ -62,7 +63,7 @@ export default function LoginPage() {
               <TenancyIcon size={26} />
             </span>
             <h1 className="mt-4 font-display text-3xl font-semibold text-ink-900">
-              Sign in to Rentrix
+              Sign in to {BRAND.name}
             </h1>
             <p className="mt-1.5 text-ink-500">
               Tenants and landlords use the same button. New here? It creates your account.

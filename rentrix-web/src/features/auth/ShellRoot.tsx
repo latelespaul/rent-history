@@ -13,8 +13,9 @@ export function ShellRoot() {
     ? { shortName: shortName(user.displayName), roles: user.roles, isDemo: user.demo }
     : null
   // Leave the page first: on a guarded page the guard would otherwise send the user to /login.
+  // `signedOut` keeps the landing from sending the still-signed-in user back into the app.
   const onSignOut = () => {
-    navigate("/", { replace: true })
+    navigate("/", { replace: true, state: { signedOut: true } })
     void signOut()
   }
   return <AppLayout viewer={viewer} onSignOut={user ? onSignOut : undefined} />

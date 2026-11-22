@@ -225,7 +225,7 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$[0].status").value("REJECTED"))
 			.andExpect(jsonPath("$[0].decision.code").value("ID_UNREADABLE"))
 			.andExpect(jsonPath("$[0].decision.note").value("The PAN photo is blurred. Upload a sharper photo."));
-		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Rentrix tenant verification needs changes");
+		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Doorway Living tenant verification needs changes");
 		assertThat(mail.last(user.getEmail()).body()).contains("The PAN photo is blurred. Upload a sharper photo.");
 
 		submit(user, "tenant")
@@ -240,15 +240,15 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.status").value("APPROVED"))
 			.andExpect(jsonPath("$.revision").value(2));
 		submit(user, "TENANT").andExpect(status().isConflict());
-		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Rentrix tenant account is approved");
+		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Doorway Living tenant account is approved");
 		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(jsonPath("$[0].decision.note").doesNotExist());
 
 		decide(admin, id, "revoke", "{\"code\": \"DUPLICATE_ACCOUNT\", \"note\": \"Same person as another account.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("REJECTED"));
-		assertThat(subjectsTo(user)).containsExactly("Your Rentrix tenant verification needs changes",
-			"Your Rentrix tenant account is approved", "Your Rentrix tenant approval was withdrawn");
+		assertThat(subjectsTo(user)).containsExactly("Your Doorway Living tenant verification needs changes",
+			"Your Doorway Living tenant account is approved", "Your Doorway Living tenant approval was withdrawn");
 
 		new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
 			VerificationApplication application = applications.findByPublicId(id).orElseThrow();
@@ -492,7 +492,7 @@ class VerificationApiTest {
 		decide(admin(), id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId() + "\", \"result\": \"VERIFIED\"}]}")
 			.andExpect(status().isOk());
 		EmailMessage approved = mail.last(user.getEmail());
-		assertThat(approved.subject()).isEqualTo("Your Rentrix tenant account is approved");
+		assertThat(approved.subject()).isEqualTo("Your Doorway Living tenant account is approved");
 		assertThat(approved.subject() + approved.body()).doesNotContain("234F").doesNotContain("XXXXXX");
 		assertThat(output).doesNotContain(user.getEmail()).doesNotContain("234F");
 		JsonNode me = json.readTree(mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))

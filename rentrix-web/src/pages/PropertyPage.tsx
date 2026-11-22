@@ -21,6 +21,7 @@ import { useProperty, useSignedIn } from "@/features/property/useProperties"
 import { useAuth } from "@/features/auth/authContext"
 import { PencilIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import type { PropertyDetail } from "@/types/api"
+import { BRAND } from "@/lib/brand"
 
 function Breadcrumb({ property }: { property: PropertyDetail }) {
   const city = encodeURIComponent(property.city.code)
@@ -177,7 +178,7 @@ export default function PropertyPage() {
         {missing ? (
           <EmptyState
             icon="home"
-            title="This home is not on Rentrix"
+            title={`This home is not on ${BRAND.name}`}
             description="It may have been archived, or the link is wrong."
             action={
               <Button asChild variant="outline">

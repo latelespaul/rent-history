@@ -123,7 +123,7 @@ describe("login page", () => {
 
     callback({ credential: "google-id-token" })
 
-    expect(await screen.findByRole("heading", { name: /welcome to rentrix/i })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
     expect(auth.signInWithGoogle).toHaveBeenCalledWith("google-id-token")
     expect(api.setAccessToken).toHaveBeenCalledWith("google-token")
     expect(where(router)).toBe("/welcome")
@@ -179,7 +179,7 @@ describe("guarded routes", () => {
   it("sends anonymous visitors to /login with next", async () => {
     const router = renderApp("/settings")
 
-    expect(await screen.findByRole("heading", { name: /sign in to rentrix/i })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: /sign in to doorway living/i })).toBeTruthy()
     expect(where(router)).toBe("/login?next=%2Fsettings")
   })
 
@@ -187,7 +187,7 @@ describe("guarded routes", () => {
     h.restored = NEW_USER
     const router = renderApp("/me/tenancies")
 
-    expect(await screen.findByRole("heading", { name: /welcome to rentrix/i })).toBeTruthy()
+    expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
     expect(where(router)).toBe("/welcome?next=%2Fme%2Ftenancies")
   })
 
@@ -226,7 +226,7 @@ describe("onboarding", () => {
     const router = renderApp("/welcome?next=%2Fsettings")
     const user = userEvent.setup()
 
-    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await screen.findByRole("heading", { name: /welcome to doorway living/i })
     await user.click(screen.getByRole("button", { name: "Continue" }))
     expect(screen.getByText("Pick tenant, landlord or both.")).toBeTruthy()
     expect(auth.completeOnboarding).not.toHaveBeenCalled()
@@ -257,7 +257,7 @@ describe("onboarding", () => {
     renderApp("/welcome")
     const user = userEvent.setup()
 
-    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await screen.findByRole("heading", { name: /welcome to doorway living/i })
     await user.click(screen.getByRole("checkbox", { name: /i rent a home/i }))
     await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
     const name = screen.getByLabelText("Display name")
@@ -279,7 +279,7 @@ describe("onboarding", () => {
     const router = renderApp("/welcome")
     const user = userEvent.setup()
 
-    await screen.findByRole("heading", { name: /welcome to rentrix/i })
+    await screen.findByRole("heading", { name: /welcome to doorway living/i })
     await user.click(screen.getByRole("checkbox", { name: /i rent a home/i }))
     await user.click(screen.getByRole("checkbox", { name: /i rent out a property/i }))
     await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
@@ -322,8 +322,6 @@ describe("settings", () => {
     await waitFor(() => expect(where(router)).toBe("/"))
     expect(auth.logout).toHaveBeenCalled()
     expect(api.clearSession).toHaveBeenCalled()
-    expect(
-      within(screen.getByRole("banner")).getAllByRole("link", { name: /sign in/i }).length,
-    ).toBeGreaterThan(0)
+    expect(await screen.findByRole("link", { name: "Sign in / Sign up" })).toBeTruthy()
   })
 })

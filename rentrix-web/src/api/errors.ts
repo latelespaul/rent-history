@@ -1,4 +1,5 @@
 import type { ProblemDetails, ProblemFieldError } from "@/types/api"
+import { BRAND } from "@/lib/brand"
 
 /** Codes the client itself produces when the API gave no Problem Details body. */
 export const CLIENT_ERROR_CODES = {
@@ -76,7 +77,7 @@ export function networkError(cause: unknown): ApiError {
       status: 0,
       code: aborted ? CLIENT_ERROR_CODES.aborted : CLIENT_ERROR_CODES.network,
       title: aborted ? "Request cancelled" : "Network error",
-      detail: aborted ? "The request was cancelled." : "Could not reach the Rentrix API.",
+      detail: aborted ? "The request was cancelled." : `Could not reach the ${BRAND.name} API.`,
     },
     { cause },
   )

@@ -80,7 +80,7 @@ public class ReviewService {
 		TenancyParty.LANDLORD, EnumSet.of(ReviewDirection.LANDLORD_TO_TENANT));
 
 	private static final List<TenancyStatus> CONFIRMED = List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED);
-	private static final String FORMER_USER = "Former Rentrix user";
+	private static final String FORMER_USER = "Former member";
 
 	private final ReviewRepository reviews;
 	private final ReviewRevisionRepository revisions;

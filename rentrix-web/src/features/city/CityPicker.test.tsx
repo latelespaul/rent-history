@@ -5,8 +5,9 @@ import { cleanup, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { AppLayout } from "@/components/layout/AppLayout"
-import HomePage from "@/pages/HomePage"
 import SearchPage from "@/pages/SearchPage"
+import { CityCards } from "./CityCards"
+import { LaunchCopy } from "./LaunchCopy"
 import { ApiError } from "@/api/errors"
 import type { City, Stats } from "@/types/api"
 import { LAUNCH_CITIES, MORE_CITIES, NINE_CITIES, SEED_STATS, byName } from "@/test/cities"
@@ -42,7 +43,18 @@ function renderAt(path: string) {
       {
         element: <AppLayout />,
         children: [
-          { path: "/", element: <HomePage /> },
+          // The city cards and launch line, as a signed-in page shows them (the landing has neither).
+          {
+            path: "/cities",
+            element: (
+              <main>
+                <LaunchCopy />
+                <section aria-label="Pick a city">
+                  <CityCards />
+                </section>
+              </main>
+            ),
+          },
           { path: "/search", element: <SearchPage /> },
         ],
       },
@@ -79,7 +91,7 @@ afterEach(cleanup)
 
 describe("CityPicker", () => {
   it("lists the two launch cities from the API", async () => {
-    renderAt("/")
+    renderAt("/search")
     await openPicker()
 
     expect(optionNames()).toEqual(["Bangalore", "Pune"])
@@ -90,7 +102,7 @@ describe("CityPicker", () => {
 
   it("lists nine cities when the API returns nine, with no made-up counts", async () => {
     respond(NINE_CITIES)
-    renderAt("/")
+    renderAt("/search")
     await openPicker()
 
     expect(optionNames()).toEqual(NINE_CITIES.map((c) => c.name))
@@ -100,7 +112,7 @@ describe("CityPicker", () => {
 
   it("finds Bangalore through its alias", async () => {
     respond(NINE_CITIES)
-    renderAt("/")
+    renderAt("/search")
     const { user, input } = await openPicker()
 
     await user.type(input, "beng")
@@ -110,20 +122,24 @@ describe("CityPicker", () => {
   })
 
   it("says the city is not live yet when nothing matches", async () => {
-    renderAt("/")
+    renderAt("/search")
     const { user, input } = await openPicker()
 
     await user.type(input, "Goa")
 
-    expect(screen.queryAllByRole("option")).toHaveLength(0)
-    expect(screen.getByRole("status").textContent).toContain("Rentrix is not live in “Goa” yet.")
+    // The search page's filter <select>s have native options; only the picker's count here.
+    const pickerOptions = screen.queryAllByRole("option").filter((o) => o.tagName !== "OPTION")
+    expect(pickerOptions).toHaveLength(0)
+    expect(screen.getByRole("status").textContent).toContain(
+      "Doorway Living is not live in “Goa” yet.",
+    )
     expect(screen.getByRole("status").textContent).toContain(
       "Starting in Bangalore and Pune, more cities coming",
     )
   })
 
   it("writes the chosen code to ?city= on click", async () => {
-    const router = renderAt("/")
+    const router = renderAt("/search")
     const { user } = await openPicker()
 
     await user.click(screen.getByRole("option", { name: /Pune/ }))
@@ -146,7 +162,7 @@ describe("CityPicker", () => {
   })
 
   it("closes on Escape without changing the city", async () => {
-    const router = renderAt("/?city=BLR")
+    const router = renderAt("/search?city=BLR")
     const { user } = await openPicker()
 
     await user.keyboard("{ArrowDown}{Escape}")
@@ -156,12 +172,12 @@ describe("CityPicker", () => {
   })
 })
 
-describe("Home city cards and launch copy", () => {
+describe("City cards and launch copy", () => {
   /** Under the search box and in the footer. */
   const expectLaunchCopy = (copy: string) => {
     expect(screen.getByText(copy)).toBeTruthy()
     expect(screen.getByRole("contentinfo").querySelector("p")?.textContent).toBe(
-      `Rentrix · ${copy}`,
+      `Doorway Living · ${copy}`,
     )
   }
 
@@ -171,7 +187,7 @@ describe("Home city cards and launch copy", () => {
       .map((a) => a.querySelector("span > span")?.textContent)
 
   it("renders one card per city with real counts", async () => {
-    renderAt("/")
+    renderAt("/cities")
 
     await screen.findAllByText("4 properties · 6 confirmed tenancies")
     expect(cardNames()).toEqual(["Bangalore", "Pune"])
@@ -180,7 +196,7 @@ describe("Home city cards and launch copy", () => {
 
   it("changes when a third city is added to the response", async () => {
     respond(byName([...LAUNCH_CITIES, MORE_CITIES[3]]))
-    renderAt("/")
+    renderAt("/cities")
 
     await screen.findByText("No properties yet")
     expect(cardNames()).toEqual(["Bangalore", "Pune", "Hyderabad"])
@@ -189,7 +205,7 @@ describe("Home city cards and launch copy", () => {
 
   it("shows eight cards, then all nine after Show all", async () => {
     respond(NINE_CITIES)
-    renderAt("/")
+    renderAt("/cities")
     const user = userEvent.setup()
 
     await screen.findAllByText("No properties yet")
@@ -202,7 +218,7 @@ describe("Home city cards and launch copy", () => {
 
   it("shows no counts at all while /stats is not served", async () => {
     respond(byName(LAUNCH_CITIES), null)
-    renderAt("/")
+    renderAt("/cities")
 
     await vi.waitFor(() => expect(cardNames()).toEqual(["Bangalore", "Pune"]))
     expect(screen.queryByText(/propert/)).toBeNull()

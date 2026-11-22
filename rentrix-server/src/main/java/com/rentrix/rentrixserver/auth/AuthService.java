@@ -75,7 +75,7 @@ public class AuthService {
 		if (byEmail.isPresent() && (bySub.isEmpty() || !byEmail.get().getId().equals(bySub.get().getId()))) {
 			// Never merge accounts automatically; an admin resolves it (D-72).
 			throw ApiException.conflict("account_email_conflict",
-				"This Google account's email is already used by another Rentrix account. Contact support.");
+				"This Google account's email is already used by another account. Contact support.");
 		}
 		Instant now = now();
 		User user = bySub.orElseGet(() -> newGoogleUser(identity, email));
@@ -133,7 +133,7 @@ public class AuthService {
 	static String initialDisplayName(String googleName, String email) {
 		String name = StringUtils.hasText(googleName) ? googleName.trim() : email.substring(0, email.indexOf('@'));
 		if (name.length() < 2) {
-			name = "Rentrix user";
+			name = "Member";
 		}
 		return name.length() > DISPLAY_NAME_MAX ? name.substring(0, DISPLAY_NAME_MAX).trim() : name;
 	}
