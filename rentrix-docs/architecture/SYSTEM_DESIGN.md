@@ -604,7 +604,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
     "traceId": "4f1c..."
   }
   ```
-  Status use: `400` malformed, `401` no/invalid token, `403` authenticated but not allowed (including `approval_required` with `{role, status}`, D-91, and `admin_conflict`, D-88), `404` not found **or not visible to the caller** (no existence leak), `409` conflict (duplicate review, overlapping tenancy, state transition not allowed), `422` validation/business rule, `429` rate limited (with `Retry-After`).
+  Status use: `400` malformed, `401` no/invalid token, `403` authenticated but not allowed (including `approval_required` with `approval: {role, status}` in the body, D-91, and `admin_conflict`, D-88), `404` not found **or not visible to the caller** (no existence leak), `409` conflict (duplicate review, overlapping tenancy, state transition not allowed, `concurrent_update` when the database refused a lock to a simultaneous write; nothing was saved, so retry), `422` validation/business rule, `429` rate limited (with `Retry-After`).
 - Dates `YYYY-MM-DD`, timestamps ISO-8601 UTC, money as integer rupees with field suffix `Inr`.
 - Writes that may be retried by clients accept an optional `Idempotency-Key` header (stored 24 h) on `POST /tenancies`, `POST .../reviews`, `POST /reports`.
   Endpoints opt in with `@Idempotent`. Keys are 1–64 chars from `A-Z a-z 0-9 . _ : -` (else `400 idempotency_key_invalid`) and are scoped to the signed-in caller. The first request reserves the key; a `2xx` response (status, `Content-Type`, `Location`, body) is stored and replayed for the same key and same request (method, path, query, body) with `Idempotent-Replayed: true`. A non-`2xx` response releases the key so the client can fix and retry with it. Same key with a different request: `422 idempotency_key_reused`; same key while the first request still runs: `409 idempotency_request_in_progress`. A reservation still `IN_PROGRESS` after a 5-minute lease is treated as abandoned (its instance died), so a retry with the key runs. Expired keys are deleted hourly by a locked job (D-08).
@@ -627,7 +627,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 |---|---|---|
 | GET / PATCH / DELETE | `/me` | profile (display name, phone, home city), add role, account deletion (D-58). A `PATCH` returns `{user, accessToken}`; the token carries the current roles, so an added role takes effect at once (D-73). The phone is returned masked only (`+91 XXXXXX3210`, D-106); a `PATCH` that changes or clears it revokes a verified `PHONE_OTP` check (`PHONE_CHANGED`, D-101) |
 | POST | `/me/onboarding` | once, first sign-in: `{roles:[TENANT|LANDLORD], homeCity?, acceptTerms:true}` → `{user, accessToken}` with the new roles (D-73) |
-| GET | `/me/tenancies?role=&status=` | |
+| GET | `/me/tenancies?role=&status=` | the caller's tenancies, either side or `role=LANDLORD|TENANT`; `status` is a comma list; D-59 paging, `sort` = `newest` (default, desc), `start`, `updated`. Each item is the tenancy view of `GET /tenancies/{id}` |
 | GET | `/me/reviews/written`, `/me/reviews/received?as=LANDLORD|TENANT` | received includes own `AWAITING_REVEAL` state only as "pending" |
 | GET | `/me/review-tasks` | tenancies with an open review window and missing reviews |
 | GET | `/me/enquiries?as=TENANT|LANDLORD` | |
@@ -667,7 +667,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | DELETE | `/properties/{id}` | owner; archives a `PUBLISHED` listing (D-21); one never published (`DRAFT`, `PENDING_REVIEW`, `REJECTED`) is soft-deleted, since it has no history to keep |
 | GET / POST | `/properties/{id}/images` | upload ≤ 10 images |
 | PATCH / DELETE | `/properties/{id}/images/{imageId}` | order, primary, delete |
-| GET | `/properties/{id}/rent-history` | logged-in; D-26 |
+| GET | `/properties/{id}/rent-history` | logged-in (D-56); D-26: `{propertyId, rows: [{fromMonth, toMonth?, monthlyRentInr, maintenanceInr?, share}]}`, months as `YYYY-MM` only (D-57), no tenant identity, confirmed records of `ACTIVE`/`ENDED` tenancies only, oldest first. A row runs to the month before the next confirmed record of its tenancy, or to the tenancy's end month; `toMonth` is absent while the rent is current. `share` is true on `ROOM`/`PG` properties |
 | GET | `/properties/{id}/reviews` | logged-in for text; `TENANT_TO_PROPERTY` only |
 | GET | `/properties/{id}/rating` | aggregate; public |
 | POST | `/properties/{id}/enquiries` | `TENANT` |
@@ -681,11 +681,12 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Tenancies**
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/tenancies` | `{propertyId, counterpartyEmail?, startDate, endDate?, initialRentInr, depositInr?}` |
-| GET | `/tenancies/{id}` | parties + admin |
-| POST | `/tenancies/{id}/confirm`, `/decline`, `/cancel`, `/end` | state transitions (§6) |
-| GET / POST | `/tenancies/{id}/rent-records` | |
-| POST | `/rent-records/{id}/confirm`, `/rent-records/{id}/dispute` | other party |
+| POST | `/tenancies` | `{propertyId, counterpartyEmail?, startDate, endDate?, initialRentInr, depositInr?}`. The caller's side follows from the property: its landlord must give `counterpartyEmail`. The answer is the same whether or not that email has an account (privacy: no account lookup by email): the landlord gets `tenant` = null and a masked `inviteEmail` (`p***@g***.com`). Internally, an existing email-verified account with the TENANT role is linked so it sees the request in `/me/tenancies` and gets a confirm-request email; otherwise a single-use invite is emailed. For such a request `409 tenancy_overlap` is checked when the invite is claimed and on confirm, against confirmed tenancies only (a sibling pending request never blocks), not at creation; anyone else is the tenant, on a `PUBLISHED` property, and sends no email. `startDate ≤ today`; `endDate` only for a tenancy that already ended (`≤ today`). The landlord's property must be `PUBLISHED` or `ARCHIVED` (`422 property_not_listed`). Guards D-35: `403 approval_required` (D-91), `403 role_required`, `422 email_not_verified`, `422 invite_self`, `409 tenancy_overlap` (tenant-started requests), `422 too_many_pending` (5) |
+| GET | `/tenancies/{id}` | parties + admin, else `404`. `{id, property{id, buildingName, locality, city, unitLabel, propertyType}, myRole, landlord{id, shortName}, tenant? (hidden from the landlord until a landlord-started request is confirmed), inviteEmail? (masked for the landlord, full for admin), startDate, endDate?, initialRentInr, currentRentInr?, depositInr?, depositRefundedInr?, status, initiatedBy, declineReason?, evidenceLevel?, createdAt, expiresAt? (pending), confirmedAt?, endedAt?, actions{confirm, decline, cancel, end, addRentRecord}}` |
+| POST | `/tenancies/{id}/confirm`, `/decline`, `/cancel`, `/end` | state transitions (§6); a transition the state does not allow is `409 invalid_transition`. `confirm` (counterparty, Ⓐ) → `ACTIVE`, or `ENDED` when the request has an end date, and writes the first `CONFIRMED` rent record; `decline` (counterparty, optional `{reason}`) and `cancel` (initiator) are not gated; `end` `{endDate, depositRefundedInr?}` (either party or admin, not gated) on `ACTIVE` only |
+| POST | `/tenancy-invites/claim` | `{token}` from the invite link (`APP_BASE_URL/tenancy-invite?token=…`; in the body so it stays out of URLs and logs). Binds a landlord's invite to the caller when their verified email equals the invited one (`403 invite_email_mismatch` otherwise), the caller holds `TENANT` and no overlap exists; single use, expires with the request (14 d). The invitee then confirms or declines as the counterparty |
+| GET / POST | `/tenancies/{id}/rent-records` | parties + admin; `POST {effectiveFrom, monthlyRentInr, maintenanceInr?}` by a party (Ⓐ) on an `ACTIVE`/`ENDED` tenancy (`409 tenancy_not_confirmed` otherwise) → `PROPOSED`. `effectiveFrom` is stored as the first of its month and must lie from the start month to the end date, or to next month while current (`422 outside_tenancy`); one live record per month (`409 rent_record_exists`) |
+| POST | `/rent-records/{id}/confirm`, `/rent-records/{id}/dispute` | the party who did not add it (Ⓐ) or an admin; `PROPOSED` only (`409 invalid_transition`) |
 | GET / POST | `/tenancies/{id}/documents` | private; GET returns signed URLs |
 | POST | `/tenancies/{id}/reviews` | `{direction, ratingOverall, ratingA?, ratingB?, ratingC?, body}` |
 
@@ -791,7 +792,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 
 ## 14. Notifications
 
-- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome, verification approved / rejected (with the reason), listing approved / rejected (with the reason), identity check verified / rejected (with the reason, D-105). Emails never contain document data or ID numbers. No in-app notification centre in v1.
+- **D-65** An `EmailSender` interface with two implementations: `LogEmailSender` (dev/test: writes the email to the log) and `SmtpEmailSender` (prod: any SMTP provider via `MAIL_*` env). Emails: tenancy invite, tenancy confirm request, tenancy confirmed/declined/ended, review window open, reviews published, rent record to confirm, report outcome, verification approved / rejected (with the reason), listing approved / rejected (with the reason), identity check verified / rejected (with the reason, D-105). Emails never contain document data or ID numbers. No in-app notification centre in v1. *Build note (PLAN B5)*: only `LogEmailSender` exists so far, in every profile; it logs the masked recipient and subject at `INFO` and the body (which can hold an invite link) only at `DEBUG`, which `dev` turns on. `SmtpEmailSender` comes before real users are invited.
 - SMS is used for one thing only: the phone OTP code (D-101), through an `SmsSender` interface with `LogSmsSender` (dev/test: writes the code to the log) and `HttpSmsSender` (prod: a provider configured by `SMS_*` env). The SMS text has the code and "Rentrix" only; the code is never logged in prod.
 
 ---
@@ -864,7 +865,7 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `DB_USERNAME`, `DB_PASSWORD` | empty | |
 | `JWT_SECRET` | built-in default only in `dev`/`test` | required (≥ 32 bytes) in any other profile (D-64) |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` only in `dev`/`test`; empty in `prod` | comma list; empty in `prod` logs one warning and allows no cross-origin browser request (fail closed without blocking start, so the existing Render deployment keeps starting) |
-| `APP_BASE_URL` | `http://localhost:5173` | links in emails |
+| `APP_BASE_URL` | `http://localhost:5173` in `dev`/`test`; empty in `prod` | web app URL for links in emails (tenancy invites, D-65); empty gives relative links |
 | `ADMIN_EMAILS` | empty | D-19, D-78 |
 | `TRUSTED_PROXIES` (every profile) | loopback and private ranges (`10.x`, `172.16-31.x`, `192.168.x`, `127.x`, `::1`) | regex of reverse-proxy IPs whose `X-Forwarded-For` / `-Proto` / `-Host` / `-Port` are honoured (Tomcat `RemoteIpValve`, `forward-headers-strategy: native`); any other peer's forwarded headers are ignored, so the sign-in rate limit (§13) keys on the real client IP and a client cannot fake its origin. See **Behind a reverse proxy** below |
 | `ID_HASH_KEY` | built-in default only in `dev`/`test` | HMAC key for PAN, phone and OTP codes (D-101, D-102, D-106); a set value must be ≥ 32 bytes. Required in any other profile, like `JWT_SECRET`, from PLAN B12 (PAN). Until then (B14) it is required outside `dev`/`test` only with `SMS_BACKEND=http`, so a deployment without an SMS provider keeps starting; without the key, phone OTP is unavailable (`503`) |

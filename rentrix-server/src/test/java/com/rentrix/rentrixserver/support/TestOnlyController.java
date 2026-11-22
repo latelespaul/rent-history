@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,12 @@ class TestOnlyController {
 	@GetMapping("/conflict")
 	void conflict() {
 		throw ApiException.conflict("test_conflict", "Already exists.");
+	}
+
+	/** What Spring raises when the database refuses a lock, e.g. SQLITE_BUSY between two racing writes. */
+	@GetMapping("/lock-busy")
+	void lockBusy() {
+		throw new CannotAcquireLockException("[SQLITE_BUSY] The database file is locked");
 	}
 
 	@GetMapping("/rate-limited")

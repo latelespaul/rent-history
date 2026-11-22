@@ -111,6 +111,9 @@ app:
     rate-limit:                           # POST /auth/google and /auth/dev-login, per client IP (§13)
       requests: 20
       period: 15m
+  web:
+    # Public URL of the web app, for links in emails (tenancy invites, D-65).
+    base-url: ${APP_BASE_URL:}
   scheduling:
     enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
   seed:

@@ -16,6 +16,7 @@ import com.rentrix.rentrixserver.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.UUID;
@@ -35,6 +36,23 @@ public class TestData {
 		user.setDisplayName(name);
 		user.setEmail(UUID.randomUUID() + "@example.test");
 		user.setRoles(roles.length == 0 ? EnumSet.noneOf(Role.class) : EnumSet.of(roles[0], roles));
+		return users.save(user);
+	}
+	
+	/** A user with a verified email whose verification is not approved (DRAFT), like every real user before B11. */
+	public User verified(String name, Role... roles) {
+		User user = user(name, roles);
+		user.setEmailVerifiedAt(Instant.parse("2025-01-01T00:00:00Z"));
+		return users.save(user);
+	}
+	
+	/**
+	 * A user who passes the approval gate (D-91). Until B11 the interim statuses approve demo users only, so the
+	 * fixture marks the user as demo; B11 changes this fixture to write an approved application instead.
+	 */
+	public User approved(String name, Role... roles) {
+		User user = verified(name, roles);
+		user.setDemo(true);
 		return users.save(user);
 	}
 	
