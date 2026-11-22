@@ -414,6 +414,7 @@ public class TenancyService {
 	 * against pending ones too; claim and confirm only against confirmed ones, so a sibling pending request never blocks.
 	 */
 	private void requireNoOverlap(Tenancy tenancy, Collection<TenancyStatus> against) {
+		users.lockByPublicId(tenancy.getTenant().getPublicId());
 		boolean overlap = tenancies.existsOverlap(tenancy.getProperty().getId(), tenancy.getTenant().getId(),
 			tenancy.getId() == null ? -1L : tenancy.getId(), against, tenancy.getStartDate(),
 			tenancy.getEndDate() == null ? OPEN_END : tenancy.getEndDate());
