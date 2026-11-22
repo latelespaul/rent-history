@@ -659,7 +659,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Properties**
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city`, when given, must be an active city code (without it every active city is searched); `locality` is a prefix, `q` matches locality, building and street; `minRating` (1–5) needs an average shown (3+ reviews, D-52); sorts `top_rated` (default, D-53), `most_reviewed`, `newest`; `area`, `society`, `tower` take `public_id`s (D-112, from PLAN B4b) |
+| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city`, when given, must be an active city code (without it every active city is searched); `locality` is a prefix, `q` matches locality, building and street; `minRating` (1–5) needs an average shown (3+ reviews, D-52) and compares the shown one-decimal value; sorts `top_rated` (default, D-53), `most_reviewed`, `newest`, and a sort name without a direction sorts descending; `area`, `society`, `tower` take `public_id`s (D-112, from PLAN B4b) |
 | GET | `/properties/{id}` | fields per D-56 |
 | POST | `/properties` | `LANDLORD`; creates `DRAFT`; location `{areaId | newArea{name, pincode}, societyId? | newSociety{name, kind, developer?}, towerId? | newTower{name, kind}, wingId? | newWing{name}}`; proposed rows are `PENDING` (D-109, D-110) |
 | PATCH | `/properties/{id}` | owner; edits (location fields locked once published, D-92) and `ARCHIVED` |
