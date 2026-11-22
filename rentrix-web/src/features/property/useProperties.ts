@@ -38,17 +38,21 @@ export function useLocalityHints(city: string | undefined) {
   })
 }
 
-/** Whether the session has resolved, and whether someone is signed in. */
+/** Whether the session has resolved, whether someone is signed in, and who (`viewer`). */
 export function useSignedIn() {
   const { state } = useAuth()
-  return { ready: state.status !== "loading", signedIn: state.status === "signedIn" }
+  return {
+    ready: state.status !== "loading",
+    signedIn: state.status === "signedIn",
+    viewer: state.user?.id ?? null,
+  }
 }
 
-/** `GET /properties/{id}`, fetched again after sign-in because signed-in callers see more (D-56). */
+/** `GET /properties/{id}`, cached per viewer: signed-in callers, owners and admins see more (D-56, D-57). */
 export function useProperty(id: string) {
-  const { ready, signedIn } = useSignedIn()
+  const { ready, viewer } = useSignedIn()
   return useQuery({
-    queryKey: propertyKeys.detail(id, signedIn),
+    queryKey: propertyKeys.detail(id, viewer),
     queryFn: ({ signal }) => fetchProperty(id, signal),
     enabled: ready,
     retry: false,
@@ -57,8 +61,9 @@ export function useProperty(id: string) {
 
 /** Rent history: signed-in only (D-56); `null` data means the API does not serve it yet (B5). */
 export function useRentHistory(id: string, enabled: boolean) {
+  const { viewer } = useSignedIn()
   return useQuery({
-    queryKey: propertyKeys.rentHistory(id),
+    queryKey: propertyKeys.rentHistory(id, viewer),
     queryFn: ({ signal }) => fetchRentHistory(id, signal),
     enabled,
     retry: false,
@@ -67,8 +72,9 @@ export function useRentHistory(id: string, enabled: boolean) {
 
 /** Property reviews: signed-in only for text (D-56); `null` until the API serves them (B6). */
 export function usePropertyReviews(id: string, enabled: boolean) {
+  const { viewer } = useSignedIn()
   return useQuery({
-    queryKey: propertyKeys.reviews(id, enabled),
+    queryKey: propertyKeys.reviews(id, viewer),
     queryFn: ({ signal }) => fetchPropertyReviews(id, signal),
     enabled,
     retry: false,

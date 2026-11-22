@@ -26,9 +26,10 @@ export const propertyKeys = {
   all: ["properties"] as const,
   search: (search: PropertySearch) => ["properties", "search", search] as const,
   localities: (city: string) => ["properties", "localities", city] as const,
-  detail: (id: string, signedIn: boolean) => ["properties", "detail", id, signedIn] as const,
-  rentHistory: (id: string) => ["properties", "rent-history", id] as const,
-  reviews: (id: string, signedIn: boolean) => ["properties", "reviews", id, signedIn] as const,
+  detail: (id: string, viewer: string | null) => ["properties", "detail", id, viewer] as const,
+  rentHistory: (id: string, viewer: string | null) =>
+    ["properties", "rent-history", id, viewer] as const,
+  reviews: (id: string, viewer: string | null) => ["properties", "reviews", id, viewer] as const,
 }
 
 /** `GET /properties`: published homes, D-59 envelope. */

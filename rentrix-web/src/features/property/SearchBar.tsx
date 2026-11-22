@@ -49,7 +49,7 @@ export function SearchBar({ city, locality, onCityChange, onSubmit, className }:
       <label className="flex min-h-14 flex-1 items-center gap-3 rounded-lg px-3">
         <MapPinIcon size={18} className="text-ink-500" />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs text-ink-500">Locality or building</span>
+          <span className="block text-xs text-ink-500">Locality</span>
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
