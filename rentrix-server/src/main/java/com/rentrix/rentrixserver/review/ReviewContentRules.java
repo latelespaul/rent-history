@@ -25,10 +25,17 @@ public final class ReviewContentRules {
 	private static final Pattern EMAIL = Pattern.compile("[\\w.+-]+@[\\w-]+(\\.[\\w-]+)+");
 	private static final Pattern URL = Pattern.compile(
 		"(?i)(https?://|www\\.)\\S+|\\b[a-z0-9-]+\\.(com|in|net|org|io|co|me|info|app|xyz|biz)\\b");
-	/** "flat 302", "house no. 12", "unit #5", "room 2", "door no 4B" and codes like "B-204" or "#302". */
+	/** A number followed by a duration or distance ("3 years", "10 min") is not a unit number. */
+	private static final String NOT_MEASURE = "(?!\\s*(years?|yrs?|months?|weeks?|days?|kms?|mins?|minutes?)\\b)";
+	private static final String UNIT_WORD = "flat|unit|apt|apartment|house|door|room";
+	/**
+	 * Only explicit unit markers: "flat no 302", "house no. 12", "unit #5", "room number 4B"; block-unit codes tied
+	 * to a unit, tower, wing or block word ("flat B 402", "tower C-1204", "wing #1203"); and bare codes like "A-1203".
+	 */
 	private static final Pattern UNIT = Pattern.compile(
-		"(?i)\\b(flat|apartment|apt|unit|house|door|room|villa|plot)\\s*(no\\.?|number|num|#)?\\s*[a-z]?-?\\d{1,4}[a-z]?\\b"
-			+ "|\\b[A-Z]{1,2}-\\d{2,4}\\b|#\\s*\\d{1,4}\\b");
+		"(?i)\\b(" + UNIT_WORD + ")\\s*(no\\.?|number|#)\\s*[a-z]?-?\\d{1,4}[a-z]?\\b" + NOT_MEASURE
+			+ "|\\b(" + UNIT_WORD + "|tower|wing|block)\\s+(#\\s*|[a-z](\\s?-\\s?|\\s))\\d{2,4}\\b" + NOT_MEASURE
+			+ "|(?-i:\\b[A-Z]{1,2}-\\d{2,4}\\b)" + NOT_MEASURE);
 	/** A basic list, English and common Hindi transliterations; matched as whole words. */
 	private static final Pattern PROFANITY = Pattern.compile("(?i)\\b(fuck\\w*|shit\\w*|bitch\\w*|bastard\\w*|"
 		+ "asshole\\w*|cunt\\w*|dickhead\\w*|motherfuck\\w*|chutiya\\w*|madarchod\\w*|behenchod\\w*|bhenchod\\w*|"

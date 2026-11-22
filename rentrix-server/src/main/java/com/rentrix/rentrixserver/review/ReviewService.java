@@ -184,6 +184,9 @@ public class ReviewService {
 		if (review.getStatus() != ReviewStatus.AWAITING_REVEAL && review.getStatus() != ReviewStatus.PUBLISHED) {
 			throw ApiException.conflict("invalid_transition", "A " + review.getStatus() + " review cannot be edited.");
 		}
+		if (!editableState(review)) {
+			throw ApiException.rule("edit_window_closed", "A review is frozen once it is revealed.");
+		}
 		approvals.require(me, authorRole(review));
 		Instant now = now();
 		boolean inWindow = !now.isAfter(review.getEditUntil());
@@ -446,9 +449,17 @@ public class ReviewService {
 			&& closes != null && !today().isAfter(closes);
 	}
 
+	/**
+	 * D-41: a person review is editable only while it awaits reveal, so neither side can react to the other's
+	 * revealed review; a property review has no counterpart and stays editable once published.
+	 */
+	private static boolean editableState(Review review) {
+		return review.getStatus() == ReviewStatus.AWAITING_REVEAL
+			|| review.getStatus() == ReviewStatus.PUBLISHED && review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY;
+	}
+
 	private boolean canEdit(Review review) {
-		return (review.getStatus() == ReviewStatus.AWAITING_REVEAL || review.getStatus() == ReviewStatus.PUBLISHED)
-			&& (!now().isAfter(review.getEditUntil()) || postEndUpdateAllowed(review));
+		return editableState(review) && (!now().isAfter(review.getEditUntil()) || postEndUpdateAllowed(review));
 	}
 
 	/** D-45: email verified, and a first review needs an account at least 7 days old. */

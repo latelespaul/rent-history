@@ -386,6 +386,48 @@ class ReviewApiTest {
 	}
 
 	@Test
+	void personReviewIsEditableWhileHiddenAndFrozenOnceRevealed() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+		String id = written(landlord, tenancy, ReviewDirection.LANDLORD_TO_TENANT, 4);
+		String edit = """
+			{"ratingOverall": 3, "body": "Paid rent on time most months but left the kitchen in poor shape."}""";
+
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content(edit))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.ratingOverall").value(3))
+			.andExpect(jsonPath("$.actions.edit").value(true));
+
+		String counter = written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, 2);
+		assertThat(stored(id).getStatus()).isEqualTo(ReviewStatus.PUBLISHED);
+		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.actions.edit").value(false));
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content(edit.replace("\"ratingOverall\": 3", "\"ratingOverall\": 1")))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("edit_window_closed"));
+		mvc.perform(patch("/reviews/" + counter).header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content(edit))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("edit_window_closed"));
+		assertThat(aggregate(RatingSubjectType.TENANT, tenant.getId()).getRatingSum()).isEqualTo(3);
+
+		// the post-end update does not reopen a revealed review, and withdrawal stays open
+		tenancy.setStatus(TenancyStatus.ENDED);
+		tenancy.setEndDate(TODAY.minusDays(1));
+		tenancy.setEndedAt(Instant.now().minus(Duration.ofDays(1)));
+		tenancies.saveAndFlush(tenancy);
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content(edit))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("edit_window_closed"));
+		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(landlord)))
+			.andExpect(status().is2xxSuccessful());
+	}
+
+	@Test
 	void subjectRespondsOnce() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
