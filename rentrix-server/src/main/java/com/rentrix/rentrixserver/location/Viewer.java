@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 /**
  * Who is reading location rows, for the {@code PENDING} rule of D-109: a proposed row is seen only by its proposer
@@ -34,10 +35,13 @@ record Viewer(UUID publicId, boolean admin) {
 	
 	/**
 	 * Reads by id: everything a list shows, plus {@code HIDDEN} rows, so links and filters on a hidden area or
-	 * society keep working for the properties already there (D-109).
+	 * society keep working for the properties already there, plus {@code PENDING} rows that hold one of the
+	 * viewer's own homes, so a landlord who joined another's proposal can reuse it by id (D-109).
+	 * {@code holdsOwnHome} is asked only for such a {@code PENDING} row.
 	 */
-	boolean reads(LocationStatus status, User createdBy) {
-		return status == LocationStatus.HIDDEN || lists(status, createdBy);
+	boolean reads(LocationStatus status, User createdBy, BooleanSupplier holdsOwnHome) {
+		return status == LocationStatus.HIDDEN || lists(status, createdBy)
+			|| status == LocationStatus.PENDING && publicId != null && holdsOwnHome.getAsBoolean();
 	}
 	
 }

@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.location;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
@@ -18,6 +19,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -268,6 +271,65 @@ class LocationResolveTest {
 			new LocationInput.NewSociety(" palm   COURT", SocietyKind.GATED_COMMUNITY, null, null), null, null, null,
 			null), other).society().getPublicId()).isEqualTo(proposed.getPublicId());
 		assertThat(societies.count()).isEqualTo(societyRows + 1);
+	}
+	
+	@Test
+	void aJoinerAddsTheirPincodeAndErrorsHideTheProposal() {
+		Placement first = service.resolve(CITY, "200071", new LocationInput(null,
+			new LocationInput.NewArea("Brook Field", "200071"), null, null, null, null, null, null), landlord);
+		User second = data.user("Brook Joiner", Role.LANDLORD);
+		Placement joined = service.resolve(CITY, "200072", new LocationInput(null,
+			new LocationInput.NewArea(" brook  FIELD", "200072"), null, null, null, null, null, null), second);
+		assertThat(joined.area().getPublicId()).isEqualTo(first.area().getPublicId());
+		assertThat(areas.findByPublicId(first.area().getPublicId()).orElseThrow().pincodeList())
+			.containsExactly("200071", "200072");
+		
+		User third = data.user("Brook Stranger", Role.LANDLORD);
+		ApiException e = rejected(() -> service.resolve(CITY, "200074", new LocationInput(null,
+			new LocationInput.NewArea("Brook Field", "200073"), null, null, null, null, null, null), third));
+		assertThat(e.getCode()).isEqualTo("pincode_not_in_area");
+		assertThat(e.getMessage()).doesNotContain("200071", "200072", "200073", "Brook");
+		assertThat(e.getErrors().getFirst().message()).doesNotContain("200071", "200072", "200073");
+	}
+	
+	@Test
+	void aJoinerWithAHomeReadsAndReusesThePendingRowsById() throws Exception {
+		LocationInput proposal = new LocationInput(null, new LocationInput.NewArea("Cedar Park", "200081"), null,
+			new LocationInput.NewSociety("Cedar Heights", SocietyKind.GATED_COMMUNITY, null, null), null, null, null,
+			null);
+		Placement first = service.resolve(CITY, "200081", proposal, landlord);
+		UUID areaId = first.area().getPublicId();
+		UUID societyId = first.society().getPublicId();
+		User joiner = data.user("Cedar Joiner", Role.LANDLORD);
+		User stranger = data.user("Cedar Stranger", Role.LANDLORD);
+		mvc.perform(get("/areas/{id}", areaId).header("Authorization", support.bearer(joiner)))
+			.andExpect(status().isNotFound());
+		
+		Placement joined = service.resolve(CITY, "200081", proposal, joiner);
+		locations.home(joiner, "Cedar Home", PropertyStatus.DRAFT, joined.area(), joined.society(), null, null);
+		
+		mvc.perform(get("/areas/{id}", areaId).header("Authorization", support.bearer(joiner)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PENDING"));
+		mvc.perform(get("/societies/{id}", societyId).header("Authorization", support.bearer(joiner)))
+			.andExpect(status().isOk());
+		mvc.perform(get("/properties").param("area", areaId.toString())
+				.header("Authorization", support.bearer(joiner)))
+			.andExpect(status().isOk());
+		assertThat(service.resolve(CITY, "200081", LocationInput.of(areaId, societyId, null, null), joiner)
+			.society().getPublicId()).isEqualTo(societyId);
+		mvc.perform(get("/areas").param("city", CITY).header("Authorization", support.bearer(joiner)))
+			.andExpect(jsonPath("$.items[*].name", not(hasItem("Cedar Park"))));
+		
+		mvc.perform(get("/areas/{id}", areaId).header("Authorization", support.bearer(stranger)))
+			.andExpect(status().isNotFound());
+		mvc.perform(get("/societies/{id}", societyId).header("Authorization", support.bearer(stranger)))
+			.andExpect(status().isNotFound());
+		mvc.perform(get("/properties").param("area", areaId.toString())
+				.header("Authorization", support.bearer(stranger)))
+			.andExpect(status().isUnprocessableContent());
+		assertThat(rejected(() -> service.resolve(CITY, "200081", LocationInput.of(areaId, null, null, null),
+			stranger)).getErrors().getFirst().code()).isEqualTo("not_found");
 	}
 	
 	@Test

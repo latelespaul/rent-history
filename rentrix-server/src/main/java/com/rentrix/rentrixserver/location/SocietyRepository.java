@@ -18,6 +18,11 @@ public interface SocietyRepository extends JpaRepository<Society, Long>, JpaSpec
 	
 	Optional<Society> findByAreaAndNameKey(Area area, String nameKey);
 	
+	/** Whether the landlord with {@code landlord} public id has a non-deleted home on this society. */
+	@Query("select count(p) > 0 from Property p where p.society.id = :id and p.landlord.publicId = :landlord"
+		+ " and p.deletedAt is null")
+	boolean holdsHomeOf(@Param("id") Long id, @Param("landlord") UUID landlord);
+	
 	/** {@code [society id, published homes]} (index ix_properties_society_status). */
 	@Query("select p.society.id, count(p) from Property p where p.society.id in :ids"
 		+ " and p.status = com.rentrix.rentrixserver.property.PropertyStatus.PUBLISHED and p.deletedAt is null"

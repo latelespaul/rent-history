@@ -191,7 +191,7 @@ public class LocationService {
 	public SocietyTower towerFilter(UUID publicId, AuthenticatedUser caller, String field) {
 		Viewer viewer = Viewer.of(caller);
 		return towers.findByPublicId(publicId)
-			.filter(t -> viewer.reads(t.getStatus(), t.getCreatedBy()))
+			.filter(t -> reads(viewer, t))
 			.orElseThrow(() -> unknown(field, "tower"));
 	}
 	
@@ -203,14 +203,16 @@ public class LocationService {
 	 * <li>the city is live and the property {@code pincode} starts with one of its prefixes (D-84);</li>
 	 * <li>the area is required; a wing needs a tower and a tower needs a society
 	 * ({@code 422 location_mismatch});</li>
-	 * <li>each level is an existing row the actor may use ({@code ACTIVE}, or {@code PENDING} they proposed; admins
-	 * any {@code PENDING}) or a proposal, never both; {@code HIDDEN} rows take no new homes;</li>
+	 * <li>each level is an existing row the actor may use ({@code ACTIVE}, or {@code PENDING} they proposed or
+	 * that holds one of their homes; admins any {@code PENDING}) or a proposal, never both; {@code HIDDEN} rows
+	 * take no new homes;</li>
 	 * <li>the wing belongs to the tower, the tower to the society, the society to the area and the area to the
 	 * city ({@code 422 location_mismatch});</li>
 	 * <li>the {@code pincode} is one of the area's PIN codes ({@code 422 pincode_not_in_area});</li>
 	 * <li>a proposal's name is new under its parent, else {@code 409 location_exists} when the existing row is
 	 * {@code ACTIVE} or {@code HIDDEN}; a {@code PENDING} row of that name is joined instead: the home goes on it,
-	 * it keeps its proposer, and the same rule applies to the proposals below it (no duplicate rows).</li>
+	 * it keeps its proposer, a joined area gains the joiner's {@code newArea.pincode}, and the same rule applies to
+	 * the proposals below it (no duplicate rows). The joiner may then read and reuse the row by id.</li>
 	 * </ul>
 	 * Proposals by a landlord are saved {@code PENDING} with {@code created_by} = the actor, so only they and
 	 * admins see them until listing approval; an admin's are {@code ACTIVE} (D-109). Call inside the transaction
@@ -265,7 +267,7 @@ public class LocationService {
 		
 		Area area;
 		if (in.areaId() != null) {
-			area = usable(areas.findByPublicId(in.areaId()), Area::getStatus, Area::getCreatedBy, viewer, "areaId",
+			area = usable(areas.findByPublicId(in.areaId()).filter(a -> reads(viewer, a)), Area::getStatus, "areaId",
 				"area");
 			if (!area.getCity().getCode().equals(cityCode)) {
 				throw mismatch("areaId", "This area is not in " + cityName(cityCode) + ".");
@@ -279,20 +281,24 @@ public class LocationService {
 				area = new Area();
 				area.setCity(city);
 				area.setName(in.newArea().name());
-				area.addPincode(areaPincode);
 				proposed(area::setStatus, area::setCreatedBy, actor, viewer);
 			}
+			area.addPincode(areaPincode);
 		}
 		if (!area.pincodeList().contains(pincode)) {
-			throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
-				"PIN code " + pincode + " is not in " + area.getName() + ".",
-				List.of(field("pincode", "not_in_area", "Use one of " + area.pincodeList() + ".")));
+			throw reads(viewer, area)
+				? new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
+					"PIN code " + pincode + " is not in " + area.getName() + ".",
+					List.of(field("pincode", "not_in_area", "Use one of " + area.pincodeList() + ".")))
+				: new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
+					"PIN code " + pincode + " is not in this area.",
+					List.of(field("pincode", "not_in_area", "Use the area's own PIN code.")));
 		}
 		
 		Society society = null;
 		if (in.societyId() != null) {
-			society = usable(societies.findByPublicId(in.societyId()), Society::getStatus, Society::getCreatedBy,
-				viewer, "societyId", "society");
+			society = usable(societies.findByPublicId(in.societyId()).filter(r -> reads(viewer, r)),
+				Society::getStatus, "societyId", "society");
 			if (area.getId() == null || !society.getArea().getId().equals(area.getId())) {
 				throw mismatch("societyId", "This society is not in " + area.getName() + ".");
 			}
@@ -315,8 +321,8 @@ public class LocationService {
 		
 		SocietyTower tower = null;
 		if (in.towerId() != null) {
-			tower = usable(towers.findByPublicId(in.towerId()), SocietyTower::getStatus, SocietyTower::getCreatedBy,
-				viewer, "towerId", "tower");
+			tower = usable(towers.findByPublicId(in.towerId()).filter(r -> reads(viewer, r)),
+				SocietyTower::getStatus, "towerId", "tower");
 			if (society.getId() == null || !tower.getSociety().getId().equals(society.getId())) {
 				throw mismatch("towerId", "This tower is not in " + society.getName() + ".");
 			}
@@ -338,7 +344,7 @@ public class LocationService {
 		
 		SocietyWing wing = null;
 		if (in.wingId() != null) {
-			wing = usable(wings.findByPublicId(in.wingId()), SocietyWing::getStatus, SocietyWing::getCreatedBy, viewer,
+			wing = usable(wings.findByPublicId(in.wingId()).filter(r -> reads(viewer, r)), SocietyWing::getStatus,
 				"wingId", "wing");
 			if (tower.getId() == null || !wing.getTower().getId().equals(tower.getId())) {
 				throw mismatch("wingId", "This wing is not in " + tower.getName() + ".");
@@ -376,27 +382,47 @@ public class LocationService {
 	
 	// ---------------------------------------------------------------- helpers
 	
+	private boolean reads(Viewer viewer, Area area) {
+		return viewer.reads(area.getStatus(), area.getCreatedBy(),
+			() -> area.getId() != null && areas.holdsHomeOf(area.getId(), viewer.publicId()));
+	}
+	
+	private boolean reads(Viewer viewer, Society society) {
+		return viewer.reads(society.getStatus(), society.getCreatedBy(),
+			() -> society.getId() != null && societies.holdsHomeOf(society.getId(), viewer.publicId()));
+	}
+	
+	private boolean reads(Viewer viewer, SocietyTower tower) {
+		return viewer.reads(tower.getStatus(), tower.getCreatedBy(),
+			() -> tower.getId() != null && towers.holdsHomeOf(tower.getId(), viewer.publicId()));
+	}
+	
+	private boolean reads(Viewer viewer, SocietyWing wing) {
+		return viewer.reads(wing.getStatus(), wing.getCreatedBy(),
+			() -> wing.getId() != null && wings.holdsHomeOf(wing.getId(), viewer.publicId()));
+	}
+	
 	private Area readableArea(UUID publicId, Viewer viewer) {
 		return areas.findByPublicId(publicId)
-			.filter(a -> viewer.reads(a.getStatus(), a.getCreatedBy()))
+			.filter(a -> reads(viewer, a))
 			.orElseThrow(() -> ApiException.notFound("Area"));
 	}
 	
 	private Area readableArea(UUID publicId, Viewer viewer, String field) {
 		return areas.findByPublicId(publicId)
-			.filter(a -> viewer.reads(a.getStatus(), a.getCreatedBy()))
+			.filter(a -> reads(viewer, a))
 			.orElseThrow(() -> unknown(field, "area"));
 	}
 	
 	private Society readableSociety(UUID publicId, Viewer viewer) {
 		return societies.findByPublicId(publicId)
-			.filter(s -> viewer.reads(s.getStatus(), s.getCreatedBy()))
+			.filter(s -> reads(viewer, s))
 			.orElseThrow(() -> ApiException.notFound("Society"));
 	}
 	
 	private Society readableSociety(UUID publicId, Viewer viewer, String field) {
 		return societies.findByPublicId(publicId)
-			.filter(s -> viewer.reads(s.getStatus(), s.getCreatedBy()))
+			.filter(s -> reads(viewer, s))
 			.orElseThrow(() -> unknown(field, "society"));
 	}
 	
@@ -498,11 +524,9 @@ public class LocationService {
 		return cities.findById(cityCode).map(City::getName).orElse(cityCode);
 	}
 	
-	/** A row the actor may place a home in, else 422 on {@code field}. */
-	private static <T> T usable(Optional<T> row, Function<T, LocationStatus> status,
-		Function<T, User> createdBy, Viewer viewer, String field, String what) {
-		T found = row.filter(r -> viewer.reads(status.apply(r), createdBy.apply(r)))
-			.orElseThrow(() -> unknown(LOCATION + field, what));
+	/** A row the actor may read and place a home in, else 422 on {@code field}. */
+	private static <T> T usable(Optional<T> readable, Function<T, LocationStatus> status, String field, String what) {
+		T found = readable.orElseThrow(() -> unknown(LOCATION + field, what));
 		if (status.apply(found) == LocationStatus.HIDDEN) {
 			throw ApiException.validation(List.of(field(LOCATION + field, "hidden",
 				"This " + what + " no longer takes new homes; pick another or ask an admin.")));

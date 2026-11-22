@@ -18,6 +18,11 @@ public interface AreaRepository extends JpaRepository<Area, Long>, JpaSpecificat
 	
 	Optional<Area> findByCityCodeAndNameKey(String cityCode, String nameKey);
 	
+	/** Whether the landlord with {@code landlord} public id has a non-deleted home on this area. */
+	@Query("select count(p) > 0 from Property p where p.area.id = :id and p.landlord.publicId = :landlord"
+		+ " and p.deletedAt is null")
+	boolean holdsHomeOf(@Param("id") Long id, @Param("landlord") UUID landlord);
+	
 	/** {@code [area id, published homes]} for the given areas (index ix_properties_area_status). */
 	@Query("select p.area.id, count(p) from Property p where p.area.id in :ids"
 		+ " and p.status = com.rentrix.rentrixserver.property.PropertyStatus.PUBLISHED and p.deletedAt is null"
