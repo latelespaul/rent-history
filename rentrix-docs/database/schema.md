@@ -21,7 +21,8 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | none | B16 | `rating_aggregates` gains subject types `SOCIETY`, `AREA`, `OWNER_HOMES` | `subject_type VARCHAR(16)` has no `CHECK`, so no DDL |
 | `V<n>__rental_agreements.sql` (design v4) | **B18** | `rental_agreements` | §6 |
 | none (design v4) | B17 | phone required for submit, approve and the gate (D-117) | rules only, no DDL |
-| `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
+| `V7__review_verification_state.sql` (built in landing v2) | landing v2 | `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; `ix_reviews_verification` | the review part of §7, so the demo seed can give reviews the green tick; plus `db/vendor/mysql/V7_1__review_verification_fks.sql`; aggregates still count every published review until B17 (D-135) |
+| `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 2 queue indexes (the review columns are in V7) | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 

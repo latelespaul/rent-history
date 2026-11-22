@@ -14,7 +14,8 @@ Sign up with Google", "See how it works", a sample app screen marked "Sample scr
 how it works in 3 steps; for tenants and for landlords; trust and verification (phone OTP required,
 green tick "Verified by Doorway Living", optional Aadhaar/PAN and LinkedIn badges); a swipeable row
 of the top-rated published homes from `GET /properties` (seed rows carry "Demo data", no rent) between
-example reviews marked "Demo data" and "Not verified yet" (the seed gives no review the green tick); the live cities from `GET /cities` with localities from
+example reviews marked "Demo data", each in its seeded state ("Verified by Doorway Living" or "Not
+verified yet"); the live cities from `GET /cities` with localities from
 `GET /areas`; FAQ; the call to action again; footer.
 
 ## Run it locally

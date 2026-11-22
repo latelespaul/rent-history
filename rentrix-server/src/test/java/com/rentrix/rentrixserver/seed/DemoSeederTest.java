@@ -1,6 +1,9 @@
 package com.rentrix.rentrixserver.seed;
 
+import com.rentrix.rentrixserver.admin.ModerationAction;
 import com.rentrix.rentrixserver.admin.ModerationActionRepository;
+import com.rentrix.rentrixserver.admin.ModerationActionType;
+import com.rentrix.rentrixserver.admin.ModerationTargetType;
 import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.AreaRepository;
@@ -42,6 +45,7 @@ import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.ItemVerificationStatus;
 import com.rentrix.rentrixserver.verification.VerificationApplication;
 import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
 import com.rentrix.rentrixserver.verification.VerificationEventRepository;
@@ -292,6 +296,27 @@ class DemoSeederTest {
 					assertThat(r.getProperty().getBuildingName()).isEqualTo("Demo Villa C");
 				});
 			assertThat(responses.findAll()).hasSize(1);
+			// D-134: the green tick on one published review per DemoReviews.GREEN_TICK text, each audited by the admin
+			List<Review> ticked = written.stream()
+				.filter(r -> r.getVerificationStatus() == ItemVerificationStatus.VERIFIED).toList();
+			assertThat(ticked.stream().map(Review::getBody)).containsExactlyInAnyOrderElementsOf(DemoReviews.GREEN_TICK);
+			assertThat(written).filteredOn(r -> r.getVerificationStatus() != ItemVerificationStatus.VERIFIED)
+				.allSatisfy(r -> {
+					assertThat(r.getVerificationStatus()).isNull();
+					assertThat(r.getVerificationDecidedBy()).isNull();
+				});
+			List<ModerationAction> verifiedItems = audit.findAll().stream()
+				.filter(a -> a.getAction() == ModerationActionType.VERIFY_ITEM).toList();
+			assertThat(verifiedItems).hasSize(ticked.size());
+			for (Review review : ticked) {
+				assertThat(review.getStatus()).isEqualTo(ReviewStatus.PUBLISHED);
+				assertThat(review.getVerificationDecidedBy().getId()).isEqualTo(admin.getId());
+				assertThat(review.getVerificationDecidedAt()).isAfter(review.getPublishedAt());
+				assertThat(verifiedItems).filteredOn(a -> a.getTargetType() == ModerationTargetType.REVIEW
+					&& review.getId().equals(a.getTargetId())
+					&& review.getPublicId().toString().equals(a.getTargetRef())
+					&& a.getCreatedAt().equals(review.getVerificationDecidedAt())).hasSize(1);
+			}
 			// every home but Demo Villa C (its current tenant has not reviewed yet) and every landlord shows an average
 			for (Property home : homes) {
 				RatingAggregate rating = aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY,
