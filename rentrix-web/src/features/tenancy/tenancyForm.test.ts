@@ -64,6 +64,16 @@ describe("friendlyFieldError", () => {
         code: "max",
         message: "must be less than or equal to 10000000",
       }),
+    ).toBe("That rent looks too high: check the number.")
+    expect(
+      friendlyFieldError({
+        field: "depositInr",
+        code: "max",
+        message: "must be less than or equal to 100000000",
+      }),
+    ).toBe("That deposit looks too high: check the number.")
+    expect(
+      friendlyFieldError({ field: "initialRentInr", code: "min", message: "must be at least 1" }),
     ).toMatch(/whole number of rupees/)
   })
 

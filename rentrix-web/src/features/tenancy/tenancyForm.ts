@@ -42,7 +42,7 @@ export function checkTenancyForm(values: TenancyFormValues): TenancyFieldErrors 
 }
 
 /** Plain words for the bean-validation codes the API sends per field (`not_null`, `email`, …). */
-const FIELD_COPY: Record<TenancyField, { missing: string; invalid: string }> = {
+const FIELD_COPY: Record<TenancyField, { missing: string; invalid: string; tooHigh?: string }> = {
   propertyId: { missing: "Pick the home.", invalid: "Pick the home again." },
   counterpartyEmail: {
     missing: "Enter the tenant's email address.",
@@ -53,8 +53,16 @@ const FIELD_COPY: Record<TenancyField, { missing: string; invalid: string }> = {
     missing: "Enter the end date.",
     invalid: "Enter a valid end date, or leave it empty.",
   },
-  initialRentInr: { missing: "Enter the monthly rent.", invalid: RENT_NUMBER },
-  depositInr: { missing: DEPOSIT_NUMBER, invalid: DEPOSIT_NUMBER },
+  initialRentInr: {
+    missing: "Enter the monthly rent.",
+    invalid: RENT_NUMBER,
+    tooHigh: "That rent looks too high: check the number.",
+  },
+  depositInr: {
+    missing: DEPOSIT_NUMBER,
+    invalid: DEPOSIT_NUMBER,
+    tooHigh: "That deposit looks too high: check the number.",
+  },
 }
 
 const MISSING_CODES = new Set(["not_null", "not_blank", "not_empty", "required"])
@@ -80,5 +88,7 @@ const VALIDATION_CODES = new Set([
 export function friendlyFieldError(error: ProblemFieldError): string {
   const copy = FIELD_COPY[error.field as TenancyField]
   if (!copy || !VALIDATION_CODES.has(error.code)) return error.message
-  return MISSING_CODES.has(error.code) ? copy.missing : copy.invalid
+  if (MISSING_CODES.has(error.code)) return copy.missing
+  if (error.code === "max" && copy.tooHigh) return copy.tooHigh
+  return copy.invalid
 }
