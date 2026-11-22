@@ -24,7 +24,8 @@ function rowsWithChange(rows: RentHistoryRow[]) {
 }
 
 /**
- * Rent history (D-26): monthly rent from confirmed tenancies, no tenant names, month precision.
+ * Rent history (D-26): monthly rent from confirmed tenancies, plus tenants' one-sided rows marked
+ * not verified yet (D-142); no tenant names, month precision.
  * Signed-in only (D-56). Until the API serves it (B5) the card says so instead of guessing.
  */
 export function RentHistory({ propertyId, signedIn }: { propertyId: string; signedIn: boolean }) {
