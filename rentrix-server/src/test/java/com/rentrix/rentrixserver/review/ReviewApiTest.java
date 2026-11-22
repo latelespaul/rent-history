@@ -13,6 +13,8 @@ import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
+import com.rentrix.rentrixserver.verification.VerificationStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -78,11 +80,21 @@ class ReviewApiTest {
 	@Autowired
 	JdbcTemplate jdbc;
 
+	@Autowired
+	VerificationApplicationRepository applications;
+
 	// ------------------------------------------------------------ helpers
 
 	/** An approved user whose account is old enough for a first review (D-45). */
 	private User approved(String name, Role role) {
 		return aged(data.approved(name, role));
+	}
+
+	/** Moves the user's application for {@code role} back to PENDING, so the approval gate (D-91) refuses writes. */
+	private void unapprove(User user, Role role) {
+		var application = applications.findByUserAndRole(user, role).orElseThrow();
+		application.setStatus(VerificationStatus.PENDING);
+		applications.save(application);
 	}
 
 	private User aged(User user) {
@@ -150,7 +162,7 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.author.shortName").value("Tara T."))
 			.andExpect(jsonPath("$.author.id").doesNotExist())
-			.andExpect(jsonPath("$.author.badges.idVerified").value(false))
+			.andExpect(jsonPath("$.author.badges.idVerified").value(true))
 			.andExpect(jsonPath("$.period.from").value(TODAY.minusYears(1).toString().substring(0, 7)))
 			.andExpect(jsonPath("$.property.unitLabel").doesNotExist());
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isEqualTo(1);
@@ -259,13 +271,13 @@ class ReviewApiTest {
 		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_author"));
 
-		tenant.setDemo(false); // no longer approved: withdrawal is a safety exit (D-91)
+		unapprove(tenant, Role.TENANT); // no longer approved: withdrawal is a safety exit (D-91)
 		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isNoContent());
 		assertThat(stored(id).getStatus()).isEqualTo(ReviewStatus.WITHDRAWN);
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isZero();
 		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(tenant))).andExpect(status().isNotFound());
-		tenant.setDemo(true);
+		data.approve(tenant);
 		write(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 5, GOOD)
 			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("review_exists"));
 	}
@@ -469,7 +481,7 @@ class ReviewApiTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"body\": \"Thanks, the pump and lift are fixed.\"}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.response.body").value("Thanks, the pump and lift are fixed."));
-		landlord.setDemo(false);
+		unapprove(landlord, Role.LANDLORD);
 		mvc.perform(patch("/reviews/" + id + "/response").header("Authorization", support.bearer(landlord))
 				.contentType(MediaType.APPLICATION_JSON).content(reply))
 			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("approval_required"));
