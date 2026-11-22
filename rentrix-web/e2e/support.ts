@@ -28,7 +28,10 @@ export async function freshLogin(page: Page, next?: string) {
   await expect(page).toHaveURL(/\/welcome/, { timeout: SIGN_IN_TIMEOUT })
 }
 
-/** The first-sign-in role pick on `/welcome`: one role card, the terms box, Continue. */
+/**
+ * The first-sign-in role pick on `/welcome`: one role card, the terms box, Continue. Then the
+ * account-created screen, left with "Not now" so the user goes on to `next` or the role home.
+ */
 export async function pickRole(page: Page, role: "I rent a home" | "I rent out a property") {
   await expect(page.getByRole("heading", { name: /welcome to doorway living/i })).toBeVisible()
   // The checkbox itself is visually hidden; people click the role card around it.
@@ -36,6 +39,9 @@ export async function pickRole(page: Page, role: "I rent a home" | "I rent out a
   await expect(page.getByRole("checkbox", { name: new RegExp(role) })).toBeChecked()
   await page.getByRole("checkbox", { name: /I accept the Terms/ }).check()
   await page.getByRole("button", { name: "Continue" }).click()
+  await expect(page).toHaveURL(/\/welcome\/created$/)
+  await expect(page.getByText("Your account is created.")).toBeVisible()
+  await page.getByRole("link", { name: /not now, take me back/i }).click()
 }
 
 /** A date `days` before today as `YYYY-MM-DD`, the value a date input takes. */
