@@ -51,8 +51,11 @@ function ProfileForm({ user }: { user: CurrentUser }) {
   const [displayName, setDisplayName] = useState(user.displayName)
   const [homeCity, setHomeCity] = useState<string | null>(user.homeCity ?? null)
   const identity = useIdentity()
-  const phoneVerified =
-    identity.data?.methods.find((m) => m.method === "PHONE_OTP")?.status === "VERIFIED"
+  const phoneVerified = Boolean(
+    identity.data?.methods.some(
+      (m) => (m.method === "PHONE_OTP" || m.method === "TRUECALLER") && m.status === "VERIFIED",
+    ),
+  )
   const save = useMutation({
     mutationFn: (body: UpdateMeRequest) => updateMe(body),
     onSuccess: (update) => acceptUpdate(update),

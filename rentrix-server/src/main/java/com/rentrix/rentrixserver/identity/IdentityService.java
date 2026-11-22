@@ -27,7 +27,8 @@ import java.util.UUID;
 
 /**
  * Identity checks per user (§5.15, D-99 – D-106, D-117). The two rules the gate and the badge use live here: a user
- * may post when their {@code PHONE_OTP} is {@code VERIFIED} ({@link #isPhoneVerified}, D-117, D-132), and is
+ * may post when their phone is {@code VERIFIED} by SMS code or Truecaller ({@link #isPhoneVerified}, D-117, D-132),
+ * and is
  * <b>ID verified</b> (the public badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED}
  * ({@link #isIdVerified}, D-100). LinkedIn is a bonus badge and never counts. The same rules hold for tenants and
  * landlords.
@@ -43,6 +44,10 @@ public class IdentityService {
 	 */
 	public static final Set<IdentityMethod> ID_METHODS = EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
 	
+	/** The methods that verify the account's phone (D-117): an SMS code or Truecaller. Either one counts. */
+	public static final Set<IdentityMethod> PHONE_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
+		IdentityMethod.TRUECALLER);
+	
 	/** The ID methods an admin decides from an upload, also inside an application decision (D-102, D-103, D-105). */
 	public static final Set<IdentityMethod> ADMIN_CHECKED_ID_METHODS =
 		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
@@ -56,6 +61,8 @@ public class IdentityService {
 	
 	private final IdentityVerificationRepository checks;
 	private final PhoneOtpAvailability phoneOtp;
+	private final TruecallerProperties truecaller;
+	private final IdHasher hasher;
 	private final AdminReviewProvider adminReview;
 	private final AuditLog audit;
 	private final Clock clock;
@@ -66,11 +73,35 @@ public class IdentityService {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
 	}
 	
-	/** The posting rule (D-117, D-132): the phone is verified by OTP and not revoked. */
+	/** The posting rule (D-117, D-132): the phone is verified by SMS code or Truecaller and not revoked. */
 	@Transactional(readOnly = true)
 	public boolean isPhoneVerified(User user) {
-		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, EnumSet.of(IdentityMethod.PHONE_OTP),
+		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, PHONE_METHODS,
 			IdentityStatus.VERIFIED);
+	}
+	
+	/** Whether "Verify with Truecaller" can be offered: a key is set and the phone can be hashed. */
+	public boolean truecallerAvailable() {
+		return truecaller.configured() && hasher.available();
+	}
+	
+	/** Other active accounts with the same verified phone, by SMS code or Truecaller (D-101). */
+	@Transactional(readOnly = true)
+	public long phoneVerifiedOnOtherAccounts(User user, String phoneHmac) {
+		return checks.countVerifiedOnOtherAccountsIn(PHONE_METHODS, phoneHmac, user, UserStatus.DELETED);
+	}
+	
+	/**
+	 * The account has one phone: once {@code kept} verified the number behind {@code phoneHmac}, a verified check of
+	 * the other phone method for a different number is {@code REVOKED} with {@code PHONE_CHANGED} (D-101).
+	 */
+	@Transactional
+	public void revokeOtherPhone(User user, IdentityMethod kept, String phoneHmac) {
+		PHONE_METHODS.stream().filter(method -> method != kept).forEach(method ->
+			checks.findByUserAndMethod(user, method)
+				.filter(phone -> phone.getStatus() == IdentityStatus.VERIFIED)
+				.filter(phone -> !IdHasher.same(phone.getValueHmac(), phoneHmac))
+				.ifPresent(phone -> revokePhone(user, phone)));
 	}
 	
 	/** PAN or masked Aadhaar waits for an admin check (the optional ID step shows it as pending, D-120). */
@@ -114,11 +145,13 @@ public class IdentityService {
 	@Transactional(readOnly = true)
 	public Set<String> flags(User user) {
 		Set<String> flags = new TreeSet<>();
-		checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
+		boolean duplicate = PHONE_METHODS.stream()
+			.flatMap(method -> checks.findByUserAndMethod(user, method).stream())
 			.filter(phone -> phone.getStatus() == IdentityStatus.VERIFIED && phone.getValueHmac() != null)
-			.filter(phone -> checks.countVerifiedOnOtherAccounts(IdentityMethod.PHONE_OTP, phone.getValueHmac(), user,
-				UserStatus.DELETED) > 0)
-			.ifPresent(phone -> flags.add(DUPLICATE_PHONE));
+			.anyMatch(phone -> phoneVerifiedOnOtherAccounts(user, phone.getValueHmac()) > 0);
+		if (duplicate) {
+			flags.add(DUPLICATE_PHONE);
+		}
 		return flags;
 	}
 	
@@ -128,16 +161,18 @@ public class IdentityService {
 	 */
 	@Transactional
 	public void phoneChanged(User user) {
-		checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
+		PHONE_METHODS.forEach(method -> checks.findByUserAndMethod(user, method)
 			.filter(phone -> phone.getStatus() == IdentityStatus.VERIFIED)
-			.ifPresent(phone -> {
-				phone.setStatus(IdentityStatus.REVOKED);
-				phone.setRejectCode(IdentityRejectCode.PHONE_CHANGED);
-				phone.setRejectNote("The phone number on your account changed. Verify the new number.");
-				phone.setRevokedAt(clock.instant().truncatedTo(ChronoUnit.MILLIS));
-				checks.save(phone);
-				log.info("Phone check revoked for user {}: PHONE_CHANGED", user.getPublicId());
-			});
+			.ifPresent(phone -> revokePhone(user, phone)));
+	}
+	
+	private void revokePhone(User user, IdentityVerification phone) {
+		phone.setStatus(IdentityStatus.REVOKED);
+		phone.setRejectCode(IdentityRejectCode.PHONE_CHANGED);
+		phone.setRejectNote("The phone number on your account changed. Verify the new number.");
+		phone.setRevokedAt(clock.instant().truncatedTo(ChronoUnit.MILLIS));
+		checks.save(phone);
+		log.info("{} check revoked for user {}: PHONE_CHANGED", phone.getMethod(), user.getPublicId());
 	}
 	
 	/**
@@ -231,6 +266,7 @@ public class IdentityService {
 	private IdentityView.Method method(IdentityMethod method, IdentityVerification row) {
 		boolean available = switch (method) {
 			case PHONE_OTP -> phoneOtp.available();
+			case TRUECALLER -> truecallerAvailable();
 			case LINKEDIN -> true;
 			// PAN and masked Aadhaar need the private document upload of PLAN B12.
 			case PAN, AADHAAR -> false;
@@ -256,7 +292,7 @@ public class IdentityService {
 		return switch (row.getMethod()) {
 			case PAN -> "XXXXXX" + last4;
 			case AADHAAR -> "XXXX XXXX " + last4;
-			case PHONE_OTP -> PhoneMasks.fromLast4(last4);
+			case PHONE_OTP, TRUECALLER -> PhoneMasks.fromLast4(last4);
 			case LINKEDIN -> throw new IllegalStateException("unreachable");
 		};
 	}

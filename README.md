@@ -125,6 +125,24 @@ A preview deployment can run phone OTP before an SMS provider is signed up: `SMS
 
 To get each code without opening the admin console, also set `ADMIN_RELAY_TELEGRAM_BOT_TOKEN` and `ADMIN_RELAY_TELEGRAM_CHAT_IDS` (comma list): every held code is then pushed to those Telegram chats as `Doorway Living OTP for <name> (+91 XXXXXX3210): 123456 — expires 10 min`. Both live in env only; the token is never logged. The push runs in the background, and a Telegram failure logs one warning and never breaks the OTP. While the relay is on, the web's code step says the team will message the code (WhatsApp/SMS) instead of "We sent it by SMS".
 
+### Verify with Truecaller
+
+On Android, the phone step offers "Verify with Truecaller" first; the SMS code stays as the fallback (SYSTEM_DESIGN D-138). Each deployment has its own Truecaller *Web* app: set `TRUECALLER_APP_KEY` (its key) and `TRUECALLER_APP_NAME` (the name shown in the Truecaller sheet), env only. Without a key the button is hidden. Truecaller posts the user's consent to `<API>/api/v1/auth/truecaller/callback`, which must be the callback URL registered with the app; the phone also needs `ID_HASH_KEY`.
+
+In `dev` and `test`, `TRUECALLER_FAKE` defaults to `true`: no Truecaller call is made, and you play Truecaller's server yourself. With an access token from dev login:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/identity/truecaller/start
+# {"requestId":"<id>","deepLink":"truecallersdk://truesdk/web_verify?...","expiresAt":"..."}
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d '{"requestId":"<id>","accessToken":"fake:919876543210","endpoint":"https://profile4-noneu.truecaller.com/v1/default"}' \
+  http://localhost:8080/api/v1/auth/truecaller/callback
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/identity/truecaller/<id>
+# {"requestId":"<id>","status":"VERIFIED","masked":"+91 XXXXXX3210"}
+```
+
+`{"requestId":"<id>","status":"user_rejected"}` plays a declined sheet. The button shows only in an Android browser (Chrome DevTools device mode with an Android user agent works for the web side). `TRUECALLER_FAKE=true` outside `dev` and `test` refuses to start.
+
 ### Headline ratings (`RATINGS_HEADLINE`)
 
 `RATINGS_HEADLINE=all` (the default) makes the headline ratings count every published review. `verified` counts only reviews an admin gave the green tick (D-135); switch to it once admin approvals (W9) ship. After a switch, the nightly rating repair rebuilds the stored aggregates.

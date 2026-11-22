@@ -123,7 +123,7 @@ class IdentityApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.idVerified").value(true))
 			.andExpect(jsonPath("$.linkedinVerified").value(false))
-			.andExpect(jsonPath("$.methods.length()").value(4))
+			.andExpect(jsonPath("$.methods.length()").value(5))
 			.andExpect(jsonPath("$.methods[0].method").value("AADHAAR"))
 			.andExpect(jsonPath("$.methods[0].status").value("PENDING"))
 			.andExpect(jsonPath("$.methods[0].masked").value("XXXX XXXX 1234"))
@@ -135,7 +135,10 @@ class IdentityApiTest {
 			.andExpect(jsonPath("$.methods[2].status").doesNotExist())
 			.andExpect(jsonPath("$.methods[2].available").value(true))
 			.andExpect(jsonPath("$.methods[3].method").value("LINKEDIN"))
-			.andExpect(jsonPath("$.methods[3].available").value(true));
+			.andExpect(jsonPath("$.methods[3].available").value(true))
+			.andExpect(jsonPath("$.methods[4].method").value("TRUECALLER"))
+			.andExpect(jsonPath("$.methods[4].status").doesNotExist())
+			.andExpect(jsonPath("$.methods[4].available").value(true));
 	}
 	
 	@Test

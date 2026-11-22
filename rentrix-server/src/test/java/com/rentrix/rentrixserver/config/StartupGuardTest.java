@@ -132,6 +132,14 @@ class StartupGuardTest {
 	}
 	
 	@Test
+	void prodRefusesTheFakeTruecallerVerifier() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.truecaller.fake", "true")))
+			.hasMessageContaining("TRUECALLER_FAKE");
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.truecaller.fake", "false")))
+			.doesNotThrowAnyException();
+	}
+	
+	@Test
 	void prodRefusesTheLogSmsBackend() {
 		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "log")))
 			.hasMessageContaining("SMS_BACKEND=log");

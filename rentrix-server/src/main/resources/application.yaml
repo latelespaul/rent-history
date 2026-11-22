@@ -132,6 +132,14 @@ app:
     otp-ttl: ${OTP_TTL_MINUTES:10}m       # phone OTP lifetime (D-101)
   # Preview deployment flag (D-137): allows SMS_BACKEND=admin-relay under prod. Off = live mode.
   preview-mode: ${PREVIEW_MODE:false}
+  truecaller:
+    # Phone verification with Truecaller on Android mobile web (identity/TruecallerService). One
+    # Truecaller web app per deployment; env only, never committed or logged. No key = no button.
+    # Truecaller posts to <API>/api/v1/auth/truecaller/callback (registered with the app).
+    enabled: ${TRUECALLER_ENABLED:true}
+    app-key: ${TRUECALLER_APP_KEY:}
+    app-name: ${TRUECALLER_APP_NAME:}
+    fake: ${TRUECALLER_FAKE:false}          # dev/test only: FakeTruecallerVerifier, no Truecaller call
   sms:
     # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
     # phone_otp_unavailable) and the API still starts. "http" needs SMS_HTTP_URL and

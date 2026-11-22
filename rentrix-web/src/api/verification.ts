@@ -1,4 +1,11 @@
-import type { IdentityView, PhoneChallenge, Role, VerificationEntry } from "@/types/api"
+import type {
+  IdentityView,
+  PhoneChallenge,
+  Role,
+  TruecallerRequest,
+  TruecallerStart,
+  VerificationEntry,
+} from "@/types/api"
 import { api } from "./client"
 
 export const verificationKeys = {
@@ -29,6 +36,21 @@ export function startPhoneCheck(phone: string): Promise<PhoneChallenge> {
 /** `POST /me/identity/phone/confirm`: checks the code; the reply is the new `GET /me/identity`. */
 export function confirmPhoneCheck(challengeId: string, code: string): Promise<IdentityView> {
   return api.post<IdentityView>("/me/identity/phone/confirm", { challengeId, code })
+}
+
+/** `POST /me/identity/truecaller/start`: a request nonce and the Truecaller deep link (Android only). */
+export function startTruecaller(): Promise<TruecallerStart> {
+  return api.post<TruecallerStart>("/me/identity/truecaller/start")
+}
+
+/** `GET /me/identity/truecaller/{requestId}`: polled until Truecaller's callback has landed. */
+export function fetchTruecallerRequest(
+  requestId: string,
+  signal?: AbortSignal,
+): Promise<TruecallerRequest> {
+  return api.get<TruecallerRequest>(`/me/identity/truecaller/${encodeURIComponent(requestId)}`, {
+    signal,
+  })
 }
 
 /** `PUT /me/identity/linkedin`: queues the profile URL for an admin (D-93). */

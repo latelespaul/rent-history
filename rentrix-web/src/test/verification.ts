@@ -21,6 +21,7 @@ export function entry(
 export function identity(
   phone: StepStatus | "VERIFIED" | null = null,
   available = true,
+  truecaller = false,
 ): IdentityView {
   return {
     idVerified: false,
@@ -35,6 +36,7 @@ export function identity(
         available,
       },
       { method: "LINKEDIN", status: null, available: true },
+      { method: "TRUECALLER", status: null, available: truecaller },
     ],
   }
 }

@@ -224,10 +224,10 @@ public class PhoneOtpService {
 		row.setCheckedBy(CheckedBy.OTP);
 		row.setVerifiedAt(now);
 		checks.save(row);
+		identity.revokeOtherPhone(user, IdentityMethod.PHONE_OTP, row.getValueHmac());
 		user.setPhone(phone);
 		users.save(user);
-		long others = checks.countVerifiedOnOtherAccounts(IdentityMethod.PHONE_OTP, row.getValueHmac(), user,
-			UserStatus.DELETED);
+		long others = identity.phoneVerifiedOnOtherAccounts(user, row.getValueHmac());
 		if (others > 0) {
 			log.info("Phone verified for user {}; the same phone is verified on {} other account(s): {}",
 				user.getPublicId(), others, IdentityService.DUPLICATE_PHONE);

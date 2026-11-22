@@ -31,9 +31,10 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-	/** Anonymous POST routes: sign-in, and the cookie-based refresh and logout (§13). */
+	/** Anonymous POST routes: sign-in, the cookie-based refresh and logout (§13), and Truecaller's server callback. */
 	static final String[] PUBLIC_POST = {
 		"/auth/google", "/auth/dev-login", "/auth/dev-login/new", "/auth/refresh", "/auth/logout",
+		"/auth/truecaller/callback",
 	};
 
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
