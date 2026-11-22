@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
 @ExtendWith(OutputCaptureExtension.class)
 class PhoneOtpTest {
 	
-	private static final Pattern SMS_LINE = Pattern.compile("SMS to (\\+91 XXXXXX\\d{4}) \\(SMS_BACKEND=log, not sent\\): (\\d{6}) is your Rentrix");
+	private static final Pattern SMS_LINE = Pattern.compile("SMS to (\\+91 XXXXXX\\d{4}) \\(SMS_BACKEND=log, not sent\\): (\\d{6}) is your Doorway Living");
 	
 	@Autowired
 	MockMvc mvc;

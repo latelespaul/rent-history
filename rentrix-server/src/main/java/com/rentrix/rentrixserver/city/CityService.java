@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 @Transactional(readOnly = true)
 public class CityService {
 	
-	static final String NOT_LIVE_DETAIL = "Rentrix is not live in this city yet.";
+	static final String NOT_LIVE_DETAIL = "We are not live in this city yet.";
 	
 	private static final Pattern PINCODE = Pattern.compile("\\d{6}");
 	private static final Pattern WORD_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");

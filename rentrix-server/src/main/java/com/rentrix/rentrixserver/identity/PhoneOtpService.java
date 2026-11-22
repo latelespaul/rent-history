@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.identity;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.sms.SmsSendException;
 import com.rentrix.rentrixserver.notification.sms.SmsSender;
 import com.rentrix.rentrixserver.user.User;
@@ -72,6 +73,7 @@ public class PhoneOtpService {
 	private final UserRepository users;
 	private final IdentityService identity;
 	private final PhoneOtpAvailability availability;
+	private final BrandProperties brand;
 	private final IdHasher hasher;
 	private final IdentityProperties properties;
 	private final Clock clock;
@@ -106,7 +108,7 @@ public class PhoneOtpService {
 		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
 		PhoneOtpChallenge challenge = reserve(userId, phone, phoneHmac, code);
 		try {
-			sender.send(phone, code + " is your Rentrix verification code.");
+			sender.send(phone, code + " is your " + brand.name() + " verification code.");
 		} catch (SmsSendException e) {
 			challenges.consume(challenge.getId(), MAX_ATTEMPTS, now());
 			log.warn("Phone OTP not sent for user {}: {}", userId, e.getMessage());

@@ -27,7 +27,7 @@ public record ApiProblem(
 	List<String> missing
 ) {
 
-	public static final String TYPE_BASE = "https://rentrix.in/problems/";
+	public static final String TYPE_BASE = "https://doorwayliving.in/problems/";
 
 	public static ApiProblem of(HttpStatusCode status, String code, String detail, String instance,
 		List<FieldError> errors, String traceId) {

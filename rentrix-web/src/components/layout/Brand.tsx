@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom"
 import { TenancyIcon } from "@/components/ui/icons.gen"
+import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
-/** The brand mark: the tenancy icon in a teal tile, because Rentrix is about confirmed tenancies. */
+/** The brand mark: the tenancy icon in a teal tile, because the product is about confirmed tenancies. */
 export function Brand({ className }: { className?: string }) {
   return (
     <Link
@@ -15,7 +16,7 @@ export function Brand({ className }: { className?: string }) {
       <span className="grid size-[30px] place-items-center rounded-[9px] bg-teal-600 text-white">
         <TenancyIcon size={20} />
       </span>
-      Rentrix
+      {BRAND.name}
     </Link>
   )
 }

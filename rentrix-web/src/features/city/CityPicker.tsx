@@ -18,6 +18,7 @@ import {
   type TextPart,
 } from "./cityText"
 import { useCities, useStats } from "./useCities"
+import { BRAND } from "@/lib/brand"
 
 interface Props {
   /** Selected city code, or null when none is chosen. */
@@ -281,7 +282,7 @@ export function CityPicker({
           {matches.length === 0 && (
             <div role="status" className="space-y-1 px-4 py-4 text-sm text-ink-700">
               <p className="font-semibold text-ink-900">
-                Rentrix is not live in “{query.trim()}” yet.
+                {BRAND.name} is not live in “{query.trim()}” yet.
               </p>
               <p className="text-ink-500">{launchCopy(list)}.</p>
             </div>

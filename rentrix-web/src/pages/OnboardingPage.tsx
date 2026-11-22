@@ -15,6 +15,7 @@ import { RoleChoice } from "@/features/auth/RoleChoice"
 import { roleHome, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
 import { LaunchCopy } from "@/features/city/LaunchCopy"
+import { BRAND } from "@/lib/brand"
 
 /**
  * `/welcome` (DESIGN.md screen 10): the first-sign-in role pick (D-73). It posts
@@ -92,7 +93,9 @@ export default function OnboardingPage() {
             <p className="text-xs font-semibold tracking-wide text-teal-700 uppercase">
               {user.demo ? "Signed in with dev login" : "Signed in with Google"}
             </p>
-            <h1 className="font-display text-3xl font-semibold text-ink-900">Welcome to Rentrix</h1>
+            <h1 className="font-display text-3xl font-semibold text-ink-900">
+              Welcome to {BRAND.name}
+            </h1>
             {user.email && <p className="truncate text-sm text-ink-500">{user.email}</p>}
           </div>
         </div>
@@ -104,7 +107,7 @@ export default function OnboardingPage() {
         >
           <fieldset>
             <legend className="text-xl font-semibold text-ink-900">
-              How will you use Rentrix?
+              How will you use {BRAND.name}?
             </legend>
             <p className="mt-1 mb-3.5 text-sm text-ink-500">
               Pick one or both. You can add the other later in settings.

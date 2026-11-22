@@ -4,6 +4,7 @@ import { ShellRoot } from "@/features/auth/ShellRoot"
 import ComingSoonPage from "@/pages/ComingSoonPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
+import LegalPage from "@/pages/LegalPage"
 import LoginPage from "@/pages/LoginPage"
 import MyTenanciesPage from "@/pages/MyTenanciesPage"
 import NotFoundPage from "@/pages/NotFoundPage"
@@ -18,14 +19,16 @@ import TenancyRequestPage from "@/pages/TenancyRequestPage"
 import { RouteError } from "@/routes/RouteError"
 
 export const routes = [
+  // The landing draws its own minimal page, without the app shell.
+  { path: "/", element: <HomePage />, errorElement: <RouteError /> },
   {
     element: <ShellRoot />,
     errorElement: <RouteError />,
     children: [
-      { path: "/", element: <HomePage /> },
-      { path: "/search", element: <SearchPage /> },
       { path: "/p/:id", element: <PropertyPage /> },
       { path: "/login", element: <LoginPage /> },
+      { path: "/terms", element: <LegalPage title="Terms" /> },
+      { path: "/privacy", element: <LegalPage title="Privacy" /> },
       {
         element: <RequireAuth allowOnboarding />,
         children: [{ path: "/welcome", element: <OnboardingPage /> }],
@@ -33,6 +36,7 @@ export const routes = [
       {
         element: <RequireAuth />,
         children: [
+          { path: "/search", element: <SearchPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/me/tenancies", element: <MyTenanciesPage /> },
           { path: "/tenancies/new", element: <TenancyRequestPage /> },

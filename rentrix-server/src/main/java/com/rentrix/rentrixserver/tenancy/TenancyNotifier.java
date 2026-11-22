@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.tenancy;
 
+import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.notification.email.EmailSender;
 import com.rentrix.rentrixserver.property.Property;
@@ -21,25 +22,27 @@ class TenancyNotifier {
 	
 	private final EmailSender email;
 	private final String webBaseUrl;
+	private final String brand;
 	
-	TenancyNotifier(EmailSender email, @Value("${app.web.base-url:}") String webBaseUrl) {
+	TenancyNotifier(EmailSender email, @Value("${app.web.base-url:}") String webBaseUrl, BrandProperties brand) {
 		this.email = email;
+		this.brand = brand.name();
 		this.webBaseUrl = webBaseUrl.endsWith("/") ? webBaseUrl.substring(0, webBaseUrl.length() - 1) : webBaseUrl;
 	}
 	
 	/** To someone without an account: the single-use link binds the tenancy to the account they sign in with. */
 	void invite(Tenancy tenancy, String rawToken) {
 		email.send(new EmailMessage(tenancy.getInviteEmail(),
-			PublicNames.shortName(tenancy.getLandlord().getDisplayName()) + " added you as a tenant on Rentrix",
+			PublicNames.shortName(tenancy.getLandlord().getDisplayName()) + " added you as a tenant on " + brand,
 			"""
 				%s says you rent %s, from %s at Rs %d a month.
 				
-				Sign in to Rentrix with Google using this email address, then confirm or decline:
+				Sign in to %s with Google using this email address, then confirm or decline:
 				%s/tenancy-invite?token=%s
 				
 				The link works once and expires in 14 days. If you never rented this home, decline it or ignore this
 				email.""".formatted(PublicNames.shortName(tenancy.getLandlord().getDisplayName()), home(tenancy),
-				tenancy.getStartDate(), tenancy.getInitialRentInr(), webBaseUrl,
+				tenancy.getStartDate(), tenancy.getInitialRentInr(), brand, webBaseUrl,
 				URLEncoder.encode(rawToken, StandardCharsets.UTF_8))));
 	}
 	

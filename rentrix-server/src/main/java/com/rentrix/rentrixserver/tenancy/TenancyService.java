@@ -137,7 +137,7 @@ public class TenancyService {
 		} else {
 			requireRole(me, Role.TENANT);
 			if (property.getStatus() != PropertyStatus.PUBLISHED) {
-				throw ApiException.rule("property_not_listed", "This home is not listed on Rentrix.");
+				throw ApiException.rule("property_not_listed", "This home is not listed yet.");
 			}
 			if (request.counterpartyEmail() != null && !request.counterpartyEmail().isBlank()) {
 				throw ApiException.validation(List.of(new ApiProblem.FieldError("counterpartyEmail", "not_allowed",

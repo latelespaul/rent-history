@@ -64,7 +64,7 @@ class ApiBasicsTest {
 			.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 			.andExpect(jsonPath("$.code").value("unauthenticated"))
 			.andExpect(jsonPath("$.status").value(401))
-			.andExpect(jsonPath("$.type").value("https://rentrix.in/problems/unauthenticated"))
+			.andExpect(jsonPath("$.type").value("https://doorwayliving.in/problems/unauthenticated"))
 			.andExpect(jsonPath("$.traceId").value(not(emptyOrNullString())));
 	}
 	

@@ -217,7 +217,7 @@ export default function SettingsPage() {
               variant="outline"
               onClick={() => {
                 // Leave first, or the guard would send the signed-out user to /login.
-                navigate("/", { replace: true })
+                navigate("/", { replace: true, state: { signedOut: true } })
                 void signOut()
               }}
             >

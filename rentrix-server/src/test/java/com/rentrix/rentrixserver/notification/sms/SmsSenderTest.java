@@ -33,9 +33,9 @@ class SmsSenderTest {
 			.andExpect(method(HttpMethod.POST))
 			.andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer test-key-not-real"))
 			.andExpect(content().json("{\"to\":\"+919876543210\",\"sender\":\"RNTRIX\","
-				+ "\"message\":\"123456 is your Rentrix verification code.\"}"))
+				+ "\"message\":\"123456 is your Doorway Living verification code.\"}"))
 			.andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
-		new HttpSmsSender(builder, HTTP).send("+919876543210", "123456 is your Rentrix verification code.");
+		new HttpSmsSender(builder, HTTP).send("+919876543210", "123456 is your Doorway Living verification code.");
 		server.verify();
 		assertThat(output.getAll()).doesNotContain("123456").doesNotContain("9876543210");
 	}
@@ -46,14 +46,14 @@ class SmsSenderTest {
 		MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
 		server.expect(requestTo("https://sms.invalid/send")).andRespond(withServerError().body("+919876543210 123456"));
 		HttpSmsSender sender = new HttpSmsSender(builder, HTTP);
-		assertThatThrownBy(() -> sender.send("+919876543210", "123456 is your Rentrix verification code."))
+		assertThatThrownBy(() -> sender.send("+919876543210", "123456 is your Doorway Living verification code."))
 			.isInstanceOf(SmsSendException.class)
 			.satisfies(e -> assertThat(e.getMessage()).doesNotContain("9876543210").doesNotContain("123456"));
 	}
 	
 	@Test
 	void logSenderMasksTheNumber(CapturedOutput output) {
-		new LogSmsSender().send("+919876543210", "654321 is your Rentrix verification code.");
+		new LogSmsSender().send("+919876543210", "654321 is your Doorway Living verification code.");
 		assertThat(output.getAll()).contains("SMS to +91 XXXXXX3210", "654321").doesNotContain("9876543210");
 	}
 	

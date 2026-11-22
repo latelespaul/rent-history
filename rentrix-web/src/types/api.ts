@@ -38,7 +38,7 @@ export interface ProblemFieldError {
   message: string
 }
 
-/** RFC 9457 Problem Details with Rentrix's stable machine `code` (D-60). */
+/** RFC 9457 Problem Details with the API's stable machine `code` (D-60). */
 export interface ProblemDetails {
   type?: string
   title?: string

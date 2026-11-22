@@ -3,6 +3,7 @@ import { isApiError } from "@/api/errors"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
 import { Icon, type IconName } from "./icon"
+import { BRAND } from "@/lib/brand"
 
 interface StateProps {
   icon?: IconName
@@ -44,7 +45,7 @@ export function EmptyState({ icon = "search", title, description, action, classN
 export function errorMessage(error: unknown): string {
   if (isApiError(error)) {
     if (error.code === "network_error")
-      return "Rentrix could not reach the server. Check your connection."
+      return `${BRAND.name} could not reach the server. Check your connection.`
     if (error.status >= 500) return "The server had a problem. Please try again in a moment."
     return error.message
   }

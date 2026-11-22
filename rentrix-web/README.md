@@ -1,6 +1,6 @@
 # rentrix-web
 
-Static React SPA for Rentrix (React 19, Vite, TypeScript, TanStack Query, React Router, shadcn/ui).
+Static React SPA for Doorway Living (React 19, Vite, TypeScript, TanStack Query, React Router, shadcn/ui).
 It talks to the API only through one configurable base URL, and `npm run build` makes plain
 files in `dist/` that any static host or CDN can serve (SYSTEM_DESIGN.md D-04).
 
@@ -36,7 +36,7 @@ of its own and nothing to commit:
   database); pick one and sign in, no Google needed.
 - A first sign-in goes to `/welcome` to pick tenant, landlord or both (+ optional home city), which posts
   `/me/onboarding` and swaps in the fresh token. `/settings` edits the profile, adds the other role and
-  signs out. `/settings`, `/me/*` and `/welcome` need a session; `/admin/*` needs `ADMIN`.
+  signs out. `/search`, `/settings`, `/me/*` and `/welcome` need a session (`/` is the logged-out landing; a signed-in visitor goes on to `/search`); `/admin/*` needs `ADMIN`.
 - Hosting: pages that show the Google button must be served with
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` (set in `vite.config.ts`, `docker/nginx.conf`
   and `vercel.json`). A Content Security Policy, if you add one, must allow `https://accounts.google.com/gsi/`

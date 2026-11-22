@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.verification;
 
+import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.notification.email.EmailSender;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Locale;
 class VerificationMailer {
 	
 	private final EmailSender email;
+	private final BrandProperties brand;
 	
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
 	void decided(VerificationDecided decided) {
@@ -28,26 +30,26 @@ class VerificationMailer {
 			return;
 		}
 		try {
-			email.send(message(decided));
+			email.send(message(decided, brand.name()));
 		} catch (RuntimeException e) {
 			log.warn("Verification decision email failed: {}", e.toString());
 		}
 	}
 	
-	static EmailMessage message(VerificationDecided decided) {
+	static EmailMessage message(VerificationDecided decided, String brand) {
 		String role = decided.role().name().toLowerCase(Locale.ROOT);
 		String hello = "Hello " + decided.displayName() + ",\n\n";
 		String reason = "Reason: " + label(decided.code()) + (decided.note() == null ? "" : "\n" + decided.note());
 		return switch (decided.outcome()) {
-			case APPROVED -> new EmailMessage(decided.email(), "Your Rentrix " + role + " account is approved",
+			case APPROVED -> new EmailMessage(decided.email(), "Your " + brand + " " + role + " account is approved",
 				hello + "Your " + role + " verification is approved. You can now confirm tenancies and write reviews."
-					+ "\n\nRentrix");
-			case REJECTED -> new EmailMessage(decided.email(), "Your Rentrix " + role + " verification needs changes",
+					+ "\n\n" + brand);
+			case REJECTED -> new EmailMessage(decided.email(), "Your " + brand + " " + role + " verification needs changes",
 				hello + "Your " + role + " verification was not approved.\n\n" + reason
-					+ "\n\nFix the steps in Rentrix and submit again.\n\nRentrix");
-			case REVOKED -> new EmailMessage(decided.email(), "Your Rentrix " + role + " approval was withdrawn",
+					+ "\n\nFix the steps in " + brand + " and submit again.\n\n" + brand);
+			case REVOKED -> new EmailMessage(decided.email(), "Your " + brand + " " + role + " approval was withdrawn",
 				hello + "An admin withdrew the approval of your " + role + " account.\n\n" + reason
-					+ "\n\nFix the steps in Rentrix and submit again.\n\nRentrix");
+					+ "\n\nFix the steps in " + brand + " and submit again.\n\n" + brand);
 			case SUBMITTED, IDENTITY_CHECKED -> throw new IllegalArgumentException("Not a decision: " + decided.outcome());
 		};
 	}

@@ -1,10 +1,25 @@
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import { defineConfig } from "vitest/config"
+import { defineConfig, type Plugin } from "vitest/config"
+import { BRAND } from "./src/lib/brand"
+
+/** Fills the %BRAND_*% placeholders in index.html from src/lib/brand.ts. */
+function brandHtml(): Plugin {
+  const values: Record<string, string> = {
+    BRAND_NAME: BRAND.name,
+    BRAND_TAGLINE: BRAND.tagline,
+    BRAND_WEB_DOMAIN: BRAND.webDomain,
+  }
+  return {
+    name: "brand-html",
+    transformIndexHtml: (html) =>
+      html.replace(/%(BRAND_[A-Z_]+)%/g, (match, key: string) => values[key] ?? match),
+  }
+}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), brandHtml()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

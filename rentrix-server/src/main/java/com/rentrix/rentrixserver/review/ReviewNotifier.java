@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.review;
 
+import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.notification.email.EmailSender;
 import com.rentrix.rentrixserver.property.Property;
@@ -16,9 +17,11 @@ class ReviewNotifier {
 	
 	private final EmailSender email;
 	private final String webBaseUrl;
+	private final String brand;
 	
-	ReviewNotifier(EmailSender email, @Value("${app.web.base-url:}") String webBaseUrl) {
+	ReviewNotifier(EmailSender email, @Value("${app.web.base-url:}") String webBaseUrl, BrandProperties brand) {
 		this.email = email;
+		this.brand = brand.name();
 		this.webBaseUrl = webBaseUrl.endsWith("/") ? webBaseUrl.substring(0, webBaseUrl.length() - 1) : webBaseUrl;
 	}
 	
@@ -30,7 +33,7 @@ class ReviewNotifier {
 		}
 		String about = review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY ? "your home " + home(review)
 			: "you, for the tenancy at " + home(review);
-		email.send(new EmailMessage(to.getEmail(), "New review on Rentrix",
+		email.send(new EmailMessage(to.getEmail(), "New review on " + brand,
 			"""
 				A verified review about %s is now published.
 				
