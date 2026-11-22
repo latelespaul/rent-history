@@ -29,4 +29,4 @@ every wait on a busy machine.
 - Sign in with `devLogin(page, "Demo Tenant BLR-1")` (a seed user) or `freshLogin(page)` (a new
   account that still has to pick a role; `POST /auth/dev-login/new`, dev and test only).
 - A bug found by a click-test becomes a spec. While another PR is fixing it, mark the spec
-  `test.fixme` with the bug in a comment, and flip it to `test` when the fix merges.
+  `test.fixme` with the bug reference in its title, and flip it to `test` when the fix merges.
