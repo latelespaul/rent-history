@@ -5,6 +5,7 @@ import ComingSoonPage from "@/pages/ComingSoonPage"
 import HomePage from "@/pages/HomePage"
 import LoginPage from "@/pages/LoginPage"
 import NotFoundPage from "@/pages/NotFoundPage"
+import PropertyPage from "@/pages/PropertyPage"
 import OnboardingPage from "@/pages/OnboardingPage"
 import SearchPage from "@/pages/SearchPage"
 import SettingsPage from "@/pages/SettingsPage"
@@ -17,6 +18,7 @@ export const routes = [
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/search", element: <SearchPage /> },
+      { path: "/p/:id", element: <PropertyPage /> },
       { path: "/login", element: <LoginPage /> },
       {
         element: <RequireAuth allowOnboarding />,

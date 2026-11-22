@@ -162,4 +162,13 @@
   .num {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Image placeholder until property photos exist (B9): calm hatching, never a stock photo. */
+  .rx-placeholder {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--rx-sunk) 0 12px,
+      color-mix(in srgb, var(--rx-sunk) 88%, var(--rx-ink-300)) 12px 24px
+    );
+  }
 }
