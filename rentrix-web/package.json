@@ -15,9 +15,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "gen:api": "openapi-typescript openapi/openapi.json -o src/types/api.gen.ts",
-    "gen:api:fetch": "node scripts/fetch-openapi.mjs && npm run gen:api"
+    "gen:api:fetch": "node scripts/fetch-openapi.mjs && npm run gen:api",
+    "sync:design": "node scripts/sync-design.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/inter": "^5.3.0",
     "@hookform/resolvers": "^5.9.1",
     "@tailwindcss/vite": "^4",
@@ -25,8 +27,6 @@
     "@tanstack/react-query-devtools": "^5.103.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.6",
-    "lucide-react": "^1.47.0",
-    "next-themes": "^0.4.6",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { MapPin, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MapPinIcon, SearchIcon } from "@/components/ui/icons.gen"
 import { CityCards } from "@/features/city/CityCards"
 import { CityPicker } from "@/features/city/CityPicker"
 import { LaunchCopy } from "@/features/city/LaunchCopy"
@@ -25,16 +25,16 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-14 px-4 py-16">
+    <main className="mx-auto max-w-page space-y-14 px-4 py-16 nav:px-6">
       <section className="space-y-6">
         <div className="max-w-3xl space-y-3">
-          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+          <p className="text-xs font-semibold tracking-[0.08em] text-teal-700 uppercase">
             Renting, with receipts
           </p>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="font-display text-3xl font-semibold sm:text-[2.5rem]">
             Check the landlord, the tenant and the flat before you sign.
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-ink-700">
             Every rating on Rentrix comes from a tenancy that both sides confirmed.
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function HomePage() {
         <form
           role="search"
           onSubmit={onSearch}
-          className="flex max-w-3xl flex-col gap-2 rounded-xl border bg-card p-2 shadow-sm sm:flex-row sm:items-center"
+          className="flex max-w-3xl flex-col gap-2 rounded-xl border border-line-strong bg-surface p-2 shadow-md sm:flex-row sm:items-center"
         >
           <CityPicker
             label="City"
@@ -60,27 +60,27 @@ export default function HomePage() {
             className="sm:w-72"
           />
           <label className="flex min-h-14 flex-1 items-center gap-3 rounded-lg px-3">
-            <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <MapPinIcon size={18} className="text-ink-500" />
             <span className="min-w-0 flex-1">
-              <span className="block text-xs text-muted-foreground">Locality or building</span>
+              <span className="block text-xs text-ink-500">Locality or building</span>
               <input
                 value={locality}
                 onChange={(event) => setLocality(event.target.value)}
                 placeholder="Type a locality"
-                className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
+                className="w-full bg-transparent outline-none placeholder:text-ink-500"
               />
             </span>
           </label>
-          <Button type="submit" size="lg" className="h-12 px-5">
-            <Search aria-hidden />
+          <Button type="submit" size="lg">
+            <SearchIcon />
             Search
           </Button>
         </form>
-        <LaunchCopy className="block text-sm text-muted-foreground" />
+        <LaunchCopy className="block text-sm text-ink-500" />
       </section>
 
       <section aria-labelledby="cities-heading" className="space-y-4">
-        <h2 id="cities-heading" className="text-2xl font-semibold tracking-tight">
+        <h2 id="cities-heading" className="text-2xl font-semibold">
           Pick a city
         </h2>
         <CityCards />
