@@ -1,6 +1,6 @@
 # Rentrix — UX design (v1)
 
-Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console. Revised 2026-11-22 (**design v3**): ID verified with any one of Aadhaar (masked), PAN or phone OTP, LinkedIn as an optional bonus badge; browse by area and by gated society, society page, owner profile with all properties and a Homes rating (§2.8, §2.9, §8.2).
+Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console. Revised 2026-11-22 (**design v3**): ID verified with any one of Aadhaar (masked), PAN or phone OTP, LinkedIn as an optional bonus badge; browse by area and by gated society, society page, owner profile with all properties and a Homes rating (§2.8, §2.9, §8.2). Revised 2026-11-22 (**design v4**): product name Doorway Living; account-created screen, "Signed in as" toast and return to the page the user came from; phone required for every user, PAN / Aadhaar / LinkedIn as optional extra badges; onboarding straight into the stepper; verification progress in the account menu; rental-agreement verification with tier badges (§2.2, §2.7, §2.10, §8.3).
 Scope: user flows, screen inventory, visual style, design tokens, icon set and static mockups for the v1 rebuild.
 Source of truth for roles, entities, permissions, API, auth and trust rules: [`../architecture/SYSTEM_DESIGN.md`](../architecture/SYSTEM_DESIGN.md).
 This document cites its decisions as `D-xx`. It introduces no deviation from them; UX-only choices are listed in §8.
@@ -15,7 +15,7 @@ rentrix-docs/design/
 ├── screenshots/         PNG renders: <screen>-desktop.png (1440 px), some also -mobile.png (390 px)
 └── tools/               build-icons.mjs, render.mjs (headless Chromium via Playwright)
 ```
-Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/screenshots/design-v2/`; design-v3 renders to `rentrix-docs/screenshots/design-v3/`.
+Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/screenshots/design-v2/`; design-v3 renders to `rentrix-docs/screenshots/design-v3/`; design-v4 renders to `rentrix-docs/screenshots/design-v4/`.
 
 ---
 
@@ -63,6 +63,7 @@ Legend: `[screen]` = a mockup; `→` = navigation; `(API)` = the call behind a s
 ```
 - Until onboarding completes, every other write returns `403 onboarding_required`; the web routes the user back to [Role pick] (D-73).
 - After the role pick comes verification (§2.7). The user can read everything at once; trust writes wait for approval (D-91).
+- *Changed in design v4* (D-118, D-119): a new user goes role pick → **[Account created]** ("Welcome to Doorway Living, your account is created", name, email, role, "Verify your phone number") → the stepper. A returning user gets the toast **"Signed in as <name>"** ([Returning sign-in toast]) and lands back on the page they came from (`?next=`), not on the role home.
 - The other role is added later from settings (`PATCH /me`), shown as an "Also a landlord?" card on [My tenancies] (D-16).
 - An invite link (tenancy invite email) goes through the same sign-in, then lands on the tenancy to confirm (D-34).
 
@@ -131,6 +132,16 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 - Landlords do steps 1–3; each property is checked at listing time with a proof document (D-92), shown on the landlord's property form (W5).
 - Verify ID: phone OTP is verified at once (no admin); PAN and masked Aadhaar wait for an admin check, and the application can be submitted while they wait. "ID verified" shows as soon as any one method is verified; approval still opens trust writes (D-105).
 
+*Changed in design v4* (D-117, D-120, D-121):
+```
+[Account created] ─▶ [1 Profile] ─▶ [2 Phone, required] ─▶ [3 ID, optional: PAN · masked Aadhaar · LinkedIn] ─▶ [4 Rental details, optional] ─▶ Submit
+                                                                                                                          ▼
+                                                     [Submitted · waiting]  account menu "Waiting for approval" until an admin decides
+```
+- Phone is the only required check; the ID cards and LinkedIn are extra badges with "Skip". PAN and Aadhaar show "Coming soon" until PLAN B12.
+- Rental details (both roles): upload the agreement of the home you rent now or rent out, type its key fields, see the first checks (§2.10).
+- The account menu shows "Verification: n of 4 steps", "Waiting for approval" or "Changes needed" with a dot on the avatar until approved ([Account menu progress]).
+
 ### 2.8 Browse by area and society (design v3)
 ```
 [Search] tabs: Homes | Areas | Societies
@@ -150,6 +161,15 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 
 ### 2.9 Owner profile (design v3)
 One landlord can own many properties. The landlord profile lists them all, grouped by city → area → society (standalone homes under their area), with each property's rating, the owner's **Rating as landlord** and the **Homes rating** roll-up of all their homes side by side (D-111, D-113). Badges "ID verified" and "LinkedIn verified" sit under the name (D-100).
+
+### 2.10 Rental agreement (design v4)
+```
+[4 Rental details] or tenancy page ─ upload + consent + key fields ─▶ checks 1–8 (D-125) ─▶ tier Unverified
+other party ─▶ [Tenancy · confirm agreement] same file (sha256) ─▶ "Agreement matched"
+admin ─▶ [Admin · agreement in approvals] SHCIL / IGR lookup by hand ─▶ "Agreement verified"
+```
+- The tier badge shows on the tenancy, its rent-history rows and review author lines; the public never sees the agreement (D-126).
+- The file is encrypted, seen only by the two parties and admins, and deleted 30 days after the check (D-131).
 
 ---
 
@@ -190,6 +210,17 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 28 | Browse areas (v3) | `/areas?city=` | anyone | `GET /areas` | D-108, D-111, D-112 | `mockups/browse-areas.html` | `screenshots/browse-areas-desktop.png` |
 | 29 | Browse societies (v3) | `/societies?city=&area=` | anyone | `GET /societies` | D-111, D-112 | `mockups/browse-societies.html` | `screenshots/browse-societies-desktop.png` |
 | 30 | Society page (v3) | `/s/:id` | anyone (review text signed in) | `GET /societies/{id}`, `/reviews` | D-107, D-111, D-112, D-57 | `mockups/society.html` | `screenshots/society-desktop.png`, `-mobile.png` |
+| 31 | Account created (v4) | `/welcome/created` | right after the role pick | `POST /me/onboarding` response | D-116, D-118 | `mockups/welcome-created.html` | `screenshots/welcome-created-desktop.png`, `-mobile.png` |
+| 32 | Returning sign-in toast (v4) | any page, from `?next=` | returning user | `POST /auth/google`, `/auth/dev-login` | D-119 | `mockups/signin-toast.html` | `screenshots/signin-toast-desktop.png` |
+| 33 | Account menu progress (v4) | top bar, every page | not approved | `GET /me/verification` | D-121 | `mockups/account-menu-progress.html` | `screenshots/account-menu-progress-desktop.png` |
+| 34 | Verify 2 · Phone, required (v4) | `/verify/phone` | signed in | `POST /me/identity/phone/start`, `/confirm` | D-101, D-117 | `mockups/verify-v4-phone.html` | `screenshots/verify-v4-phone-desktop.png`, `-mobile.png` |
+| 35 | Verify 3 · ID, optional (v4) | `/verify/id` | signed in | `GET /me/identity`, `PUT /me/identity/linkedin` (PAN / Aadhaar from B12) | D-100, D-117, D-122 | `mockups/verify-v4-id.html` | `screenshots/verify-v4-id-desktop.png` |
+| 36 | Verify 4 · Rental details (v4) | `/verify/rental` | signed in | `POST /me/agreements`, `/confirm` | D-120, D-123–D-127, D-131 | `mockups/verify-v4-rental.html` | `screenshots/verify-v4-rental-desktop.png`, `-mobile.png` |
+| 37 | Submitted · waiting (v4) | `/verify` | `PENDING` | `GET /me/verification` | D-90, D-121 | `mockups/verify-v4-submitted.html` | `screenshots/verify-v4-submitted-desktop.png` |
+| 38 | Tenancy · confirm agreement (v4) | `/tenancies/:id/agreement` | the other party | `GET /tenancies/{id}/agreement`, `POST …/confirm` | D-125, D-126, D-128 | `mockups/tenancy-agreement.html` | `screenshots/tenancy-agreement-desktop.png` |
+| 39 | Admin · agreement in approvals (v4) | `/admin/approvals?role=` (detail pane) | `ADMIN` | `GET /admin/applications/{id}`, `POST /admin/agreements/{id}/anchor` | D-124, D-125, D-130 | `mockups/admin-agreement.html` | `screenshots/admin-agreement-desktop.png` |
+
+*Changed in design v4*: #31–#39 are new. They replace #14 (LinkedIn is now a card in #35), #15 and #26 (#34 and #35: phone is its own required step, the ID chooser is optional) and #16 (#36). #10 Role pick now continues to #31; the brand reads Doorway Living on v4 pages (D-116).
 
 *Changed in design v3*: #2 Search (tabs, area and society filters, owner badges), #3 Property (location breadcrumb, owner badges), #4 Landlord profile (now the owner profile: badges, all properties grouped, Homes rating), #5 Tenant profile ("ID verified" badge), #13–#19 verification steps (#15 is now "Verify 2 · Verify ID", the method chooser, route `/verify/id`; #14 is "Verify 3 · LinkedIn, optional"), #22 Admin approvals (identity checks per method, "ID checks" tab). The area page reuses the Browse societies layout filtered to one area, with its standalone homes below.
 
@@ -208,6 +239,9 @@ All mockups use the dev seed of SYSTEM_DESIGN §16 (D-68, D-69): 4 Bangalore + 4
 | Admin screens | `demo-admin@example.test` | queues: landlord BLR-3, tenants BLR-7 (Duplicate ID) and PNQ-7, listing Demo Annex I; record Demo Landlord BLR-1 |
 | Verify ID, phone code (v3) | Demo Tenant BLR-7 | PAN `XXXXXX001D` being checked; phone code screen is **illustrative** (the seed has no phone numbers, D-69) |
 | Masked Aadhaar (v3) | Demo Tenant PNQ-7 | phone verified (`XXXXXX0001`), masked Aadhaar `XXXX XXXX 0007` (D-115) |
+| Account created, Verify v4 steps, Submitted (v4) | an **illustrative** new user ("New User", `new.user@example.test`) | not in the seed: the screens show a first sign-in; phone and agreement values are fictional |
+| Sign-in toast, Tenancy · confirm agreement (v4) | Demo Tenant PNQ-2 / Demo Landlord BLR-1 | Demo Residency A with the seeded `KA_ESTAMP` agreement (D-115 v4) |
+| Admin · agreement in approvals (v4) | `demo-admin@example.test` | Demo Tenant PNQ-7 with phone verified, masked Aadhaar pending and the seeded onboarding agreement |
 | Browse areas / societies, Society page (v3) | anonymous / tenant | BLR areas with PIN codes; Demo Greens (Koramangala) with Tower 1 / Tower 2 × Wing A / Wing B, Demo Residency A in Tower 1 · Wing A; two **illustrative** societies on Browse societies (dashed outline) to show averages and sort |
 | Owner profile (v3) | tenant | Demo Landlord BLR-1: ID + LinkedIn verified; Residency A (4, 3) + Heights B (4) → Homes rating 3.7 from 3 |
 | Search | tenant | Demo Residency A, Villa C, Heights B, Studio D (Bangalore) |
@@ -361,6 +395,7 @@ npm run browsers       # once, if Chromium is not cached yet
 npm run render         # build icons, then write screenshots/*.png
 npm run render:v2      # same, and copy the design-v2 renders to rentrix-docs/screenshots/design-v2/
 npm run render:v3      # render only the design-v3 new and changed screens, copy them to rentrix-docs/screenshots/design-v3/
+npm run render:v4      # render only the design-v4 screens, copy them to rentrix-docs/screenshots/design-v4/
 ```
 
 Screenshots of implemented features (from the real app with dev login) go to `rentrix-docs/screenshots/` in the implementation PRs; this folder holds design renders only.
@@ -397,3 +432,13 @@ Screenshots of implemented features (from the real app with dev login) go to `re
 - **Society page is organised by building**: one block per tower, a row per wing, homes inside. Empty wings say "No homes listed yet" instead of hiding, so the structure is clear. Flat numbers never appear (D-57, D-107).
 - **Owner profile shows two ratings side by side**: "Rating as landlord" (the person) and "Homes rating" (all their homes). A roll-up often crosses the 3-review threshold before any single property does (D-52, D-111).
 - **No new icons**: phone uses `message`, PAN `document`, Aadhaar `user`, LinkedIn `link`, society and tower `building`, area `map-pin`. No third-party logos.
+
+### 8.3 Design v4 choices
+- **The welcome is a moment, not a redirect.** A green tick, "your account is created", the facts the user gave (name, email, role) and one primary next step. "Not now" is always there, so the user is never forced into the stepper (D-118).
+- **A toast, not a page, for returning users.** "Signed in as <name>" confirms which Google account was used and gets out of the way; the user lands where they were (D-119).
+- **Phone first, badges second.** The stepper marks Phone "Required" and ID "Optional"; the ID step opens with "Phone verified: that is all you need to submit", so optional cards never feel like a blocker (D-117).
+- **Progress lives where the name is.** The account menu row with a thin bar and the next step, plus a dot on the avatar, replaces hunting for a status page (D-121).
+- **Checks are explained, not scored silently.** Each rental-agreement check shows a one-line reason; "Later" marks checks that need the other party or an admin, so a user never reads a pending check as a failure (D-125).
+- **Aadhaar warning before the scan.** The upload card warns to cover Aadhaar numbers before scanning, because the manual extractor cannot redact a file (D-131).
+- **The government lookup is a button for the admin, never for the app.** The admin pane links to the portal and records a tick with a note (D-130).
+- **No new icons**: agreement tiers reuse `shield-check` (verified) and `document` (matched); the menu row uses `shield-check`, `clock` and `alert`.

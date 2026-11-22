@@ -119,8 +119,12 @@
     admin: { initials: 'DA', name: 'Demo A.', cls: 'badge-admin' }
   };
 
+  // Design v4 pages set <body data-brand="Doorway Living"> (D-116); older pages keep "Rentrix".
+  function brandName() { return document.body.getAttribute('data-brand') || 'Rentrix'; }
+
   function topbar(el) {
     var as = el.getAttribute('data-as') || 'anon';
+    var dot = el.hasAttribute('data-dot') ? '<span class="chip-dot" aria-hidden="true"></span>' : '';
     var active = el.getAttribute('data-active') || '';
     var nav = (NAV[as] || NAV.anon).map(function (n) {
       return '<a href="' + n[2] + '" class="' + (n[0] === active ? 'active' : '') + '"><i data-icon="' + n[3] + '" data-size="18"></i>' + n[1] + '</a>';
@@ -128,18 +132,18 @@
     var right = as === 'anon'
       ? '<a class="btn btn-primary" href="login.html"><i data-icon="login" data-size="18"></i>Sign in</a>'
       : (as === 'admin' ? '<span class="badge badge-admin">Admin</span>' : '') + '<span class="badge badge-demo hide-sm">Demo data</span>' +
-        '<span class="row" style="gap:8px"><span class="avatar ' + WHO[as].cls + '" style="width:34px;height:34px">' + WHO[as].initials + '</span>' +
+        '<span class="row" style="gap:8px;position:relative"><span class="avatar ' + WHO[as].cls + '" style="width:34px;height:34px">' + WHO[as].initials + '</span>' + dot +
         '<span class="small hide-sm" style="font-weight:600">' + WHO[as].name + '</span></span>';
     el.className = 'topbar';
     el.innerHTML = '<div class="container">' +
-      '<a class="brand" href="home.html"><span class="brand-mark"><i data-icon="tenancy" data-size="20"></i></span>Rentrix</a>' +
+      '<a class="brand" href="home.html"><span class="brand-mark"><i data-icon="tenancy" data-size="20"></i></span>' + brandName() + '</a>' +
       '<nav class="nav">' + nav + '</nav><span class="spacer"></span>' + right +
       '<button class="btn btn-ghost icon-btn menu-btn" aria-label="Menu"><i data-icon="menu"></i></button></div>';
   }
 
   function footer(el) {
     el.className = 'footer';
-    el.innerHTML = '<div class="container row between"><span>Rentrix · ' + launchCopy(el.getAttribute('data-cities') || '2') + '</span>' +
+    el.innerHTML = '<div class="container row between"><span>' + brandName() + ' · ' + launchCopy(el.getAttribute('data-cities') || '2') + '</span>' +
       '<span class="row" style="gap:16px"><a href="#">How trust works</a><a href="#">Privacy</a><a href="#">Report a problem</a></span></div>';
   }
 

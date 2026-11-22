@@ -8,6 +8,7 @@
     "render": "node build-icons.mjs && node render.mjs",
     "render:v2": "node build-icons.mjs && node render.mjs --copy-v2",
     "render:v3": "node build-icons.mjs && node render.mjs --only-v3 --copy-v3",
+    "render:v4": "node build-icons.mjs && node render.mjs --only-v4 --copy-v4",
     "browsers": "playwright install chromium"
   },
   "devDependencies": {

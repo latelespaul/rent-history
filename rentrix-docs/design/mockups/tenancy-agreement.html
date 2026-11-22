@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Tenancy · Rental agreement</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Tenancy: confirm the rental agreement (design v4)</b> · viewed as Demo Landlord BLR-1 (other party) · <code>GET /tenancies/{id}/agreement</code>, <code>POST …/agreement/confirm {sha256}</code> · tiers D-126 · D-128</div>
+<header data-topbar data-as="landlord"></header>
+<main class="container section">
+  <nav class="crumbs small muted">My tenancies › Demo Residency A · current since May 2024</nav>
+  <h1 class="h1" style="margin-top:6px">Rental agreement <span class="badge badge-demo">Demo data</span></h1>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0">Uploaded by your tenant, Demo T.</h2><span class="badge badge-info"><i data-icon="clock"></i>Waiting for you</span></div>
+        <p class="small muted">Check that this is the agreement you both signed. You confirm the exact file: <span class="masked">sha256 3b1e…c09d</span>. If the file changes, both of you confirm again.</p>
+        <div class="filerow"><span class="thumb">DEMO</span><div class="grow"><b class="small">DEMO AGREEMENT · NOT REAL</b><div class="xs muted">PDF · 6 pages · opens through a 5-minute link</div></div><button class="btn btn-ghost btn-sm"><i data-icon="eye" data-size="16"></i>View</button></div>
+        <dl class="kv" style="margin-top:14px">
+          <dt>E-stamp</dt><dd>IN-KA10000000000001A · 2024-04-25 · ₹500 · purchased by Demo Tenant BLR-1</dd>
+          <dt>Landlord</dt><dd>Demo Landlord BLR-1</dd><dt>Tenant</dt><dd>Demo Tenant BLR-1</dd>
+          <dt>Home</dt><dd>Demo Residency A, Tower 1, Wing A, Demo Greens, Koramangala 560034</dd>
+          <dt>Rent · deposit</dt><dd>₹36,500 / month · ₹1,00,000</dd><dt>Term</dt><dd>2024-05-01 → 11 months, renewable</dd>
+        </dl>
+        <div class="row" style="gap:8px;margin-top:18px"><a class="btn btn-primary btn-lg" href="#"><i data-icon="check" data-size="18"></i>Yes, this is our agreement</a><a class="btn btn-ghost" href="#">Something is wrong</a></div>
+      </div>
+      <div class="card"><h2 class="h3">Checks</h2><ul class="checks"><li><i data-icon="check" data-size="18" class="pass"></i><span><b>1 · Parties</b></span><span class="xs pass">Pass · 100</span><span class="why">Both names match the two accounts.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>2 · Home</b></span><span class="xs pass">Pass · 100</span><span class="why">PIN, area, society, tower and flat match the property.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>3 · Money</b></span><span class="xs pass">Pass · 100</span><span class="why">Rent ₹36,500 equals the confirmed rent from May 2024; deposit matches.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>4 · Dates</b></span><span class="xs pass">Pass · 100</span><span class="why">Start matches the tenancy; e-stamp issued before the start.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>5 · Stamp number</b></span><span class="xs pass">Pass · 100</span><span class="why">Well-formed; amount usual; purchaser is the tenant.</span></li><li><i data-icon="alert" data-size="18" class="warn"></i><span><b>6 · Both sides</b></span><span class="xs warn">Check</span><span class="why">Waiting for your confirmation.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>7 · Fraud signals</b></span><span class="xs pass">Pass · 100</span><span class="why">File and number not used on any other tenancy; no edits after the stamp date.</span></li><li><i data-icon="info" data-size="18" class="na"></i><span><b>8 · Government lookup</b></span><span class="xs na">Later</span><span class="why">An admin checks the number on the SHCIL portal.</span></li></ul></div>
+    </div>
+    <aside class="stack">
+      <div class="card"><h2 class="h3">Tiers</h2><ul class="checklist">
+        <li><span class="badge badge-verified"><i data-icon="shield-check"></i>Agreement verified</span><span class="small muted">checks pass, both confirmed, admin found the stamp number</span></li>
+        <li><span class="badge badge-info"><i data-icon="document"></i>Agreement matched</span><span class="small muted">checks pass, both confirmed</span></li>
+        <li><span class="badge">Agreement not checked</span><span class="small muted">only you two see this</span></li>
+      </ul><p class="xs muted">The badge shows on this tenancy, its rent-history rows and your reviews. The public never sees the agreement. <span class="spec">D-126</span></p></div>
+      <div class="card"><h2 class="h3"><i data-icon="lock" data-size="18"></i> Private</h2><p class="small muted">Only the two of you and admins open the file. It is deleted 30 days after the admin check. <span class="spec">D-131</span></p></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
