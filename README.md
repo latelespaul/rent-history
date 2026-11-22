@@ -12,10 +12,10 @@ Needs only Java 21 (SQLite file, no Google account, no Docker):
 
 ```sh
 cd rentrix-server
-SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run
 ```
 
-The API listens on `http://localhost:8080/api/v1`. `SPRING_PROFILES_ACTIVE` is required (`dev`, `test` or `prod`); every setting is in SYSTEM_DESIGN §17.
+`SEED_DEMO=true` adds the demo users and homes on an empty database (without it the dev-login picker is empty). The API listens on `http://localhost:8080/api/v1`. `SPRING_PROFILES_ACTIVE` is required (`dev`, `test` or `prod`); every setting is in SYSTEM_DESIGN §17.
 
 ## Signing in
 

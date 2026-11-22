@@ -20,7 +20,8 @@ export interface NavItem {
 /** The role-aware top bar links (DESIGN.md §3 routes, mockups' top bar). */
 export function navFor(viewer: ShellViewer | null): NavItem[] {
   const search: NavItem = { to: "/search", label: "Search", icon: "search" }
-  if (!viewer) return [search]
+  // Anonymous, or signed in but no role picked yet (D-73): only the public pages.
+  if (!viewer || viewer.roles.length === 0) return [search]
   if (viewer.roles.includes("ADMIN")) {
     return [
       { to: "/admin", label: "Dashboard", icon: "chart", end: true },

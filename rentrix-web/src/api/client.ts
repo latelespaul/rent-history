@@ -168,5 +168,15 @@ export function createApiClient(options: ApiClientOptions) {
 
 export type ApiClient = ReturnType<typeof createApiClient>
 
+let sessionExpiredHandler: (() => void) | null = null
+
+/** Lets the auth layer (W3) react when the app-wide client's refresh is refused. */
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  sessionExpiredHandler = handler
+}
+
 /** The app-wide client. The base URL is read per request, so `public/config.js` always wins. */
-export const api = createApiClient({ baseUrl: apiBaseUrl })
+export const api = createApiClient({
+  baseUrl: apiBaseUrl,
+  onSessionExpired: () => sessionExpiredHandler?.(),
+})
