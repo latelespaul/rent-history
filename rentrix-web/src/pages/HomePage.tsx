@@ -526,14 +526,7 @@ export default function HomePage() {
                     {t.icon}
                   </span>
                   <div className="flex h-full flex-col gap-2">
-                    <span
-                      className={cn(
-                        "self-start rounded-md px-2 py-0.5 text-[11px] font-bold tracking-[0.06em] uppercase",
-                        t.tag === "Optional"
-                          ? "bg-white/12 text-[#e6f4f1]"
-                          : "bg-[#8fd8cd] text-teal-800",
-                      )}
-                    >
+                    <span className="self-start rounded-md bg-[#8fd8cd] px-2 py-0.5 text-[11px] font-bold tracking-[0.06em] text-teal-800 uppercase">
                       {t.tag}
                     </span>
                     <h3 className="text-[17px] font-semibold text-white">{t.title}</h3>
