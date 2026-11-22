@@ -16,11 +16,11 @@ import { Buildings } from "./AppMock"
 export const PREVIEW_SIZE = 6
 
 /** The green tick (D-134): the badge an admin review gives a user, home, tenancy or review. */
-export function GreenTick({ short = false }: { short?: boolean }) {
+export function GreenTick() {
   return (
     <Badge variant="success">
       <CheckIcon />
-      {short ? "Verified" : `Verified by ${BRAND.name}`}
+      Verified by {BRAND.name}
     </Badge>
   )
 }
@@ -115,7 +115,8 @@ function SampleHomeCard({ city, index }: { city: string | undefined; index: numb
 
 /**
  * Review text reaches only signed-in readers (D-56), so the preview shows example reviews in
- * the words of the demo seed, each marked "Demo data": who rated whom, stars, a line, the tick.
+ * the words of the demo seed, each marked "Demo data": who rated whom, stars, a line and its
+ * real state. The seed gives no review the green tick (D-134), so each one is "Not verified yet".
  */
 const SAMPLE_REVIEWS = [
   {
@@ -156,7 +157,7 @@ function SampleReview({ review }: { review: (typeof SAMPLE_REVIEWS)[number] }) {
         “{review.text}”
       </blockquote>
       <div className="mt-auto">
-        <GreenTick short />
+        <Badge variant="neutral">Not verified yet</Badge>
       </div>
     </article>
   )

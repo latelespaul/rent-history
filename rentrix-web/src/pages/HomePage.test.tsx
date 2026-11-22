@@ -5,6 +5,7 @@ import { act, cleanup, render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { PropertySearch } from "@/api/properties"
 import type { AuthState } from "@/features/auth/authContext"
+import { fetchCities } from "@/api/cities"
 import { LAUNCH_CITIES } from "@/test/cities"
 import { card, page } from "@/test/properties"
 import { makeUser } from "@/test/users"
@@ -82,10 +83,11 @@ function ctaLinks(): HTMLAnchorElement[] {
 
 // The landing is a long page; give each test room on a busy CI runner.
 describe("HomePage", { timeout: 20_000 }, () => {
-  it("explains the product to an anonymous visitor before sign-in", () => {
+  it("explains the product to an anonymous visitor before sign-in", async () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
+    await waitFor(() => expect(texts("h2")).toContain("Where we are live."), { timeout: 10_000 })
     expect(texts("h1")).toEqual(["Know the home, the landlord and the tenant before you sign."])
     expect(texts("h2")).toEqual([
       "Renting runs on trust nobody can check.",
@@ -191,6 +193,11 @@ describe("HomePage", { timeout: 20_000 }, () => {
     // two homes from the seed and an example review after each, every one marked "Demo data"
     expect(texts("article [data-variant=demo]", preview)).toEqual(Array(4).fill("Demo data"))
     expect(texts("article blockquote", preview)).toHaveLength(2)
+    // the seed gives no review the green tick, so no example review carries one
+    expect(texts("article [data-variant=neutral]", preview)).toEqual(
+      Array(2).fill("Not verified yet"),
+    )
+    expect(texts("article [data-variant=success]", preview)).toEqual([])
     expect(texts("article h3", preview)).not.toContain("Sample apartment")
     // rent shows only where both parties share it; a card never carries one
     expect(preview.textContent).not.toMatch(/₹/)
@@ -218,12 +225,26 @@ describe("HomePage", { timeout: 20_000 }, () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
+    await waitFor(() => expect(texts("li a", region("coverage"))).toContain("Baner"), {
+      timeout: 10_000,
+    })
     const coverage = region("coverage")
-    await waitFor(() => expect(texts("li a", coverage)).toContain("Baner"), { timeout: 10_000 })
     expect(texts("h3", coverage)).toEqual(["Bangalore", "Pune"])
     expect(h.areaCalls.sort()).toEqual(["BLR", "PNQ"])
     const chip = [...coverage.querySelectorAll("li a")].find((a) => a.textContent === "HSR Layout")
     expect(chip?.getAttribute("href")).toBe("/search?city=BLR&locality=HSR%20Layout")
+  })
+
+  it("hides the whole coverage section when GET /cities fails", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    vi.mocked(fetchCities).mockRejectedValueOnce(new Error("offline"))
+    renderHome()
+
+    await waitFor(() => expect(vi.mocked(fetchCities)).toHaveBeenCalled())
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    expect(document.getElementById("coverage")).toBeNull()
+    expect(texts("h2")).not.toContain("Where we are live.")
+    expect(document.body.textContent).not.toMatch(/More cities are on the way/)
   })
 
   it("sends a signed-in user into the app", () => {

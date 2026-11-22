@@ -100,6 +100,25 @@ function LaunchPill() {
   )
 }
 
+/** "Where we are live": the whole section waits for a non-empty `GET /cities` (D-85). */
+function Coverage() {
+  const cities = useCities()
+  if (!cities.isSuccess || cities.data.length === 0) return null
+  return (
+    <Section
+      id="coverage"
+      eyebrow="Coverage"
+      title="Where we are live."
+      intro="Search by locality, gated society or PIN code."
+      center
+      className="border-y border-line bg-sunk"
+    >
+      <LandingCoverage cities={cities.data} />
+      <p className="mt-5 text-center text-sm text-ink-500">More cities are on the way.</p>
+    </Section>
+  )
+}
+
 const NAV = [
   ["#how", "How it works"],
   ["#for-tenants", "For tenants"],
@@ -534,17 +553,7 @@ export default function HomePage() {
           <LandingPreview />
         </Section>
 
-        <Section
-          id="coverage"
-          eyebrow="Coverage"
-          title="Where we are live."
-          intro="Search by locality, gated society or PIN code."
-          center
-          className="border-y border-line bg-sunk"
-        >
-          <LandingCoverage />
-          <p className="mt-5 text-center text-sm text-ink-500">More cities are on the way.</p>
-        </Section>
+        <Coverage />
 
         <section id="faq" aria-labelledby="faq-title" className="scroll-mt-16 py-16 lg:py-26">
           <Container className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start lg:gap-16 lg:px-8">

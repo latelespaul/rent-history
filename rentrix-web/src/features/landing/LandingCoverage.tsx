@@ -3,8 +3,8 @@ import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRightIcon, CheckIcon } from "@/components/ui/icons.gen"
 import { searchAreas } from "@/api/locations"
-import { useCities } from "@/features/city/useCities"
 import { cn } from "@/lib/utils"
+import type { City } from "@/types/api"
 
 /** How many localities each city card names (the first of `GET /areas`, public). */
 export const COVERAGE_AREAS = 6
@@ -43,9 +43,7 @@ const TINTS = [
  * "Where we are live": one card per active city from `GET /cities` (D-85), each naming its
  * first localities from `GET /areas` as links into search. No city or locality is written here.
  */
-export function LandingCoverage() {
-  const cities = useCities()
-  const list = cities.data ?? []
+export function LandingCoverage({ cities: list }: { cities: readonly City[] }) {
   const areas = useQueries({
     queries: list.map((city) => ({
       queryKey: ["landing", "areas", city.code],
@@ -53,8 +51,6 @@ export function LandingCoverage() {
       staleTime: 1000 * 60 * 10,
     })),
   })
-
-  if (!cities.isSuccess || list.length === 0) return null
 
   return (
     <div className="grid gap-4 md:grid-cols-2 md:gap-6">
