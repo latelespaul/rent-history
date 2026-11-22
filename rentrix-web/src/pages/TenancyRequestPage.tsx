@@ -14,6 +14,12 @@ import { placeLine, propertyTitle } from "@/features/property/labels"
 import { useProperty } from "@/features/property/useProperties"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today, wholeNumber } from "@/features/tenancy/labels"
+import {
+  checkTenancyForm,
+  friendlyFieldError,
+  type TenancyField,
+  type TenancyFieldErrors,
+} from "@/features/tenancy/tenancyForm"
 import { useMyProperties, useRefreshTenancyData } from "@/features/tenancy/useTenancies"
 import { useSessionDraft } from "@/lib/draft"
 import type { PropertyDetail, TenancyInput } from "@/types/api"
@@ -91,6 +97,7 @@ export default function TenancyRequestPage() {
   const setEndDate = field("endDate")
   const setRent = field("rent")
   const setDeposit = field("deposit")
+  const [checked, setChecked] = useState<TenancyFieldErrors>({})
   const [idempotencyKey] = useState(newKey)
   const refresh = useRefreshTenancyData()
 
@@ -102,20 +109,28 @@ export default function TenancyRequestPage() {
       navigate(`/tenancies/${tenancy.id}`)
     },
   })
-  const fieldError = (field: string) =>
-    isApiError(create.error) ? create.error.fieldError(field) : undefined
+  const apiFieldErrors = isApiError(create.error) ? create.error.fieldErrors : []
+  const fieldError = (field: TenancyField) => {
+    const fromApi = apiFieldErrors.find((e) => e.field === field)
+    return checked[field] ?? (fromApi ? friendlyFieldError(fromApi) : undefined)
+  }
+  // Field errors show under their fields; the notice then only points at them.
+  const shownInline = apiFieldErrors.length > 0
 
   const chosen = asLandlord ? propertyId || listed[0]?.id || "" : propertyParam
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
+    const errors = checkTenancyForm({ asLandlord, email, startDate, endDate, rent, deposit })
+    setChecked(errors)
+    if (Object.keys(errors).length > 0) return
     const depositInr = wholeNumber(deposit)
     create.mutate({
       propertyId: chosen,
       ...(asLandlord ? { counterpartyEmail: email.trim() } : {}),
       startDate,
       ...(endDate ? { endDate } : {}),
-      initialRentInr: wholeNumber(rent) ?? Number.NaN,
+      initialRentInr: wholeNumber(rent)!,
       ...(depositInr !== undefined ? { depositInr } : {}),
     })
   }
@@ -223,6 +238,8 @@ export default function TenancyRequestPage() {
               <Input
                 id="tr-email"
                 type="email"
+                aria-required="true"
+                aria-invalid={fieldError("counterpartyEmail") ? true : undefined}
                 autoComplete="off"
                 value={email}
                 placeholder="name@example.com"
@@ -237,6 +254,8 @@ export default function TenancyRequestPage() {
               <Input
                 id="tr-start"
                 type="date"
+                aria-required="true"
+                aria-invalid={fieldError("startDate") ? true : undefined}
                 max={today()}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
@@ -266,6 +285,8 @@ export default function TenancyRequestPage() {
               <Input
                 id="tr-rent"
                 inputMode="numeric"
+                aria-required="true"
+                aria-invalid={fieldError("initialRentInr") ? true : undefined}
                 value={rent}
                 onChange={(e) => setRent(e.target.value)}
                 className="h-10"
@@ -298,7 +319,12 @@ export default function TenancyRequestPage() {
             Rental agreement upload (private proof) comes with document uploads.
           </Notice>
 
-          {create.isError && <ActionError error={create.error} />}
+          {create.isError &&
+            (shownInline ? (
+              <Notice tone="danger">Some details need a fix: see the messages above.</Notice>
+            ) : (
+              <ActionError error={create.error} />
+            ))}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={create.isPending || !chosen}>
               {create.isPending ? "Sending…" : asLandlord ? "Send invite" : "Send to landlord"}
