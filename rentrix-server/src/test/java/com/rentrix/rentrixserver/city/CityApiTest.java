@@ -122,6 +122,11 @@ class CityApiTest {
 		assertThatCode(() -> cityService.requirePincode("NOI", "201301")).doesNotThrowAnyException();
 		assertThatCode(() -> cityService.requirePincode("DEL", "110017")).doesNotThrowAnyException();
 		assertPincodeError("GGN", "110017", "city_mismatch");
+		assertThatCode(() -> cityService.requirePincode("MUM", "400001")).doesNotThrowAnyException();
+		assertThatCode(() -> cityService.requirePincode("MUM", "401107")).doesNotThrowAnyException();
+		assertPincodeError("MUM", "403001", "city_mismatch");
+		assertThatCode(() -> cityService.requirePincode("HYD", "500032")).doesNotThrowAnyException();
+		assertPincodeError("HYD", "503001", "city_mismatch");
 		assertPincodeError("BLR", "56003", "pattern");
 		assertPincodeError("BLR", "56003a", "pattern");
 		assertPincodeError("BLR", null, "pattern");

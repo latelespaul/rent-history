@@ -69,10 +69,6 @@ function joinNames(names: string[]): string {
 }
 
 /**
- * The launch line built from the active list (D-85): names up to 3 cities ("Starting in A and
- * B, more cities coming"), counts beyond ("Live in 9 cities, more coming"). Never says "only".
- */
-/**
  * The names the launch copy lists, in API order: a city on its own, or its region once, at its
  * first city, with every city of the region, e.g. "Delhi NCR (Delhi · Gurugram · Noida)".
  */
@@ -96,6 +92,11 @@ export function launchNames(cities: City[]): string[] {
   )
 }
 
+/**
+ * The launch line built from the active list (D-85): names up to LAUNCH_COPY_MAX_NAMES (6)
+ * entries from launchNames ("Live in A and B; other cities on request"), counts cities beyond
+ * ("Live in 9 cities; other cities on request"). Never says "only".
+ */
 export function launchCopy(cities: City[]): string {
   if (cities.length === 0) return "Cities coming soon"
   const names = launchNames(cities)
