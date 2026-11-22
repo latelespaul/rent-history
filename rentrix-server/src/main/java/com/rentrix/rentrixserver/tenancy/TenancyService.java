@@ -530,12 +530,18 @@ public class TenancyService {
 		boolean tenantHidden = side == TenancyParty.LANDLORD && !admin && t.getInitiatedBy() == TenancyParty.LANDLORD
 			&& !CONFIRMED.contains(t.getStatus());
 		Property p = t.getProperty();
-		Long currentRent = CONFIRMED.contains(t.getStatus())
+		boolean confirmed = CONFIRMED.contains(t.getStatus());
+		// The latest confirmed rent in effect today, and the date it applies from.
+		Optional<RentRecord> inEffect = confirmed
 			? rentRecords.findByTenancyIdOrderByEffectiveFromAsc(t.getId()).stream()
 			.filter(r -> r.getStatus() == RentRecordStatus.CONFIRMED && !r.getEffectiveFrom().isAfter(today()))
 			.reduce((a, b) -> b)
-			.map(RentRecord::getMonthlyRentInr)
-			.orElse(t.getInitialRentInr())
+			: Optional.empty();
+		Long currentRent = confirmed ? inEffect.map(RentRecord::getMonthlyRentInr).orElse(t.getInitialRentInr()) : null;
+		// Rent records start on the first of a month; the rent never applies before the tenancy starts.
+		LocalDate currentRentFrom = confirmed
+			? inEffect.map(RentRecord::getEffectiveFrom).filter(from -> from.isAfter(t.getStartDate()))
+			.orElse(t.getStartDate())
 			: null;
 		return new TenancyView(
 			t.getPublicId(),
@@ -549,6 +555,7 @@ public class TenancyService {
 			t.getEndDate(),
 			t.getInitialRentInr(),
 			currentRent,
+			currentRentFrom,
 			t.getDepositInr(),
 			t.getDepositRefundedInr(),
 			t.getStatus(),

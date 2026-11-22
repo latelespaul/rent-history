@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button"
 import { BuildingIcon, CalendarIcon, KeyIcon, LockIcon, RupeeIcon } from "@/components/ui/icons.gen"
 import { rupees } from "@/features/property/labels"
 import type { Tenancy } from "@/types/api"
-import { counterparty, dateLabel, TENANCY_STATUS, tenancyHome } from "./labels"
+import { counterparty, dateLabel, rentLine, TENANCY_STATUS, tenancyHome } from "./labels"
 import { TenancyActions } from "./TenancyActions"
 
-/** The facts line of a tenancy: dates, rent, deposit. Private to the two parties and admins. */
+/**
+ * The facts line of a tenancy: dates, rent, deposit. Private to the two parties and admins. A
+ * confirmed tenancy shows the rent in effect with the date it applies from, which can be later
+ * than the tenancy start.
+ */
 export function TenancyFacts({ tenancy }: { tenancy: Tenancy }) {
-  const rent = tenancy.currentRentInr ?? tenancy.initialRentInr
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-700">
       <span className="inline-flex items-center gap-1.5">
@@ -20,7 +23,7 @@ export function TenancyFacts({ tenancy }: { tenancy: Tenancy }) {
       </span>
       <span className="num inline-flex items-center gap-1.5">
         <RupeeIcon size={16} className="text-ink-500" />
-        {rupees(rent)} / month
+        {rentLine(tenancy)}
       </span>
       {tenancy.depositInr !== null && (
         <span className="num inline-flex items-center gap-1.5">

@@ -337,6 +337,8 @@ export interface Tenancy {
   endDate: string | null
   initialRentInr: number
   currentRentInr: number | null
+  /** The date the current rent applies from; null until the tenancy is confirmed. */
+  currentRentFrom: string | null
   depositInr: number | null
   depositRefundedInr: number | null
   status: TenancyStatus
