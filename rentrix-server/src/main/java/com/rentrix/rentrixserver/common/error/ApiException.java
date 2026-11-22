@@ -23,6 +23,8 @@ public class ApiException extends RuntimeException {
 	private final HttpHeaders headers;
 	/** {@code {role, status}} on {@code 403 approval_required} (D-91); empty otherwise. */
 	private final Map<String, String> approval;
+	/** The verification steps still to do, on {@code 422 verification_incomplete} (D-105); empty otherwise. */
+	private final List<String> missing;
 
 	public ApiException(HttpStatus status, String code, String detail) {
 		this(status, code, detail, List.of());
@@ -34,17 +36,18 @@ public class ApiException extends RuntimeException {
 
 	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
 		HttpHeaders headers) {
-		this(status, code, detail, errors, headers, Map.of());
+		this(status, code, detail, errors, headers, Map.of(), List.of());
 	}
 
 	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
-		HttpHeaders headers, Map<String, String> approval) {
+		HttpHeaders headers, Map<String, String> approval, List<String> missing) {
 		super(detail);
 		this.status = status;
 		this.code = code;
 		this.errors = List.copyOf(errors);
 		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
 		this.approval = Map.copyOf(approval);
+		this.missing = List.copyOf(missing);
 	}
 
 	/**
@@ -54,7 +57,23 @@ public class ApiException extends RuntimeException {
 	public static ApiException approvalRequired(String role, String status) {
 		return new ApiException(HttpStatus.FORBIDDEN, "approval_required",
 			"Your " + role.toLowerCase(Locale.ROOT) + " account must be approved before you can do this.",
-			List.of(), HttpHeaders.EMPTY, Map.of("role", role, "status", status));
+			List.of(), HttpHeaders.EMPTY, Map.of("role", role, "status", status), List.of());
+	}
+
+	/**
+	 * 403 {@code id_verification_required} (D-105): the role is approved, but no ID method (Aadhaar, PAN or phone)
+	 * is verified any more, e.g. after the only one was revoked. Verifying another method lifts it; no re-approval.
+	 */
+	public static ApiException idVerificationRequired() {
+		return new ApiException(HttpStatus.FORBIDDEN, "id_verification_required",
+			"Verify your ID again (Aadhaar, PAN or phone) before you can do this.");
+	}
+
+	/** 422 {@code verification_incomplete}: submit with steps still missing, listed in {@code missing} (D-105). */
+	public static ApiException verificationIncomplete(List<String> missing) {
+		return new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "verification_incomplete",
+			"Finish these steps before you submit: " + String.join(", ", missing) + ".", List.of(), HttpHeaders.EMPTY,
+			Map.of(), missing);
 	}
 
 	public static ApiException notFound(String what) {

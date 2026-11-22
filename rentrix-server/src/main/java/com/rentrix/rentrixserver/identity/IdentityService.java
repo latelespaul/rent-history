@@ -1,11 +1,17 @@
 package com.rentrix.rentrixserver.identity;
 
+import com.rentrix.rentrixserver.admin.AuditLog;
+import com.rentrix.rentrixserver.admin.ModerationActionType;
+import com.rentrix.rentrixserver.admin.ModerationTargetType;
+import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.notification.sms.PhoneMasks;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -17,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 
 /**
  * Identity checks per user (§5.15, D-99 – D-106). The rule every gate and badge uses lives here: a user is
@@ -32,18 +39,33 @@ public class IdentityService {
 	public static final Set<IdentityMethod> ID_METHODS =
 		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN, IdentityMethod.PHONE_OTP);
 	
+	/** The ID methods an admin decides from an upload, also inside an application decision (D-102, D-103, D-105). */
+	public static final Set<IdentityMethod> ADMIN_CHECKED_ID_METHODS =
+		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
+	
+	/** Reject codes an admin can give a PAN or Aadhaar check (§5.15). */
+	static final Set<IdentityRejectCode> ADMIN_REJECT_CODES = EnumSet.of(IdentityRejectCode.ID_UNREADABLE,
+		IdentityRejectCode.ID_NAME_MISMATCH, IdentityRejectCode.AADHAAR_NOT_MASKED, IdentityRejectCode.OTHER);
+	
 	/** Admin-only flag: the user's verified phone is also verified on another active account (D-101). */
 	public static final String DUPLICATE_PHONE = "DUPLICATE_PHONE";
 	
 	private final IdentityVerificationRepository checks;
 	private final PhoneOtpAvailability phoneOtp;
 	private final AdminReviewProvider adminReview;
+	private final AuditLog audit;
 	private final Clock clock;
 	
 	/** D-99: any one of Aadhaar, PAN or phone OTP is verified. */
 	@Transactional(readOnly = true)
 	public boolean isIdVerified(User user) {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
+	}
+	
+	/** At least one of Aadhaar, PAN or phone OTP waits for a check: enough to submit an application (D-105). */
+	@Transactional(readOnly = true)
+	public boolean hasPendingIdMethod(User user) {
+		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.PENDING);
 	}
 	
 	/** The public badges (D-100). */
@@ -99,6 +121,59 @@ public class IdentityService {
 				checks.save(phone);
 				log.info("Phone check revoked for user {}: PHONE_CHANGED", user.getPublicId());
 			});
+	}
+	
+	/**
+	 * An admin decides one {@code PENDING} PAN or Aadhaar check of {@code owner} while deciding their application
+	 * (D-105), audited as {@code VERIFY_IDENTITY} / {@code REJECT_IDENTITY} (D-87) in the caller's transaction.
+	 * A reject needs a code. The ID file is deleted on the decision once files exist (PLAN B12, D-96).
+	 *
+	 * @param checkId the check's {@code public_id}; a check of another user is {@code 404}
+	 * @param result  {@code VERIFIED} or {@code REJECTED}
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public IdentityVerification decideByAdmin(User admin, User owner, UUID checkId, IdentityStatus result,
+		IdentityRejectCode code, String note) {
+		IdentityVerification row = checks.findByPublicId(checkId)
+			.filter(check -> check.getUser().getId().equals(owner.getId()))
+			.orElseThrow(() -> ApiException.notFound("Identity check"));
+		if (!ADMIN_CHECKED_ID_METHODS.contains(row.getMethod())) {
+			throw ApiException.rule("identity_not_decidable",
+				"Only PAN and masked Aadhaar checks are decided with an application.");
+		}
+		if (row.getStatus() != IdentityStatus.PENDING) {
+			throw ApiException.conflict("invalid_transition", "This identity check is not waiting for a decision.");
+		}
+		if (result != IdentityStatus.VERIFIED && result != IdentityStatus.REJECTED) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("identity.result", "invalid",
+				"Use VERIFIED or REJECTED.")));
+		}
+		if (result == IdentityStatus.REJECTED && (code == null || !ADMIN_REJECT_CODES.contains(code))) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("identity.code", "invalid",
+				"Give a reason: ID_UNREADABLE, ID_NAME_MISMATCH, AADHAAR_NOT_MASKED or OTHER.")));
+		}
+		row.resetDecision();
+		row.setStatus(result);
+		row.setCheckedBy(CheckedBy.ADMIN);
+		if (result == IdentityStatus.VERIFIED) {
+			row.setVerifiedAt(clock.instant().truncatedTo(ChronoUnit.MILLIS));
+			row.setVerifiedBy(admin);
+		} else {
+			row.setRejectCode(code);
+			row.setRejectNote(note);
+		}
+		checks.save(row);
+		audit.record(admin, result == IdentityStatus.VERIFIED ? ModerationActionType.VERIFY_IDENTITY
+				: ModerationActionType.REJECT_IDENTITY, ModerationTargetType.IDENTITY, row.getId(),
+			row.getPublicId().toString(), reason(code, note));
+		return row;
+	}
+	
+	private static String reason(IdentityRejectCode code, String note) {
+		if (code == null) {
+			return note;
+		}
+		return note == null || note.isBlank() ? code.name() : code.name() + ": " + note;
 	}
 	
 	/**

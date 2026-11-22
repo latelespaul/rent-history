@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.persistence;
 
 import com.rentrix.rentrixserver.admin.ModerationAction;
 import com.rentrix.rentrixserver.admin.ModerationActionType;
+import com.rentrix.rentrixserver.admin.ModerationTargetType;
 import com.rentrix.rentrixserver.auth.RefreshToken;
 import com.rentrix.rentrixserver.common.scheduling.ScheduledJobLock;
 import com.rentrix.rentrixserver.enquiry.Enquiry;
@@ -142,8 +143,9 @@ class PersistenceRoundTripTest {
 		ModerationAction action = new ModerationAction();
 		action.setAdmin(landlord);
 		action.setAction(ModerationActionType.DISMISS_REPORT);
-		action.setTargetType(ReportTargetType.REVIEW);
+		action.setTargetType(ModerationTargetType.REVIEW);
 		action.setTargetId(review.getId());
+		action.setTargetRef(review.getPublicId().toString());
 		action.setReport(report);
 		em.persist(action);
 		

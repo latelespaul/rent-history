@@ -2,7 +2,6 @@ package com.rentrix.rentrixserver.admin;
 
 import com.rentrix.rentrixserver.common.persistence.BaseEntity;
 import com.rentrix.rentrixserver.report.Report;
-import com.rentrix.rentrixserver.report.ReportTargetType;
 import com.rentrix.rentrixserver.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,7 +16,10 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Append-only audit log entry for every admin action (§5.11, D-51). */
+/**
+ * Append-only audit log entry for every admin action and decision (§5.11, D-51, D-87). Rows are never updated or
+ * deleted; write them through {@link AuditLog}.
+ */
 @Entity
 @Table(name = "moderation_actions")
 @Getter
@@ -36,10 +38,15 @@ public class ModerationAction extends BaseEntity {
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "target_type", nullable = false, length = 24)
-	private ReportTargetType targetType;
+	private ModerationTargetType targetType;
 	
-	@Column(name = "target_id", nullable = false)
+	/** Internal id for joins; null for targets without one (cities). */
+	@Column(name = "target_id")
 	private Long targetId;
+	
+	/** The target's {@code public_id}, or the city code for {@code CITY}. */
+	@Column(name = "target_ref", nullable = false, length = 36)
+	private String targetRef;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "report_id")
