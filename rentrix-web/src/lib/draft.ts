@@ -42,7 +42,9 @@ export function clearSessionDrafts() {
   try {
     const storage = window.sessionStorage
     const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i))
-    keys.filter((k): k is string => k?.startsWith(PREFIX) ?? false).forEach((k) => storage.removeItem(k))
+    keys
+      .filter((k): k is string => k?.startsWith(PREFIX) ?? false)
+      .forEach((k) => storage.removeItem(k))
   } catch {
     // No storage, no drafts.
   }

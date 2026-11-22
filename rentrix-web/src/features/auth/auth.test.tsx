@@ -387,7 +387,10 @@ describe("settings", () => {
 
   it("signs out and returns home", async () => {
     h.restored = makeUser()
-    window.sessionStorage.setItem("draft:tenancy:p1", JSON.stringify({ email: "owner@example.com" }))
+    window.sessionStorage.setItem(
+      "draft:tenancy:p1",
+      JSON.stringify({ email: "owner@example.com" }),
+    )
     window.sessionStorage.setItem("other", "kept")
     const router = renderApp("/settings")
     const user = userEvent.setup()

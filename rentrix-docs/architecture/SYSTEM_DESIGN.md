@@ -626,7 +626,7 @@ Captain's decision of 2026-11-22 16:45. It replaces the approval gate of D-91 wi
 
 ## 9. Rating math
 
-For each subject (landlord user, tenant user, property), over reviews with `status = PUBLISHED` and `counts_in_aggregate = true` (*design v4 (open by default)*: and `verification_status = VERIFIED`; unverified reviews get their own count and average beside it, D-135):
+For each subject (landlord user, tenant user, property), over reviews with `status = PUBLISHED` and `counts_in_aggregate = true` (*design v4 (open by default)*: and, with `app.ratings.headline=verified`, `verification_status = VERIFIED`; unverified reviews get their own count and average beside it, D-135):
 
 - `n` = review count, `average` = `rating_sum / n`, shown with one decimal.
 - **D-52** Public display threshold: with `n < 3` the UI shows "New · n reviews" and the individual reviews, but no star average, so one review does not define a person. *Changed in design v4 (open by default)*: `n` counts green-tick reviews only (D-135); the "Not verified yet" group shows its own count, and its average only from 3 reviews.
