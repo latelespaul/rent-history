@@ -68,6 +68,8 @@ public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 	long countInitiatedBy(@Param("userId") Long userId, @Param("status") TenancyStatus status);
 	
 	/** Pending requests older than the 14-day confirmation window (§6). */
-	List<Tenancy> findByStatusAndCreatedAtBefore(TenancyStatus status, Instant cutoff);
+	@Query("select t.publicId from Tenancy t where t.status = :status and t.createdAt < :cutoff")
+	List<UUID> findPublicIdsByStatusAndCreatedAtBefore(@Param("status") TenancyStatus status,
+		@Param("cutoff") Instant cutoff);
 	
 }

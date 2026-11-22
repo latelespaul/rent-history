@@ -323,14 +323,20 @@ public class TenancyService {
 	/** Pending requests past their 14-day window become {@code EXPIRED} (§6); run by {@link TenancyExpiryJob}. */
 	@Transactional
 	public int expirePending() {
-		List<Tenancy> due = tenancies.findByStatusAndCreatedAtBefore(TenancyStatus.PENDING_CONFIRMATION,
-			now().minus(CONFIRM_WINDOW));
-		for (Tenancy tenancy : due) {
+		Instant cutoff = now().minus(CONFIRM_WINDOW);
+		int expired = 0;
+		for (UUID id : tenancies.findPublicIdsByStatusAndCreatedAtBefore(TenancyStatus.PENDING_CONFIRMATION, cutoff)) {
+			Tenancy tenancy = tenancies.lockByPublicId(id).orElse(null);
+			if (tenancy == null || tenancy.getStatus() != TenancyStatus.PENDING_CONFIRMATION
+				|| !tenancy.getCreatedAt().isBefore(cutoff)) {
+				continue;
+			}
 			tenancy.setStatus(TenancyStatus.EXPIRED);
 			closeInvites(tenancy);
+			tenancies.save(tenancy);
+			expired++;
 		}
-		tenancies.saveAll(due);
-		return due.size();
+		return expired;
 	}
 
 	// -------------------------------------------------------------- helpers

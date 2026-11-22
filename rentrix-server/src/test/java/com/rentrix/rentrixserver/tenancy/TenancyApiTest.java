@@ -350,8 +350,13 @@ class TenancyApiTest {
 		old.setCreatedAt(Instant.now().minus(15, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS));
 		tenancies.saveAndFlush(old);
 		Tenancy fresh = data.tenancy(property, tenant, TODAY.minusMonths(1), null, TenancyStatus.PENDING_CONFIRMATION);
+		User other = data.verified("Prompt Tenant", Role.TENANT);
+		Tenancy confirmed = data.tenancy(property, other, TODAY.minusMonths(3), null, TenancyStatus.ACTIVE);
+		confirmed.setCreatedAt(Instant.now().minus(15, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS));
+		tenancies.saveAndFlush(confirmed);
 
 		assertThat(service.expirePending()).isGreaterThanOrEqualTo(1);
+		assertThat(tenancies.findById(confirmed.getId()).orElseThrow().getStatus()).isEqualTo(TenancyStatus.ACTIVE);
 		assertThat(tenancies.findById(old.getId()).orElseThrow().getStatus()).isEqualTo(TenancyStatus.EXPIRED);
 		assertThat(tenancies.findById(fresh.getId()).orElseThrow().getStatus())
 			.isEqualTo(TenancyStatus.PENDING_CONFIRMATION);
