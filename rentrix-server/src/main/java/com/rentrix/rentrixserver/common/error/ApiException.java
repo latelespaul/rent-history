@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -21,9 +20,12 @@ public class ApiException extends RuntimeException {
 	private final List<ApiProblem.FieldError> errors;
 	/** Extra response headers, e.g. {@code Retry-After} on 429. */
 	private final HttpHeaders headers;
-	/** {@code {role, status}} on {@code 403 approval_required} (D-91); empty otherwise. */
+	/** {@code {role, status}} of a verification that blocks a write; unused since open by default (D-132). */
 	private final Map<String, String> approval;
-	/** The verification steps still to do, on {@code 422 verification_incomplete} (D-105); empty otherwise. */
+	/**
+	 * The steps still to do: on {@code 422 verification_incomplete} (D-105) and {@code 403 id_verification_required}
+	 * ({@code phone}, D-117); empty otherwise.
+	 */
 	private final List<String> missing;
 	/** The clashing tenancy's period on {@code 409 tenancy_overlap}; empty otherwise. */
 	private final Map<String, String> conflict;
@@ -59,22 +61,13 @@ public class ApiException extends RuntimeException {
 	}
 
 	/**
-	 * 403 {@code approval_required} (D-91): the caller's verification for {@code role} is not {@code APPROVED}.
-	 * The body carries {@code approval: {role, status}} so the web can show the matching "pending approval" state.
-	 */
-	public static ApiException approvalRequired(String role, String status) {
-		return new ApiException(HttpStatus.FORBIDDEN, "approval_required",
-			"Your " + role.toLowerCase(Locale.ROOT) + " account must be approved before you can do this.",
-			List.of(), HttpHeaders.EMPTY, Map.of("role", role, "status", status), List.of());
-	}
-
-	/**
-	 * 403 {@code id_verification_required} (D-105): the role is approved, but no ID method (Aadhaar, PAN or phone)
-	 * is verified any more, e.g. after the only one was revoked. Verifying another method lifts it; no re-approval.
+	 * 403 {@code id_verification_required} (D-117, D-132): posting needs a verified phone, and the caller has none
+	 * (never verified, or revoked by a phone change). The body names it in {@code missing: ["phone"]}; verifying a
+	 * phone lifts it at once, with no admin step.
 	 */
 	public static ApiException idVerificationRequired() {
 		return new ApiException(HttpStatus.FORBIDDEN, "id_verification_required",
-			"Verify your ID again (Aadhaar, PAN or phone) before you can do this.");
+			"Verify your phone number to continue.", List.of(), HttpHeaders.EMPTY, Map.of(), List.of("phone"));
 	}
 
 	/** 422 {@code verification_incomplete}: submit with steps still missing, listed in {@code missing} (D-105). */

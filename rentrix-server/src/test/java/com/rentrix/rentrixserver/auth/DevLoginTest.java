@@ -100,6 +100,24 @@ class DevLoginTest {
 	}
 	
 	@Test
+	void devLoginAsANewUserStartsTheFirstSignIn() throws Exception {
+		MockHttpServletResponse response = mvc.perform(post("/auth/dev-login/new").with(freshIp()))
+			.andReturn().getResponse();
+		assertThat(response.getStatus()).isEqualTo(200);
+		JsonNode body = json.readTree(response.getContentAsString());
+		assertThat(body.get("needsOnboarding").asBoolean()).isTrue();
+		assertThat(body.at("/user/demo").asBoolean()).isFalse();
+		assertThat(body.at("/user/displayName").asString()).isEqualTo("New User");
+		assertThat(tokens.verify(body.get("accessToken").asString()).roles()).isEmpty();
+		// Each call is a different person, and none of them shows up in the seed-user list.
+		JsonNode second = json.readTree(mvc.perform(post("/auth/dev-login/new").with(freshIp()))
+			.andReturn().getResponse().getContentAsString());
+		assertThat(second.at("/user/id").asString()).isNotEqualTo(body.at("/user/id").asString());
+		assertThat(mvc.perform(get("/auth/dev-users")).andReturn().getResponse().getContentAsString())
+			.doesNotContain(body.at("/user/id").asString());
+	}
+	
+	@Test
 	void devLoginRefusesRealUsersUnknownIdsAndSuspendedDemoUsers() throws Exception {
 		assertThat(devLogin(data.user("Real Person", Role.TENANT).getPublicId()).getStatus()).isEqualTo(404);
 		assertThat(devLogin(UUID.randomUUID()).getStatus()).isEqualTo(404);

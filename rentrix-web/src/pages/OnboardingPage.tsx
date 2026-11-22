@@ -16,11 +16,12 @@ import { roleHome, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
 import { LaunchCopy } from "@/features/city/LaunchCopy"
 import { BRAND } from "@/lib/brand"
+import type { CreatedState } from "@/pages/WelcomeCreatedPage"
 
 /**
  * `/welcome` (DESIGN.md screen 10): the first-sign-in role pick (D-73). It posts
  * `/me/onboarding`, swaps in the fresh access token that carries the new roles, then saves a
- * changed display name with `PATCH /me`.
+ * changed display name with `PATCH /me`, and opens `/welcome/created` (D-118).
  */
 export default function OnboardingPage() {
   const { state, acceptUpdate } = useAuth()
@@ -46,8 +47,12 @@ export default function OnboardingPage() {
       }
       return done
     },
-    onSuccess: (done) =>
-      navigate(safeNext(params.get("next"), roleHome(done.roles)), { replace: true }),
+    // On to the account-created screen (D-118); it keeps `next` for its "Not now" link.
+    onSuccess: () =>
+      navigate("/welcome/created", {
+        replace: true,
+        state: { created: true, next: params.get("next") } satisfies CreatedState,
+      }),
   })
 
   if (!user) return null
@@ -190,8 +195,8 @@ export default function OnboardingPage() {
             Until you finish this step, only your profile and public pages are available.
           </p>
           <Notice tone="teal" className="mt-3.5">
-            <b>Next: verify your account.</b> An admin checks your ID, usually within 48 hours. You
-            can read every review meanwhile.
+            <b>Next: verify your phone number.</b> It takes a minute, and then you can post right
+            away. You can read every review meanwhile.
           </Notice>
         </form>
       </Container>

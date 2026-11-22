@@ -26,6 +26,9 @@ public interface PhoneOtpChallengeRepository extends JpaRepository<PhoneOtpChall
 		+ " order by c.createdAt")
 	List<Instant> sentToPhoneSince(@Param("phoneHmac") String phoneHmac, @Param("since") Instant since);
 	
+	/** The newest challenge for a number, with its user: who an admin-relayed code belongs to (D-137). */
+	Optional<PhoneOtpChallenge> findFirstByPhoneE164OrderByCreatedAtDesc(String phoneE164);
+	
 	/** Counts one wrong code; 0 when the challenge already has {@code max} attempts. */
 	@Modifying
 	@Transactional

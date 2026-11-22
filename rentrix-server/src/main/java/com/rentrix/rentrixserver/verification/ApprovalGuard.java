@@ -8,34 +8,31 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * The approval gate on trust writes (D-91, D-105): the caller's application for the side they act on must be
- * {@code APPROVED}, else {@code 403 approval_required} with {@code approval: {role, status}}; and at least one ID
- * method (Aadhaar, PAN or phone) must still be {@code VERIFIED}, else {@code 403 id_verification_required}. Both are
- * read from the database on each call, never from the token, so a decision or a revoked ID takes effect at once.
- * Safety exits (decline, cancel an own request, end a confirmed tenancy, withdraw, report, delete the account) never
- * call it; admins are not gated in their admin actions. Not transactional itself: it joins the caller's
- * transaction, so a refusal never marks that transaction rollback-only on its own.
+ * The gate on trust writes, open by default (D-132, D-117): the caller needs a {@code VERIFIED} phone, else
+ * {@code 403 id_verification_required} with {@code missing: ["phone"]}. An admin approval is no longer required:
+ * it gives the green tick instead (D-134), so {@code approval_required} is never returned. The role the caller acts
+ * as is checked by each write itself ({@code role_required}); it is passed here so the call sites read the same as
+ * before. The phone is read from the database on each call, never from the token, so a revoked phone (a phone
+ * change, D-101) closes writes at once and a new verified phone opens them with no admin step. Safety exits
+ * (decline, cancel an own request, end a confirmed tenancy, withdraw, report, delete the account) never call it;
+ * admins are not gated in their admin actions. Not transactional itself: it joins the caller's transaction, so a
+ * refusal never marks that transaction rollback-only on its own.
  */
 @Component
 @RequiredArgsConstructor
 public class ApprovalGuard {
 	
-	private final VerificationService verification;
 	private final IdentityService identity;
 	
 	public void require(User user, Role role) {
-		VerificationStatus status = verification.status(user, role);
-		if (status != VerificationStatus.APPROVED) {
-			throw ApiException.approvalRequired(role.name(), status.name());
-		}
-		if (!identity.isIdVerified(user)) {
+		if (!canWrite(user, role)) {
 			throw ApiException.idVerificationRequired();
 		}
 	}
 	
 	/** The same check as {@link #require} without throwing. */
-	public boolean isApproved(User user, Role role) {
-		return verification.status(user, role) == VerificationStatus.APPROVED && identity.isIdVerified(user);
+	public boolean canWrite(User user, Role role) {
+		return identity.isPhoneVerified(user);
 	}
 	
 }

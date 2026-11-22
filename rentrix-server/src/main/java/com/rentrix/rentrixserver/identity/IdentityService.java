@@ -26,18 +26,22 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 /**
- * Identity checks per user (§5.15, D-99 – D-106). The rule every gate and badge uses lives here: a user is
- * <b>ID verified</b> when at least one of {@code AADHAAR}, {@code PAN} or {@code PHONE_OTP} is {@code VERIFIED}
- * (D-99). LinkedIn is a bonus badge and never counts. The same rule holds for tenants and landlords.
+ * Identity checks per user (§5.15, D-99 – D-106, D-117). The two rules the gate and the badge use live here: a user
+ * may post when their {@code PHONE_OTP} is {@code VERIFIED} ({@link #isPhoneVerified}, D-117, D-132), and is
+ * <b>ID verified</b> (the public badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED}
+ * ({@link #isIdVerified}, D-100). LinkedIn is a bonus badge and never counts. The same rules hold for tenants and
+ * landlords.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class IdentityService {
 	
-	/** The methods that make a user ID verified (D-99). */
-	public static final Set<IdentityMethod> ID_METHODS =
-		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN, IdentityMethod.PHONE_OTP);
+	/**
+	 * The methods behind the "ID verified" badge (D-100, changed in design v4): the optional extra ID. A verified
+	 * phone alone gives no badge, because every user who can post has one (D-117).
+	 */
+	public static final Set<IdentityMethod> ID_METHODS = EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
 	
 	/** The ID methods an admin decides from an upload, also inside an application decision (D-102, D-103, D-105). */
 	public static final Set<IdentityMethod> ADMIN_CHECKED_ID_METHODS =
@@ -56,16 +60,29 @@ public class IdentityService {
 	private final AuditLog audit;
 	private final Clock clock;
 	
-	/** D-99: any one of Aadhaar, PAN or phone OTP is verified. */
+	/** The badge rule (D-100): PAN or masked Aadhaar is verified. */
 	@Transactional(readOnly = true)
 	public boolean isIdVerified(User user) {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
 	}
 	
-	/** At least one of Aadhaar, PAN or phone OTP waits for a check: enough to submit an application (D-105). */
+	/** The posting rule (D-117, D-132): the phone is verified by OTP and not revoked. */
+	@Transactional(readOnly = true)
+	public boolean isPhoneVerified(User user) {
+		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, EnumSet.of(IdentityMethod.PHONE_OTP),
+			IdentityStatus.VERIFIED);
+	}
+	
+	/** PAN or masked Aadhaar waits for an admin check (the optional ID step shows it as pending, D-120). */
 	@Transactional(readOnly = true)
 	public boolean hasPendingIdMethod(User user) {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.PENDING);
+	}
+	
+	/** PAN or masked Aadhaar was rejected (the optional ID step shows the reason, D-120). */
+	@Transactional(readOnly = true)
+	public boolean hasRejectedIdMethod(User user) {
+		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.REJECTED);
 	}
 	
 	/** The public badges (D-100). */

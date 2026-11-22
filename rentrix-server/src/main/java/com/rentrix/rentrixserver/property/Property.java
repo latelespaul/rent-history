@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.property;
 
+import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.persistence.PublicEntity;
 import com.rentrix.rentrixserver.location.Area;
@@ -109,6 +110,12 @@ public class Property extends PublicEntity {
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "status", nullable = false, length = 16)
 	private PropertyStatus status = PropertyStatus.DRAFT;
+
+	/** The green tick (D-134); null reads as {@code UNVERIFIED}. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "verification_status", length = 16)
+	private VerificationState verificationStatus;
 	
 	@Column(name = "is_demo", nullable = false)
 	private boolean demo;

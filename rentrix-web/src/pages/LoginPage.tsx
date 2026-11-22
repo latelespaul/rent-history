@@ -1,6 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Navigate, useSearchParams } from "react-router-dom"
-import { authKeys, devLogin, fetchAuthConfig, signInWithGoogle } from "@/api/auth"
+import { toast } from "sonner"
+import {
+  authKeys,
+  devLogin,
+  devLoginAsNewUser,
+  fetchAuthConfig,
+  signInWithGoogle,
+} from "@/api/auth"
 import { Container } from "@/components/layout/Container"
 import { Icon } from "@/components/ui/icon"
 import { Notice } from "@/components/ui/notice"
@@ -11,6 +18,8 @@ import { DevLoginPanel } from "@/features/auth/DevLoginPanel"
 import { GoogleButton } from "@/features/auth/GoogleButton"
 import { afterSignInPath, safeNext } from "@/features/auth/paths"
 import { BRAND } from "@/lib/brand"
+import { roleHome } from "@/features/auth/roles"
+import type { CurrentUser } from "@/types/api"
 
 const PROMISES = [
   { icon: "lock", text: `No ${BRAND.name} password. Google confirms your email.` },
@@ -22,14 +31,23 @@ const PROMISES = [
 ] as const
 
 /**
+ * The returning sign-in toast (D-119): 4 s, in sonner's polite live region. Only after a sign-in
+ * on this page, so a session restored from the refresh cookie on load shows none.
+ */
+function greet(user: CurrentUser) {
+  if (!user.needsOnboarding) toast.success(`Signed in as ${user.displayName}`, { duration: 4000 })
+}
+
+/**
  * `/login` (DESIGN.md screen 9): the GIS button when the API has a Google client id (D-76),
  * and the dev seed-user picker when the API runs dev login (D-77). New Google users go to the
- * role pick next (D-73); everyone else returns to `?next=`.
+ * role pick next (D-73); everyone else sees "Signed in as …" and returns to `?next=`, or to their
+ * role home without one (D-119).
  */
 export default function LoginPage() {
   const { state, acceptSession } = useAuth()
   const [params] = useSearchParams()
-  const next = safeNext(params.get("next"))
+  const nextParam = params.get("next")
   const config = useQuery({
     queryKey: authKeys.config,
     queryFn: ({ signal }) => fetchAuthConfig(signal),
@@ -37,13 +55,22 @@ export default function LoginPage() {
 
   const google = useMutation({
     mutationFn: async (idToken: string) => acceptSession(await signInWithGoogle(idToken)),
+    onSuccess: greet,
   })
   const dev = useMutation({
-    mutationFn: async (userId: string) => acceptSession(await devLogin(userId)),
+    mutationFn: async (userId: string | null) =>
+      acceptSession(await (userId ? devLogin(userId) : devLoginAsNewUser())),
+    onSuccess: greet,
   })
 
-  if (state.status === "signedIn")
-    return <Navigate to={afterSignInPath(state.user, next)} replace />
+  if (state.status === "signedIn") {
+    const { user } = state
+    // The role pick keeps a plain `next`; a returning user without one goes to their role home.
+    const next = user.needsOnboarding
+      ? safeNext(nextParam)
+      : safeNext(nextParam, roleHome(user.roles))
+    return <Navigate to={afterSignInPath(user, next)} replace />
+  }
 
   const failure = google.error ?? dev.error
   const showDev = config.data?.devLogin === true
@@ -115,7 +142,13 @@ export default function LoginPage() {
             </p>
           </section>
 
-          {showDev && <DevLoginPanel onSignIn={(id) => dev.mutate(id)} pending={dev.isPending} />}
+          {showDev && (
+            <DevLoginPanel
+              onSignIn={(id) => dev.mutate(id)}
+              onSignInAsNew={() => dev.mutate(null)}
+              pending={dev.isPending}
+            />
+          )}
         </div>
       </Container>
     </main>

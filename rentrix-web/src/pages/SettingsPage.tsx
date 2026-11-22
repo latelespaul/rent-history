@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { useMutation } from "@tanstack/react-query"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { updateMe } from "@/api/auth"
 import { isApiError } from "@/api/errors"
 import { Container } from "@/components/layout/Container"
@@ -15,6 +15,7 @@ import { useAuth } from "@/features/auth/authContext"
 import { shortName } from "@/features/auth/paths"
 import { ROLE_COPY, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
+import { useIdentity } from "@/features/verification/useVerification"
 import type { CurrentUser, UpdateMeRequest, VerificationStatus } from "@/types/api"
 
 const STATUS: Record<
@@ -22,8 +23,8 @@ const STATUS: Record<
   { label: string; variant: "neutral" | "warn" | "success" | "danger" }
 > = {
   DRAFT: { label: "Not verified yet", variant: "neutral" },
-  PENDING: { label: "Pending approval", variant: "warn" },
-  APPROVED: { label: "Approved", variant: "success" },
+  PENDING: { label: "Waiting for review", variant: "warn" },
+  APPROVED: { label: "Verified", variant: "success" },
   REJECTED: { label: "Rejected", variant: "danger" },
 }
 
@@ -48,8 +49,10 @@ function Section({
 function ProfileForm({ user }: { user: CurrentUser }) {
   const { acceptUpdate } = useAuth()
   const [displayName, setDisplayName] = useState(user.displayName)
-  const [phone, setPhone] = useState(user.phone ?? "")
   const [homeCity, setHomeCity] = useState<string | null>(user.homeCity ?? null)
+  const identity = useIdentity()
+  const phoneVerified =
+    identity.data?.methods.find((m) => m.method === "PHONE_OTP")?.status === "VERIFIED"
   const save = useMutation({
     mutationFn: (body: UpdateMeRequest) => updateMe(body),
     onSuccess: (update) => acceptUpdate(update),
@@ -59,7 +62,6 @@ function ProfileForm({ user }: { user: CurrentUser }) {
     event.preventDefault()
     const body: UpdateMeRequest = {}
     if (displayName.trim() !== user.displayName) body.displayName = displayName.trim()
-    if (phone.trim() !== (user.phone ?? "")) body.phone = phone.trim()
     if ((homeCity ?? "") !== (user.homeCity ?? "")) body.homeCity = homeCity ?? ""
     save.mutate(body)
   }
@@ -82,17 +84,25 @@ function ProfileForm({ user }: { user: CurrentUser }) {
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="settings-phone">
-          Phone <span className="font-normal text-ink-500">(optional, never shown publicly)</span>
-        </Label>
-        <Input
-          id="settings-phone"
-          type="tel"
-          value={phone}
-          maxLength={20}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-        {fieldError("phone") && <p className="text-xs text-danger-600">{fieldError("phone")}</p>}
+        <p className="text-sm font-semibold text-ink-900">
+          Phone <span className="font-normal text-ink-500">(never shown publicly)</span>
+        </p>
+        {/* A number is stored only by a confirmed SMS code (D-117), so it changes in the stepper. */}
+        <p className="flex flex-wrap items-center gap-2 text-sm text-ink-700">
+          {user.phone ? (
+            <>
+              <span>{user.phone}</span>
+              <Badge variant={phoneVerified ? "success" : "neutral"}>
+                {phoneVerified ? "Verified" : "Not verified"}
+              </Badge>
+            </>
+          ) : (
+            <span className="text-ink-500">No phone yet</span>
+          )}
+          <Link to="/verify/phone" className="font-semibold">
+            {user.phone ? "Change number" : "Verify your phone"}
+          </Link>
+        </p>
       </div>
       <div className="space-y-1.5">
         <p className="text-sm font-semibold text-ink-900">Home city</p>

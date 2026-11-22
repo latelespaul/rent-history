@@ -45,6 +45,7 @@ import com.rentrix.rentrixserver.verification.ApprovalGuard;
 import com.rentrix.rentrixserver.verification.VerificationApplication;
 import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
 import com.rentrix.rentrixserver.verification.VerificationEventRepository;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.verification.VerificationStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -253,9 +254,14 @@ class DemoSeederTest {
 			assertThat(applications.findAll().stream().filter(a -> a.getStatus() == VerificationStatus.PENDING))
 				.as("admin queue").hasSize(3);
 			
-			// PNQ-7 shows "ID verified" from the phone while the application waits (D-105).
+			// Every seeded applicant has a verified phone, so the pending ones stay submittable and can post while
+			// they wait (D-115 v4, D-132); their PAN or Aadhaar is still pending, so no "ID verified" badge yet.
 			User pnq7 = byName.get("Demo Tenant PNQ-7/TENANT").getUser();
-			assertThat(identity.isIdVerified(pnq7)).isTrue();
+			for (VerificationApplication application : applications.findAll()) {
+				assertThat(identity.isPhoneVerified(application.getUser()))
+					.as(application.getUser().getDisplayName()).isTrue();
+			}
+			assertThat(identity.isIdVerified(pnq7)).isFalse();
 			assertThat(identity.isIdVerified(blr7.getUser())).isFalse();
 			
 			// Only masked data: last 4 of at most 4 characters, never a full number.
@@ -292,6 +298,12 @@ class DemoSeederTest {
 					assertThat(r.getProperty().getBuildingName()).isEqualTo("Demo Villa C");
 				});
 			assertThat(responses.findAll()).hasSize(1);
+			// The demo admin gave every published review the green tick, so the demo keeps its ratings (D-135).
+			assertThat(written).filteredOn(r -> r.getStatus() == ReviewStatus.PUBLISHED)
+				.allMatch(r -> r.getVerificationStatus() == VerificationState.VERIFIED);
+			assertThat(written).filteredOn(r -> r.getStatus() == ReviewStatus.AWAITING_REVEAL)
+				.allMatch(r -> r.getVerificationStatus() == null);
+			assertThat(homes).allMatch(h -> h.getVerificationStatus() == VerificationState.VERIFIED);
 			// every home but Demo Villa C (its current tenant has not reviewed yet) and every landlord shows an average
 			for (Property home : homes) {
 				RatingAggregate rating = aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY,
@@ -317,8 +329,8 @@ class DemoSeederTest {
 	private void assertApprovedAndIdVerified(VerificationApplication application) {
 		assertThat(application).isNotNull();
 		assertThat(application.getStatus()).isEqualTo(VerificationStatus.APPROVED);
-		assertThat(identity.isIdVerified(application.getUser())).as(application.getUser().getDisplayName()).isTrue();
-		assertThat(guard.isApproved(application.getUser(), application.getRole())).isTrue();
+		assertThat(identity.isPhoneVerified(application.getUser())).as(application.getUser().getDisplayName()).isTrue();
+		assertThat(guard.canWrite(application.getUser(), application.getRole())).isTrue();
 	}
 	
 }

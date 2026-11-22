@@ -15,7 +15,7 @@ export function Footer() {
           {cities.isSuccess && ` · ${launchCopy(cities.data)}`}
         </p>
         <p className="flex items-center gap-4">
-          <span>Ratings only from tenancies both sides confirmed.</span>
+          <span>{BRAND.tagline}</span>
           <Link to="/search">Search</Link>
         </p>
       </Container>

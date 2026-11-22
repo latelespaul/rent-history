@@ -166,27 +166,35 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$[0].revision").value(1))
 			.andExpect(jsonPath("$[0].id").doesNotExist())
 			.andExpect(jsonPath("$[0].steps.profile").value("DONE"))
-			.andExpect(jsonPath("$[0].steps.identity").value("MISSING"))
+			.andExpect(jsonPath("$[0].steps.phone").value("MISSING"))
+			.andExpect(jsonPath("$[0].steps.identity").value("SKIPPED"))
 			.andExpect(jsonPath("$[0].steps.linkedin").value("SKIPPED"))
 			.andExpect(jsonPath("$[0].steps.rentalAgreement").value("SKIPPED"))
 			.andExpect(jsonPath("$[1].role").value("LANDLORD"))
-			.andExpect(jsonPath("$[1].steps.rentalAgreement").value("NOT_APPLICABLE"));
+			.andExpect(jsonPath("$[1].steps.rentalAgreement").value("SKIPPED"));
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
+		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
+		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(user)))
+			.andExpect(jsonPath("$[0].steps.phone").value("DONE"))
+			.andExpect(jsonPath("$[0].steps.identity").value("PENDING"));
 		mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(jsonPath("$.verification.TENANT").value("DRAFT"))
 			.andExpect(jsonPath("$.verification.LANDLORD").value("DRAFT"));
 	}
 
 	@Test
-	void submitWithoutAnyIdMethodIsRefusedWithTheMissingSteps() throws Exception {
-		User user = applicant("No ID", Role.TENANT);
+	void submitWithoutAVerifiedPhoneIsRefusedWithTheMissingSteps() throws Exception {
+		User user = applicant("No phone", Role.TENANT);
+		// A pending PAN is optional extra ID: it does not replace the phone (D-117).
+		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		submit(user, "TENANT")
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("verification_incomplete"))
 			.andExpect(jsonPath("$.missing.length()").value(1))
-			.andExpect(jsonPath("$.missing[0]").value("identity"));
+			.andExpect(jsonPath("$.missing[0]").value("phone"));
 
 		User noProfile = data.user("No profile", Role.LANDLORD);
-		check(noProfile, IdentityMethod.PAN, IdentityStatus.PENDING);
+		check(noProfile, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		submit(noProfile, "landlord")
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.missing[0]").value("profile"))
@@ -206,7 +214,7 @@ class VerificationApiTest {
 	@Test
 	void stateMachineWithIllegalTransitionsAndResubmitAfterReject() throws Exception {
 		User user = applicant("Lifecycle", Role.TENANT);
-		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		User admin = admin();
 
 		UUID id = submitted(user, Role.TENANT);
@@ -234,7 +242,6 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.revision").value(2))
 			.andExpect(jsonPath("$.decision").doesNotExist());
 
-		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		decide(admin, id, "approve", "{\"note\": \"Looks fine.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("APPROVED"))
@@ -263,6 +270,7 @@ class VerificationApiTest {
 	@Test
 	void everyDecisionWritesOneAuditRowWithItsReason() throws Exception {
 		User user = applicant("Audited", Role.LANDLORD);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
 		User admin = admin();
 		UUID id = submitted(user, Role.LANDLORD);
@@ -286,7 +294,7 @@ class VerificationApiTest {
 	@Test
 	void rejectAndRevokeNeedACodeAndANote() throws Exception {
 		User user = applicant("Reasons", Role.TENANT);
-		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		UUID id = submitted(user, Role.TENANT);
 		User admin = admin();
 		decide(admin, id, "reject", "{\"code\": \"OTHER\"}").andExpect(status().isUnprocessableContent());
@@ -297,18 +305,20 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void approveWithOnlyPendingIdMethodsIsRefusedAndKeepsNothing() throws Exception {
-		User user = applicant("Only pending", Role.TENANT);
+	void approveWithoutAVerifiedPhoneIsRefusedAndKeepsNothing() throws Exception {
+		User user = applicant("Phone gone", Role.TENANT);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		IdentityVerification pan = check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
-		check(user, IdentityMethod.AADHAAR, IdentityStatus.PENDING);
 		UUID id = submitted(user, Role.TENANT);
+		new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+			identity.phoneChanged(users.findById(user.getId()).orElseThrow()));
 		User admin = admin();
 		decide(admin, id, "approve", "{}")
 			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("no_verified_id"));
-		// Rejecting the only pending PAN inside the call still leaves no verified ID: nothing is kept.
+			.andExpect(jsonPath("$.code").value("phone_not_verified"));
+		// Verifying the pending PAN inside the call does not replace the phone (D-117): nothing is kept.
 		decide(admin, id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId()
-			+ "\", \"result\": \"REJECTED\", \"code\": \"ID_UNREADABLE\"}]}")
+			+ "\", \"result\": \"VERIFIED\"}]}")
 			.andExpect(status().isUnprocessableContent());
 		assertThat(checks.findByPublicId(pan.getPublicId()).orElseThrow().getStatus()).isEqualTo(IdentityStatus.PENDING);
 		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.PENDING);
@@ -318,6 +328,7 @@ class VerificationApiTest {
 	@Test
 	void approveMayDecideAPendingPanInTheSameCall() throws Exception {
 		User user = applicant("PAN in call", Role.LANDLORD);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		IdentityVerification pan = check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		UUID id = submitted(user, Role.LANDLORD);
 		User admin = admin();
@@ -361,56 +372,46 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void guardDeniesDraftPendingAndRejectedAndAllowsApprovedAndIdVerified() throws Exception {
+	void guardNeedsOnlyAVerifiedPhoneWhateverTheApplication() throws Exception {
 		User user = applicant("Gated", Role.TENANT);
 		gatedWrite(user, Role.TENANT)
 			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"))
-			.andExpect(jsonPath("$.approval.role").value("TENANT"))
-			.andExpect(jsonPath("$.approval.status").value("DRAFT"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"))
+			.andExpect(jsonPath("$.missing[0]").value("phone"))
+			.andExpect(jsonPath("$.approval").doesNotExist());
+		// Open by default (D-132): with a verified phone a DRAFT, PENDING or REJECTED application may post.
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
+		gatedWrite(user, Role.TENANT).andExpect(status().isOk()).andExpect(jsonPath("$.written").value("TENANT"));
 		UUID id = submitted(user, Role.TENANT);
-		gatedWrite(user, Role.TENANT).andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.approval.status").value("PENDING"));
-		User admin = admin();
-		decide(admin, id, "reject", REJECT).andExpect(status().isOk());
-		gatedWrite(user, Role.TENANT).andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.approval.status").value("REJECTED"));
-		submitted(user, Role.TENANT);
-
-		String tokenBeforeApproval = bearer(user);
-		decide(admin, id, "approve", "{}").andExpect(status().isOk());
-		// The same token: the gate reads the decision from the database, not from the JWT (D-91).
-		mvc.perform(post("/test-only/gated/TENANT").header(HttpHeaders.AUTHORIZATION, tokenBeforeApproval))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.written").value("TENANT"));
-		// Approval is per role: the landlord side is still gated.
-		gatedWrite(user, Role.LANDLORD).andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.approval.role").value("LANDLORD"));
-
-		decide(admin, id, "revoke", REJECT).andExpect(status().isOk());
-		mvc.perform(post("/test-only/gated/TENANT").header(HttpHeaders.AUTHORIZATION, tokenBeforeApproval))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.approval.status").value("REJECTED"));
+		gatedWrite(user, Role.TENANT).andExpect(status().isOk());
+		decide(admin(), id, "reject", REJECT).andExpect(status().isOk());
+		gatedWrite(user, Role.TENANT).andExpect(status().isOk());
 	}
 
 	@Test
-	void guardDeniesAnApprovedUserOnceTheOnlyIdMethodIsRevoked() throws Exception {
+	void guardDeniesOnceThePhoneIsRevokedAndANewPhoneLiftsIt() throws Exception {
 		User user = applicant("Phone changed", Role.LANDLORD);
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		UUID id = submitted(user, Role.LANDLORD);
 		decide(admin(), id, "approve", "{}").andExpect(status().isOk());
+		String token = bearer(user);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
 
 		new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
 			identity.phoneChanged(users.findById(user.getId()).orElseThrow()));
-		gatedWrite(user, Role.LANDLORD)
+		// The same token: the gate reads the phone from the database, not from the JWT.
+		mvc.perform(post("/test-only/gated/LANDLORD").header(HttpHeaders.AUTHORIZATION, token))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("id_verification_required"));
 		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.APPROVED);
 
-		// Verifying another method lifts it without a new approval (D-105).
+		// A verified Aadhaar is an extra badge only: it does not replace the phone (D-117).
 		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
+		gatedWrite(user, Role.LANDLORD).andExpect(status().isForbidden());
+		// Verifying a phone again lifts it without a new approval.
+		IdentityVerification phone = checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP).orElseThrow();
+		phone.setStatus(IdentityStatus.VERIFIED);
+		checks.save(phone);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
 	}
 
@@ -470,7 +471,7 @@ class VerificationApiTest {
 	@Test
 	void threeSubmitsPer24Hours() throws Exception {
 		User user = applicant("Resubmits a lot", Role.TENANT);
-		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		User admin = admin();
 		UUID id = submitted(user, Role.TENANT);
 		for (int i = 0; i < 2; i++) {
@@ -487,6 +488,7 @@ class VerificationApiTest {
 	@Test
 	void decisionEmailsNeverCarryIdNumbers(CapturedOutput output) throws Exception {
 		User user = applicant("Emailed", Role.TENANT);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		IdentityVerification pan = check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		UUID id = submitted(user, Role.TENANT);
 		decide(admin(), id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId() + "\", \"result\": \"VERIFIED\"}]}")

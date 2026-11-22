@@ -117,17 +117,19 @@ describe("MyTenanciesPage", () => {
     expect(screen.getByRole("tab", { name: "Pending (1)" })).toBeTruthy()
   })
 
-  it("shows the pending-approval prompt when a gated confirm is refused", async () => {
+  it("sends a user without a verified phone to the phone step and back when a confirm is refused", async () => {
     api.confirm = new ApiError({
       status: 403,
-      code: "approval_required",
-      detail: "Your landlord verification is not approved.",
-      approval: { role: "LANDLORD", status: "PENDING" },
+      code: "id_verification_required",
+      detail: "Verify your phone number to continue.",
+      missing: ["phone"],
     })
     renderPage()
     await userEvent.click(await screen.findByRole("button", { name: /Confirm tenancy/ }))
-    expect(await screen.findByText("Your landlord account is pending approval")).toBeTruthy()
-    expect(screen.getByRole("link", { name: "See verification status" })).toBeTruthy()
+    expect(await screen.findByText("Verify your phone to post")).toBeTruthy()
+    expect(
+      screen.getByRole("link", { name: "Verify your phone number" }).getAttribute("href"),
+    ).toBe("/verify/phone?next=%2Fme%2Ftenancies")
   })
 
   it("lets a pending account decline with a reason, never gated", async () => {

@@ -154,7 +154,8 @@ class PhoneOtpTest {
 		MockHttpServletResponse confirmed = confirm(user, challengeId, code);
 		assertThat(confirmed.getStatus()).as(confirmed.getContentAsString()).isEqualTo(200);
 		JsonNode view = body(confirmed);
-		assertThat(view.get("idVerified").asBoolean()).isTrue();
+		assertThat(method(view, "PHONE_OTP").get("status").asString()).isEqualTo("VERIFIED");
+		assertThat(view.get("idVerified").asBoolean()).as("a phone alone gives no badge (D-100)").isFalse();
 		assertThat(view.get("linkedinVerified").asBoolean()).isFalse();
 		JsonNode phoneMethod = method(view, "PHONE_OTP");
 		assertThat(phoneMethod.get("status").asString()).isEqualTo("VERIFIED");
@@ -173,7 +174,7 @@ class PhoneOtpTest {
 		
 		MockHttpServletResponse me = mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.badges.idVerified").value(true))
+			.andExpect(jsonPath("$.badges.idVerified").value(false))
 			.andExpect(jsonPath("$.badges.linkedinVerified").value(false))
 			.andExpect(jsonPath("$.phone").value("+91 XXXXXX" + last4))
 			.andReturn().getResponse();
@@ -189,7 +190,7 @@ class PhoneOtpTest {
 		assertThat(output.getAll()).doesNotContain(national);
 		assertThat(output.getAll().lines().filter(l -> l.contains(code)))
 			.allMatch(l -> SMS_LINE.matcher(l).find());
-		assertThat(identity.isIdVerified(saved)).isTrue();
+		assertThat(identity.isPhoneVerified(saved)).isTrue();
 	}
 	
 	@Test
@@ -210,7 +211,7 @@ class PhoneOtpTest {
 		MockHttpServletResponse sixth = confirm(user, challengeId, code);
 		assertThat(sixth.getStatus()).isEqualTo(422);
 		assertThat(body(sixth).get("code").asString()).isEqualTo("otp_attempts_exceeded");
-		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 		assertThat(challenges.findByPublicIdAndUser(UUID.fromString(challengeId), user).orElseThrow().getAttempts())
 			.isEqualTo(5);
 	}
@@ -230,7 +231,7 @@ class PhoneOtpTest {
 		MockHttpServletResponse next = confirm(user, challengeId, codeSentTo(output, phone));
 		assertThat(next.getStatus()).isEqualTo(422);
 		assertThat(body(next).get("code").asString()).isEqualTo("otp_attempts_exceeded");
-		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 	}
 	
 	@Test
@@ -248,7 +249,7 @@ class PhoneOtpTest {
 		MockHttpServletResponse confirmed = confirm(user, sent.getFirst().getPublicId().toString(), "123456");
 		assertThat(confirmed.getStatus()).isEqualTo(422);
 		assertThat(body(confirmed).get("code").asString()).isEqualTo("otp_expired");
-		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 	}
 	
 	@Test
@@ -263,7 +264,7 @@ class PhoneOtpTest {
 		MockHttpServletResponse late = confirm(user, challengeId, codeSentTo(output, phone));
 		assertThat(late.getStatus()).isEqualTo(422);
 		assertThat(body(late).get("code").asString()).isEqualTo("otp_expired");
-		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 	}
 	
 	@Test
@@ -278,7 +279,7 @@ class PhoneOtpTest {
 		MockHttpServletResponse response = confirm(user, challengeId, code);
 		assertThat(response.getStatus()).isEqualTo(422);
 		assertThat(body(response).get("code").asString()).isEqualTo("otp_expired");
-		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 	}
 	
 	@Test
@@ -345,15 +346,15 @@ class PhoneOtpTest {
 		assertThat(identity.flags(first)).isEmpty();
 		verify(second, shared, output);
 		// Shared family phones exist, so nothing is blocked: both stay verified, both are flagged for the admin.
-		assertThat(identity.isIdVerified(first)).isTrue();
-		assertThat(identity.isIdVerified(second)).isTrue();
+		assertThat(identity.isPhoneVerified(first)).isTrue();
+		assertThat(identity.isPhoneVerified(second)).isTrue();
 		assertThat(identity.flags(first)).containsExactly(IdentityService.DUPLICATE_PHONE);
 		assertThat(identity.flags(second)).containsExactly(IdentityService.DUPLICATE_PHONE);
 		assertThat(identity.flags(data.user("Stranger", Role.TENANT))).isEmpty();
 	}
 	
 	@Test
-	void changingThePhoneRevokesTheCheck(CapturedOutput output) throws Exception {
+	void removingThePhoneRevokesTheCheckAndANewNumberNeedsACode(CapturedOutput output) throws Exception {
 		User user = data.user("Sana", Role.TENANT);
 		String phone = phone();
 		verify(user, phone, output);
@@ -361,11 +362,17 @@ class PhoneOtpTest {
 		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(user))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"" + phone + "\"}"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.user.badges.idVerified").value(true));
+			.andExpect(jsonPath("$.user.badges.idVerified").value(false));
+		// Settings cannot swap in an unverified number (D-117): a new one goes through the code flow.
 		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(user))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"" + phone() + "\"}"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].code").value("phone_needs_otp"));
+		assertThat(identity.isPhoneVerified(user)).isTrue();
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(user))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"\"}"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.user.badges.idVerified").value(false));
+			.andExpect(jsonPath("$.user.phone").doesNotExist());
 		JsonNode view = body(mvc.perform(get("/me/identity").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(status().isOk()).andReturn().getResponse());
 		JsonNode phoneMethod = method(view, "PHONE_OTP");
@@ -400,7 +407,7 @@ class PhoneOtpTest {
 		String challengeId = body(start(owner, phone)).get("challengeId").asString();
 		MockHttpServletResponse response = confirm(other, challengeId, codeSentTo(output, phone));
 		assertThat(response.getStatus()).isEqualTo(404);
-		assertThat(identity.isIdVerified(other)).isFalse();
+		assertThat(identity.isPhoneVerified(other)).isFalse();
 	}
 	
 	@Test

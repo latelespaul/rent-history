@@ -52,6 +52,12 @@ class MigrationVendorParseTest {
 		assertThat(versions.contains("5.1")).as("5.1 only on MySQL").isEqualTo(mysql);
 		assertThat(jdbc.queryForObject("select count(*) from information_schema.table_constraints"
 			+ " where lower(constraint_name) = 'fk_properties_area'", Integer.class)).isEqualTo(mysql ? 1 : 0);
+		// V7 verification state (D-134), plus the MySQL-only V7.1 foreign keys
+		assertThat(versions).contains("7");
+		assertThat(versions.contains("7.1")).as("7.1 only on MySQL").isEqualTo(mysql);
+		assertThat(jdbc.queryForObject("select count(*) from information_schema.table_constraints"
+			+ " where lower(constraint_name) = 'fk_reviews_verification_decided_by'", Integer.class))
+			.isEqualTo(mysql ? 1 : 0);
 	}
 	
 	@ParameterizedTest(name = "{0}")

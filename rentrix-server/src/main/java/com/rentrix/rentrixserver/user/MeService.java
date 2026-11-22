@@ -15,7 +15,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -67,6 +66,10 @@ public class MeService {
 		String phone = request.phone() == null ? null : request.phone().trim();
 		if (phone != null && !phone.isEmpty() && !PHONE.matcher(phone).matches()) {
 			errors.add(new ApiProblem.FieldError("phone", "pattern", "Use international format, e.g. +919876543210."));
+		} else if (phone != null && !phone.isEmpty() && !phone.equals(user.getPhone())) {
+			// A new number is stored only by a confirmed code (D-117): PATCH may clear it, never set it.
+			errors.add(new ApiProblem.FieldError("phone", "phone_needs_otp",
+				"Verify a new number with a code (POST /me/identity/phone/start)."));
 		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
@@ -77,13 +80,10 @@ public class MeService {
 		if (displayName != null) {
 			user.setDisplayName(displayName);
 		}
-		if (phone != null) {
-			String newPhone = phone.isEmpty() ? null : phone;
-			if (!Objects.equals(newPhone, user.getPhone())) {
-				// The verified phone no longer belongs to the account (D-101).
-				identity.phoneChanged(user);
-			}
-			user.setPhone(newPhone);
+		if (phone != null && phone.isEmpty() && user.getPhone() != null) {
+			// The verified phone no longer belongs to the account (D-101).
+			identity.phoneChanged(user);
+			user.setPhone(null);
 		}
 		if (request.homeCity() != null) {
 			if (request.homeCity().isBlank()) {

@@ -48,8 +48,13 @@ export interface ProblemDetails {
   instance?: string
   errors?: ProblemFieldError[]
   traceId?: string
-  /** On `403 approval_required` only: the role whose approval blocks the write (D-91). */
+  /** Unused since open by default (D-132): the API no longer answers `403 approval_required`. */
   approval?: { role: Role; status: VerificationStatus }
+  /**
+   * The steps still to do: on `422 verification_incomplete` (e.g. `["profile", "phone"]`) and
+   * `["phone"]` on `403 id_verification_required` (D-117).
+   */
+  missing?: string[]
   /**
    * On `409 tenancy_overlap` only: the tenancy already on the home, as months (`to` absent while
    * it is current); `tenancyId` only for that home's landlord.
@@ -435,4 +440,56 @@ export interface UpdateMeRequest {
 export interface MeUpdate {
   user: CurrentUser
   accessToken: string
+}
+
+/** One step of the verification stepper on `GET /me/verification` (D-120). */
+export type StepStatus = "DONE" | "PENDING" | "MISSING" | "REJECTED" | "SKIPPED" | "NOT_APPLICABLE"
+
+/** `GET /me/verification`: one entry per held TENANT / LANDLORD role (D-89, D-120). */
+export interface VerificationEntry {
+  /** The application's id; absent until the first "Request verification". */
+  id?: string
+  role: Exclude<Role, "ADMIN">
+  status: VerificationStatus
+  revision: number
+  steps: {
+    profile: StepStatus
+    phone: StepStatus
+    identity: StepStatus
+    linkedin: StepStatus
+    rentalAgreement: StepStatus
+  }
+  submittedAt?: string
+  /** The last decision: code and note for `REJECTED`, only the date for `APPROVED`. */
+  decision?: { code?: string; note?: string; decidedAt: string }
+}
+
+export type IdentityMethod = "AADHAAR" | "PAN" | "PHONE_OTP" | "LINKEDIN"
+export type IdentityStatus = "PENDING" | "VERIFIED" | "REJECTED" | "REVOKED"
+
+/** One method on `GET /me/identity`: masked values only (D-106). */
+export interface IdentityMethodView {
+  method: IdentityMethod
+  /** Null when never started. */
+  status?: IdentityStatus | null
+  /** PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`, or the LinkedIn URL. */
+  masked?: string | null
+  checkedBy?: "ADMIN" | "OTP" | "PROVIDER" | null
+  verifiedAt?: string | null
+  reject?: { code: string; note?: string | null } | null
+  /** Whether the method can be started now (phone needs an SMS sender; PAN / Aadhaar need B12). */
+  available: boolean
+}
+
+/** `GET /me/identity` (D-100, D-106). `idVerified` is the PAN / Aadhaar badge, not the phone. */
+export interface IdentityView {
+  idVerified: boolean
+  linkedinVerified: boolean
+  methods: IdentityMethodView[]
+}
+
+/** `POST /me/identity/phone/start`: the code was sent (D-101). */
+export interface PhoneChallenge {
+  challengeId: string
+  expiresAt: string
 }

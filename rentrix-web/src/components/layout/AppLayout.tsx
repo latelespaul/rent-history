@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom"
 import { Footer } from "./Footer"
 import type { ShellViewer } from "./nav"
+import { PhoneBanner } from "./PhoneBanner"
 import { TopBar } from "./TopBar"
 
 /**
@@ -23,6 +24,7 @@ export function AppLayout({
         Skip to content
       </a>
       <TopBar viewer={viewer} onSignOut={onSignOut} />
+      {viewer?.progress?.kind === "phone" && <PhoneBanner />}
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
         <Outlet />
       </div>

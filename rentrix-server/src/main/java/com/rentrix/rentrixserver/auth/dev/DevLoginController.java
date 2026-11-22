@@ -24,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +34,8 @@ import java.util.UUID;
  * can be clicked through and screenshotted with no Google account. The bean exists only when the {@code dev}
  * or {@code test} profile is active <em>and</em> {@code DEV_LOGIN_ENABLED=true}; elsewhere the routes are
  * {@code 404}, and {@code StartupGuard} refuses to start any other profile with the flag on.
+ * {@code POST /auth/dev-login/new} signs in as a brand-new user with no role yet, so the first sign-in (role pick,
+ * account created, verification stepper) can be clicked through without Google too.
  */
 @RestController
 @RequestMapping("/auth")
@@ -63,6 +67,20 @@ public class DevLoginController {
 			.filter(User::isDemo)
 			.orElseThrow(() -> ApiException.notFound("Demo user"));
 		return sessions.signedIn(request, auth.startSession(user));
+	}
+	
+	/** A new, not-onboarded, non-demo user: like a first Google sign-in, with a made-up example.test email. */
+	@PostMapping("/dev-login/new")
+	@Transactional
+	public ResponseEntity<AuthResponse> devLoginAsNewUser(HttpServletRequest request) {
+		rateLimiter.check(request);
+		String tag = UUID.randomUUID().toString().substring(0, 8);
+		User user = new User();
+		user.setGoogleSub("dev-new-" + tag);
+		user.setEmail("new-user-" + tag + "@example.test");
+		user.setEmailVerifiedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+		user.setDisplayName("New User");
+		return sessions.signedIn(request, auth.startSession(users.save(user)));
 	}
 	
 }

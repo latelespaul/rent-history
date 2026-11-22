@@ -13,7 +13,8 @@ import java.util.List;
 /**
  * Read side of the rating recompute (D-33): totals over counted source reviews, the repeat-pair groups (D-44) and
  * the subject lists of the nightly repair. Counted means {@code status = PUBLISHED} and
- * {@code counts_in_aggregate = true} (§9).
+ * {@code counts_in_aggregate = true} (§9); the headline totals also need the green tick,
+ * {@code verification_status = VERIFIED} (D-135).
  */
 interface RatingSourceRepository extends Repository<Review, Long> {
 	
@@ -23,15 +24,18 @@ interface RatingSourceRepository extends Repository<Review, Long> {
 		+ "sum(case when r.ratingOverall = 5 then 1 else 0 end), avg(r.ratingA), avg(r.ratingB), avg(r.ratingC), "
 		+ "max(r.publishedAt) from Review r ";
 	
+	/** The green-tick state, as a JPQL enum literal (D-135). */
+	String VERIFIED = "com.rentrix.rentrixserver.verification.VerificationState.VERIFIED";
+	
 	/** Totals of a person subject (index ix_reviews_subject_user). */
 	@Query(TOTALS + "where r.subjectUser.id = :userId and r.direction = :direction and r.status = :status "
-		+ "and r.countsInAggregate = true")
+		+ "and r.countsInAggregate = true and r.verificationStatus = " + VERIFIED)
 	List<Object[]> personTotals(@Param("userId") Long userId, @Param("direction") ReviewDirection direction,
 		@Param("status") ReviewStatus status);
 	
 	/** Totals of a property (index ix_reviews_property). */
 	@Query(TOTALS + "where r.property.id = :propertyId and r.direction = :direction and r.status = :status "
-		+ "and r.countsInAggregate = true")
+		+ "and r.countsInAggregate = true and r.verificationStatus = " + VERIFIED)
 	List<Object[]> propertyTotals(@Param("propertyId") Long propertyId, @Param("direction") ReviewDirection direction,
 		@Param("status") ReviewStatus status);
 	

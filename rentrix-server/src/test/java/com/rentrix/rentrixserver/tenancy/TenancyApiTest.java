@@ -239,30 +239,39 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.errors[0].code").value("required"));
 	}
 
-	// ------------------------------------------------------ approval gate
+	// ------------------------------------------- phone gate (open by default, D-132)
 
 	@Test
-	void unapprovedInitiatorIsRefused() throws Exception {
+	void initiatorWithoutAVerifiedPhoneIsRefused() throws Exception {
 		User landlord = data.approved("Gate Landlord", Role.LANDLORD);
 		User tenant = data.verified("Waiting Tenant", Role.TENANT);
 		create(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000))
 			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"))
-			.andExpect(jsonPath("$.approval.role").value("TENANT"))
-			.andExpect(jsonPath("$.approval.status").value("DRAFT"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"))
+			.andExpect(jsonPath("$.missing[0]").value("phone"))
+			.andExpect(jsonPath("$.approval").doesNotExist());
 		assertThat(tenancies.findByTenantIdAndStatusIn(tenant.getId(), java.util.List.of(TenancyStatus.values())))
 			.isEmpty();
 	}
 
 	@Test
-	void unapprovedCounterpartyCannotConfirmButCanDecline() throws Exception {
+	void phoneVerifiedUserWithoutApprovalCanPostAtOnce() throws Exception {
+		User landlord = data.approved("Open Landlord", Role.LANDLORD);
+		User tenant = data.verified("Open Tenant", Role.TENANT);
+		data.verifyPhone(tenant); // application still DRAFT: approval is a green tick, not a gate (D-132)
+		create(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000))
+			.andExpect(status().isCreated());
+	}
+
+	@Test
+	void counterpartyWithoutAVerifiedPhoneCannotConfirmButCanDecline() throws Exception {
 		User landlord = data.verified("Waiting Landlord", Role.LANDLORD);
 		User tenant = data.approved("Keen Tenant", Role.TENANT);
 		String id = createdId(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000));
 		act(landlord, id, "confirm")
 			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"))
-			.andExpect(jsonPath("$.approval.role").value("LANDLORD"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"))
+			.andExpect(jsonPath("$.missing[0]").value("phone"));
 		act(landlord, id, "decline", "{\"reason\": \"Never rented to this person.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("DECLINED"))
@@ -520,9 +529,9 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.inviteEmail").doesNotExist())
 			.andExpect(jsonPath("$.actions.confirm").value(true));
 		claim(invitee, token).andExpect(status().isNotFound());
-		// The invitee is not approved yet: confirming waits for approval, declining does not.
+		// The invitee has no verified phone yet: confirming waits for it, declining does not.
 		act(invitee, id, "confirm").andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"));
 		data.approve(invitee);
 		act(invitee, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
@@ -697,7 +706,7 @@ class TenancyApiTest {
 	}
 
 	@Test
-	void rentRecordsNeedAConfirmedTenancyAndAnApprovedParty() throws Exception {
+	void rentRecordsNeedAConfirmedTenancyAndAPartyWithAVerifiedPhone() throws Exception {
 		User landlord = data.verified("Unapproved Rent Landlord", Role.LANDLORD);
 		User tenant = data.verified("Unapproved Rent Tenant", Role.TENANT);
 		Property property = home(landlord);
@@ -710,8 +719,7 @@ class TenancyApiTest {
 		mvc.perform(post("/tenancies/" + active.getPublicId() + "/rent-records")
 				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON).content(rent))
 			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"))
-			.andExpect(jsonPath("$.approval.role").value("TENANT"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"));
 	}
 
 	@Test

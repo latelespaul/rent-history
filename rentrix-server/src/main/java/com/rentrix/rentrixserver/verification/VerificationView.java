@@ -24,8 +24,12 @@ public record VerificationView(
 	Decision decision
 ) {
 	
-	/** The onboarding steps (D-89): profile and ID are required; LinkedIn and the rental agreement are optional. */
-	public record Steps(StepStatus profile, StepStatus identity, StepStatus linkedin, StepStatus rentalAgreement) {
+	/**
+	 * The stepper's steps (D-120): profile and phone are required to request verification; the extra ID (PAN or
+	 * Aadhaar), LinkedIn and the rental details are optional.
+	 */
+	public record Steps(StepStatus profile, StepStatus phone, StepStatus identity, StepStatus linkedin,
+		StepStatus rentalAgreement) {
 	}
 	
 	@JsonInclude(JsonInclude.Include.NON_NULL)

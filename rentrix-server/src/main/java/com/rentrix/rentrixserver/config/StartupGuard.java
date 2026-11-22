@@ -23,8 +23,10 @@ import java.util.Set;
  *   <li>exactly one of {@code dev}, {@code test}, {@code prod} must be active; there is no default;</li>
  *   <li>{@code JWT_SECRET} must be at least 32 bytes (dev and test ship a built-in one);</li>
  *   <li>outside dev and test, {@code DEV_LOGIN_ENABLED=true} is refused and {@code DB_URL} is required;</li>
- *   <li>{@code SMS_BACKEND} is empty, {@code log} or {@code http}; {@code log} (codes in the log) is refused outside
- *   dev and test; {@code http} needs {@code SMS_HTTP_URL}, {@code SMS_API_KEY} and an {@code ID_HASH_KEY};</li>
+ *   <li>{@code SMS_BACKEND} is empty, {@code log}, {@code http} or {@code admin-relay}; {@code log} (codes in the
+ *   log) is refused outside dev and test; {@code http} needs {@code SMS_HTTP_URL}, {@code SMS_API_KEY} and an
+ *   {@code ID_HASH_KEY}; {@code admin-relay} (codes shown to admins, D-137) is refused outside dev and test unless
+ *   {@code PREVIEW_MODE=true}, needs an {@code ID_HASH_KEY} there, and logs one warning on every start;</li>
  *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one).</li>
  * </ul>
  * <p>No {@code SMS_BACKEND} outside dev and test starts with one warning: phone OTP is unavailable
@@ -47,7 +49,7 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 	static final Set<String> LOCAL_PROFILES = Set.of("dev", "test");
 	static final int MIN_JWT_SECRET_BYTES = 32;
 	static final int MIN_ID_HASH_KEY_BYTES = 32;
-	static final Set<String> SMS_BACKENDS = Set.of("log", "http");
+	static final Set<String> SMS_BACKENDS = Set.of("log", "http", "admin-relay");
 	
 	@Override
 	public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
@@ -76,7 +78,13 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		}
 		String sms = env.getProperty("app.sms.backend", "").trim().toLowerCase(Locale.ROOT);
 		if (!sms.isEmpty() && !SMS_BACKENDS.contains(sms)) {
-			throw new IllegalStateException("Refusing to start: SMS_BACKEND must be empty, 'log' or 'http'.");
+			throw new IllegalStateException("Refusing to start: SMS_BACKEND must be empty, 'log', 'http' or "
+				+ "'admin-relay'.");
+		}
+		if (sms.equals("admin-relay")) {
+			LOG.warn("SMS_BACKEND=admin-relay in the '{}' profile: no SMS is sent; phone OTP codes are shown to "
+				+ "admins in the admin console. Preview only: set SMS_BACKEND=http before opening sign-up to the "
+				+ "public.", profile);
 		}
 		if (sms.equals("http")) {
 			if (!StringUtils.hasText(env.getProperty("app.sms.http.url"))
@@ -94,6 +102,16 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		if (sms.equals("log")) {
 			throw new IllegalStateException("Refusing to start: SMS_BACKEND=log writes OTP codes to the log and is "
 				+ "allowed only in the dev and test profiles.");
+		}
+		if (sms.equals("admin-relay")) {
+			if (!env.getProperty("app.preview-mode", Boolean.class, false)) {
+				throw new IllegalStateException("Refusing to start: SMS_BACKEND=admin-relay shows OTP codes to admins and "
+					+ "is allowed in the '" + profile + "' profile only with PREVIEW_MODE=true.");
+			}
+			if (!hasHashKey) {
+				throw new IllegalStateException("Refusing to start: SMS_BACKEND=admin-relay needs ID_HASH_KEY (at least "
+					+ MIN_ID_HASH_KEY_BYTES + " bytes) to hash the OTP codes.");
+			}
 		}
 		if (sms.isEmpty()) {
 			LOG.warn("SMS_BACKEND is empty in the '{}' profile: phone OTP verification is unavailable (503 "

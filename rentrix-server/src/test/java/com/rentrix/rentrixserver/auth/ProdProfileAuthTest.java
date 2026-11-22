@@ -35,6 +35,7 @@ class ProdProfileAuthTest {
 		mvc.perform(post("/auth/dev-login").contentType(MediaType.APPLICATION_JSON)
 				.content("{\"userId\":\"" + UUID.randomUUID() + "\"}"))
 			.andExpect(status().isNotFound());
+		mvc.perform(post("/auth/dev-login/new")).andExpect(status().isNotFound());
 	}
 	
 	@Test
