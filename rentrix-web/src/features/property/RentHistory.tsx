@@ -8,12 +8,12 @@ import { useRentHistory } from "./useProperties"
 
 /** Newest first; a change is shown against the row before it in time. */
 function rowsWithChange(rows: RentHistoryRow[]) {
-  const sorted = [...rows].sort((a, b) => b.from.localeCompare(a.from))
+  const sorted = [...rows].sort((a, b) => b.fromMonth.localeCompare(a.fromMonth))
   return sorted.map((row, i) => {
     const older = sorted[i + 1]
     const change =
-      older && older.monthlyRent > 0
-        ? ((row.monthlyRent - older.monthlyRent) / older.monthlyRent) * 100
+      older && older.monthlyRentInr > 0
+        ? ((row.monthlyRentInr - older.monthlyRentInr) / older.monthlyRentInr) * 100
         : null
     return { row, change }
   })
@@ -72,12 +72,22 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
           <tbody>
             {rowsWithChange(history.data).map(({ row, change }) => (
               <tr
-                key={`${row.from}-${row.monthlyRent}`}
+                key={`${row.fromMonth}-${row.monthlyRentInr}`}
                 className="border-b border-line last:border-0"
               >
-                <td className="py-2.5 pr-4">{monthLabel(row.from)}</td>
-                <td className="py-2.5 pr-4">{monthLabel(row.to) ?? "now"}</td>
-                <td className="py-2.5 pr-4 text-right font-semibold">{rupees(row.monthlyRent)}</td>
+                <td className="py-2.5 pr-4">{monthLabel(row.fromMonth)}</td>
+                <td className="py-2.5 pr-4">{monthLabel(row.toMonth) ?? "now"}</td>
+                <td className="py-2.5 pr-4 text-right font-semibold">
+                  {rupees(row.monthlyRentInr)}
+                  {row.maintenanceInr ? (
+                    <span className="block text-xs font-normal text-ink-500">
+                      + {rupees(row.maintenanceInr)} maintenance
+                    </span>
+                  ) : null}
+                  {row.share && (
+                    <span className="block text-xs font-normal text-ink-500">per share</span>
+                  )}
+                </td>
                 <td className="py-2.5 text-right text-ink-700">
                   {change === null
                     ? "first record"

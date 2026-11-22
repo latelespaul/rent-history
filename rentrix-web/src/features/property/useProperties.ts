@@ -54,7 +54,7 @@ export function useProperty(id: string) {
   return useQuery({
     queryKey: propertyKeys.detail(id, viewer),
     queryFn: ({ signal }) => fetchProperty(id, signal),
-    enabled: ready,
+    enabled: ready && Boolean(id),
     retry: false,
   })
 }

@@ -18,6 +18,8 @@ import { PropertyReviews } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
 import { RentHistory } from "@/features/property/RentHistory"
 import { useProperty, useSignedIn } from "@/features/property/useProperties"
+import { useAuth } from "@/features/auth/authContext"
+import { PencilIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import type { PropertyDetail } from "@/types/api"
 
 function Breadcrumb({ property }: { property: PropertyDetail }) {
@@ -112,6 +114,45 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
 }
 
 /**
+ * The next step on a home for the signed-in viewer: its owner edits it or invites a tenant; a
+ * tenant who rents or rented it asks the landlord to confirm the tenancy (D-34).
+ */
+function PropertyActions({ property }: { property: PropertyDetail }) {
+  const { state } = useAuth()
+  const user = state.user
+  if (!user) return null
+  const owner = property.landlord.id === user.id
+  if (owner) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/me/properties/${property.id}/edit`}>
+            <PencilIcon />
+            Edit listing
+          </Link>
+        </Button>
+        {(property.status === "PUBLISHED" || property.status === "ARCHIVED") && (
+          <Button asChild size="sm">
+            <Link to={`/tenancies/new?property=${property.id}`}>
+              <TenancyIcon />
+              Invite a tenant
+            </Link>
+          </Button>
+        )}
+      </div>
+    )
+  }
+  if (!user.roles.includes("TENANT") || property.status !== "PUBLISHED") return null
+  return (
+    <Button asChild variant="outline" size="sm">
+      <Link to={`/tenancies/new?property=${property.id}`}>
+        <TenancyIcon />I rent or rented this home
+      </Link>
+    </Button>
+  )
+}
+
+/**
  * Property page (DESIGN.md screen 3, `/p/:id`). Anonymous visitors see place, facts and the
  * aggregate ratings; signed-in users also get rent history and review text (D-56). The flat
  * number shows only when the API sends it, i.e. to the owner and admins (D-57).
@@ -168,6 +209,7 @@ export default function PropertyPage() {
           <MapPinIcon size={16} className="text-ink-500" />
           {[property.street, placeLine(property)].filter(Boolean).join(", ")}
         </p>
+        <PropertyActions property={property} />
       </div>
 
       <Gallery />

@@ -11,6 +11,7 @@ import java.util.UUID;
 /**
  * A property page ({@code GET /properties/{id}}), and the owner's view of their own listings. Fields follow
  * D-56 and D-57: {@code unitLabel} (flat or house number) is present only for the owner and admins.
+ * {@code location} is the place in the hierarchy (D-107); absent for a B4a home placed by free-text locality only.
  */
 public record PropertyDetail(
 	UUID id,
@@ -32,6 +33,7 @@ public record PropertyDetail(
 	RatingSummary rating,
 	LandlordSummary landlord,
 	Instant createdAt,
-	Instant updatedAt
+	Instant updatedAt,
+	@JsonInclude(JsonInclude.Include.NON_NULL) PropertyLocation location
 ) {
 }

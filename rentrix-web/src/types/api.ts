@@ -48,6 +48,8 @@ export interface ProblemDetails {
   instance?: string
   errors?: ProblemFieldError[]
   traceId?: string
+  /** On `403 approval_required` only: the role whose approval blocks the write (D-91). */
+  approval?: { role: Role; status: VerificationStatus }
 }
 
 /** Pagination envelope of list endpoints (D-59). */
@@ -168,13 +170,206 @@ export interface PropertyDetail {
   landlord: LandlordSummary
   createdAt: string
   updatedAt: string
+  /** Place in the hierarchy (D-107); absent for a home placed by free-text locality only. */
+  location?: PropertyLocation
 }
 
-/** One row of `GET /properties/{id}/rent-history` (D-26): no tenant identity, month precision. */
+/** Location row state (§5.17): `PENDING` is a landlord's proposal, shown "Pending review" (D-109). */
+export type LocationStatus = "ACTIVE" | "PENDING" | "HIDDEN"
+
+/** One level of a property's place: its `public_id`, name and state. */
+export interface LocationLevel {
+  id: string
+  name: string
+  status: LocationStatus
+}
+
+/** `PropertyDetail.location`: the area always, society / tower / wing inside a society. */
+export interface PropertyLocation {
+  area: LocationLevel
+  society?: LocationLevel
+  tower?: LocationLevel
+  wing?: LocationLevel
+}
+
+export type SocietyKind = "GATED_COMMUNITY" | "APARTMENT_COMPLEX"
+export type TowerKind = "TOWER" | "BLOCK"
+
+/**
+ * `location` of `POST` / `PATCH /properties` (D-109, D-110): at each level an existing row's id or
+ * an inline proposal, never both. Area required; society, tower and wing optional, each needing
+ * the level above.
+ */
+export interface LocationInput {
+  areaId?: string
+  newArea?: { name: string; pincode: string }
+  societyId?: string
+  newSociety?: { name: string; kind: SocietyKind; developer?: string }
+  towerId?: string
+  newTower?: { name: string; kind?: TowerKind }
+  wingId?: string
+  newWing?: { name: string }
+}
+
+/** One `GET /areas` card (D-108). */
+export interface AreaCard {
+  id: string
+  city: CityRef
+  name: string
+  aliases: string[]
+  pincodes: string[]
+  status: LocationStatus
+  societyCount: number
+  publishedHomes: number
+}
+
+/** One `GET /societies` card (D-112). */
+export interface SocietyCard {
+  id: string
+  name: string
+  developer: string | null
+  kind: SocietyKind
+  area: { id: string; name: string }
+  city: CityRef
+  street: string | null
+  status: LocationStatus
+  towerCount: number
+  publishedHomes: number
+}
+
+/** `GET /societies/{id}/towers`: towers with their wings, for the form pickers. */
+export interface TowerView {
+  id: string
+  name: string
+  kind: TowerKind
+  status: LocationStatus
+  publishedHomes: number
+  wings: Array<{ id: string; name: string; status: LocationStatus; publishedHomes: number }>
+}
+
+/** `POST /properties` body (§12.2). With `location` the locality is copied from the area. */
+export interface PropertyInput {
+  city: string
+  pincode: string
+  locality?: string
+  buildingName?: string
+  street?: string
+  unitLabel?: string
+  propertyType: PropertyType
+  bedrooms?: number | null
+  bathrooms?: number | null
+  areaSqft?: number | null
+  furnishing?: Furnishing | null
+  parking?: boolean | null
+  description?: string
+  location?: LocationInput
+}
+
+/** `PATCH /properties/{id}`: absent fields stay; `status` only `ARCHIVED` (D-21). */
+export type PropertyPatch = Partial<PropertyInput> & { status?: "ARCHIVED" }
+
+/**
+ * One row of `GET /properties/{id}/rent-history` (D-26): months as `YYYY-MM`, no tenant
+ * identity; `toMonth` absent while current; `share` on room / PG homes.
+ */
 export interface RentHistoryRow {
-  from: string
-  to: string | null
-  monthlyRent: number
+  fromMonth: string
+  toMonth?: string | null
+  monthlyRentInr: number
+  maintenanceInr?: number | null
+  share: boolean
+}
+
+/** `GET /properties/{id}/rent-history`. */
+export interface RentHistory {
+  propertyId: string
+  rows: RentHistoryRow[]
+}
+
+export type TenancyStatus =
+  "PENDING_CONFIRMATION" | "ACTIVE" | "ENDED" | "DECLINED" | "EXPIRED" | "CANCELLED" | "VOIDED"
+
+export type TenancyParty = "LANDLORD" | "TENANT"
+
+/** The other side of a tenancy: public id and short name only (D-57). */
+export interface PartyRef {
+  id: string
+  shortName: string
+}
+
+/** What the caller may do next, by role and state (§6); the approval gate is on the write. */
+export interface TenancyActions {
+  confirm: boolean
+  decline: boolean
+  cancel: boolean
+  end: boolean
+  addRentRecord: boolean
+}
+
+/** `GET /tenancies/{id}` and the `/me/tenancies` items (§12.2). Dates and deposit are private. */
+export interface Tenancy {
+  id: string
+  property: {
+    id: string
+    buildingName: string | null
+    locality: string
+    city: CityRef
+    unitLabel: string | null
+    propertyType: PropertyType
+  }
+  myRole: TenancyParty | null
+  landlord: PartyRef
+  /** Null for the landlord until a landlord-started request is confirmed. */
+  tenant: PartyRef | null
+  /** Masked for the landlord (`p***@g***.com`). */
+  inviteEmail: string | null
+  startDate: string
+  endDate: string | null
+  initialRentInr: number
+  currentRentInr: number | null
+  depositInr: number | null
+  depositRefundedInr: number | null
+  status: TenancyStatus
+  initiatedBy: TenancyParty
+  declineReason: string | null
+  evidenceLevel: "MUTUAL" | "DOCUMENT" | null
+  createdAt: string
+  expiresAt: string | null
+  confirmedAt: string | null
+  endedAt: string | null
+  actions: TenancyActions
+}
+
+/** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */
+export interface TenancyInput {
+  propertyId: string
+  counterpartyEmail?: string
+  startDate: string
+  endDate?: string
+  initialRentInr: number
+  depositInr?: number
+}
+
+export type RentRecordStatus = "PROPOSED" | "CONFIRMED" | "DISPUTED"
+
+/** One rent record of a tenancy (D-25); `canRespond` when the caller must confirm or dispute it. */
+export interface RentRecord {
+  id: string
+  effectiveFrom: string
+  monthlyRentInr: number
+  maintenanceInr: number | null
+  status: RentRecordStatus
+  addedBy: PartyRef
+  addedByMe: boolean
+  canRespond: boolean
+  createdAt: string
+}
+
+/** `POST /tenancies/{id}/rent-records`: a rent change from a month on. */
+export interface RentRecordInput {
+  effectiveFrom: string
+  monthlyRentInr: number
+  maintenanceInr?: number
 }
 
 /** One property review as `GET /properties/{id}/reviews` returns it (text only when signed in). */

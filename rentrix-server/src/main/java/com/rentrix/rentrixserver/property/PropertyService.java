@@ -7,6 +7,8 @@ import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.persistence.TimestampedEntity;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.LocationInput;
+import com.rentrix.rentrixserver.location.Placement;
 import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
@@ -15,6 +17,7 @@ import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
 import com.rentrix.rentrixserver.property.dto.LandlordSummary;
 import com.rentrix.rentrixserver.property.dto.PropertyCard;
 import com.rentrix.rentrixserver.property.dto.PropertyDetail;
+import com.rentrix.rentrixserver.property.dto.PropertyLocation;
 import com.rentrix.rentrixserver.property.dto.RatingSummary;
 import com.rentrix.rentrixserver.property.dto.UpdatePropertyRequest;
 import com.rentrix.rentrixserver.review.RatingAggregate;
@@ -164,7 +167,11 @@ public class PropertyService {
 		Property property = new Property();
 		property.setLandlord(landlord);
 		property.setCity(cities.getReferenceById(city));
-		property.setLocality(requireLocality(request.locality()));
+		if (request.location() != null) {
+			place(property, locations.resolve(city, pincode, request.location(), landlord));
+		} else {
+			property.setLocality(requireLocality(request.locality()));
+		}
 		property.setBuildingName(blankToNull(request.buildingName()));
 		property.setStreet(blankToNull(request.street()));
 		property.setUnitLabel(blankToNull(request.unitLabel()));
@@ -185,7 +192,18 @@ public class PropertyService {
 	@Transactional
 	public PropertyDetail update(UUID publicId, UpdatePropertyRequest request, AuthenticatedUser caller) {
 		Property property = owned(publicId, caller);
-		applyLocation(property, request);
+		boolean moved = applyLocation(property, request);
+		if (request.location() != null) {
+			if (!property.getStatus().locationEditable()) {
+				throw locationLocked(property, List.of("location"));
+			}
+			place(property, locations.resolve(property.getCity().getCode(), property.getPincode(), request.location(),
+				currentUser(caller)));
+		} else if (moved && property.getArea() != null) {
+			// a new PIN code or city must still fit the current place (D-108, D-110)
+			place(property, locations.resolve(property.getCity().getCode(), property.getPincode(),
+				currentPlace(property), currentUser(caller)));
+		}
 		if (request.unitLabel() != null) {
 			property.setUnitLabel(blankToNull(request.unitLabel()));
 		}
@@ -265,9 +283,14 @@ public class PropertyService {
 		property.setStatus(PropertyStatus.ARCHIVED);
 	}
 	
-	private void applyLocation(Property property, UpdatePropertyRequest request) {
+	/**
+	 * Applies the free-text location fields; returns true when the city or PIN code changed. With a
+	 * {@code location} the locality comes from its area, so {@code locality} is ignored.
+	 */
+	private boolean applyLocation(Property property, UpdatePropertyRequest request) {
 		String city = trimOrNull(request.city());
-		String locality = request.locality() == null ? null : requireLocality(request.locality());
+		String locality = request.locality() == null || request.location() != null ? null
+			: requireLocality(request.locality());
 		String pincode = trimOrNull(request.pincode());
 		String buildingName = request.buildingName() == null ? null : blankToNull(request.buildingName());
 		String street = request.street() == null ? null : blankToNull(request.street());
@@ -288,15 +311,13 @@ public class PropertyService {
 			changed.add("street");
 		}
 		if (changed.isEmpty()) {
-			return;
+			return false;
 		}
 		if (!property.getStatus().locationEditable()) {
-			throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "location_locked",
-				"The location of a " + property.getStatus() + " listing cannot change; ask an admin.",
-				changed.stream().map(field -> new ApiProblem.FieldError(field, "locked", "Locked after submit."))
-					.toList());
+			throw locationLocked(property, changed);
 		}
-		if (changed.contains("city") || changed.contains("pincode")) {
+		boolean moved = changed.contains("city") || changed.contains("pincode");
+		if (moved) {
 			String newCity = city != null ? city : property.getCity().getCode();
 			String newPincode = pincode != null ? pincode : property.getPincode();
 			requireLocation(newCity, newPincode);
@@ -312,6 +333,29 @@ public class PropertyService {
 		if (request.street() != null) {
 			property.setStreet(street);
 		}
+		return moved;
+	}
+	
+	private static ApiException locationLocked(Property property, List<String> fields) {
+		return new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "location_locked",
+			"The location of a " + property.getStatus() + " listing cannot change; ask an admin.",
+			fields.stream().map(field -> new ApiProblem.FieldError(field, "locked", "Locked after submit.")).toList());
+	}
+	
+	/** Puts the home on a checked place; the locality is the area's name (D-110). */
+	private static void place(Property property, Placement placement) {
+		property.setArea(placement.area());
+		property.setSociety(placement.society());
+		property.setTower(placement.tower());
+		property.setWing(placement.wing());
+		property.setLocality(placement.area().getName());
+	}
+	
+	private static LocationInput currentPlace(Property property) {
+		return LocationInput.of(property.getArea().getPublicId(),
+			property.getSociety() == null ? null : property.getSociety().getPublicId(),
+			property.getTower() == null ? null : property.getTower().getPublicId(),
+			property.getWing() == null ? null : property.getWing().getPublicId());
 	}
 	
 	private void requireLocation(String city, String pincode) {
@@ -368,7 +412,8 @@ public class PropertyService {
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPincode(), privileged ? p.getUnitLabel() : null, p.getPropertyType(), p.getBedrooms(),
 			p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(), p.getParking(), p.getDescription(), p.getStatus(),
-			p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt());
+			p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
+			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()));
 	}
 	
 	private static PropertyCard card(Property p, RatingAggregate rating) {
@@ -391,6 +436,10 @@ public class PropertyService {
 	}
 	
 	private static String requireLocality(String locality) {
+		if (locality == null || locality.isBlank()) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("locality", "required",
+				"Pick an area (location.areaId) or give a locality.")));
+		}
 		String trimmed = locality.trim().replaceAll("\\s+", " ");
 		if (trimmed.length() < 2) {
 			throw ApiException.validation(List.of(new ApiProblem.FieldError("locality", "size",

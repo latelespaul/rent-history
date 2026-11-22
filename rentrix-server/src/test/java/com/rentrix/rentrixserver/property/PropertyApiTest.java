@@ -99,7 +99,6 @@ class PropertyApiTest {
 				.content("{\"city\": \"BLR\", \"bedrooms\": -1}"))
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("validation_failed"))
-			.andExpect(jsonPath("$.errors[?(@.field == 'locality')]").exists())
 			.andExpect(jsonPath("$.errors[?(@.field == 'pincode')]").exists())
 			.andExpect(jsonPath("$.errors[?(@.field == 'propertyType')]").exists())
 			.andExpect(jsonPath("$.errors[?(@.field == 'bedrooms')]").exists());
