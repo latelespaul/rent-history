@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Admin · Rental agreement</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Admin approvals: rental agreement in the approval pane (design v4)</b> · <code>GET /admin/applications/{id}</code> (agreements), <code>POST /admin/agreements/{id}/anchor</code> · manual lookup, never scraped · Demo Tenant PNQ-7 · D-124 D-125 D-130 D-134</div>
+<header data-topbar data-as="admin"></header>
+<main class="container section">
+  <p class="eyebrow">Admin · Approvals · Tenants</p>
+  <h1 class="h1" style="margin-top:6px">Demo Tenant PNQ-7 <span class="badge badge-demo">Demo data</span></h1>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card"><h2 class="h3">Identity</h2><ul class="checklist">
+        <li><i data-icon="check" class="yes"></i><span><b>Phone</b> · <span class="masked">+91 XXXXXX0001</span> · verified by code (required) <span class="spec">D-117</span></span></li>
+        <li><i data-icon="clock" class="no"></i><span><b>Masked Aadhaar</b> (optional) · <span class="masked">XXXX XXXX 0007</span> · waiting for your check</span></li>
+      </ul></div>
+      <div class="card">
+        <div class="row between"><h2 class="h3" style="margin:0">Rental agreement · Pune leave and licence</h2><span class="badge">Unverified</span></div>
+        <dl class="kv" style="margin-top:12px">
+          <dt>Registration</dt><dd>No. 4512/2025 · Sub-Registrar Haveli 1 · 2025-06-12</dd>
+          <dt>GRAS GRN</dt><dd>MH000000000000000725</dd><dt>Stamp duty · fee</dt><dd>₹1,100 · ₹1,000</dd>
+          <dt>Parties</dt><dd>Landlord "S. Deshpande" · tenant "Demo Tenant PNQ-7"</dd>
+          <dt>Home</dt><dd>Baner, Pune 411045 · rent ₹22,000 · deposit ₹80,000 · 2025-06-15 → 2026-05-14</dd>
+          <dt>Flags</dt><dd><span class="badge badge-warn">AADHAAR_MASKED_ON_INTAKE</span></dd>
+        </dl>
+        <ul class="checks" style="margin-top:12px"><li><i data-icon="check" data-size="18" class="pass"></i><span><b>1 · Party (applicant side)</b></span><span class="xs pass">Pass · 100</span><span class="why">Tenant name matches the profile. Landlord is not on Doorway Living yet.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>2 · Home</b></span><span class="xs pass">Pass · 70</span><span class="why">PIN 411045 is in Baner, Pune.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>5 · Registration number</b></span><span class="xs pass">Pass · 100</span><span class="why">Format matches; year 2025 equals the registration year; stamp duty near 0.25 % of rent + deposit.</span></li><li><i data-icon="alert" data-size="18" class="warn"></i><span><b>4 · Dates</b></span><span class="xs warn">Check · 60</span><span class="why">Registered on 2025-06-12, 3 days before the start: fine. Term 11 months. Landlord not on Doorway Living yet, so the tenancy dates cannot be compared.</span></li><li><i data-icon="info" data-size="18" class="na"></i><span><b>3, 6 · Money, both sides</b></span><span class="xs na">Later</span><span class="why">Need a recorded tenancy.</span></li></ul>
+        <hr class="divider">
+        <h3 class="h3">Government lookup <span class="spec">D-130</span></h3>
+        <p class="small muted">Open the IGR Maharashtra document search in your own browser, fill in its captcha, and look up No. 4512/2025, Haveli 1. Doorway Living never automates this.</p>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn btn-secondary btn-sm" href="#"><i data-icon="link" data-size="16"></i>Open IGR Maharashtra search</a><a class="btn btn-secondary btn-sm" href="#"><i data-icon="eye" data-size="16"></i>View file (logged)</a></div>
+        <div class="field" style="margin-top:12px"><span class="label">Note</span><input class="input" value="Found on IGR: parties and dates match."></div>
+        <div class="row" style="gap:8px;margin-top:12px"><a class="btn btn-primary" href="#"><i data-icon="shield-check" data-size="18"></i>Anchor verified</a><a class="btn btn-danger-ghost" href="#">Not found</a></div>
+      </div>
+    </div>
+    <aside class="stack">
+      <div class="card"><h2 class="h3">Decision</h2><p class="small muted">Approving gives this tenant the green tick "Verified by Doorway Living". Rejecting removes no content: the user stays visible without the tick. The agreement and the Aadhaar check inform you; neither is required. <span class="spec">D-117 · D-134</span></p>
+        <a class="btn btn-primary btn-block" href="#">Approve · green tick</a><a class="btn btn-ghost btn-block" style="margin-top:8px" href="#">Reject with reason</a></div>
+      <div class="card"><h2 class="h3">Retention</h2><p class="small muted">The agreement file is deleted 30 days after the later of your decision and the other party's confirmation (90 days after upload if no other party joins). Fields, hash, number and tier stay. <span class="spec">D-131</span></p></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

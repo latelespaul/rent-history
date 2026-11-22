@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Verify · Rental details</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Verify step 4: Rental details + rental agreement (design v4)</b> · <code>POST /me/agreements</code> (multipart, consent) · manual fields (<code>AgreementExtractor</code> = MANUAL) · Karnataka e-stamp anchor · <span class="spec">fictional values</span> · D-120 D-123–D-127 D-131</div>
+<header data-topbar data-as="tenant" data-dot></header>
+<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Verify your phone to post. What you post shows at once as "Not verified yet" until an admin reviews it. <a href="verify-v4-submitted.html">Continue verification</a></span></div></div>
+<main class="container section">
+  <p class="eyebrow">Verify your account · tenant</p>
+  <h1 class="h1" style="margin-top:6px">Step 4 of 4 · Rental details <span class="badge" style="vertical-align:middle">Optional</span></h1>
+  <div class="card" style="margin-top:16px"><ol class="stepper" aria-label="Verification steps"><li class="done"><span class="t">Profile</span></li><li class="done"><span class="t">Phone</span></li><li class="done"><span class="t">ID (optional)</span></li><li class="on"><span class="t">Rental details (optional)</span></li></ol></div>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card">
+        <h2 class="h3">The home you rent now or rented last</h2>
+        <p class="small muted" style="margin-top:-6px;margin-bottom:14px">Upload its rental agreement and type the key details from it. It helps the admin give you the green tick, and when you record this tenancy on Doorway Living it can earn an "Agreement verified" badge.</p>
+        <div class="filerow"><span class="thumb">PDF</span><div class="grow"><b class="small">rental-agreement-koramangala.pdf</b><div class="xs muted">1.2 MB · 7 pages · encrypted · sha256 9f2c…41ab</div></div><span class="badge badge-info">Uploaded</span><button class="btn btn-ghost btn-sm"><i data-icon="eye" data-size="16"></i>View</button></div>
+        <div class="notice notice-warn" style="margin-top:12px"><i data-icon="eye-off"></i><span><b>Cover Aadhaar numbers before you scan.</b> Agreements often print Aadhaar numbers and photos. Any 12-digit number you type below is masked to <span class="masked">XXXX XXXX 1234</span> before it is saved. <span class="spec">D-131</span></span></div>
+      </div>
+      <div class="card">
+        <h2 class="h3">Stamp: Karnataka e-stamp certificate</h2>
+        <p class="small muted" style="margin-top:-6px;margin-bottom:12px">Bangalore agreements are usually on an SHCIL e-stamp. The admin checks the number on shcilestamp.com. <span class="spec">D-124</span></p>
+        <div class="fields">
+          <div class="field"><span class="label">Certificate number</span><input class="input" value="IN-KA12000000000007D"><span class="hint">Starts with IN-KA, 14 digits, 1 letter</span></div>
+          <div class="field"><span class="label">Issue date</span><input class="input" value="2025-03-28"></div>
+          <div class="field"><span class="label">Stamp amount</span><input class="input" value="₹500"></div>
+          <div class="field"><span class="label">Purchased by</span><input class="input" value="New User"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2 class="h3">From the agreement</h2>
+        <div class="fields">
+          <div class="field"><span class="label">Landlord name</span><input class="input" value="R. Krishnamurthy"></div>
+          <div class="field"><span class="label">Tenant name</span><input class="input" value="New User"></div>
+          <div class="field" style="grid-column:1/-1"><span class="label">Address</span><input class="input" value="Flat D-402, Tower 1, Demo Greens, 5th Block, Koramangala, Bangalore 560095"><span class="hint"><i data-icon="lock" data-size="12"></i> The flat number stays private. <span class="spec">D-57</span></span></div>
+          <div class="field"><span class="label">Monthly rent</span><input class="input" value="₹28,000"></div>
+          <div class="field"><span class="label">Deposit</span><input class="input" value="₹1,50,000"></div>
+          <div class="field"><span class="label">Start date</span><input class="input" value="2025-04-01"></div>
+          <div class="field"><span class="label">End date or term</span><input class="input" value="2026-02-28 · 11 months"></div>
+        </div>
+        <div class="checkrow" style="margin-top:16px"><span class="box on"><i data-icon="check"></i></span><span>I agree that Doorway Living stores this agreement encrypted, shows it only to the other party of this tenancy and to admins, uses it to verify this tenancy, and deletes the file 30 days after the check and the other party's confirmation.</span></div>
+        <div class="row between" style="margin-top:20px"><a class="btn btn-ghost" href="verify-v4-id.html">Back</a><span class="row" style="gap:8px"><a class="btn btn-ghost" href="verify-v4-submitted.html">Skip</a><a class="btn btn-primary btn-lg" href="verify-v4-submitted.html"><i data-icon="shield-check" data-size="18"></i>Confirm details and request verification</a></span></div>
+      </div>
+    </div>
+    <aside class="stack">
+      <div class="card"><h2 class="h3">What we check now</h2><ul class="checks"><li><i data-icon="check" data-size="18" class="pass"></i><span><b>1 · Your name</b></span><span class="xs pass">Pass · 100</span><span class="why">Tenant name matches your profile.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>2 · Home</b></span><span class="xs pass">Pass · 80</span><span class="why">PIN 560095 is in Koramangala, Bangalore; society Demo Greens found.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>5 · Stamp number</b></span><span class="xs pass">Pass · 100</span><span class="why">Well-formed Karnataka e-stamp number; ₹500 is usual for this rent.</span></li><li><i data-icon="check" data-size="18" class="pass"></i><span><b>4 · Dates</b></span><span class="xs pass">Pass · 100</span><span class="why">E-stamp issued before the start date. Term 11 months: registration not needed.</span></li><li><i data-icon="info" data-size="18" class="na"></i><span><b>6 · Both sides</b></span><span class="xs na">Later</span><span class="why">When you record this tenancy, your landlord confirms the same file.</span></li><li><i data-icon="info" data-size="18" class="na"></i><span><b>8 · Government lookup</b></span><span class="xs na">Later</span><span class="why">An admin checks the number on the SHCIL portal.</span></li></ul></div>
+      <div class="card"><h2 class="h3"><i data-icon="lock" data-size="18"></i> Who sees this</h2><p class="small muted">You, admins, and later the other party of the tenancy. Never the public: they only see a badge. The file is deleted 30 days after the check and the other party's confirmation (90 days after upload if no other party joins); the details and the result stay. <span class="spec">D-126 · D-131</span></p></div>
+    </aside>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

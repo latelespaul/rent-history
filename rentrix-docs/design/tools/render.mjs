@@ -10,7 +10,8 @@
 // copies the design-v2 renders (V2 below) to rentrix-docs/screenshots/design-v2/.
 // With --copy-v3 it copies the design-v3 renders (V3 below) to
 // rentrix-docs/screenshots/design-v3/. With --only-v3 it renders only the V3
-// pages, so unchanged screenshots are not rewritten.
+// pages, so unchanged screenshots are not rewritten. --only-v4 and --copy-v4 do the
+// same for the design-v4 pages (V4 below) and rentrix-docs/screenshots/design-v4/.
 import { createServer } from 'node:http';
 import { copyFileSync, mkdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, extname, join, normalize } from 'node:path';
@@ -22,6 +23,7 @@ const root = normalize(join(here, '..'));
 const outDir = join(root, 'screenshots');
 const v2Dir = join(root, '..', 'screenshots', 'design-v2');
 const v3Dir = join(root, '..', 'screenshots', 'design-v3');
+const v4Dir = join(root, '..', 'screenshots', 'design-v4');
 
 const PAGES = [
   ['home', 'mockups/home.html'],
@@ -57,8 +59,20 @@ const PAGES = [
   ['browse-areas', 'mockups/browse-areas.html'],
   ['browse-societies', 'mockups/browse-societies.html'],
   ['society', 'mockups/society.html'],
+  // design v4: phone required, account created, sign-in toast, menu progress, rental agreements
+  ['welcome-created', 'mockups/welcome-created.html'],
+  ['signin-toast', 'mockups/signin-toast.html'],
+  ['account-menu-progress', 'mockups/account-menu-progress.html'],
+  ['verify-v4-phone', 'mockups/verify-v4-phone.html'],
+  ['verify-v4-id', 'mockups/verify-v4-id.html'],
+  ['verify-v4-rental', 'mockups/verify-v4-rental.html'],
+  ['verify-v4-submitted', 'mockups/verify-v4-submitted.html'],
+  ['tenancy-agreement', 'mockups/tenancy-agreement.html'],
+  ['admin-agreement', 'mockups/admin-agreement.html'],
+  ['admin-approvals-mobile', 'mockups/admin-approvals-mobile.html'],
 ];
-const MOBILE = new Set(['home', 'property', 'home-many-cities', 'verify-id', 'verify-rejected', 'verify-phone', 'society']);
+const MOBILE = new Set(['home', 'property', 'home-many-cities', 'verify-id', 'verify-rejected', 'verify-phone', 'society',
+  'welcome-created', 'verify-v4-phone', 'verify-v4-rental', 'admin-approvals-mobile']);
 // New or changed in design v2 (copied to rentrix-docs/screenshots/design-v2/ with --copy-v2).
 const V2 = new Set(['home', 'search', 'onboarding', 'home-many-cities', 'city-picker', 'verify-profile', 'verify-linkedin', 'verify-id',
   'verify-agreement', 'verify-pending', 'verify-rejected', 'verify-approved', 'write-review-pending', 'admin-dashboard',
@@ -70,6 +84,11 @@ const V3 = new Set(['search', 'property', 'landlord-profile', 'tenant-profile', 
   'verify-phone', 'verify-aadhaar', 'browse-areas', 'browse-societies', 'society']);
 const copyV3 = process.argv.includes('--copy-v3');
 const onlyV3 = process.argv.includes('--only-v3');
+// New in design v4 (copied to rentrix-docs/screenshots/design-v4/ with --copy-v4).
+const V4 = new Set(['welcome-created', 'signin-toast', 'account-menu-progress', 'verify-v4-phone', 'verify-v4-id',
+  'verify-v4-rental', 'verify-v4-submitted', 'tenancy-agreement', 'admin-agreement', 'admin-approvals-mobile']);
+const copyV4 = process.argv.includes('--copy-v4');
+const onlyV4 = process.argv.includes('--only-v4');
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const server = createServer((req, res) => {
@@ -91,6 +110,7 @@ try {
   const shots = [];
   for (const [name, path] of PAGES) {
     if (onlyV3 && !V3.has(name)) continue;
+    if (onlyV4 && !V4.has(name)) continue;
     shots.push([name, path, 'desktop', { width: 1440, height: 900 }, 1]);
     if (MOBILE.has(name)) shots.push([name, path, 'mobile', { width: 390, height: 844 }, 2]);
   }
@@ -111,6 +131,10 @@ try {
     if (copyV3 && V3.has(name)) {
       mkdirSync(v3Dir, { recursive: true });
       copyFileSync(file, join(v3Dir, `${name}-${kind}.png`));
+    }
+    if (copyV4 && V4.has(name)) {
+      mkdirSync(v4Dir, { recursive: true });
+      copyFileSync(file, join(v4Dir, `${name}-${kind}.png`));
     }
     await ctx.close();
   }

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Signed in</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Returning sign-in (design v4)</b> · <code>needsOnboarding: false</code> → toast "Signed in as …" and back to <code>?next=</code> (here the property page) · no toast on session restore · D-119</div>
+<header data-topbar data-as="tenant"></header>
+<main class="container section">
+  <nav class="crumbs small muted">Bangalore › Koramangala › Demo Greens › Tower 1 · Wing A</nav>
+  <h1 class="h1" style="margin-top:6px">Demo Residency A <span class="badge badge-demo">Demo data</span></h1>
+  <p class="muted">2BHK apartment · Koramangala, Bangalore</p>
+  <div class="layout-main" style="margin-top:20px">
+    <div class="stack">
+      <div class="card"><h2 class="h3">Rent history</h2><p class="small muted">You came back to the page you were on before you signed in. Rent history and reviews are open now. <span class="spec">D-56 · D-119</span></p>
+        <table class="table"><thead><tr><th>From</th><th>To</th><th class="r">Monthly rent</th><th></th></tr></thead><tbody>
+        <tr><td>2022-04</td><td>2023-03</td><td class="r num">₹32,000</td><td></td></tr>
+        <tr><td>2023-04</td><td>2024-03</td><td class="r num">₹34,000</td><td></td></tr>
+        <tr><td>2024-05</td><td>now</td><td class="r num">₹36,500</td><td><span class="badge badge-verified"><i data-icon="shield-check"></i>Agreement verified</span></td></tr>
+        </tbody></table></div>
+    </div>
+    <aside class="stack"><div class="card"><h2 class="h3">Where sign-in returns you</h2><ul class="checklist">
+      <li><i data-icon="check" class="yes"></i><span>Every "Sign in" link carries <code>?next=</code> with the page you were on.</span></li>
+      <li><i data-icon="check" class="yes"></i><span>Only paths of this site are kept, never other sites. <span class="spec">safeNext</span></span></li>
+      <li><i data-icon="info" class="no"></i><span>No <code>next</code>: your home page (search for tenants, dashboard for landlords).</span></li>
+    </ul></div></aside>
+  </div>
+  <div class="toast" role="status"><i data-icon="check" data-size="18"></i><span>Signed in as <b>Demo Tenant PNQ-2</b></span></div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

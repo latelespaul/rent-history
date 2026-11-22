@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Account menu</title>
+<link rel="stylesheet" href="mock.css">
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Account menu with verification progress (design v4)</b> · <code>GET /me/verification</code> · rows: "Get verified: n of 4 steps" (DRAFT), "Waiting for review" (PENDING), "Changes needed" (REJECTED), "Verify your phone to post" (no verified phone); hidden when verified · verification is optional · D-121 D-133</div>
+<header data-topbar data-as="tenant" data-dot></header>
+<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Verify your phone to post. What you post shows at once as "Not verified yet" until an admin reviews it. <a href="verify-v4-submitted.html">Continue verification</a></span></div></div>
+<div class="container" style="position:relative;height:0"><div class="menu-pop" style="top:-4px">
+  <div class="mh">New U. · new.user@example.test</div>
+  <a class="mi on" href="verify-v4-id.html"><i data-icon="shield-check" data-size="18"></i><span class="grow"><b>Get verified: 2 of 4 steps</b><div class="progress" style="margin-top:6px"><span style="width:50%"></span></div><span class="xs muted">Next: ID (optional) · tenant</span></span><i data-icon="chevron-right" data-size="16"></i></a>
+  <div class="sep"></div>
+  <a class="mi" href="#"><i data-icon="user" data-size="18"></i>Settings</a>
+  <a class="mi" href="#"><i data-icon="logout" data-size="18"></i>Sign out</a>
+</div></div>
+<main class="container section">
+  <div class="grid-3" style="margin-top:300px">
+    <div class="card"><h2 class="h3">DRAFT</h2><div class="mi row" style="gap:8px"><i data-icon="shield-check" data-size="18"></i><b class="small">Get verified: 2 of 4 steps</b></div><p class="xs muted">Counts Profile, Phone and Rental details when done; ID when done or waiting for a check.</p></div>
+    <div class="card"><h2 class="h3">PENDING</h2><div class="row" style="gap:8px"><i data-icon="clock" data-size="18"></i><b class="small">Waiting for review</b></div><p class="xs muted">Usually within 48 hours. You can post meanwhile. The dot on the avatar stays until the green tick.</p></div>
+    <div class="card"><h2 class="h3">REJECTED</h2><div class="row" style="gap:8px"><i data-icon="alert" data-size="18" class="fail"></i><b class="small">Changes needed</b></div><p class="xs muted">Opens the reason and "Fix and resubmit". What you posted stays visible, without the tick. With two roles, the one that needs you first is shown.</p></div>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
