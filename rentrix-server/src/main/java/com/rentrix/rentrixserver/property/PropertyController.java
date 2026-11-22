@@ -59,20 +59,27 @@ public class PropertyController {
 	private final PropertyService service;
 	
 	/**
-	 * {@code GET /properties?city=&locality=&type=&bedrooms=&minRating=&q=&page=&size=&sort=}: published homes.
+	 * {@code GET /properties?city=&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&page=
+	 * &size=&sort=}: published homes.
 	 * {@code city} is a live city code (else {@code 422 city_not_live}); without it every live city is searched.
 	 * {@code locality} is a prefix, {@code q} matches locality, building or street, {@code minRating} (1–5)
 	 * keeps homes whose shown average (one decimal) reaches it, i.e. 3 or more reviews (D-52). A {@code sort}
-	 * name without a direction sorts descending.
+	 * name without a direction sorts descending. {@code area}, {@code society} and {@code tower} are
+	 * {@code public_id}s (D-112); {@code standalone=true} keeps homes outside any society, {@code false} those in
+	 * one.
 	 */
 	@GetMapping("/properties")
-	public PageResponse<PropertyCard> search(
+	public PageResponse<PropertyCard> search(@AuthenticationPrincipal AuthenticatedUser caller,
 		@RequestParam(required = false) String city,
 		@RequestParam(required = false) String locality,
 		@RequestParam(required = false) String type,
 		@RequestParam(required = false) Integer bedrooms,
 		@RequestParam(required = false) BigDecimal minRating,
 		@RequestParam(required = false) String q,
+		@RequestParam(required = false) UUID area,
+		@RequestParam(required = false) UUID society,
+		@RequestParam(required = false) UUID tower,
+		@RequestParam(required = false) Boolean standalone,
 		@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size,
 		@RequestParam(required = false) String sort) {
@@ -87,6 +94,10 @@ public class PropertyController {
 		if (minRating != null && (minRating.compareTo(MIN_RATING) < 0 || minRating.compareTo(MAX_RATING) > 0)) {
 			errors.add(new ApiProblem.FieldError("minRating", "range", "Must be between 1 and 5."));
 		}
+		if (Boolean.TRUE.equals(standalone) && (society != null || tower != null)) {
+			errors.add(new ApiProblem.FieldError("standalone", "conflict",
+				"Standalone homes are outside any society; drop society or tower."));
+		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
@@ -94,7 +105,7 @@ public class PropertyController {
 		Pageable pageable = PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
 		return service.search(new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating,
-			textKey), pageable);
+			textKey), new PropertyService.LocationFilter(area, society, tower, standalone), caller, pageable);
 	}
 	
 	@GetMapping("/properties/{id}")

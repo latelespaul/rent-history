@@ -69,6 +69,29 @@ Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Pr
 
 `ADMIN` is never self-service. Set `ADMIN_EMAILS` to a comma list of verified Google emails; those users get `ADMIN` on their next sign-in or refresh, and lose it when their email is removed from the list.
 
+## Locations: areas and societies
+
+Every home sits in a hierarchy City → Area → Society → Tower/Block → Wing → Unit; a standalone house or building has an area and no society (SYSTEM_DESIGN §5.19). Areas carry their PIN codes, and one PIN code can cover several areas. Start the API with demo data to browse it:
+
+```sh
+cd rentrix-server
+SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run
+```
+
+The demo seed (empty database only) adds an area for every demo locality and one gated society per city with 2 towers of 2 wings: **Demo Greens** (Koramangala, Bangalore) and **Demo Meadows** (Baner, Pune). Demo Residency A is in Demo Greens Tower 1 · Wing A, Demo Towers E in Demo Meadows Tower 2 · Wing B; the other demo homes are standalone. All of it is fake (`is_demo`).
+
+```sh
+API=http://localhost:8080/api/v1
+curl -s "$API/areas?pincode=560034"                  # Koramangala
+curl -s "$API/areas?city=BLR&q=kor"                  # name or alias prefix
+curl -s "$API/societies?city=PNQ"                    # Demo Meadows card
+curl -s "$API/societies/<societyId>"                 # towers → wings with published-home counts
+curl -s "$API/properties?society=<societyId>&tower=<towerId>"
+curl -s "$API/properties?area=<areaId>&standalone=true"
+```
+
+Lists show only `ACTIVE` rows, plus the signed-in landlord's own `PENDING` proposals. Ratings per area and society and the rating sorts come with PLAN B16.
+
 ## Identity verification
 
 A tenant or landlord profile is **ID verified** when at least one of Aadhaar, PAN or phone (SMS code) is verified. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.

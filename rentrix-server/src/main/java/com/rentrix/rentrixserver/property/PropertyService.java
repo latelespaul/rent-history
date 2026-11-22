@@ -6,6 +6,10 @@ import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.persistence.TimestampedEntity;
 import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.LocationService;
+import com.rentrix.rentrixserver.location.Society;
+import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
 import com.rentrix.rentrixserver.property.dto.LandlordSummary;
@@ -56,9 +60,19 @@ public class PropertyService {
 	private final UserRepository users;
 	private final CityRepository cities;
 	private final CityService cityService;
+	private final LocationService locations;
 	private final JdbcTemplate jdbc;
 	
 	// ---------------------------------------------------------------- reads
+	
+	/** The location filters of {@code GET /properties} as given ({@code public_id}s, D-112); all optional. */
+	public record LocationFilter(UUID area, UUID society, UUID tower, Boolean standalone) {
+	}
+	
+	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, LocationFilter location,
+		AuthenticatedUser caller, Pageable pageable) {
+		return search(withLocation(criteria, location, caller), pageable);
+	}
 	
 	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, Pageable pageable) {
 		if (criteria.cityCode() != null) {
@@ -91,6 +105,51 @@ public class PropertyService {
 		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
 		RatingSummary landlordRating = RatingSummary.of(aggregate(RatingSubjectType.LANDLORD, owner.getId()));
 		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating, true, true));
+	}
+	
+	/**
+	 * Resolves the location filters to ids. Unknown ids, and someone else's {@code PENDING} proposal, are
+	 * {@code 422} on the parameter; a tower outside the society, a society outside the area, or any of them outside
+	 * the requested city is {@code 422 location_mismatch}; their city must be live (D-20).
+	 */
+	private PropertySearchCriteria withLocation(PropertySearchCriteria criteria, LocationFilter location,
+		AuthenticatedUser caller) {
+		if (location == null || location.area() == null && location.society() == null && location.tower() == null) {
+			return location == null || location.standalone() == null ? criteria : copy(criteria, null, null, null,
+				location.standalone());
+		}
+		SocietyTower tower = location.tower() == null ? null
+			: locations.towerFilter(location.tower(), caller, "tower");
+		Society society = location.society() == null ? null
+			: locations.societyFilter(location.society(), caller, "society");
+		if (tower != null && society != null && !tower.getSociety().getId().equals(society.getId())) {
+			throw locationMismatch("tower", "This tower is not in this society.");
+		}
+		if (society == null && tower != null) {
+			society = tower.getSociety();
+		}
+		Area area = location.area() == null ? null : locations.areaFilter(location.area(), caller, "area");
+		if (area != null && society != null && !society.getArea().getId().equals(area.getId())) {
+			throw locationMismatch("society", "This society is not in this area.");
+		}
+		String cityCode = society != null ? society.getCity().getCode() : area.getCity().getCode();
+		if (criteria.cityCode() != null && !criteria.cityCode().equals(cityCode)) {
+			throw locationMismatch(society != null ? "society" : "area", "This place is not in that city.");
+		}
+		cityService.requireLive(cityCode);
+		return copy(criteria, area == null ? null : area.getId(), society == null ? null : society.getId(),
+			tower == null ? null : tower.getId(), location.standalone());
+	}
+	
+	private static PropertySearchCriteria copy(PropertySearchCriteria c, Long areaId, Long societyId, Long towerId,
+		Boolean standalone) {
+		return new PropertySearchCriteria(c.cityCode(), c.localityPrefix(), c.type(), c.bedrooms(), c.minRating(),
+			c.text(), areaId, societyId, towerId, standalone);
+	}
+	
+	private static ApiException locationMismatch(String field, String detail) {
+		return new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "location_mismatch", detail,
+			List.of(new ApiProblem.FieldError(field, "mismatch", detail)));
 	}
 	
 	// --------------------------------------------------------------- writes

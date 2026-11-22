@@ -648,10 +648,10 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 
 **Reference & stats**
 | GET | `/cities?q=` | active cities only, `{code, name, aliases[], state}`, by name; `q` matches code/name/alias/state (D-82) |
-| GET | `/areas?city=&q=&pincode=&minRating=&sort=` | area cards with `AREA` aggregate and counts (D-108, D-112) |
-| GET | `/areas/{id}` | area page: societies + standalone published properties |
+| GET | `/areas?city=&q=&pincode=&minRating=&sort=` | area cards with `AREA` aggregate and counts (D-108, D-112); D-59 pages; `city` optional (live cities only), `q` a word prefix of name or alias, `pincode` exactly 6 digits. Lists show `ACTIVE` rows plus the caller's own `PENDING` proposals (admins: every `PENDING`), never `HIDDEN`. Until B16: `sort=name` only and no aggregate |
+| GET | `/areas/{id}` | area page: societies + standalone published properties (from B15: the societies and `publishedHomes` / `standaloneHomes` counts; the homes themselves are `GET /properties?area=&standalone=true`). A `HIDDEN` area still opens by link; another user's `PENDING` one is `404` |
 | GET | `/societies?city=&area=&q=&kind=&minRating=&sort=` | society cards with `SOCIETY` aggregate (D-112) |
-| GET | `/societies/{id}` | society page: towers → wings → published homes, per-tower counts, aggregate |
+| GET | `/societies/{id}` | society page: towers → wings → published homes, per-tower counts, aggregate (from B15: towers and wings with `publishedHomes` counts; the homes are `GET /properties?society=&tower=`) |
 | GET | `/societies/{id}/reviews?tower=&wing=` | property reviews of homes in the society; text for signed-in users (D-56) |
 | GET | `/societies/{id}/towers` | towers and wings, for the property form pickers (landlord sees own `PENDING` rows too) |
 | GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per active city: `{publishedProperties, confirmedTenancies, publishedReviews, cities: [{city, publishedProperties, confirmedTenancies, publishedReviews}]}` (`city` is the code; every active city has a row, zeros included). Until B4 serves it the web shows no counts (D-03) |
@@ -659,7 +659,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Properties**
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city`, when given, must be an active city code (without it every active city is searched); `locality` is a prefix, `q` matches locality, building and street; `minRating` (1–5) needs an average shown (3+ reviews, D-52) and compares the shown one-decimal value; sorts `top_rated` (default, D-53), `most_reviewed`, `newest`, and a sort name without a direction sorts descending; `area`, `society`, `tower` take `public_id`s (D-112, from PLAN B4b) |
+| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city`, when given, must be an active city code (without it every active city is searched); `locality` is a prefix, `q` matches locality, building and street; `minRating` (1–5) needs an average shown (3+ reviews, D-52) and compares the shown one-decimal value; sorts `top_rated` (default, D-53), `most_reviewed`, `newest`, and a sort name without a direction sorts descending; `area`, `society`, `tower` take `public_id`s (D-112, built in PLAN B15): unknown ids and other users' `PENDING` rows are `422` on the parameter, a tower outside the society, a society outside the area or a place outside `city` is `422 location_mismatch`; `standalone=true` keeps homes outside any society (not combinable with `society` / `tower`), `standalone=false` those inside one |
 | GET | `/properties/{id}` | fields per D-56 |
 | POST | `/properties` | `LANDLORD`; creates `DRAFT`; location `{areaId | newArea{name, pincode}, societyId? | newSociety{name, kind, developer?}, towerId? | newTower{name, kind}, wingId? | newWing{name}}`; proposed rows are `PENDING` (D-109, D-110) |
 | PATCH | `/properties/{id}` | owner; edits (location fields locked once published, D-92) and `ARCHIVED` |

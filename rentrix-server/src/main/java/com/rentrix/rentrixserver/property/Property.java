@@ -2,6 +2,10 @@ package com.rentrix.rentrixserver.property;
 
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.persistence.PublicEntity;
+import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.Society;
+import com.rentrix.rentrixserver.location.SocietyTower;
+import com.rentrix.rentrixserver.location.SocietyWing;
 import com.rentrix.rentrixserver.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +37,27 @@ public class Property extends PublicEntity {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "city_code", nullable = false)
 	private City city;
+	
+	/**
+	 * Place in the location hierarchy (D-107, D-110): the area is required by the API (nullable only in the DDL,
+	 * D-114); society, tower and wing are all null for a standalone house or building. Set through
+	 * {@code LocationService.resolve}, which checks the placement rules.
+	 */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "area_id")
+	private Area area;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "society_id")
+	private Society society;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "tower_id")
+	private SocietyTower tower;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "wing_id")
+	private SocietyWing wing;
 	
 	@Column(name = "locality", nullable = false, length = 120)
 	private String locality;

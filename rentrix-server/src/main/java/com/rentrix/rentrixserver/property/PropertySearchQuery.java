@@ -12,7 +12,9 @@ import java.util.List;
  * <p>Index use: with a city, {@code ix_properties_city_status_locality (city_code, status, locality_key)}
  * narrows to the city's published rows (and the locality prefix); the rating join is by primary key
  * {@code (subject_type, subject_id)}. Without a city the live-city list ({@code cities.live}) drives the same
- * index. Free text and facts filter inside that range.
+ * index. With a location filter (D-112) the range is instead {@code ix_properties_area_status (area_id, status)} or
+ * {@code ix_properties_society_status (society_id, status, tower_id, wing_id)}; the service has already checked
+ * that the area or society is in the requested live city. Free text and facts filter inside that range.
  */
 public final class PropertySearchQuery {
 	
@@ -42,7 +44,19 @@ public final class PropertySearchQuery {
 			.append(" FROM properties p")
 			.append(" LEFT JOIN rating_aggregates ra ON ra.subject_type = ? AND ra.subject_id = p.id");
 		params.add(RatingSubjectType.PROPERTY.name());
-		if (criteria.cityCode() != null) {
+		if (criteria.societyId() != null) {
+			// a society (and tower) fixes the area and the city: ix_properties_society_status
+			sql.append(" WHERE p.society_id = ?");
+			params.add(criteria.societyId());
+			if (criteria.towerId() != null) {
+				sql.append(" AND p.tower_id = ?");
+				params.add(criteria.towerId());
+			}
+		} else if (criteria.areaId() != null) {
+			// an area fixes the city: ix_properties_area_status
+			sql.append(" WHERE p.area_id = ?");
+			params.add(criteria.areaId());
+		} else if (criteria.cityCode() != null) {
 			sql.append(" WHERE p.city_code = ?");
 			params.add(criteria.cityCode());
 		} else {
@@ -51,6 +65,12 @@ public final class PropertySearchQuery {
 		}
 		sql.append(" AND p.status = ? AND p.deleted_at IS NULL");
 		params.add(PropertyStatus.PUBLISHED.name());
+		if (Boolean.TRUE.equals(criteria.standalone())) {
+			// spelled as COALESCE so it filters inside the area or city range and never competes with that index
+			sql.append(" AND COALESCE(p.society_id, 0) = 0");
+		} else if (Boolean.FALSE.equals(criteria.standalone())) {
+			sql.append(" AND p.society_id IS NOT NULL");
+		}
 		if (criteria.localityPrefix() != null) {
 			sql.append(" AND p.locality_key LIKE ? ESCAPE '").append(LIKE_ESCAPE).append("'");
 			params.add(escapeLike(criteria.localityPrefix()) + "%");
