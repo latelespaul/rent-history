@@ -1,8 +1,10 @@
 package com.rentrix.rentrixserver.tenancy;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +18,15 @@ import java.util.UUID;
 public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 	
 	Optional<Tenancy> findByPublicId(UUID publicId);
+	
+	/** The tenancy row locked for update until the transaction ends, to serialise its state transitions. */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select t from Tenancy t where t.publicId = :publicId")
+	Optional<Tenancy> lockByPublicId(@Param("publicId") UUID publicId);
+	
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select t from Tenancy t where t.id = :id")
+	Optional<Tenancy> lockById(@Param("id") Long id);
 	
 	List<Tenancy> findByPropertyIdAndStatusIn(Long propertyId, List<TenancyStatus> statuses);
 	
@@ -42,10 +53,11 @@ public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 	 * D-23: another live tenancy of the same tenant on the same property whose dates overlap
 	 * {@code [start, end]} ({@code end} = far future for a current tenancy).
 	 */
-	@Query("select count(t) > 0 from Tenancy t where t.property.id = :propertyId and t.tenant.id = :tenantId "
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select t from Tenancy t where t.property.id = :propertyId and t.tenant.id = :tenantId "
 		+ "and t.id <> :excludeId and t.status in :statuses "
 		+ "and t.startDate <= :end and (t.endDate is null or t.endDate >= :start)")
-	boolean existsOverlap(@Param("propertyId") Long propertyId, @Param("tenantId") Long tenantId,
+	List<Tenancy> lockOverlapping(@Param("propertyId") Long propertyId, @Param("tenantId") Long tenantId,
 		@Param("excludeId") Long excludeId, @Param("statuses") Collection<TenancyStatus> statuses,
 		@Param("start") LocalDate start, @Param("end") LocalDate end);
 	

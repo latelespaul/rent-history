@@ -38,6 +38,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -200,7 +201,8 @@ public class TenancyService {
 			throw new ApiException(HttpStatus.FORBIDDEN, "invite_email_mismatch",
 				"This invite was sent to another email address. Sign in with that Google account.");
 		}
-		Tenancy tenancy = invite.getTenancy();
+		Tenancy tenancy = tenancies.lockById(invite.getTenancy().getId())
+			.orElseThrow(() -> ApiException.notFound("Invite"));
 		if (tenancy.getStatus() != TenancyStatus.PENDING_CONFIRMATION || tenancy.getTenant() != null) {
 			throw ApiException.conflict("invalid_transition", "This invite is no longer open.");
 		}
@@ -219,7 +221,7 @@ public class TenancyService {
 	@Transactional
 	public TenancyView confirm(UUID publicId, AuthenticatedUser caller) {
 		User me = currentUser(caller);
-		Tenancy tenancy = readable(publicId, me, caller);
+		Tenancy tenancy = writable(publicId, me, caller);
 		requirePending(tenancy, "confirmed");
 		requireCounterparty(tenancy, me);
 		requireEmailVerified(me);
@@ -248,7 +250,7 @@ public class TenancyService {
 	@Transactional
 	public TenancyView decline(UUID publicId, String reason, AuthenticatedUser caller) {
 		User me = currentUser(caller);
-		Tenancy tenancy = readable(publicId, me, caller);
+		Tenancy tenancy = writable(publicId, me, caller);
 		requirePending(tenancy, "declined");
 		requireCounterparty(tenancy, me);
 		tenancy.setStatus(TenancyStatus.DECLINED);
@@ -262,7 +264,7 @@ public class TenancyService {
 	@Transactional
 	public TenancyView cancel(UUID publicId, AuthenticatedUser caller) {
 		User me = currentUser(caller);
-		Tenancy tenancy = readable(publicId, me, caller);
+		Tenancy tenancy = writable(publicId, me, caller);
 		requirePending(tenancy, "cancelled");
 		if (sideOf(tenancy, me) != tenancy.getInitiatedBy()) {
 			throw new ApiException(HttpStatus.FORBIDDEN, "not_initiator",
@@ -280,7 +282,7 @@ public class TenancyService {
 	@Transactional
 	public TenancyView end(UUID publicId, EndTenancyRequest request, AuthenticatedUser caller) {
 		User me = currentUser(caller);
-		Tenancy tenancy = readable(publicId, me, caller);
+		Tenancy tenancy = writable(publicId, me, caller);
 		if (tenancy.getStatus() != TenancyStatus.ACTIVE) {
 			throw ApiException.conflict("invalid_transition", "A " + tenancy.getStatus() + " tenancy cannot be ended.");
 		}
@@ -335,8 +337,16 @@ public class TenancyService {
 
 	/** A party of the tenancy or an admin, else 404 (no existence leak, D-60). */
 	Tenancy readable(UUID publicId, User me, AuthenticatedUser caller) {
-		return tenancies.findByPublicId(publicId)
-			.filter(t -> sideOf(t, me) != null || caller.hasRole(Role.ADMIN))
+		return visible(tenancies.findByPublicId(publicId), me, caller);
+	}
+
+	/** {@link #readable} with the tenancy row locked, for a state transition. */
+	private Tenancy writable(UUID publicId, User me, AuthenticatedUser caller) {
+		return visible(tenancies.lockByPublicId(publicId), me, caller);
+	}
+
+	private static Tenancy visible(Optional<Tenancy> tenancy, User me, AuthenticatedUser caller) {
+		return tenancy.filter(t -> sideOf(t, me) != null || caller.hasRole(Role.ADMIN))
 			.orElseThrow(() -> ApiException.notFound("Tenancy"));
 	}
 
@@ -415,9 +425,9 @@ public class TenancyService {
 	 */
 	private void requireNoOverlap(Tenancy tenancy, Collection<TenancyStatus> against) {
 		users.lockByPublicId(tenancy.getTenant().getPublicId());
-		boolean overlap = tenancies.existsOverlap(tenancy.getProperty().getId(), tenancy.getTenant().getId(),
+		boolean overlap = !tenancies.lockOverlapping(tenancy.getProperty().getId(), tenancy.getTenant().getId(),
 			tenancy.getId() == null ? -1L : tenancy.getId(), against, tenancy.getStartDate(),
-			tenancy.getEndDate() == null ? OPEN_END : tenancy.getEndDate());
+			tenancy.getEndDate() == null ? OPEN_END : tenancy.getEndDate()).isEmpty();
 		if (overlap) {
 			throw ApiException.conflict("tenancy_overlap",
 				"This tenant already has a tenancy on this home for overlapping dates.");

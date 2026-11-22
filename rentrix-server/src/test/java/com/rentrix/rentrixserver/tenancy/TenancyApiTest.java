@@ -158,6 +158,19 @@ class TenancyApiTest {
 	}
 
 	@Test
+	void aSecondConfirmIsRefusedAndAddsNoRentRecord() throws Exception {
+		User landlord = data.approved("Double Landlord", Role.LANDLORD);
+		User tenant = data.approved("Double Tenant", Role.TENANT);
+		String id = createdId(tenant, request(home(landlord), null, TODAY.minusMonths(4), null, 18_000));
+		act(landlord, id, "confirm").andExpect(status().isOk());
+		act(landlord, id, "confirm").andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("invalid_transition"));
+		mvc.perform(get("/tenancies/" + id + "/rent-records").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$", hasSize(1)))
+			.andExpect(jsonPath("$[0].effectiveFrom").value(TODAY.minusMonths(4).withDayOfMonth(1).toString()));
+	}
+
+	@Test
 	void requestWithPastEndDateConfirmsAsEnded() throws Exception {
 		User landlord = data.approved("Past Landlord", Role.LANDLORD);
 		User tenant = data.approved("Past Tenant", Role.TENANT);
