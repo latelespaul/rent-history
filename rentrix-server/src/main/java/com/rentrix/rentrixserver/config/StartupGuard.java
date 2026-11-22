@@ -13,6 +13,7 @@ import org.springframework.util.StringUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -21,8 +22,13 @@ import java.util.Set;
  * <ul>
  *   <li>exactly one of {@code dev}, {@code test}, {@code prod} must be active; there is no default;</li>
  *   <li>{@code JWT_SECRET} must be at least 32 bytes (dev and test ship a built-in one);</li>
- *   <li>outside dev and test, {@code DEV_LOGIN_ENABLED=true} is refused and {@code DB_URL} is required.</li>
+ *   <li>outside dev and test, {@code DEV_LOGIN_ENABLED=true} is refused and {@code DB_URL} is required;</li>
+ *   <li>{@code SMS_BACKEND} is empty, {@code log} or {@code http}; {@code log} (codes in the log) is refused outside
+ *   dev and test; {@code http} needs {@code SMS_HTTP_URL}, {@code SMS_API_KEY} and an {@code ID_HASH_KEY};</li>
+ *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one).</li>
  * </ul>
+ * <p>No {@code SMS_BACKEND} outside dev and test starts with one warning: phone OTP is unavailable
+ * ({@code 503 phone_otp_unavailable}, D-101), so a deployment without an SMS provider keeps starting.
  * <p>An empty {@code CORS_ALLOWED_ORIGINS} outside dev and test is allowed with one warning: the
  * allow-list stays empty, so no cross-origin browser call is accepted (still fail closed). This keeps
  * an existing deployment that predates the variable (Render) starting.
@@ -40,6 +46,8 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 	static final Set<String> RUNTIME_PROFILES = Set.of("dev", "test", "prod");
 	static final Set<String> LOCAL_PROFILES = Set.of("dev", "test");
 	static final int MIN_JWT_SECRET_BYTES = 32;
+	static final int MIN_ID_HASH_KEY_BYTES = 32;
+	static final Set<String> SMS_BACKENDS = Set.of("log", "http");
 	
 	@Override
 	public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
@@ -60,8 +68,36 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 			throw new IllegalStateException("Refusing to start: JWT_SECRET must be at least " + MIN_JWT_SECRET_BYTES
 				+ " bytes in the '" + profile + "' profile.");
 		}
+		String hashKey = env.getProperty("app.identity.hash-key", "");
+		boolean hasHashKey = StringUtils.hasText(hashKey);
+		if (hasHashKey && hashKey.getBytes(StandardCharsets.UTF_8).length < MIN_ID_HASH_KEY_BYTES) {
+			throw new IllegalStateException("Refusing to start: ID_HASH_KEY must be at least " + MIN_ID_HASH_KEY_BYTES
+				+ " bytes.");
+		}
+		String sms = env.getProperty("app.sms.backend", "").trim().toLowerCase(Locale.ROOT);
+		if (!sms.isEmpty() && !SMS_BACKENDS.contains(sms)) {
+			throw new IllegalStateException("Refusing to start: SMS_BACKEND must be empty, 'log' or 'http'.");
+		}
+		if (sms.equals("http")) {
+			if (!StringUtils.hasText(env.getProperty("app.sms.http.url"))
+				|| !StringUtils.hasText(env.getProperty("app.sms.http.api-key"))) {
+				throw new IllegalStateException("Refusing to start: SMS_BACKEND=http needs SMS_HTTP_URL and SMS_API_KEY.");
+			}
+			if (!hasHashKey) {
+				throw new IllegalStateException("Refusing to start: SMS_BACKEND=http needs ID_HASH_KEY (at least "
+					+ MIN_ID_HASH_KEY_BYTES + " bytes) to hash the OTP codes.");
+			}
+		}
 		if (LOCAL_PROFILES.contains(profile)) {
 			return;
+		}
+		if (sms.equals("log")) {
+			throw new IllegalStateException("Refusing to start: SMS_BACKEND=log writes OTP codes to the log and is "
+				+ "allowed only in the dev and test profiles.");
+		}
+		if (sms.isEmpty()) {
+			LOG.warn("SMS_BACKEND is empty in the '{}' profile: phone OTP verification is unavailable (503 "
+				+ "phone_otp_unavailable). Set SMS_BACKEND=http with SMS_HTTP_URL and SMS_API_KEY to offer it.", profile);
 		}
 		if (env.getProperty("app.dev-login.enabled", Boolean.class, false)) {
 			throw new IllegalStateException("Refusing to start: DEV_LOGIN_ENABLED=true is allowed only in the dev "

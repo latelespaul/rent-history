@@ -17,7 +17,7 @@ This file only orders the work. If a PR must deviate from the design, it updates
 ## Tracks
 
 - **B** backend (`rentrix-server`), **W** web (`rentrix-web`), **O** ops/CI, **S** screenshots, **C** cities fix (one backend + one web PR, **IMMEDIATE**: they go before every other open item in their track).
-- Done: **B1 backend core** (#17), **UX design** (#16), **W1 web reset** (#19), **design v2** (#21), **B2 common API layer** (#22), **O1 Docker** (#18), **C1 data-driven cities** (#23), **C2 city picker** (#24), **W2 shell** (#27), **B3 auth** (#26). **B4 is split**: B4a (properties, search, stats, minimal dev seed) ships first so the demo has homes to browse; B4b adds the location hierarchy fields and filters and the listing gates once B11, B12 and B15 merge. Rows that depend on B4 need B4a unless they use location or the gates.
+- Done: **B1 backend core** (#17), **UX design** (#16), **W1 web reset** (#19), **design v2** (#21), **B2 common API layer** (#22), **O1 Docker** (#18), **C1 data-driven cities** (#23), **C2 city picker** (#24), **W2 shell** (#27), **B3 auth** (#26). **B14 identity verification core** is being built now. **B4 is split**: B4a (properties, search, stats, minimal dev seed) ships first so the demo has homes to browse; B4b adds the location hierarchy fields and filters and the listing gates once B11, B12 and B15 merge. Rows that depend on B4 need B4a unless they use location or the gates.
 - **Design v3** (this revision) is the design PR for B14, B15, B16, W10 and for the *(v3)* changes in B4, B6, B10–B13, W2, W4, W6, W8 and W9. Its decisions are D-99–D-115; tables and migrations are in [`database/schema.md`](database/schema.md).
 
 ## PR table

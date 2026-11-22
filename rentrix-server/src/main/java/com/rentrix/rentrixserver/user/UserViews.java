@@ -1,5 +1,7 @@
 package com.rentrix.rentrixserver.user;
 
+import com.rentrix.rentrixserver.identity.IdentityService;
+import com.rentrix.rentrixserver.notification.sms.PhoneMasks;
 import com.rentrix.rentrixserver.verification.VerificationStatuses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -11,6 +13,7 @@ public class UserViews {
 	
 	private final UserRoles userRoles;
 	private final VerificationStatuses verification;
+	private final IdentityService identity;
 	
 	public UserView of(User user) {
 		return new UserView(
@@ -19,7 +22,7 @@ public class UserViews {
 			user.getEmail(),
 			user.getEmailVerifiedAt() != null,
 			user.getAvatarUrl(),
-			user.getPhone(),
+			PhoneMasks.mask(user.getPhone()),
 			userRoles.effective(user).stream().sorted().toList(),
 			user.getHomeCity() == null ? null : user.getHomeCity().getCode(),
 			user.getStatus(),
@@ -27,6 +30,7 @@ public class UserViews {
 			user.getOnboardedAt() == null,
 			user.getOnboardedAt(),
 			verification.of(user),
+			identity.badges(user),
 			user.getCreatedAt());
 	}
 	

@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.city.CityService;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.identity.IdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -30,6 +32,7 @@ public class MeService {
 	private final CityService cityService;
 	private final UserViews userViews;
 	private final AuthService auth;
+	private final IdentityService identity;
 	private final Clock clock;
 	
 	@Transactional(readOnly = true)
@@ -75,7 +78,12 @@ public class MeService {
 			user.setDisplayName(displayName);
 		}
 		if (phone != null) {
-			user.setPhone(phone.isEmpty() ? null : phone);
+			String newPhone = phone.isEmpty() ? null : phone;
+			if (!Objects.equals(newPhone, user.getPhone())) {
+				// The verified phone no longer belongs to the account (D-101).
+				identity.phoneChanged(user);
+			}
+			user.setPhone(newPhone);
 		}
 		if (request.homeCity() != null) {
 			if (request.homeCity().isBlank()) {
