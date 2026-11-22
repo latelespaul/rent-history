@@ -31,6 +31,8 @@ services:
       SMS_HTTP_URL: ${SMS_HTTP_URL:-}
       SMS_API_KEY: ${SMS_API_KEY:-}
       SMS_SENDER_ID: ${SMS_SENDER_ID:-}
+      PREVIEW_MODE: ${PREVIEW_MODE:-false}
+      RATINGS_HEADLINE: ${RATINGS_HEADLINE:-all}
       LOG_FORMAT: ${LOG_FORMAT:-ecs}
     ports:
       - "${API_PORT:-8080}:8080"

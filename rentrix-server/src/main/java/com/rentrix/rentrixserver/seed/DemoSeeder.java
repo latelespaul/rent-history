@@ -20,8 +20,10 @@ import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
+import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.review.ReviewResponseRepository;
+import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.RentRecord;
 import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
@@ -35,6 +37,7 @@ import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
 import com.rentrix.rentrixserver.verification.VerificationEventRepository;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -159,6 +162,7 @@ public class DemoSeeder implements ApplicationRunner {
 	private final RentRecordRepository rentRecords;
 	private final DemoVerificationSeed verification;
 	private final DemoReviews reviews;
+	private final ReviewRepository reviewRows;
 	private final RatingRecomputer recomputer;
 	private final TransactionTemplate tx;
 	
@@ -181,6 +185,7 @@ public class DemoSeeder implements ApplicationRunner {
 		this.verification = new DemoVerificationSeed(users, cities, applications, events, identityChecks, audit,
 			hasher, SEEDED_AT);
 		this.reviews = new DemoReviews(reviewRepository, responses, clock);
+		this.reviewRows = reviewRepository;
 		this.recomputer = recomputer;
 		this.tx = new TransactionTemplate(transactionManager);
 	}
@@ -221,6 +226,7 @@ public class DemoSeeder implements ApplicationRunner {
 			List<Tenancy> confirmed = tenancies(homes);
 			int seededApplications = verification.seed();
 			int seededReviews = reviews.seed(confirmed, homes.get(2));
+			greenTicks(homes, confirmed);
 			recomputer.recomputeAll();
 			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
 				+ "{} tenancies, {} reviews, {} verification applications.", LANDLORDS.size(), TENANTS.size(),
@@ -228,6 +234,33 @@ public class DemoSeeder implements ApplicationRunner {
 			return true;
 		});
 		return Boolean.TRUE.equals(seeded);
+	}
+	
+	/**
+	 * D-134 (design v4, open by default): the demo admin has given the green tick to every published demo home, every
+	 * confirmed demo tenancy and every published demo review, so the demo keeps its ratings in either headline mode
+	 * (D-135). The pending tenancy and the review awaiting reveal stay unverified.
+	 */
+	private void greenTicks(List<Property> homes, List<Tenancy> confirmed) {
+		User admin = users.findByEmail(DemoVerificationSeed.ADMIN_EMAIL).orElseThrow();
+		Instant decidedAt = SEEDED_AT.plusSeconds(86_400L);
+		homes.forEach(home -> home.setVerificationStatus(VerificationState.VERIFIED));
+		properties.saveAll(homes);
+		for (Tenancy tenancy : confirmed) {
+			tenancy.setVerificationStatus(VerificationState.VERIFIED);
+			tenancy.setVerificationDecidedBy(admin);
+			tenancy.setVerificationDecidedAt(decidedAt);
+		}
+		tenancies.saveAll(confirmed);
+		List<Review> published = reviewRows.findAll().stream()
+			.filter(review -> review.getStatus() == ReviewStatus.PUBLISHED)
+			.toList();
+		for (Review review : published) {
+			review.setVerificationStatus(VerificationState.VERIFIED);
+			review.setVerificationDecidedBy(admin);
+			review.setVerificationDecidedAt(decidedAt);
+		}
+		reviewRows.saveAll(published);
 	}
 	
 	private void user(String name, String emailLocalPart, Role role, String code) {

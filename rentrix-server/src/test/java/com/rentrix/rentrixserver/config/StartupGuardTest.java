@@ -166,6 +166,28 @@ class StartupGuardTest {
 	}
 	
 	@Test
+	void prodRefusesTheAdminRelayWithoutPreviewModeAndWarnsWithIt(CapturedOutput output) {
+		String key = "an-id-hash-key-that-is-long-enough-0123456789";
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "admin-relay")
+			.withProperty("app.identity.hash-key", key)))
+			.hasMessageContaining("SMS_BACKEND=admin-relay").hasMessageContaining("PREVIEW_MODE=true");
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "admin-relay")
+			.withProperty("app.preview-mode", "true")))
+			.hasMessageContaining("needs ID_HASH_KEY");
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "admin-relay")
+			.withProperty("app.preview-mode", "true").withProperty("app.identity.hash-key", key)))
+			.doesNotThrowAnyException();
+		assertThat(output).contains("SMS_BACKEND=admin-relay in the 'prod' profile");
+	}
+	
+	@Test
+	void devAllowsTheAdminRelayWithoutPreviewModeAndStillWarns(CapturedOutput output) {
+		assertThatCode(() -> StartupGuard.check(env("dev").withProperty("app.jwt.secret", GOOD_SECRET)
+			.withProperty("app.sms.backend", "admin-relay"))).doesNotThrowAnyException();
+		assertThat(output).contains("SMS_BACKEND=admin-relay in the 'dev' profile");
+	}
+	
+	@Test
 	void refusesAShortIdHashKey() {
 		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.identity.hash-key", "short")))
 			.hasMessageContaining("ID_HASH_KEY");

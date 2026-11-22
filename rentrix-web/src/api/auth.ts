@@ -33,6 +33,11 @@ export function devLogin(userId: string): Promise<AuthSession> {
   return api.post<AuthSession>("/auth/dev-login", { userId })
 }
 
+/** `POST /auth/dev-login/new`: sign in as a brand-new user with no role yet (dev profile only). */
+export function devLoginAsNewUser(): Promise<AuthSession> {
+  return api.post<AuthSession>("/auth/dev-login/new")
+}
+
 /** `POST /auth/logout`: revokes the refresh token and clears its cookie. */
 export function logout(): Promise<void> {
   return api.post<void>("/auth/logout")

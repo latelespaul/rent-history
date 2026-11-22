@@ -106,24 +106,28 @@ class DemoVerificationSeed {
 			if (LINKEDIN_VERIFIED.contains(party.getDisplayName())) {
 				linkedin(party, IdentityStatus.VERIFIED, admin);
 			}
+			phone(party, seededAt);
 		}
 	
 		User blr3 = person("Demo Landlord BLR-3", "demo-landlord-blr-3", Role.LANDLORD, "BLR");
+		phone(blr3, now.minus(Duration.ofHours(31)));
 		pending(blr3, IdentityMethod.PAN, "003L", hasher.hmac("DEMOL0003L"));
 		linkedin(blr3, IdentityStatus.PENDING, null);
 		submitted(blr3, Role.LANDLORD, Set.of(), now.minus(Duration.ofHours(30)));
 	
 		User blr7 = person("Demo Tenant BLR-7", "demo-tenant-blr-7", Role.TENANT, "BLR");
+		phone(blr7, now.minus(Duration.ofHours(21)));
 		pending(blr7, IdentityMethod.PAN, SHARED_FAKE_PAN.substring(6), hasher.hmac(SHARED_FAKE_PAN));
 		linkedin(blr7, IdentityStatus.PENDING, null);
 		submitted(blr7, Role.TENANT, Set.of("DUPLICATE_ID"), now.minus(Duration.ofHours(20)));
 	
 		User pnq7 = person("Demo Tenant PNQ-7", "demo-tenant-pnq-7", Role.TENANT, "PNQ");
-		verified(pnq7, IdentityMethod.PHONE_OTP, null, now.minus(Duration.ofHours(8)));
+		phone(pnq7, now.minus(Duration.ofHours(8)));
 		pending(pnq7, IdentityMethod.AADHAAR, "0007", null);
 		submitted(pnq7, Role.TENANT, Set.of(), now.minus(Duration.ofHours(6)));
 	
 		User blr8 = person("Demo Tenant BLR-8", "demo-tenant-blr-8", Role.TENANT, "BLR");
+		phone(blr8, seededAt);
 		rejected(blr8, admin);
 		return count + QUEUE.size();
 	}
@@ -193,6 +197,17 @@ class DemoVerificationSeed {
 		if (method != IdentityMethod.PHONE_OTP) {
 			audited(admin, ModerationActionType.VERIFY_IDENTITY, ModerationTargetType.IDENTITY, row.getId(),
 				row.getPublicId().toString(), null, at);
+		}
+	}
+	
+	/**
+	 * D-117, D-115 (design v4): every seeded user with an application has a verified phone, so the demo users can
+	 * post and the pending ones stay submittable; a fake last 4 and an HMAC of a fake value only ({@code users.phone}
+	 * stays null, D-69).
+	 */
+	private void phone(User user, Instant at) {
+		if (checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP).isEmpty()) {
+			verified(user, IdentityMethod.PHONE_OTP, null, at);
 		}
 	}
 	

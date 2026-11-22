@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { authKeys, fetchDevUsers } from "@/api/auth"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LoginIcon } from "@/components/ui/icons.gen"
+import { LoginIcon, PlusIcon } from "@/components/ui/icons.gen"
 import { errorMessage } from "@/components/ui/states"
 import { useCities } from "@/features/city/useCities"
 import { initials } from "@/components/layout/nav"
@@ -13,6 +13,8 @@ import { groupDevUsers } from "./roles"
 
 interface Props {
   onSignIn: (userId: string) => void
+  /** Signs in as a brand-new user with no role yet (`POST /auth/dev-login/new`). */
+  onSignInAsNew?: () => void
   pending: boolean
 }
 
@@ -46,7 +48,7 @@ function statusBadges(user: CurrentUser) {
  * Dev-only seed-user picker (D-77). It is shown only when `GET /auth/config` says `devLogin: true`
  * and looks deliberately unlike product UI (purple, dashed, "DEV ONLY").
  */
-export function DevLoginPanel({ onSignIn, pending }: Props) {
+export function DevLoginPanel({ onSignIn, onSignInAsNew, pending }: Props) {
   const users = useQuery({
     queryKey: authKeys.devUsers,
     queryFn: ({ signal }) => fetchDevUsers(signal),
@@ -182,6 +184,19 @@ export function DevLoginPanel({ onSignIn, pending }: Props) {
           </Button>
         )}
       </form>
+      {onSignInAsNew && (
+        <Button
+          type="button"
+          variant="dev"
+          size="block"
+          className="mt-2"
+          disabled={pending}
+          onClick={onSignInAsNew}
+        >
+          <PlusIcon />
+          Sign in as a new user (first sign-in)
+        </Button>
+      )}
     </section>
   )
 }

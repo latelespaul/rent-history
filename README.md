@@ -31,7 +31,7 @@ curl -s -c cookies.txt -H 'Content-Type: application/json' \
   -d '{"userId":"<id from dev-users>"}' http://localhost:8080/api/v1/auth/dev-login
 ```
 
-The response holds `accessToken` (send it as `Authorization: Bearer …`) and sets the `rentrix_refresh` cookie for `POST /api/v1/auth/refresh`. Dev login does not exist in any other profile, and the API refuses to start with `DEV_LOGIN_ENABLED=true` outside `dev` and `test`.
+The response holds `accessToken` (send it as `Authorization: Bearer …`) and sets the `rentrix_refresh` cookie for `POST /api/v1/auth/refresh`. `POST /api/v1/auth/dev-login/new` (no body) signs in as a brand-new user with no role yet (`needsOnboarding: true`, a made-up `@example.test` email), so the first sign-in, the role pick, the account-created screen and the verification steps can be tried without Google; the web's dev panel has a "Sign in as a new user" button for it. Dev login does not exist in any other profile, and the API refuses to start with `DEV_LOGIN_ENABLED=true` outside `dev` and `test`.
 
 ### Create a Google OAuth client
 
@@ -94,7 +94,9 @@ Lists show only `ACTIVE` rows, plus the signed-in landlord's own `PENDING` propo
 
 ## Identity verification
 
-A tenant or landlord profile is **ID verified** when at least one of Aadhaar, PAN or phone (SMS code) is verified. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.
+Every tenant and landlord verifies a **phone number** by SMS code before they can post (tenancies, rent records, reviews, listings); without it the account is read-only and those writes answer `403 id_verification_required` with `missing: ["phone"]`. Nothing else gates posting: what a user posts shows at once, and an admin review later gives it the green tick. "Request verification" (`POST /api/v1/me/verification/{role}/submit`) is optional and needs a finished profile and the verified phone. A new number is stored only by a confirmed code: `PATCH /api/v1/me` can clear the phone but answers `422 phone_needs_otp` for a new one. The web walks users through all of this at `/verify`.
+
+A profile is **ID verified** (the public badge) when PAN or masked Aadhaar is verified; a phone alone gives no badge. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.
 
 ### Try phone OTP locally
 
@@ -108,7 +110,7 @@ curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
 #   SMS to +91 XXXXXX3210 (SMS_BACKEND=log, not sent): 123456 is your Doorway Living verification code.
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"challengeId":"<challengeId>","code":"123456"}' http://localhost:8080/api/v1/me/identity/phone/confirm
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me   # badges.idVerified: true
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/verification   # steps.phone: DONE
 ```
 
 Codes expire after 10 minutes (`OTP_TTL_MINUTES`) and allow 5 tries; a user gets 3 codes per hour and 10 per day, and one number 5 per day across accounts (`429` with `Retry-After`).
@@ -116,3 +118,11 @@ Codes expire after 10 minutes (`OTP_TTL_MINUTES`) and allow 5 tries; a user gets
 ### SMS in production
 
 `SMS_BACKEND` is empty by default in `prod`: the API starts, logs a warning, lists phone OTP as unavailable and answers its endpoints with `503 phone_otp_unavailable`. To offer it, set `SMS_BACKEND=http` with `SMS_HTTP_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` (a provider endpoint that accepts `POST {to, sender, message}` with `Authorization: Bearer`) and `ID_HASH_KEY` (at least 32 bytes, for example `openssl rand -base64 48`). Keep all of them in env only. `SMS_BACKEND=log` outside `dev` and `test` refuses to start.
+
+### Preview without an SMS provider (`admin-relay`)
+
+A preview deployment can run phone OTP before an SMS provider is signed up: `SMS_BACKEND=admin-relay` sends no SMS and holds each pending code in API memory until it expires. An admin reads them at `GET /api/v1/admin/sms-relay` (user, masked phone, code, expiry; admins only) and passes the code to the user. Outside `dev` and `test` it starts only with `PREVIEW_MODE=true` and an `ID_HASH_KEY`; every start logs a `WARN` naming `admin-relay`, and only `dev` writes the codes to the log. Live mode is `PREVIEW_MODE` off with `SMS_BACKEND=http`. Codes are lost on restart: the user asks for a new one.
+
+### Headline ratings (`RATINGS_HEADLINE`)
+
+`RATINGS_HEADLINE=all` (the default) makes the headline ratings count every published review. `verified` counts only reviews an admin gave the green tick (D-135); switch to it once admin approvals (W9) ship. After a switch, the nightly rating repair rebuilds the stored aggregates.

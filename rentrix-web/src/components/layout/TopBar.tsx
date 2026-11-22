@@ -11,7 +11,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LoginIcon, LogoutIcon, MenuIcon, UserIcon } from "@/components/ui/icons.gen"
+import {
+  AlertIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  LoginIcon,
+  LogoutIcon,
+  MenuIcon,
+  MessageIcon,
+  ShieldCheckIcon,
+  UserIcon,
+} from "@/components/ui/icons.gen"
 import {
   Sheet,
   SheetContent,
@@ -20,6 +30,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { useLoginHref } from "@/features/auth/useLoginHref"
+import { STEPS, type Progress } from "@/features/verification/progress"
 import { cn } from "@/lib/utils"
 import { Brand } from "./Brand"
 import { Container } from "./Container"
@@ -38,11 +50,20 @@ function ViewerChip({ viewer, compact }: { viewer: ShellViewer; compact?: boolea
       <span
         aria-hidden
         className={cn(
-          "grid size-[34px] place-items-center rounded-full text-sm font-bold",
+          "relative grid size-[34px] place-items-center rounded-full text-sm font-bold",
           AVATAR_TONE[viewerTone(viewer)],
         )}
       >
         {initials(viewer.shortName)}
+        {viewer.progress && (
+          <span
+            data-testid="progress-dot"
+            className={cn(
+              "absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-surface",
+              viewer.progress.kind === "rejected" ? "bg-danger-600" : "bg-warn-600",
+            )}
+          />
+        )}
       </span>
       <span className={cn("text-sm font-semibold text-ink-900", compact && "max-sm:sr-only")}>
         {viewer.shortName}
@@ -51,22 +72,98 @@ function ViewerChip({ viewer, compact }: { viewer: ShellViewer; compact?: boolea
   )
 }
 
-/** The viewer chip as a menu: settings and sign out. */
+const ROLE_WORD = { TENANT: "tenant", LANDLORD: "landlord" } as const
+
+/** The roles a viewer holds as small badges (the account menu and the mobile sheet). */
+function RoleBadges({ viewer }: { viewer: ShellViewer }) {
+  return (
+    <span className="flex flex-wrap gap-1">
+      {viewer.roles.includes("TENANT") && <Badge variant="tenant">Tenant</Badge>}
+      {viewer.roles.includes("LANDLORD") && <Badge variant="landlord">Landlord</Badge>}
+    </span>
+  )
+}
+
+/**
+ * The verification status row (D-121, mockup `account-menu-progress.html`): one line, a bar for
+ * "Get verified: n of 4 steps" and a hint. Shared by the account menu and the mobile sheet.
+ */
+function ProgressRow({ progress }: { progress: Progress }) {
+  const icon =
+    progress.kind === "phone" ? (
+      <MessageIcon size={18} />
+    ) : progress.kind === "rejected" ? (
+      <AlertIcon size={18} className="text-danger-600" />
+    ) : progress.kind === "pending" ? (
+      <ClockIcon size={18} />
+    ) : (
+      <ShieldCheckIcon size={18} />
+    )
+  const role = progress.role ? ROLE_WORD[progress.role] : null
+  const hint =
+    progress.kind === "phone"
+      ? "Then you can post right away"
+      : progress.kind === "pending"
+        ? `You can post meanwhile${role ? ` · ${role}` : ""}`
+        : progress.kind === "rejected"
+          ? `See the reason and resubmit${role ? ` · ${role}` : ""}`
+          : `${progress.hint}${role ? ` · ${role}` : ""}`
+  return (
+    <span className="flex w-full items-start gap-2.5">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <b className="block text-sm text-ink-900">{progress.label}</b>
+        {progress.kind === "draft" && (
+          <span
+            role="progressbar"
+            aria-label="Verification steps done"
+            aria-valuemin={0}
+            aria-valuemax={STEPS.length}
+            aria-valuenow={progress.done}
+            className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sunk"
+          >
+            <span
+              className="block h-full rounded-full bg-teal-600"
+              style={{ width: `${((progress.done ?? 0) / STEPS.length) * 100}%` }}
+            />
+          </span>
+        )}
+        <span className="mt-1 block text-xs text-ink-500">{hint}</span>
+      </span>
+      <ChevronRightIcon size={16} className="mt-0.5 shrink-0 text-ink-500" />
+    </span>
+  )
+}
+
+/** The viewer chip as a menu: the verification row, settings and sign out. */
 function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`Account menu for ${viewer.shortName}`}
+          aria-label={`Account menu for ${viewer.shortName}${viewer.progress ? `: ${viewer.progress.label}` : ""}`}
           className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
         >
           <ViewerChip viewer={viewer} compact />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-48">
-        <DropdownMenuLabel>{viewer.shortName}</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="max-w-72 min-w-48">
+        <DropdownMenuLabel className="flex flex-wrap items-center gap-2">
+          {viewer.shortName}
+          <RoleBadges viewer={viewer} />
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {viewer.progress && (
+          <>
+            <DropdownMenuItem asChild className="items-start">
+              <Link to={viewer.progress.to}>
+                <ProgressRow progress={viewer.progress} />
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem asChild>
           <Link to="/settings">
             <UserIcon />
@@ -85,9 +182,10 @@ function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: (
 }
 
 function SignIn({ block }: { block?: boolean }) {
+  const href = useLoginHref()
   return (
     <Button asChild size={block ? "block" : "default"}>
-      <Link to="/login">
+      <Link to={href}>
         <LoginIcon />
         Sign in
       </Link>
@@ -164,8 +262,18 @@ export function TopBar({
                 {viewer && (
                   <div className="flex flex-wrap items-center gap-2">
                     <ViewerChip viewer={viewer} />
+                    <RoleBadges viewer={viewer} />
                     {viewer.isDemo && <DemoBadge />}
                   </div>
+                )}
+                {viewer?.progress && (
+                  <Link
+                    to={viewer.progress.to}
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg border border-line p-3 no-underline hover:bg-sunk hover:no-underline"
+                  >
+                    <ProgressRow progress={viewer.progress} />
+                  </Link>
                 )}
                 <div className="space-y-1.5">
                   <p className="text-xs font-semibold text-ink-500">City</p>

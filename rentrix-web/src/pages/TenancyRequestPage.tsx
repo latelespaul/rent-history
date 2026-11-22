@@ -15,6 +15,7 @@ import { useProperty } from "@/features/property/useProperties"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today, wholeNumber } from "@/features/tenancy/labels"
 import { useMyProperties, useRefreshTenancyData } from "@/features/tenancy/useTenancies"
+import { useSessionDraft } from "@/lib/draft"
 import type { PropertyDetail, TenancyInput } from "@/types/api"
 
 const selectClass = "h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm"
@@ -55,7 +56,8 @@ function Field({
  * Record a tenancy (`/tenancies/new`, DESIGN.md "record-a-tenancy form"). A landlord invites a
  * tenant by email from one of their listed homes (D-34); a tenant opens it from a property page
  * (`?property=`) and the landlord confirms within 14 days. Both sides then see it in
- * `/me/tenancies`.
+ * `/me/tenancies`. What the user typed is kept in the tab (`useSessionDraft`), so a detour to
+ * verify the phone does not lose it.
  */
 export default function TenancyRequestPage() {
   const [params] = useSearchParams()
@@ -72,18 +74,30 @@ export default function TenancyRequestPage() {
   const asLandlord = isLandlord && (!propertyParam || ownsParam || !roles.includes("TENANT"))
   const target = useProperty(asLandlord ? "" : propertyParam)
 
-  const [propertyId, setPropertyId] = useState(propertyParam)
-  const [email, setEmail] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [rent, setRent] = useState("")
-  const [deposit, setDeposit] = useState("")
+  const [draft, setDraft, clearDraft] = useSessionDraft(`tenancy:${propertyParam}`, {
+    propertyId: propertyParam,
+    email: "",
+    startDate: "",
+    endDate: "",
+    rent: "",
+    deposit: "",
+  })
+  const { propertyId, email, startDate, endDate, rent, deposit } = draft
+  const field = (name: keyof typeof draft) => (value: string) =>
+    setDraft((current) => ({ ...current, [name]: value }))
+  const setPropertyId = field("propertyId")
+  const setEmail = field("email")
+  const setStartDate = field("startDate")
+  const setEndDate = field("endDate")
+  const setRent = field("rent")
+  const setDeposit = field("deposit")
   const [idempotencyKey] = useState(newKey)
   const refresh = useRefreshTenancyData()
 
   const create = useMutation({
     mutationFn: (body: TenancyInput) => createTenancy(body, idempotencyKey),
     onSuccess: async (tenancy) => {
+      clearDraft()
       await refresh()
       navigate(`/tenancies/${tenancy.id}`)
     },

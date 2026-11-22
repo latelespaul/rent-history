@@ -33,7 +33,7 @@ public class SecurityConfig {
 
 	/** Anonymous POST routes: sign-in, and the cookie-based refresh and logout (§13). */
 	static final String[] PUBLIC_POST = {
-		"/auth/google", "/auth/dev-login", "/auth/refresh", "/auth/logout",
+		"/auth/google", "/auth/dev-login", "/auth/dev-login/new", "/auth/refresh", "/auth/logout",
 	};
 
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */

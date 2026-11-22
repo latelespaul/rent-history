@@ -361,10 +361,10 @@ class AuthFlowTest {
 		JsonNode onboarded = onboard(signIn(sub(), email()), "[\"TENANT\"]");
 		MockHttpServletResponse response = mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"displayName\":\"  Asha R.  \",\"phone\":\"+919876543210\",\"addRoles\":[\"LANDLORD\"]}"))
+				.content("{\"displayName\":\"  Asha R.  \",\"addRoles\":[\"LANDLORD\"]}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.user.displayName").value("Asha R."))
-			.andExpect(jsonPath("$.user.phone").value("+91 XXXXXX3210"))
+			.andExpect(jsonPath("$.user.phone").doesNotExist())
 			.andExpect(jsonPath("$.user.roles", hasSize(2)))
 			.andExpect(jsonPath("$.user.verification.LANDLORD").value("DRAFT"))
 			.andReturn().getResponse();
@@ -375,6 +375,12 @@ class AuthFlowTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"98765\",\"displayName\":\"A\"}"))
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.errors", hasSize(2)));
+		// A new number goes through the code flow only (D-117), so PATCH /me cannot store an unverified phone.
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"+919876543210\"}"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("phone"))
+			.andExpect(jsonPath("$.errors[0].code").value("phone_needs_otp"));
 		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"addRoles\":[\"ADMIN\"]}"))
 			.andExpect(status().isUnprocessableContent())

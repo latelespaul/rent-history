@@ -13,7 +13,8 @@ import java.util.List;
 /**
  * Read side of the rating recompute (D-33): totals over counted source reviews, the repeat-pair groups (D-44) and
  * the subject lists of the nightly repair. Counted means {@code status = PUBLISHED} and
- * {@code counts_in_aggregate = true} (§9).
+ * {@code counts_in_aggregate = true} (§9); with {@code verifiedOnly} the totals also need the green tick,
+ * {@code verification_status = VERIFIED} (D-135, {@link RatingProperties}).
  */
 interface RatingSourceRepository extends Repository<Review, Long> {
 	
@@ -23,17 +24,21 @@ interface RatingSourceRepository extends Repository<Review, Long> {
 		+ "sum(case when r.ratingOverall = 5 then 1 else 0 end), avg(r.ratingA), avg(r.ratingB), avg(r.ratingC), "
 		+ "max(r.publishedAt) from Review r ";
 	
+	/** The green-tick filter when {@code verifiedOnly} is set (D-135). */
+	String VERIFIED_ONLY = "and (:verifiedOnly = false "
+		+ "or r.verificationStatus = com.rentrix.rentrixserver.verification.VerificationState.VERIFIED)";
+	
 	/** Totals of a person subject (index ix_reviews_subject_user). */
 	@Query(TOTALS + "where r.subjectUser.id = :userId and r.direction = :direction and r.status = :status "
-		+ "and r.countsInAggregate = true")
+		+ "and r.countsInAggregate = true " + VERIFIED_ONLY)
 	List<Object[]> personTotals(@Param("userId") Long userId, @Param("direction") ReviewDirection direction,
-		@Param("status") ReviewStatus status);
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
 	
 	/** Totals of a property (index ix_reviews_property). */
 	@Query(TOTALS + "where r.property.id = :propertyId and r.direction = :direction and r.status = :status "
-		+ "and r.countsInAggregate = true")
+		+ "and r.countsInAggregate = true " + VERIFIED_ONLY)
 	List<Object[]> propertyTotals(@Param("propertyId") Long propertyId, @Param("direction") ReviewDirection direction,
-		@Param("status") ReviewStatus status);
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
 	
 	/** Person reviews of one landlord–tenant pair in one direction, across all their tenancies (D-44). */
 	@Query("select r from Review r join fetch r.tenancy t where r.direction = :direction "

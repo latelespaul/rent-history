@@ -9,10 +9,10 @@ import java.util.Map;
 /**
  * RFC 9457 Problem Details body used for every error response (D-60).
  * {@code code} is the stable machine code clients switch on and {@code title} is derived from it; {@code traceId} matches the
- * {@code X-Request-Id} response header and the log lines of the request. {@code approval} is set only on
- * {@code 403 approval_required}: {@code {role, status}} of the verification that blocks the write (D-91).
- * {@code missing} is set only on {@code 422 verification_incomplete}: the steps still to do (D-105).
- * {@code conflict} is set only on {@code 409 tenancy_overlap}: the period of the tenancy already on the home
+ * {@code X-Request-Id} response header and the log lines of the request. {@code approval} ({@code {role, status}})
+ * is no longer set since open by default replaced the approval gate (D-132). {@code missing} lists the steps still to
+ * do on {@code 422 verification_incomplete} (D-105) and {@code ["phone"]} on {@code 403 id_verification_required}
+ * (D-117). {@code conflict} is set only on {@code 409 tenancy_overlap}: the period of the tenancy already on the home
  * ({@code from}, {@code to} months; no {@code to} while it is current) and, for that home's landlord only, its
  * {@code tenancyId}.
  */

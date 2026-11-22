@@ -7,7 +7,8 @@ import java.time.Duration;
 import java.util.Locale;
 
 /**
- * SMS settings (§17, D-101), from env only: {@code SMS_BACKEND} ({@code log} or {@code http}; empty = no SMS)
+ * SMS settings (§17, D-101), from env only: {@code SMS_BACKEND} ({@code log}, {@code http} or the preview-only
+ * {@code admin-relay}, D-137; empty = no SMS)
  * and, for {@code http}, {@code SMS_HTTP_URL}, {@code SMS_API_KEY} and {@code SMS_SENDER_ID}. No provider
  * credentials are committed anywhere.
  */
@@ -16,6 +17,8 @@ public record SmsProperties(String backend, Http http) {
 	
 	public static final String LOG = "log";
 	public static final String HTTP = "http";
+	/** Preview only (D-137): codes are held for admins, nothing is sent. */
+	public static final String ADMIN_RELAY = "admin-relay";
 	
 	public SmsProperties {
 		backend = StringUtils.hasText(backend) ? backend.trim().toLowerCase(Locale.ROOT) : null;

@@ -4,7 +4,6 @@ import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.identity.CheckedBy;
 import com.rentrix.rentrixserver.identity.IdentityMethod;
-import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.identity.IdentityStatus;
 import com.rentrix.rentrixserver.identity.IdentityVerification;
 import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
@@ -41,7 +40,6 @@ public class TestData {
 	private final TenancyRepository tenancies;
 	private final VerificationApplicationRepository applications;
 	private final IdentityVerificationRepository identityChecks;
-	private final IdentityService identity;
 	
 	public User user(String name, Role... roles) {
 		User user = new User();
@@ -58,7 +56,7 @@ public class TestData {
 		return users.save(user);
 	}
 	
-	/** A user who passes the approval gate (D-91, D-105): see {@link #approve(User)}. */
+	/** An approved user (green tick per role, D-134) with a verified phone, so they may post (D-132): see {@link #approve(User)}. */
 	public User approved(String name, Role... roles) {
 		User user = verified(name, roles);
 		approve(user);
@@ -66,9 +64,9 @@ public class TestData {
 	}
 	
 	/**
-	 * Writes an {@code APPROVED} application for each held {@code TENANT} / {@code LANDLORD} role and, unless the user
-	 * is already ID verified, a {@code VERIFIED} phone check, so {@code ApprovalGuard} lets the user write. The user
-	 * row itself is not saved.
+	 * Writes an {@code APPROVED} application for each held {@code TENANT} / {@code LANDLORD} role and a
+	 * {@code VERIFIED} phone check ({@link #verifyPhone(User)}), so {@code ApprovalGuard} lets the user write. The
+	 * user row itself is not saved.
 	 */
 	public void approve(User user) {
 		for (Role role : new Role[] {Role.TENANT, Role.LANDLORD}) {
@@ -86,9 +84,14 @@ public class TestData {
 			application.setDecidedAt(Instant.parse("2025-01-03T00:00:00Z"));
 			applications.save(application);
 		}
-		if (!identity.isIdVerified(user)) {
-			IdentityVerification phone = identityChecks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
-				.orElseGet(IdentityVerification::new);
+		verifyPhone(user);
+	}
+	
+	/** A {@code VERIFIED} phone check (D-117): all a user needs to post (D-132). The user row itself is not saved. */
+	public void verifyPhone(User user) {
+		IdentityVerification phone = identityChecks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
+			.orElseGet(IdentityVerification::new);
+		if (phone.getStatus() != IdentityStatus.VERIFIED) {
 			phone.setUser(user);
 			phone.setMethod(IdentityMethod.PHONE_OTP);
 			phone.setStatus(IdentityStatus.VERIFIED);

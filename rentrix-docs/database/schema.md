@@ -418,4 +418,4 @@ MySQL parses but ignores inline column `REFERENCES` (§3.6), so `db/vendor/mysql
 | Query | Index |
 |---|---|
 | approvals queue per type, oldest first (D-136): `verification_status IS NULL OR = 'UNVERIFIED'` | `ix_properties_verification`, `ix_tenancies_verification`, `ix_reviews_verification` |
-| headline aggregate: counted reviews with `verification_status = 'VERIFIED'` (D-135) | the existing review-by-subject indexes, filtered on the state |
+| headline aggregate in `verified` mode (`app.ratings.headline`, D-135): counted reviews with `verification_status = 'VERIFIED'` | the existing review-by-subject indexes, filtered on the state |

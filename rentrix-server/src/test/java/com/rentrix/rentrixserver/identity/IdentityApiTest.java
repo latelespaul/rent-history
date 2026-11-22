@@ -66,12 +66,29 @@ class IdentityApiTest {
 	}
 	
 	@Test
+	void aVerifiedPhoneLetsTheUserPostButGivesNoBadge() {
+		User user = data.user("Phone only", Role.TENANT);
+		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED, "3210");
+		assertThat(identity.isPhoneVerified(user)).isTrue();
+		assertThat(identity.isIdVerified(user)).as("D-100: PAN or Aadhaar only").isFalse();
+		assertThat(identity.badges(user)).isEqualTo(Badges.NONE);
+	}
+	
+	@Test
+	void smsRelayIsNotFoundWithoutTheAdminRelaySender() throws Exception {
+		User admin = data.user("Relay admin", Role.ADMIN);
+		mvc.perform(get("/admin/sms-relay").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+			.andExpect(status().isNotFound());
+	}
+	
+	@Test
 	void pendingRejectedOrRevokedMethodsDoNotCount() {
 		User user = data.user("Waiting", Role.LANDLORD);
 		check(user, IdentityMethod.PAN, IdentityStatus.PENDING, "234F");
 		check(user, IdentityMethod.AADHAAR, IdentityStatus.REJECTED, "1234");
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.REVOKED, "3210");
 		assertThat(identity.isIdVerified(user)).isFalse();
+		assertThat(identity.isPhoneVerified(user)).isFalse();
 		assertThat(identity.badges(user)).isEqualTo(Badges.NONE);
 	}
 	

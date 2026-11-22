@@ -13,8 +13,6 @@ import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
-import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
-import com.rentrix.rentrixserver.verification.VerificationStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -46,6 +44,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @IntegrationTest
 @Transactional
 class ReviewApiTest {
+	
+	@Autowired
+	jakarta.persistence.EntityManager entityManager;
 
 	private static final LocalDate TODAY = LocalDate.now(ZoneOffset.UTC);
 	private static final String GOOD = "Clean home, fair landlord and a quick reply to every repair request we made.";
@@ -80,9 +81,6 @@ class ReviewApiTest {
 	@Autowired
 	JdbcTemplate jdbc;
 
-	@Autowired
-	VerificationApplicationRepository applications;
-
 	// ------------------------------------------------------------ helpers
 
 	/** An approved user whose account is old enough for a first review (D-45). */
@@ -90,11 +88,13 @@ class ReviewApiTest {
 		return aged(data.approved(name, role));
 	}
 
-	/** Moves the user's application for {@code role} back to PENDING, so the approval gate (D-91) refuses writes. */
-	private void unapprove(User user, Role role) {
-		var application = applications.findByUserAndRole(user, role).orElseThrow();
-		application.setStatus(VerificationStatus.PENDING);
-		applications.save(application);
+	/** Revokes the user's verified phone (as a phone change does, D-101), so the gate (D-132) refuses writes. */
+	/** Revokes the phone in the database and drops the test transaction's cached copy of the row. */
+	private void revokePhone(User user) {
+		entityManager.flush();
+		jdbc.update("update identity_verifications set status = 'REVOKED' where user_id = ? and method = 'PHONE_OTP'",
+			user.getId());
+		entityManager.clear();
 	}
 
 	private User aged(User user) {
@@ -162,7 +162,7 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.author.shortName").value("Tara T."))
 			.andExpect(jsonPath("$.author.id").doesNotExist())
-			.andExpect(jsonPath("$.author.badges.idVerified").value(true))
+			.andExpect(jsonPath("$.author.badges.idVerified").value(false)) // a verified phone alone gives no badge
 			.andExpect(jsonPath("$.period.from").value(TODAY.minusYears(1).toString().substring(0, 7)))
 			.andExpect(jsonPath("$.property.unitLabel").doesNotExist());
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isEqualTo(1);
@@ -231,7 +231,7 @@ class ReviewApiTest {
 	}
 
 	@Test
-	void unapprovedAuthorIs403WhileUnapprovedReaderStillGetsTheText() throws Exception {
+	void authorWithoutAVerifiedPhoneIs403WhileTheyStillGetTheText() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
@@ -241,8 +241,8 @@ class ReviewApiTest {
 		Tenancy own = active(home(landlord), pending);
 		write(pending, own, ReviewDirection.TENANT_TO_PROPERTY, 4, GOOD)
 			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("approval_required"))
-			.andExpect(jsonPath("$.approval.role").value("TENANT"));
+			.andExpect(jsonPath("$.code").value("id_verification_required"))
+			.andExpect(jsonPath("$.missing[0]").value("phone"));
 
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews")
 				.header("Authorization", support.bearer(pending)))
@@ -271,13 +271,13 @@ class ReviewApiTest {
 		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("not_author"));
 
-		unapprove(tenant, Role.TENANT); // no longer approved: withdrawal is a safety exit (D-91)
+		revokePhone(tenant); // can no longer post: withdrawal is a safety exit (D-91)
 		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isNoContent());
 		assertThat(stored(id).getStatus()).isEqualTo(ReviewStatus.WITHDRAWN);
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isZero();
 		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(tenant))).andExpect(status().isNotFound());
-		data.approve(tenant);
+		data.verifyPhone(tenant);
 		write(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 5, GOOD)
 			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("review_exists"));
 	}
@@ -481,13 +481,27 @@ class ReviewApiTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"body\": \"Thanks, the pump and lift are fixed.\"}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.response.body").value("Thanks, the pump and lift are fixed."));
-		unapprove(landlord, Role.LANDLORD);
+		revokePhone(landlord);
 		mvc.perform(patch("/reviews/" + id + "/response").header("Authorization", support.bearer(landlord))
 				.contentType(MediaType.APPLICATION_JSON).content(reply))
-			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("approval_required"));
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("id_verification_required"));
 	}
 
 	// ----------------------------------------------------------- aggregates
+
+	@Test
+	void defaultHeadlineCountsUnverifiedPublishedReviews() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		Long propertyId = tenancy.getProperty().getId();
+
+		assertThat(stored(id).getVerificationStatus()).isNull();
+		RatingAggregate row = aggregate(RatingSubjectType.PROPERTY, propertyId);
+		assertThat(row.getReviewCount()).as("app.ratings.headline=all (D-135)").isEqualTo(1);
+		assertThat(row.getRatingSum()).isEqualTo(4);
+	}
 
 	@Test
 	void aggregateMathWorkedExample() throws Exception {

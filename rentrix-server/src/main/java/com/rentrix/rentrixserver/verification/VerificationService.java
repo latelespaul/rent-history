@@ -89,9 +89,10 @@ public class VerificationService implements VerificationStatuses {
 	}
 	
 	/**
-	 * {@code POST /me/verification/{role}/submit}: {@code DRAFT} or {@code REJECTED} → {@code PENDING}, a rejected
-	 * application with {@code revision + 1}. Needs the profile and at least one ID method {@code VERIFIED} or
-	 * {@code PENDING} ({@code 422 verification_incomplete}, D-105); 3 submits per 24 h ({@code 429}, D-90).
+	 * {@code POST /me/verification/{role}/submit} ("Request verification", D-133): {@code DRAFT} or {@code REJECTED}
+	 * → {@code PENDING}, a rejected application with {@code revision + 1}. Needs the profile and a {@code VERIFIED}
+	 * phone ({@code 422 verification_incomplete} listing {@code profile} / {@code phone}, D-117); PAN, Aadhaar,
+	 * LinkedIn and the rental details are optional. 3 submits per 24 h ({@code 429}, D-90).
 	 */
 	@Transactional
 	public VerificationView submit(UUID callerId, String rolePath) {
@@ -116,8 +117,8 @@ public class VerificationService implements VerificationStatuses {
 		if (steps.profile() == StepStatus.MISSING) {
 			missing.add("profile");
 		}
-		if (steps.identity() == StepStatus.MISSING) {
-			missing.add("identity");
+		if (steps.phone() == StepStatus.MISSING) {
+			missing.add("phone");
 		}
 		if (!missing.isEmpty()) {
 			throw ApiException.verificationIncomplete(missing);
@@ -184,8 +185,11 @@ public class VerificationService implements VerificationStatuses {
 	private Steps steps(User user) {
 		StepStatus profile = user.getDisplayName() != null && !user.getDisplayName().isBlank()
 			&& user.getHomeCity() != null ? StepStatus.DONE : StepStatus.MISSING;
+		StepStatus phone = identity.isPhoneVerified(user) ? StepStatus.DONE : StepStatus.MISSING;
+		// The optional extra ID (D-120): PAN or masked Aadhaar; skipped when the user has added neither.
 		StepStatus id = identity.isIdVerified(user) ? StepStatus.DONE
-			: identity.hasPendingIdMethod(user) ? StepStatus.PENDING : StepStatus.MISSING;
+			: identity.hasPendingIdMethod(user) ? StepStatus.PENDING
+			: identity.hasRejectedIdMethod(user) ? StepStatus.REJECTED : StepStatus.SKIPPED;
 		StepStatus linkedin = identityChecks.findByUserAndMethod(user, IdentityMethod.LINKEDIN)
 			.map(IdentityVerification::getStatus)
 			.map(status -> switch (status) {
@@ -195,13 +199,13 @@ public class VerificationService implements VerificationStatuses {
 				case REVOKED -> StepStatus.SKIPPED;
 			})
 			.orElse(StepStatus.SKIPPED);
-		return new Steps(profile, id, linkedin);
+		return new Steps(profile, phone, id, linkedin);
 	}
 	
 	private static VerificationView view(User user, Role role, Optional<VerificationApplication> found, Steps steps) {
-		// The rental agreement is an optional tenant step; its upload comes with PLAN B12.
-		VerificationView.Steps roleSteps = new VerificationView.Steps(steps.profile(), steps.identity(),
-			steps.linkedin(), role == Role.TENANT ? StepStatus.SKIPPED : StepStatus.NOT_APPLICABLE);
+		// Rental details are an optional step for both roles (D-120); the agreement upload comes with PLAN B18.
+		VerificationView.Steps roleSteps = new VerificationView.Steps(steps.profile(), steps.phone(), steps.identity(),
+			steps.linkedin(), StepStatus.SKIPPED);
 		if (found.isEmpty()) {
 			return new VerificationView(null, role, VerificationStatus.DRAFT, 1, roleSteps, null, null);
 		}
@@ -236,7 +240,7 @@ public class VerificationService implements VerificationStatuses {
 		return role;
 	}
 	
-	private record Steps(StepStatus profile, StepStatus identity, StepStatus linkedin) {
+	private record Steps(StepStatus profile, StepStatus phone, StepStatus identity, StepStatus linkedin) {
 	}
 	
 }

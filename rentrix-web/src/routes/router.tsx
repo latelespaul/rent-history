@@ -16,6 +16,8 @@ import SettingsPage from "@/pages/SettingsPage"
 import TenancyInvitePage from "@/pages/TenancyInvitePage"
 import TenancyPage from "@/pages/TenancyPage"
 import TenancyRequestPage from "@/pages/TenancyRequestPage"
+import VerifyPage from "@/pages/VerifyPage"
+import WelcomeCreatedPage from "@/pages/WelcomeCreatedPage"
 import { RouteError } from "@/routes/RouteError"
 
 export const routes = [
@@ -37,6 +39,8 @@ export const routes = [
         element: <RequireAuth />,
         children: [
           { path: "/search", element: <SearchPage /> },
+          { path: "/welcome/created", element: <WelcomeCreatedPage /> },
+          { path: "/verify/*", element: <VerifyPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/me/tenancies", element: <MyTenanciesPage /> },
           { path: "/tenancies/new", element: <TenancyRequestPage /> },

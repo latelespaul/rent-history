@@ -36,9 +36,21 @@ vi.mock("@/api/auth", () => ({
   fetchMe: vi.fn(async () => h.restored),
   signInWithGoogle: vi.fn(),
   devLogin: vi.fn(),
+  devLoginAsNewUser: vi.fn(),
   logout: vi.fn(async () => undefined),
   completeOnboarding: vi.fn(),
   updateMe: vi.fn(),
+}))
+
+vi.mock("@/api/verification", () => ({
+  verificationKeys: { all: ["me", "verification"], identity: ["me", "identity"] },
+  fetchVerification: vi.fn(async () => []),
+  fetchIdentity: vi.fn(async () => ({ idVerified: false, linkedinVerified: false, methods: [] })),
+}))
+
+vi.mock("sonner", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("sonner")>()),
+  toast: { success: vi.fn() },
 }))
 
 vi.mock("@/api/cities", () => ({
@@ -62,6 +74,7 @@ configure({ asyncUtilTimeout: 5000 })
 vi.setConfig({ testTimeout: 30_000 })
 
 const { api } = await import("@/api/client")
+const { toast } = await import("sonner")
 const auth = await import("@/api/auth")
 const { loadGis } = await import("./gis")
 const { routes } = await import("@/routes/router")
@@ -164,14 +177,63 @@ describe("login page", () => {
     expect(auth.devLogin).toHaveBeenCalledWith("l1")
     expect(api.setAccessToken).toHaveBeenCalledWith("dev-token")
     expect(where(router)).toBe("/settings")
+    // A returning sign-in says who is signed in (D-119).
+    expect(toast.success).toHaveBeenCalledWith("Signed in as Demo Landlord BLR-1", {
+      duration: 4000,
+    })
   })
 
-  it("sends a signed-in visitor on to next", async () => {
+  it("lands a returning sign-in without next on the role home", async () => {
+    h.config = { googleClientId: null, devLogin: true }
+    vi.mocked(auth.devLogin).mockResolvedValue({
+      accessToken: "dev-token",
+      user: DEV_USERS[1],
+      needsOnboarding: false,
+    })
+    const router = renderApp("/login")
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole("region", { name: /dev login/i })
+    await user.click(await within(panel).findByRole("radio", { name: /demo landlord blr-1/i }))
+    await user.click(within(panel).getByRole("button", { name: /sign in as selected seed user/i }))
+
+    await waitFor(() => expect(where(router)).toBe("/me/dashboard"))
+    expect(toast.success).toHaveBeenCalledTimes(1)
+  })
+
+  it("signs in as a brand-new dev user and goes to the role pick", async () => {
+    h.config = { googleClientId: null, devLogin: true }
+    vi.mocked(auth.devLoginAsNewUser).mockResolvedValue({
+      accessToken: "new-token",
+      user: NEW_USER,
+      needsOnboarding: true,
+    })
+    const router = renderApp("/login")
+    const user = userEvent.setup()
+
+    const panel = await screen.findByRole("region", { name: /dev login/i })
+    await within(panel).findByText("Demo Landlord BLR-1")
+    await user.click(within(panel).getByRole("button", { name: /sign in as a new user/i }))
+
+    expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
+    expect(where(router)).toBe("/welcome")
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it("sends a signed-in visitor on to next, with no toast for a restored session", async () => {
     h.restored = makeUser()
     const router = renderApp("/login?next=%2Fsettings")
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
     expect(where(router)).toBe("/settings")
+    expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it("gives every Sign in link the page it was clicked on as next", async () => {
+    renderApp("/terms")
+
+    const signIn = await screen.findAllByRole("link", { name: /^sign in$/i })
+    expect(signIn.map((link) => link.getAttribute("href"))).toContain("/login?next=%2Fterms")
   })
 })
 
@@ -207,7 +269,7 @@ describe("guarded routes", () => {
 })
 
 describe("onboarding", () => {
-  it("posts the role pick, swaps in the fresh token and continues to next", async () => {
+  it("posts the role pick, swaps in the fresh token and shows the account-created screen", async () => {
     h.restored = NEW_USER
     const onboarded = makeUser({
       ...NEW_USER,
@@ -238,6 +300,16 @@ describe("onboarding", () => {
     await user.type(name, "Neha User")
     await user.click(screen.getByRole("button", { name: "Continue" }))
 
+    // The account-created screen (D-118): name, email and role, then one next step.
+    expect(await screen.findByText("Your account is created.")).toBeTruthy()
+    expect(where(router)).toBe("/welcome/created")
+    expect(screen.getByText("Neha User")).toBeTruthy()
+    expect(screen.getByText("new.user@example.test")).toBeTruthy()
+    expect(screen.getByText("Landlord")).toBeTruthy()
+    expect(
+      screen.getByRole("link", { name: /verify your phone number/i }).getAttribute("href"),
+    ).toBe("/verify/phone")
+    await user.click(screen.getByRole("link", { name: /not now/i }))
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
     expect(auth.completeOnboarding).toHaveBeenCalledWith({
       roles: ["LANDLORD"],
@@ -270,7 +342,7 @@ describe("onboarding", () => {
     expect(auth.updateMe).not.toHaveBeenCalled()
   })
 
-  it("lands a new landlord on the dashboard without next", async () => {
+  it("sends a new landlord who picks Not now to the dashboard without next", async () => {
     h.restored = NEW_USER
     vi.mocked(auth.completeOnboarding).mockResolvedValue({
       user: makeUser({ ...NEW_USER, roles: ["LANDLORD", "TENANT"], needsOnboarding: false }),
@@ -285,6 +357,8 @@ describe("onboarding", () => {
     await user.click(screen.getByRole("checkbox", { name: /i accept the terms/i }))
     await user.click(screen.getByRole("button", { name: "Continue" }))
 
+    await screen.findByText("Your account is created.")
+    await user.click(screen.getByRole("link", { name: /not now/i }))
     await waitFor(() => expect(where(router)).toBe("/me/dashboard"))
     expect(auth.updateMe).not.toHaveBeenCalled()
   })
@@ -313,6 +387,11 @@ describe("settings", () => {
 
   it("signs out and returns home", async () => {
     h.restored = makeUser()
+    window.sessionStorage.setItem(
+      "draft:tenancy:p1",
+      JSON.stringify({ email: "owner@example.com" }),
+    )
+    window.sessionStorage.setItem("other", "kept")
     const router = renderApp("/settings")
     const user = userEvent.setup()
 
@@ -322,6 +401,9 @@ describe("settings", () => {
     await waitFor(() => expect(where(router)).toBe("/"))
     expect(auth.logout).toHaveBeenCalled()
     expect(api.clearSession).toHaveBeenCalled()
+    expect(window.sessionStorage.getItem("draft:tenancy:p1")).toBeNull()
+    expect(window.sessionStorage.getItem("other")).toBe("kept")
+    window.sessionStorage.removeItem("other")
     expect(
       await screen.findAllByRole("link", { name: "Sign in / Sign up with Google" }),
     ).toHaveLength(2)

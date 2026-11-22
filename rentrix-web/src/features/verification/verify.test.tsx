@@ -1,0 +1,222 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { cleanup, configure, render, screen, waitFor, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { createMemoryRouter, RouterProvider } from "react-router-dom"
+import { ApiError } from "@/api/errors"
+import type { CurrentUser, IdentityView, VerificationEntry } from "@/types/api"
+import { LAUNCH_CITIES } from "@/test/cities"
+import { makeUser } from "@/test/users"
+import { entry, identity } from "@/test/verification"
+import { AuthProvider } from "@/features/auth/AuthProvider"
+
+// The API is mocked at the module edge, as in auth.test.tsx; the verification endpoints keep state.
+const h = vi.hoisted(() => ({
+  user: null as CurrentUser | null,
+  verification: [] as VerificationEntry[],
+  identity: null as IdentityView | null,
+}))
+
+vi.mock("@/api/client", () => ({
+  api: {
+    restoreSession: vi.fn(async () => h.user !== null),
+    setAccessToken: vi.fn(),
+    clearSession: vi.fn(),
+  },
+  setSessionExpiredHandler: vi.fn(),
+}))
+
+vi.mock("@/api/auth", () => ({
+  authKeys: { config: ["auth", "config"], devUsers: ["auth", "dev-users"] },
+  fetchAuthConfig: vi.fn(async () => ({ googleClientId: null, devLogin: false })),
+  fetchMe: vi.fn(async () => h.user),
+  logout: vi.fn(async () => undefined),
+  updateMe: vi.fn(),
+}))
+
+vi.mock("@/api/verification", () => ({
+  verificationKeys: { all: ["me", "verification"], identity: ["me", "identity"] },
+  fetchVerification: vi.fn(async () => h.verification),
+  fetchIdentity: vi.fn(async () => h.identity),
+  startPhoneCheck: vi.fn(async () => ({
+    challengeId: "c1",
+    expiresAt: "2026-11-22T10:10:00Z",
+  })),
+  confirmPhoneCheck: vi.fn(),
+  requestVerification: vi.fn(),
+  saveLinkedin: vi.fn(),
+  removeLinkedin: vi.fn(),
+}))
+
+vi.mock("@/api/cities", () => ({
+  cityKeys: { all: ["cities"] },
+  fetchCities: vi.fn(async () => LAUNCH_CITIES),
+}))
+
+vi.mock("@/api/stats", () => ({
+  statsKeys: { all: ["stats"] },
+  fetchStats: vi.fn(async () => {
+    throw new Error("no stats")
+  }),
+}))
+
+configure({ asyncUtilTimeout: 5000 })
+vi.setConfig({ testTimeout: 30_000 })
+
+const verification = await import("@/api/verification")
+const { routes } = await import("@/routes/router")
+
+function renderApp(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
+  render(
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>,
+  )
+  return router
+}
+
+const where = (router: ReturnType<typeof renderApp>) =>
+  `${router.state.location.pathname}${router.state.location.search}`
+
+/** What the API answers once the code is confirmed. */
+function phoneConfirmed() {
+  h.verification = h.verification.map((e) => ({ ...e, steps: { ...e.steps, phone: "DONE" } }))
+  h.identity = identity("VERIFIED")
+  return h.identity
+}
+
+beforeEach(() => {
+  h.user = makeUser({ verification: { TENANT: "DRAFT" } })
+  h.verification = [entry()]
+  h.identity = identity(null)
+})
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+describe("verification stepper", () => {
+  it("resumes at the first open step", async () => {
+    const router = renderApp("/verify")
+
+    expect(await screen.findByRole("heading", { name: /step 2 of 4 · phone/i })).toBeTruthy()
+    expect(where(router)).toBe("/verify/phone")
+  })
+
+  it("verifies the phone: send code, a wrong code shows the tries left, the right one is done", async () => {
+    vi.mocked(verification.confirmPhoneCheck)
+      .mockRejectedValueOnce(
+        new ApiError({ status: 422, code: "otp_invalid", detail: "Wrong code. 4 tries left." }),
+      )
+      .mockImplementationOnce(async () => phoneConfirmed())
+    const router = renderApp("/verify/phone")
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText(/your mobile number/i), "98765 43210")
+    await user.click(screen.getByRole("button", { name: /send code/i }))
+    expect(verification.startPhoneCheck).toHaveBeenCalledWith("+919876543210")
+    expect(await screen.findByText("Code sent")).toBeTruthy()
+    expect(screen.getByText(/^resend code in (1:00|0:5\d)$/i)).toBeTruthy()
+
+    await user.type(screen.getByLabelText(/enter the 6-digit code/i), "111111")
+    await user.click(screen.getByRole("button", { name: /verify and continue/i }))
+    expect(await screen.findByText("Wrong code. 4 tries left.")).toBeTruthy()
+
+    const code = screen.getByLabelText(/enter the 6-digit code/i)
+    await user.clear(code)
+    await user.type(code, "482913")
+    await user.click(screen.getByRole("button", { name: /verify and continue/i }))
+
+    expect(verification.confirmPhoneCheck).toHaveBeenLastCalledWith("c1", "482913")
+    expect(await screen.findByRole("heading", { name: /step 3 of 4 · id/i })).toBeTruthy()
+    expect(where(router)).toBe("/verify/id")
+    expect(screen.getByText(/phone verified · \+91 xxxxxx3210/i)).toBeTruthy()
+    expect(screen.getAllByText("Coming soon")).toHaveLength(2)
+  })
+
+  it("returns to the page the user started from once the phone is verified", async () => {
+    vi.mocked(verification.confirmPhoneCheck).mockImplementationOnce(async () => phoneConfirmed())
+    const router = renderApp("/verify/phone?next=%2Fme%2Ftenancies%3Ftab%3Dpending")
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText(/your mobile number/i), "+919876543210")
+    await user.click(screen.getByRole("button", { name: /send code/i }))
+    await user.type(await screen.findByLabelText(/enter the 6-digit code/i), "482913")
+    await user.click(screen.getByRole("button", { name: /verify and continue/i }))
+
+    await waitFor(() => expect(where(router)).toBe("/me/tenancies?tab=pending"))
+  })
+
+  it("says phone verification is not available when the API has no SMS sender", async () => {
+    h.identity = identity(null, false)
+    renderApp("/verify/phone")
+
+    expect(await screen.findByText(/phone verification is not available yet/i)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /send code/i })).toBeNull()
+  })
+
+  it("lists the missing steps when Request verification is refused", async () => {
+    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.identity = identity("VERIFIED")
+    vi.mocked(verification.requestVerification).mockRejectedValueOnce(
+      new ApiError({
+        status: 422,
+        code: "verification_incomplete",
+        detail: "Finish the missing steps first.",
+        missing: ["profile"],
+      }),
+    )
+    renderApp("/verify/submit")
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole("button", { name: "Request verification" }))
+
+    expect(await screen.findByText("Finish these first:")).toBeTruthy()
+    expect(
+      screen.getByRole("link", { name: /profile: your name and home city/i }).getAttribute("href"),
+    ).toBe("/verify/profile")
+    expect(verification.requestVerification).toHaveBeenCalledWith("TENANT")
+  })
+
+  it("shows Waiting for review after the request, and that posting is already open", async () => {
+    h.verification = [entry({ status: "PENDING", steps: { phone: "DONE" } })]
+    h.identity = identity("VERIFIED")
+    renderApp("/verify")
+
+    expect(
+      await screen.findByRole("heading", { name: /thanks, your verification is requested/i }),
+    ).toBeTruthy()
+    expect(screen.getByText("Waiting for review")).toBeTruthy()
+    expect(screen.getByText(/you can post now/i)).toBeTruthy()
+  })
+})
+
+describe("phone banner and menu dot (D-121, D-132)", () => {
+  it("shows the banner with a way back on pages, while the phone is not verified", async () => {
+    renderApp("/settings")
+
+    const banner = await screen.findByRole("region", { name: "Verification" })
+    expect(banner.textContent).toContain("Verify your phone to post.")
+    expect(
+      within(banner).getByRole("link", { name: "Verify your phone" }).getAttribute("href"),
+    ).toBe("/verify/phone?next=%2Fsettings")
+    expect(screen.getByTestId("progress-dot")).toBeTruthy()
+  })
+
+  it("lets a phone-verified DRAFT user reach a write page without the banner", async () => {
+    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.identity = identity("VERIFIED")
+    const router = renderApp("/tenancies/new?property=p1")
+
+    await waitFor(() => expect(verification.fetchVerification).toHaveBeenCalled())
+    await screen.findByTestId("progress-dot")
+    expect(where(router)).toBe("/tenancies/new?property=p1")
+    expect(screen.queryByRole("region", { name: "Verification" })).toBeNull()
+  })
+})

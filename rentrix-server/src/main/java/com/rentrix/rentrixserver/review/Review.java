@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.review;
 
+import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.common.persistence.PublicEntity;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
@@ -104,5 +105,22 @@ public class Review extends PublicEntity {
 	
 	@Column(name = "deleted_at")
 	private Instant deletedAt;
+	
+	/** The green tick (D-134); null reads as {@code UNVERIFIED}. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "verification_status", length = 16)
+	private VerificationState verificationStatus;
+	
+	/** The admin who gave or refused the tick, when and why (D-134). */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "verification_decided_by")
+	private User verificationDecidedBy;
+	
+	@Column(name = "verification_decided_at")
+	private Instant verificationDecidedAt;
+	
+	@Column(name = "verification_reason", length = 1000)
+	private String verificationReason;
 	
 }

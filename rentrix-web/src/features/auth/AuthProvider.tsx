@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useQueryClient } from "@tanstack/react-query"
 import { fetchMe, logout } from "@/api/auth"
 import { api, setSessionExpiredHandler } from "@/api/client"
+import { clearSessionDrafts } from "@/lib/draft"
 import type { AuthSession, MeUpdate } from "@/types/api"
 import { AuthContext, type AuthContextValue, type AuthState } from "./authContext"
 
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // The cookie expires on its own; the local session ends either way.
     }
     api.clearSession()
+    clearSessionDrafts()
     queryClient.removeQueries({ queryKey: ["me"] })
     setState(ANONYMOUS)
   }, [queryClient])

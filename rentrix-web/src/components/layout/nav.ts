@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/icon"
+import type { Progress } from "@/features/verification/progress"
 
 /** Who the shell is drawn for. `null` is an anonymous visitor. */
 export interface ShellViewer {
@@ -7,6 +8,8 @@ export interface ShellViewer {
   roles: ReadonlyArray<"TENANT" | "LANDLORD" | "ADMIN">
   /** True for seed users (D-68): the top bar then shows "Demo data". */
   isDemo: boolean
+  /** The verification row of the account menu and the chip's dot (D-121); null when done. */
+  progress?: Progress | null
 }
 
 export interface NavItem {

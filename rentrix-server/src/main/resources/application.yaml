@@ -121,14 +121,22 @@ app:
     enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
   seed:
     demo: ${SEED_DEMO:false}              # demo data, dev profile + empty DB only (D-68)
+  ratings:
+    # Which published reviews the headline ratings count (D-135): "all" until admins can give the
+    # green tick (PLAN W9), then "verified" (green-tick reviews only). After a switch the stored
+    # aggregates are rebuilt by the nightly repair (D-33, RatingRecomputer.recomputeAll).
+    headline: ${RATINGS_HEADLINE:all}
   identity:
     # HMAC key for phone numbers, PAN and OTP codes (D-101, D-106). Env only, >= 32 bytes.
     hash-key: ${ID_HASH_KEY:}
     otp-ttl: ${OTP_TTL_MINUTES:10}m       # phone OTP lifetime (D-101)
+  # Preview deployment flag (D-137): allows SMS_BACKEND=admin-relay under prod. Off = live mode.
+  preview-mode: ${PREVIEW_MODE:false}
   sms:
     # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
     # phone_otp_unavailable) and the API still starts. "http" needs SMS_HTTP_URL and
-    # SMS_API_KEY; "log" (writes the code to the log) is refused outside dev/test.
+    # SMS_API_KEY; "log" (writes the code to the log) is refused outside dev/test;
+    # "admin-relay" (preview: codes shown to admins, D-137) needs PREVIEW_MODE=true in prod.
     backend: ${SMS_BACKEND:}
     http:
       url: ${SMS_HTTP_URL:}
