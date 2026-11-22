@@ -195,9 +195,11 @@ describe("HomePage", { timeout: 20_000 }, () => {
     // two homes from the seed and an example review after each, every one marked "Demo data"
     expect(texts("article [data-variant=demo]", preview)).toEqual(Array(4).fill("Demo data"))
     expect(texts("article blockquote", preview)).toHaveLength(2)
-    // each example review in its seeded state: the first has the green tick, the second not yet
-    expect(texts("article [data-variant=success]", preview)).toEqual(["Verified by Doorway Living"])
-    expect(texts("article [data-variant=neutral]", preview)).toEqual(["Not verified yet"])
+    // the seed gives no review the green tick, so every example review is "Not verified yet"
+    expect(texts("article [data-variant=neutral]", preview)).toEqual(
+      Array(2).fill("Not verified yet"),
+    )
+    expect(texts("article [data-variant=success]", preview)).toEqual([])
     expect(texts("article h3", preview)).not.toContain("Sample apartment")
     // rent shows only where both parties share it; a card never carries one
     expect(preview.textContent).not.toMatch(/₹/)
@@ -219,10 +221,10 @@ describe("HomePage", { timeout: 20_000 }, () => {
     // every example card says so: three sample homes, and three example reviews from the seed
     expect(texts("article [data-variant=warn]", preview)).toEqual(Array(3).fill("Sample"))
     expect(texts("article [data-variant=demo]", preview)).toEqual(Array(3).fill("Demo data"))
-    expect(texts("article [data-variant=success]", preview)).toEqual(
-      Array(2).fill("Verified by Doorway Living"),
+    expect(texts("article [data-variant=neutral]", preview)).toEqual(
+      Array(3).fill("Not verified yet"),
     )
-    expect(texts("article [data-variant=neutral]", preview)).toEqual(["Not verified yet"])
+    expect(texts("article [data-variant=success]", preview)).toEqual([])
   })
 
   it("shows each live city with its first localities from GET /areas", async () => {

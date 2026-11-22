@@ -16,10 +16,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Demo reviews for the dev seed (PLAN B6, §16): on each confirmed demo tenancy the tenant reviews the landlord and
@@ -27,9 +25,7 @@ import java.util.Set;
  * texts are generic and pass the D-43 content rules. Written shortly after the tenancy ended (or 100 days into a
  * current one) and published together, as the double-blind reveal would (D-46). Exception: on the current tenancy
  * of the {@code waiting} home only the landlord has written, two days ago, so that review awaits reveal and the
- * tenant has review tasks. The landlord of the first home answers its newest property review. The first published
- * review with each {@link #GREEN_TICK} text is handed to {@link DemoVerificationSeed} for the green tick (D-134);
- * every other review stays unverified.
+ * tenant has review tasks. The landlord of the first home answers its newest property review.
  */
 final class DemoReviews {
 
@@ -66,17 +62,12 @@ final class DemoReviews {
 		ReviewDirection.TENANT_TO_PROPERTY, List.of(
 			"Damp walls in every room during the monsoon and frequent water shortages. Not worth the rent asked."));
 
-	/** Texts whose first published review gets the green tick; the landing shows them as verified examples. */
-	static final Set<String> GREEN_TICK = Set.of(HIGH.get(ReviewDirection.TENANT_TO_LANDLORD).get(0),
-		HIGH.get(ReviewDirection.TENANT_TO_PROPERTY).get(1));
-	
 	static final String RESPONSE = "Thank you for the feedback. The water pump was replaced after you moved out and "
 		+ "the lift is now serviced every quarter.";
 
 	private final ReviewRepository reviews;
 	private final ReviewResponseRepository responses;
 	private final Clock clock;
-	private final List<Review> greenTick = new ArrayList<>();
 	private int next;
 
 	DemoReviews(ReviewRepository reviews, ReviewResponseRepository responses, Clock clock) {
@@ -151,17 +142,7 @@ final class DemoReviews {
 		review.setStatus(publishedAt == null ? ReviewStatus.AWAITING_REVEAL : ReviewStatus.PUBLISHED);
 		review.setPublishedAt(publishedAt);
 		review.setCreatedAt(submittedAt);
-		Review saved = reviews.save(review);
-		if (publishedAt != null && GREEN_TICK.contains(saved.getBody())
-			&& greenTick.stream().noneMatch(r -> r.getBody().equals(saved.getBody()))) {
-			greenTick.add(saved);
-		}
-		return saved;
-	}
-	
-	/** After {@link #seed}: the reviews that get the green tick, one per {@link #GREEN_TICK} text. */
-	List<Review> greenTick() {
-		return List.copyOf(greenTick);
+		return reviews.save(review);
 	}
 
 }

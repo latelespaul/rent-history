@@ -12,11 +12,9 @@ import com.rentrix.rentrixserver.identity.IdentityRejectCode;
 import com.rentrix.rentrixserver.identity.IdentityStatus;
 import com.rentrix.rentrixserver.identity.IdentityVerification;
 import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
-import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
-import com.rentrix.rentrixserver.verification.ItemVerificationStatus;
 import com.rentrix.rentrixserver.verification.VerificationApplication;
 import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
 import com.rentrix.rentrixserver.verification.VerificationDecisionCode;
@@ -42,9 +40,7 @@ import java.util.Set;
  * Aadhaar and phone, and LinkedIn verified for Landlord BLR-1, Landlord PNQ-2 and Tenant PNQ-2;</li>
  * <li>the admin queue: Landlord BLR-3 (PAN and LinkedIn pending), Tenant BLR-7 (PAN pending, {@code DUPLICATE_ID}
  * with BLR-8), Tenant PNQ-7 (phone verified, masked Aadhaar pending) all {@code PENDING}; Tenant BLR-8
- * {@code REJECTED} with {@code ID_UNREADABLE}, free to resubmit;</li>
- * <li>the green tick (D-134) on the reviews {@link DemoReviews} picks, verified by the demo admin a day after they
- * were published; every other review stays unverified.</li>
+ * {@code REJECTED} with {@code ID_UNREADABLE}, free to resubmit.</li>
  * </ul>
  * Only fake masked values: last 4 like {@code 001P}, HMACs of fake numbers from the dev {@code ID_HASH_KEY},
  * {@code users.phone} stays null. Every decision has its event and audit row by the demo admin.
@@ -72,7 +68,6 @@ class DemoVerificationSeed {
 	private final IdHasher hasher;
 	private final Instant seededAt;
 	private final Instant now;
-	private User admin;
 	private int serial;
 	
 	DemoVerificationSeed(UserRepository users, CityRepository cities, VerificationApplicationRepository applications,
@@ -95,7 +90,7 @@ class DemoVerificationSeed {
 			.filter(User::isDemo)
 			.sorted(Comparator.comparing(User::getDisplayName))
 			.toList();
-		admin = admin();
+		User admin = admin();
 		int count = 0;
 		int tenantIndex = 0;
 		for (User party : parties) {
@@ -131,18 +126,6 @@ class DemoVerificationSeed {
 		User blr8 = person("Demo Tenant BLR-8", "demo-tenant-blr-8", Role.TENANT, "BLR");
 		rejected(blr8, admin);
 		return count + QUEUE.size();
-	}
-	
-	/** Call after {@link #seed()}: the demo admin approves each review, as {@code VERIFY_ITEM} in the audit log. */
-	void greenTick(List<Review> reviews) {
-		for (Review review : reviews) {
-			Instant at = review.getPublishedAt().plus(Duration.ofDays(1));
-			review.setVerificationStatus(ItemVerificationStatus.VERIFIED);
-			review.setVerificationDecidedBy(admin);
-			review.setVerificationDecidedAt(at);
-			audited(admin, ModerationActionType.VERIFY_ITEM, ModerationTargetType.REVIEW, review.getId(),
-				review.getPublicId().toString(), null, at);
-		}
 	}
 	
 	private User admin() {

@@ -22,8 +22,8 @@ required, Aadhaar or PAN and LinkedIn are optional badges.
 No invented numbers (D-03): in the build the carousel reads `GET /properties` (seed rows carry
 "Demo data") and the seeded review text; cities come from `GET /cities`. The ratings and counts
 drawn in this mockup are placeholders for that data, and so is the tick on its review cards: in
-the build each example review shows its seeded state: the green tick on the reviews the demo seed
-verifies, "Not verified yet" on the rest. The hero phone is a sample screen.
+the build every example review reads "Not verified yet" with no green tick, because the seeded
+reviews are not verified yet. The hero phone is a sample screen.
 
 Re-render: `node shot.mjs file://$PWD/landing-v2.html landing-v2` with Playwright 1.49 (headless
 Chromium; viewports 390x844 at 2x and 1440x900 at 1x, full page, header unpinned).

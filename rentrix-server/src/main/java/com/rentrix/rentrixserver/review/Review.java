@@ -4,7 +4,6 @@ import com.rentrix.rentrixserver.common.persistence.PublicEntity;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.user.User;
-import com.rentrix.rentrixserver.verification.ItemVerificationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -105,20 +104,5 @@ public class Review extends PublicEntity {
 	
 	@Column(name = "deleted_at")
 	private Instant deletedAt;
-	
-	/** The green tick (D-134): null reads as {@code UNVERIFIED}. */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "verification_status", length = 16)
-	private ItemVerificationStatus verificationStatus;
-	
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "verification_decided_by")
-	private User verificationDecidedBy;
-	
-	@Column(name = "verification_decided_at")
-	private Instant verificationDecidedAt;
-	
-	@Column(name = "verification_reason", length = 1000)
-	private String verificationReason;
 	
 }

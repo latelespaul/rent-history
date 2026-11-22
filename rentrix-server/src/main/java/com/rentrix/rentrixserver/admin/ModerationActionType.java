@@ -2,14 +2,12 @@ package com.rentrix.rentrixserver.admin;
 
 /**
  * Admin actions recorded in the audit log: the D-51 moderation set, plus the design-v2 decisions (applications,
- * listings, documents, cities, admin role, D-87), the design-v3 identity and location actions, and the design-v4
- * green tick on an item (D-134).
+ * listings, documents, cities, admin role, D-87) and the design-v3 identity and location actions.
  */
 public enum ModerationActionType {
 	DISMISS_REPORT, HIDE_REVIEW, RESTORE_REVIEW, HIDE_RESPONSE, RESTORE_RESPONSE, VOID_TENANCY, SUSPEND_USER,
 	REINSTATE_USER, ACCEPT_DOCUMENT, REJECT_DOCUMENT, HIDE_PROPERTY,
 	APPROVE_APPLICATION, REJECT_APPLICATION, REVOKE_APPROVAL, APPROVE_PROPERTY, REJECT_PROPERTY, VIEW_DOCUMENT,
 	CREATE_CITY, UPDATE_CITY, ACTIVATE_CITY, DEACTIVATE_CITY, GRANT_ADMIN, REVOKE_ADMIN,
-	VERIFY_IDENTITY, REJECT_IDENTITY, REVOKE_IDENTITY, CREATE_AREA, UPDATE_AREA, APPROVE_LOCATION, UPDATE_LOCATION,
-	VERIFY_ITEM
+	VERIFY_IDENTITY, REJECT_IDENTITY, REVOKE_IDENTITY, CREATE_AREA, UPDATE_AREA, APPROVE_LOCATION, UPDATE_LOCATION
 }

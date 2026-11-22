@@ -70,8 +70,7 @@ import java.util.Map;
  * <p>Reviews (PLAN B6, {@link DemoReviews}): every confirmed tenancy has its three reviews (tenant → landlord,
  * landlord → tenant, tenant → home) with ratings spread over 1–5, except the current tenancy of Demo Villa C:
  * there only the landlord's review is in, awaiting reveal, so Demo Tenant BLR-3 has two review tasks. One property
- * review has the landlord's response. Two published reviews carry the green tick (D-134), the rest are unverified.
- * Aggregates are rebuilt from these reviews at the end.
+ * review has the landlord's response. Aggregates are rebuilt from these reviews at the end.
  * <p>Runs only with the {@code dev} profile <em>and</em> {@code SEED_DEMO=true}, and only into an empty
  * database (no users, properties or areas); otherwise it does nothing. Verification states (the demo admin,
  * approved demo parties and the admin queue) come from {@link DemoVerificationSeed}. PLAN B10 extends it with
@@ -222,7 +221,6 @@ public class DemoSeeder implements ApplicationRunner {
 			List<Tenancy> confirmed = tenancies(homes);
 			int seededApplications = verification.seed();
 			int seededReviews = reviews.seed(confirmed, homes.get(2));
-			verification.greenTick(reviews.greenTick());
 			recomputer.recomputeAll();
 			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
 				+ "{} tenancies, {} reviews, {} verification applications.", LANDLORDS.size(), TENANTS.size(),

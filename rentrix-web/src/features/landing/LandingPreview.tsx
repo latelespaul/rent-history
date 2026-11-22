@@ -116,29 +116,25 @@ function SampleHomeCard({ city, index }: { city: string | undefined; index: numb
 /**
  * Review text reaches only signed-in readers (D-56), so the preview shows example reviews in
  * the words of the demo seed, each marked "Demo data": who rated whom, stars, a line and its
- * real state. `verified` matches the seed: only the reviews with these texts in its green-tick
- * list (DemoReviews.GREEN_TICK, D-134) carry the tick; the rest are "Not verified yet".
+ * real state. The seed gives no review the green tick (D-134), so each one is "Not verified yet".
  */
 const SAMPLE_REVIEWS = [
   {
     from: "Tenant",
     about: "the landlord",
     stars: 5,
-    verified: true,
     text: "Answered every message the same day and fixed the geyser within a week. The full deposit came back on time.",
   },
   {
     from: "Landlord",
     about: "the tenant",
     stars: 5,
-    verified: false,
     text: "Paid the rent on the first of every month and kept the home clean. Handed it back in good condition.",
   },
   {
     from: "Tenant",
     about: "the home",
     stars: 4,
-    verified: true,
     text: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
   },
 ] as const
@@ -161,7 +157,7 @@ function SampleReview({ review }: { review: (typeof SAMPLE_REVIEWS)[number] }) {
         “{review.text}”
       </blockquote>
       <div className="mt-auto">
-        {review.verified ? <GreenTick /> : <Badge variant="neutral">Not verified yet</Badge>}
+        <Badge variant="neutral">Not verified yet</Badge>
       </div>
     </article>
   )
