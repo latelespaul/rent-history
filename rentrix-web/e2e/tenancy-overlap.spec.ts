@@ -81,10 +81,13 @@ test("landlord adds a home, invites a tenant who confirms, and a second tenancy 
     await form.getByLabel(/Building name/).fill(building)
     await form.getByRole("button", { name: "Save as draft" }).click()
     await expect(page).toHaveURL(/\/edit\?saved=1$/)
+    // On purpose, the next page loads while the submit is still being written: its sign-in
+    // refresh must wait for that write, not fail and load signed out (SQLITE_BUSY bug).
+    const submitSent = page.waitForRequest(
+      (r) => r.method() === "POST" && /\/properties\/[^/]+\/submit$/.test(r.url()),
+    )
     await page.getByRole("button", { name: "Submit for review" }).click()
-    // The heading badge changes only after the submit is saved and refetched; the button alone
-    // turns into "Submitting…" at once, and reloading then races the write (SQLITE_BUSY).
-    await expect(page.getByRole("heading", { level: 1 }).getByText("Pending review")).toBeVisible()
+    await submitSent
 
     await page.goto("/me/properties")
     const row = page

@@ -10,8 +10,9 @@ import { ApiError, CLIENT_ERROR_CODES, networkError, toApiError } from "./errors
  *   `credentials: "include"` and the client never sees it.
  * - On a `401` the client calls `POST /auth/refresh` once (concurrent 401s share that one call),
  *   then retries the original request once. If the refresh is refused (`401`/`403`), the token is
- *   cleared and, when the user was signed in, `onSessionExpired` runs. Any other refresh failure
- *   (`5xx`, `429`, offline) keeps the token, and the caller sees the original error.
+ *   cleared and, when the user was signed in, `onSessionExpired` runs. A refresh that failed for a
+ *   passing reason (`409` from a concurrent write, `5xx`, offline) is tried once more first; any
+ *   failure after that, or a `429`, keeps the token, and the caller sees the original error.
  * - Every failure rejects with an `ApiError` mapped from Problem Details (D-60).
  */
 
@@ -37,6 +38,8 @@ export interface ApiClientOptions {
 }
 
 const REFRESH_PATH = "/auth/refresh"
+/** Pause before the one retry of a refresh that failed for a passing reason. */
+const REFRESH_RETRY_DELAY_MS = 300
 /** Auth endpoints never trigger a refresh: their 401 is the answer, not an expired token. */
 const NO_REFRESH_PREFIX = "/auth/"
 
@@ -102,24 +105,37 @@ export function createApiClient(options: ApiClientOptions) {
     }
   }
 
-  /** Calls `POST /auth/refresh` (cookie-based). Resolves true when a new token was stored. */
-  async function doRefresh(): Promise<boolean> {
+  /**
+   * Calls `POST /auth/refresh` (cookie-based). Resolves true when a new token was stored. A
+   * passing failure (a write that raced it, a server or network hiccup) gets one more try, so a
+   * page load during another request does not come up signed out. The API's reuse grace window
+   * (D-63) answers that retry even when the first try rotated the cookie but its reply was lost.
+   */
+  async function doRefresh(retry = true): Promise<boolean> {
+    let response: Response
     try {
-      const response = await send("POST", REFRESH_PATH, {})
-      if (!response.ok) {
-        if (response.status !== 401 && response.status !== 403) return false
+      response = await send("POST", REFRESH_PATH, {})
+    } catch {
+      // Offline during refresh: keep the old token, the caller sees the original 401.
+      return retry ? retryRefresh() : false
+    }
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
         const wasSignedIn = accessToken !== null
         accessToken = null
         if (wasSignedIn) options.onSessionExpired?.()
         return false
       }
-      const session = await readBody<AuthSession | undefined>(response)
-      accessToken = session?.accessToken ?? null
-      return accessToken !== null
-    } catch {
-      // Offline during refresh: keep the old token, the caller sees the original 401.
-      return false
+      return retry && response.status !== 429 ? retryRefresh() : false
     }
+    const session = await readBody<AuthSession | undefined>(response)
+    accessToken = session?.accessToken ?? null
+    return accessToken !== null
+  }
+
+  async function retryRefresh(): Promise<boolean> {
+    await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAY_MS))
+    return doRefresh(false)
   }
 
   function refreshOnce(): Promise<boolean> {

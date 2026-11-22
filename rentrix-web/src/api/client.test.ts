@@ -166,20 +166,46 @@ describe("api client", () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1)
   })
 
-  it("keeps the session when the refresh fails transiently", async () => {
-    for (const status of [503, 429]) {
+  it("keeps the session when the refresh keeps failing transiently", async () => {
+    // 503 gets its one retry, 429 none: retrying a rate limit at once cannot help.
+    for (const [status, refreshCalls] of [
+      [503, 2],
+      [429, 1],
+    ] as const) {
       const onSessionExpired = vi.fn()
       const f = fakeFetch(
         () => problem(401, "unauthenticated"),
-        () => problem(status, `http_${status}`),
+        ...Array.from({ length: refreshCalls }, () => () => problem(status, `http_${status}`)),
       )
       const api = createApiClient({ baseUrl: BASE, fetch: f.fn, onSessionExpired })
       api.setAccessToken("tok-1")
 
       await expect(api.get("/me")).rejects.toMatchObject({ status: 401, code: "unauthenticated" })
+      expect(f.calls).toHaveLength(1 + refreshCalls)
       expect(api.getAccessToken()).toBe("tok-1")
       expect(onSessionExpired).not.toHaveBeenCalled()
     }
+  })
+
+  it("restoreSession retries a refresh that lost a race with another write", async () => {
+    const f = fakeFetch(
+      () => problem(409, "concurrent_update"),
+      () => json(200, { accessToken: "tok-2", needsOnboarding: false }),
+    )
+    const api = createApiClient({ baseUrl: BASE, fetch: f.fn })
+
+    await expect(api.restoreSession()).resolves.toBe(true)
+    expect(api.getAccessToken()).toBe("tok-2")
+    expect(f.calls.map((c) => c.url)).toEqual([`${BASE}/auth/refresh`, `${BASE}/auth/refresh`])
+  })
+
+  it("restoreSession retries once after a network drop, then gives up", async () => {
+    const offline = () => Promise.reject(new TypeError("Failed to fetch"))
+    const f = fakeFetch(offline, offline)
+    const api = createApiClient({ baseUrl: BASE, fetch: f.fn })
+
+    await expect(api.restoreSession()).resolves.toBe(false)
+    expect(f.calls).toHaveLength(2)
   })
 
   it("never refreshes on a 401 from an /auth endpoint", async () => {
@@ -207,6 +233,7 @@ describe("api client", () => {
 
     await expect(api.restoreSession()).resolves.toBe(false)
     expect(onSessionExpired).not.toHaveBeenCalled()
+    expect(f.calls).toHaveLength(1)
   })
 })
 
