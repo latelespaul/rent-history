@@ -11,7 +11,8 @@ npm ci                 # .npmrc sets legacy-peer-deps (openapi-typescript still 
 npm run dev            # http://localhost:5173, proxies /api to API_PROXY_TARGET (default http://localhost:8080)
 ```
 
-Start the API first: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run` in `rentrix-server`.
+Start the API first: `SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run` in `rentrix-server`
+(`SEED_DEMO=true` adds the demo users and homes on an empty database).
 
 | Script | Does |
 |---|---|
@@ -20,6 +21,29 @@ Start the API first: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run` in `ren
 | `npm run build` | Type-check and build `dist/` |
 | `npm run gen:api` | Regenerate `src/types/api.gen.ts` from `openapi/openapi.json` |
 | `npm run gen:api:fetch` | Refresh `openapi/openapi.json` from a running dev API, then regenerate (`OPENAPI_URL` overrides the source) |
+
+## Sign-in
+
+`/login` asks the API what it offers (`GET /api/v1/auth/config`), so the web has no Google setting
+of its own and nothing to commit:
+
+- **Google** (`googleClientId` set): the page loads Google Identity Services and renders the official
+  "Sign in with Google" button. The ID token goes to `POST /auth/google`; the API verifies it and
+  returns its own access token. Set `GOOGLE_CLIENT_ID` on the API (root README, "Create a Google OAuth
+  client"; authorized JavaScript origin `http://localhost:5173` for dev). Without it the button is hidden.
+- **Dev login** (`devLogin: true`, API in the `dev` profile with `DEV_LOGIN_ENABLED=true`): a purple
+  "DEV ONLY" picker lists the demo seed users (`GET /auth/dev-users`, seeded by `SEED_DEMO=true` on an empty
+  database); pick one and sign in, no Google needed.
+- A first sign-in goes to `/welcome` to pick tenant, landlord or both (+ optional home city), which posts
+  `/me/onboarding` and swaps in the fresh token. `/settings` edits the profile, adds the other role and
+  signs out. `/settings`, `/me/*` and `/welcome` need a session; `/admin/*` needs `ADMIN`.
+- Hosting: pages that show the Google button must be served with
+  `Cross-Origin-Opener-Policy: same-origin-allow-popups` (set in `vite.config.ts`, `docker/nginx.conf`
+  and `vercel.json`). A Content Security Policy, if you add one, must allow `https://accounts.google.com/gsi/`
+  for `script-src`, `frame-src`, `style-src` and `connect-src`.
+
+Code: `src/features/auth` (provider, guards, GIS loader, dev picker), `src/pages/LoginPage.tsx`,
+`OnboardingPage.tsx`, `SettingsPage.tsx`.
 
 ## Design system
 

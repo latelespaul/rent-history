@@ -16,9 +16,11 @@ const api = vi.hoisted(() => ({
 }))
 
 // The restored session: anonymous (null) or the signed-in user.
-vi.mock("@/lib/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/session")>()),
-  useSession: () => ({ isPending: false, data: api.user }),
+vi.mock("@/features/auth/authContext", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
+  useAuth: () => ({
+    state: api.user ? { status: "signedIn", user: api.user } : { status: "anonymous", user: null },
+  }),
 }))
 vi.mock("@/api/properties", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/properties")>()),
@@ -35,9 +37,14 @@ const { fetchPropertyReviews, fetchRentHistory } = await import("@/api/propertie
 const TENANT: CurrentUser = {
   id: "u1",
   email: "demo-tenant-blr-1@example.test",
+  emailVerified: true,
   displayName: "Demo Tenant BLR-1",
   roles: ["TENANT"],
+  status: "ACTIVE",
   demo: true,
+  needsOnboarding: false,
+  verification: { TENANT: "APPROVED" },
+  createdAt: "2026-11-21T00:00:00Z",
 }
 
 function renderPage() {

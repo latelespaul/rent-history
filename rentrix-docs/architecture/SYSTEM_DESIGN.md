@@ -625,7 +625,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Me**
 | Method | Path | Notes |
 |---|---|---|
-| GET / PATCH / DELETE | `/me` | profile (display name, phone, home city), add role, account deletion (D-58). A `PATCH` returns `{user, accessToken}`; the token carries the current roles, so an added role takes effect at once (D-73) |
+| GET / PATCH / DELETE | `/me` | profile (display name, phone, home city), add role, account deletion (D-58). A `PATCH` returns `{user, accessToken}`; the token carries the current roles, so an added role takes effect at once (D-73). The phone is returned masked only (`+91 XXXXXX3210`, D-106); a `PATCH` that changes or clears it revokes a verified `PHONE_OTP` check (`PHONE_CHANGED`, D-101) |
 | POST | `/me/onboarding` | once, first sign-in: `{roles:[TENANT|LANDLORD], homeCity?, acceptTerms:true}` → `{user, accessToken}` with the new roles (D-73) |
 | GET | `/me/tenancies?role=&status=` | |
 | GET | `/me/reviews/written`, `/me/reviews/received?as=LANDLORD|TENANT` | received includes own `AWAITING_REVEAL` state only as "pending" |
@@ -636,8 +636,8 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/me/verification` | one entry per held role: `{role, status, revision, steps: {profile, identity, linkedin, rentalAgreement}, decision: {code, note, decidedAt}?}`; `GET /me` carries a short `verification: {TENANT: status, LANDLORD: status}` (every held role reports `DRAFT` until B11 adds applications) and `badges: {idVerified, linkedinVerified}` |
 | POST | `/me/verification/{role}/submit` | `DRAFT` or `REJECTED` → `PENDING`; `422` with the missing steps listed (`identity` when no ID method is `VERIFIED` or `PENDING`, D-105); `409` when already `PENDING`/`APPROVED`. *Design v3*: the design-v2 `PUT /me/verification/{role}` (LinkedIn fields) is replaced by `/me/identity/linkedin` |
 | GET | `/me/identity` | `{idVerified, linkedinVerified, methods: [{method, status, masked, checkedBy, verifiedAt?, reject: {code, note}?, available}]}`; masked values only (D-106) |
-| POST | `/me/identity/phone/start` | `{phone}` → `{challengeId, expiresAt}`; sends an SMS code; limits and `429` per D-101; `503 phone_otp_unavailable` without a provider in prod |
-| POST | `/me/identity/phone/confirm` | `{challengeId, code}` → `PHONE_OTP` `VERIFIED`; wrong code `422 otp_invalid` (attempts left), expired `422 otp_expired` |
+| POST | `/me/identity/phone/start` | `{phone}` (Indian mobile; `+91`, `91` or bare 10 digits, spaces allowed) → `{challengeId, expiresAt}`; sends an SMS code; limits and `429` per D-101; `409 phone_already_verified` for the number already verified on this account; `503 phone_otp_unavailable` without a provider in prod; `503 sms_send_failed` when the provider refuses (that code is used up and still counts toward the limits); `429 rate_limited` with `Retry-After` also when parallel starts for the same number queue up for more than a few seconds |
+| POST | `/me/identity/phone/confirm` | `{challengeId, code}` → `PHONE_OTP` `VERIFIED`, returns the `GET /me/identity` body; wrong code `422 otp_invalid` (attempts left), after 5 wrong codes `422 otp_attempts_exceeded`, expired or already used `422 otp_expired`; another user's challenge `404` |
 | POST | `/me/identity/pan` | `{panNumber, documentId}` → `PAN` `PENDING`; format check, keeps last 4 + HMAC only (D-102) |
 | POST | `/me/identity/aadhaar` | `{last4, documentId, consent: true}` → `AADHAAR` `PENDING`; anything but 4 digits `422`, 12 digits `422 aadhaar_full_number_refused` (D-103) |
 | PUT / DELETE | `/me/identity/linkedin` | `{url}` → `LINKEDIN` `PENDING` (normalised, never fetched, D-93); delete removes it |
@@ -867,9 +867,9 @@ Every property has at least one tenancy with reviews in all three directions pub
 | `APP_BASE_URL` | `http://localhost:5173` | links in emails |
 | `ADMIN_EMAILS` | empty | D-19, D-78 |
 | `TRUSTED_PROXIES` (`prod`) | loopback and private ranges (`10.x`, `172.16-31.x`, `192.168.x`, `127.x`, `::1`) | regex of reverse-proxy IPs whose `X-Forwarded-For` / `-Proto` / `-Host` are honoured (Tomcat `RemoteIpValve`, `forward-headers-strategy: native`); any other peer's forwarded headers are ignored, so the sign-in rate limit (§13) keys on the real client IP |
-| `ID_HASH_KEY` | built-in default only in `dev`/`test` | HMAC key for PAN, phone and OTP codes (D-101, D-102, D-106); required (≥ 32 bytes) in any other profile, like `JWT_SECRET` |
+| `ID_HASH_KEY` | built-in default only in `dev`/`test` | HMAC key for PAN, phone and OTP codes (D-101, D-102, D-106); a set value must be ≥ 32 bytes. Required in any other profile, like `JWT_SECRET`, from PLAN B12 (PAN). Until then (B14) it is required outside `dev`/`test` only with `SMS_BACKEND=http`, so a deployment without an SMS provider keeps starting; without the key, phone OTP is unavailable (`503`) |
 | `SMS_BACKEND` | `log` in `dev`/`test`; none in `prod` | `log` or `http` (D-101); without it in `prod` the phone method is unavailable (`503 phone_otp_unavailable`) and the API still starts; `log` in `prod` refuses to start |
-| `SMS_HTTP_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` | — | only with `SMS_BACKEND=http`; secrets from env only |
+| `SMS_HTTP_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` | — | only with `SMS_BACKEND=http` (URL and key required, else the API refuses to start); `HttpSmsSender` posts JSON `{to, sender, message}` with `Authorization: Bearer SMS_API_KEY`; a provider with another request shape gets its own `SmsSender`. Secrets from env only |
 | `OTP_TTL_MINUTES` | `10` | phone OTP lifetime (D-101) |
 | `VERIFICATION_DOC_RETENTION_DAYS` | `90` | D-96 (rental agreements and property proofs; ID files go at decision) |
 | `GOOGLE_CLIENT_ID` | none (never committed) | Google sign-in (D-70, D-74); empty in `prod` logs one warning and turns Google sign-in off (`503`, D-77) |

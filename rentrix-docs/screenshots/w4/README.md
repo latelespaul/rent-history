@@ -30,20 +30,9 @@ npm run dev
 Open http://localhost:5173 (Home), http://localhost:5173/search?city=BLR and
 http://localhost:5173/search?city=PNQ, then click a home.
 
-Signed-in view (until the W3 sign-in screen lands): in the browser console on
-http://localhost:5173 run
+Signed-in view: open http://localhost:5173/login, pick a demo tenant in the dev-login
+picker (W3), then open a home from search.
 
-```js
-const users = await (await fetch("/api/v1/auth/dev-users")).json()
-const tenant = users.find((u) => u.roles.includes("TENANT"))
-await fetch("/api/v1/auth/dev-login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ userId: tenant.id }),
-})
-location.reload()
-```
-
-The web restores the session from the refresh cookie; the top bar then shows "Demo data" and
+After sign-in the top bar shows "Demo data" and
 the user's short name. Dev logins are the `@example.test` demo users only (D-77). If the web runs
 on another port, start the API with `CORS_ALLOWED_ORIGINS=http://localhost:<port>`.

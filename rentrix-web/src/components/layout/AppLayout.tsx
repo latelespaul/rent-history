@@ -5,9 +5,15 @@ import { TopBar } from "./TopBar"
 
 /**
  * The page shell: top bar, page content, footer. Pages render their own `<main>` content inside.
- * `viewer` is null until sign-in exists (W3 passes the signed-in user).
+ * `viewer` is the signed-in user (null when anonymous); `onSignOut` adds "Sign out" to the menus.
  */
-export function AppLayout({ viewer = null }: { viewer?: ShellViewer | null }) {
+export function AppLayout({
+  viewer = null,
+  onSignOut,
+}: {
+  viewer?: ShellViewer | null
+  onSignOut?: () => void
+}) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <a
@@ -16,7 +22,7 @@ export function AppLayout({ viewer = null }: { viewer?: ShellViewer | null }) {
       >
         Skip to content
       </a>
-      <TopBar viewer={viewer} />
+      <TopBar viewer={viewer} onSignOut={onSignOut} />
       <div id="main" tabIndex={-1} className="flex-1 outline-none">
         <Outlet />
       </div>

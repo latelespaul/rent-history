@@ -7,7 +7,7 @@ import {
   searchProperties,
   type PropertySearch,
 } from "@/api/properties"
-import { useSession } from "@/lib/session"
+import { useAuth } from "@/features/auth/authContext"
 
 /** How many homes the locality hints read (the API's largest page, D-59). */
 export const HINT_SAMPLE = 50
@@ -40,8 +40,8 @@ export function useLocalityHints(city: string | undefined) {
 
 /** Whether the session has resolved, and whether someone is signed in. */
 export function useSignedIn() {
-  const session = useSession()
-  return { ready: !session.isPending, signedIn: Boolean(session.data) }
+  const { state } = useAuth()
+  return { ready: state.status !== "loading", signedIn: state.status === "signedIn" }
 }
 
 /** `GET /properties/{id}`, fetched again after sign-in because signed-in callers see more (D-56). */

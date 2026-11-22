@@ -102,3 +102,16 @@ app:
     enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
   seed:
     demo: ${SEED_DEMO:false}              # demo data, dev profile + empty DB only (D-68)
+  identity:
+    # HMAC key for phone numbers, PAN and OTP codes (D-101, D-106). Env only, >= 32 bytes.
+    hash-key: ${ID_HASH_KEY:}
+    otp-ttl: ${OTP_TTL_MINUTES:10}m       # phone OTP lifetime (D-101)
+  sms:
+    # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
+    # phone_otp_unavailable) and the API still starts. "http" needs SMS_HTTP_URL and
+    # SMS_API_KEY; "log" (writes the code to the log) is refused outside dev/test.
+    backend: ${SMS_BACKEND:}
+    http:
+      url: ${SMS_HTTP_URL:}
+      api-key: ${SMS_API_KEY:}
+      sender-id: ${SMS_SENDER_ID:}

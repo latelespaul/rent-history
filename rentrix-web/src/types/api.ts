@@ -58,17 +58,34 @@ export interface Page<T> {
 
 export type Role = "TENANT" | "LANDLORD" | "ADMIN"
 
-/** The signed-in user as `/auth/*` and `/me` return it (hand-written until B3). */
+/** Approval state of one held role (D-89, D-91). */
+export type VerificationStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED"
+
+export type UserStatus = "ACTIVE" | "SUSPENDED" | "DELETED"
+
+/**
+ * The signed-in user's own account, as `/auth/*` and `/me` return it (B3 `UserView`; hand-written
+ * until the OpenAPI snapshot is refreshed). Email and phone are shown only to the user (D-57).
+ */
 export interface CurrentUser {
   id: string
-  email: string
   displayName: string
+  email?: string | null
+  emailVerified: boolean
   avatarUrl?: string | null
+  phone?: string | null
   roles: Role[]
+  /** City code, as in `City.code`. */
   homeCity?: string | null
-  /** True for seed users (D-68). */
-  demo?: boolean
-  needsOnboarding?: boolean
+  status: UserStatus
+  /** Seed user (D-68): the shell shows "Demo data". */
+  demo: boolean
+  /** True until the first-sign-in role pick is done (D-73). */
+  needsOnboarding: boolean
+  onboardedAt?: string | null
+  /** Approval status per held TENANT / LANDLORD role. */
+  verification: Partial<Record<Role, VerificationStatus>>
+  createdAt: string
 }
 
 /** `POST /auth/google`, `/auth/dev-login` and `/auth/refresh` (D-62, D-63, D-70). */
@@ -167,4 +184,33 @@ export interface PropertyReview {
   text?: string | null
   authorName?: string | null
   publishedAt?: string | null
+}
+
+/** `GET /auth/config`: what the login page offers (D-76, D-77). */
+export interface AuthConfig {
+  /** Google OAuth client id; null hides the Google button. */
+  googleClientId: string | null
+  /** True only when the API runs dev login (dev/test profile + `DEV_LOGIN_ENABLED`). */
+  devLogin: boolean
+}
+
+/** `POST /me/onboarding` (D-73). */
+export interface OnboardingRequest {
+  roles: Array<"TENANT" | "LANDLORD">
+  homeCity?: string | null
+  acceptTerms: boolean
+}
+
+/** `PATCH /me` (D-16): absent fields stay; an empty string clears `phone` / `homeCity`. */
+export interface UpdateMeRequest {
+  displayName?: string
+  phone?: string
+  homeCity?: string
+  addRoles?: Array<"TENANT" | "LANDLORD">
+}
+
+/** `PATCH /me` and `POST /me/onboarding`: the account plus a fresh access token (D-62). */
+export interface MeUpdate {
+  user: CurrentUser
+  accessToken: string
 }

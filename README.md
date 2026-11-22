@@ -12,10 +12,10 @@ Needs only Java 21 (SQLite file, no Google account, no Docker):
 
 ```sh
 cd rentrix-server
-SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run
 ```
 
-The API listens on `http://localhost:8080/api/v1`. `SPRING_PROFILES_ACTIVE` is required (`dev`, `test` or `prod`); every setting is in SYSTEM_DESIGN §17.
+`SEED_DEMO=true` adds the demo users and homes on an empty database (without it the dev-login picker is empty). The API listens on `http://localhost:8080/api/v1`. `SPRING_PROFILES_ACTIVE` is required (`dev`, `test` or `prod`); every setting is in SYSTEM_DESIGN §17.
 
 ## Signing in
 
@@ -66,3 +66,28 @@ CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
 ### Admins
 
 `ADMIN` is never self-service. Set `ADMIN_EMAILS` to a comma list of verified Google emails; those users get `ADMIN` on their next sign-in or refresh, and lose it when their email is removed from the list.
+
+## Identity verification
+
+A tenant or landlord profile is **ID verified** when at least one of Aadhaar, PAN or phone (SMS code) is verified. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.
+
+### Try phone OTP locally
+
+In `dev` and `test`, `SMS_BACKEND` defaults to `log`: no SMS is sent, and the code is written to the API log instead (the only place a code is ever logged). With an access token from dev login or Google sign-in:
+
+```sh
+TOKEN=…   # accessToken
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"phone":"+919876543210"}' http://localhost:8080/api/v1/me/identity/phone/start
+# → {"challengeId":"…","expiresAt":"…"}; the API log shows
+#   SMS to +91 XXXXXX3210 (SMS_BACKEND=log, not sent): 123456 is your Rentrix verification code.
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"challengeId":"<challengeId>","code":"123456"}' http://localhost:8080/api/v1/me/identity/phone/confirm
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me   # badges.idVerified: true
+```
+
+Codes expire after 10 minutes (`OTP_TTL_MINUTES`) and allow 5 tries; a user gets 3 codes per hour and 10 per day, and one number 5 per day across accounts (`429` with `Retry-After`).
+
+### SMS in production
+
+`SMS_BACKEND` is empty by default in `prod`: the API starts, logs a warning, lists phone OTP as unavailable and answers its endpoints with `503 phone_otp_unavailable`. To offer it, set `SMS_BACKEND=http` with `SMS_HTTP_URL`, `SMS_API_KEY`, `SMS_SENDER_ID` (a provider endpoint that accepts `POST {to, sender, message}` with `Authorization: Bearer`) and `ID_HASH_KEY` (at least 32 bytes, for example `openssl rand -base64 48`). Keep all of them in env only. `SMS_BACKEND=log` outside `dev` and `test` refuses to start.
