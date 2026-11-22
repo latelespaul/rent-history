@@ -54,7 +54,7 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
       <EmptyState
         icon="trend-up"
         title="No confirmed rent yet"
-        description="Rent appears here when a landlord and tenant both confirm a tenancy."
+        description="Rent appears here once a tenancy at this home is confirmed."
       />
     )
   } else {
@@ -111,7 +111,7 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
           <TrendUpIcon size={20} />
           Rent history
         </h2>
-        <Badge variant="verified">Confirmed by both sides</Badge>
+        <Badge variant="verified">Confirmed tenancies</Badge>
       </div>
       <p className="text-sm text-ink-500">
         Monthly rent from confirmed tenancies. No tenant names.

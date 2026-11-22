@@ -111,10 +111,10 @@ describe("HomePage", { timeout: 20_000 }, () => {
     const trust = texts("h3", region("trust")).join(" | ")
     expect(trust).toMatch(/Phone OTP/)
     expect(trust).toMatch(/Green tick/)
-    expect(trust).toMatch(/Aadhaar or PAN/)
+    expect(trust).toMatch(/Aadhaar/)
     expect(trust).toMatch(/LinkedIn/)
     expect(texts("span", region("trust"))).toEqual(
-      expect.arrayContaining(["Required", "Optional", "Verified by Doorway Living"]),
+      expect.arrayContaining(["Any one", "By our team", "Verified by Doorway Living"]),
     )
     expect(texts("summary", region("faq"))).toHaveLength(5)
     expect(document.querySelector('[role="search"], form')).toBeNull()

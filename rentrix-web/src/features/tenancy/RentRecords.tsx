@@ -164,7 +164,7 @@ export function RentRecords({ tenancy }: { tenancy: Tenancy }) {
       <EmptyState
         icon="rupee"
         title="No rent records yet"
-        description="The starting rent is recorded when both sides confirm the tenancy."
+        description="The starting rent is recorded when the tenancy is confirmed."
       />
     )
   else

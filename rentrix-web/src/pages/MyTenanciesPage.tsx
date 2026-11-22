@@ -40,9 +40,7 @@ export default function MyTenanciesPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold text-ink-900">My tenancies</h1>
-            <p className="mt-1 text-ink-500">
-              Homes you rent or let through tenancies both sides confirmed.
-            </p>
+            <p className="mt-1 text-ink-500">Homes you rent or let through confirmed tenancies.</p>
           </div>
           <Button asChild>
             {isLandlord ? (

@@ -157,8 +157,8 @@ const STEPS = [
   },
   {
     icon: <KeyIcon size={26} />,
-    title: "Verify your phone, add your rental",
-    text: "A one-time code (OTP) to your phone lets you post. Add the home you rent or rent out.",
+    title: "Verify once, add your rental",
+    text: "Verify with any one: phone, Aadhaar or LinkedIn. Then add the home you rent or rent out.",
   },
   {
     icon: <StarIcon size={26} />,
@@ -206,31 +206,24 @@ const AUDIENCES = [
 
 const TRUST = [
   {
-    tag: "Required",
+    tag: "Any one",
     icon: <MessageIcon size={22} />,
     title: "Phone OTP",
-    text: "Everyone who adds a home, a tenancy or a review confirms a phone number with a one-time code.",
+    text: "Confirm your mobile number with a one-time code. Others never see the number.",
     badge: null,
   },
   {
-    tag: "By our team",
-    icon: <CheckIcon size={22} />,
-    title: "Green tick",
-    text: "After we check a user, home, tenancy or review, it gets the tick, so you can see what our team has checked.",
-    badge: <GreenTick />,
-  },
-  {
-    tag: "Optional",
+    tag: "Any one",
     icon: <ShieldCheckIcon size={22} />,
-    title: "Aadhaar or PAN",
-    text: 'Add one for an "ID verified" badge. Others see only the badge, never the number.',
+    title: "Aadhaar",
+    text: 'Upload a masked Aadhaar for an "ID verified" badge. Others see only the badge, never the number.',
     badge: <VerifiedBadge />,
   },
   {
-    tag: "Optional",
+    tag: "Any one",
     icon: <LinkIcon size={22} />,
     title: "LinkedIn",
-    text: "Link your profile for a bonus badge. It is never required.",
+    text: "Link your LinkedIn profile. Any one of these three lets you post; the others add extra badges.",
     badge: (
       <Badge variant="info">
         <LinkIcon />
@@ -238,16 +231,23 @@ const TRUST = [
       </Badge>
     ),
   },
+  {
+    tag: "By our team",
+    icon: <CheckIcon size={22} />,
+    title: "Green tick",
+    text: `Green tick = approved by the ${BRAND.name} team after an ID check. We also check homes, tenancies and reviews.`,
+    badge: <GreenTick />,
+  },
 ]
 
 const FAQ = [
   [
     "Do I need an account?",
-    "To search homes and read full reviews, sign in with Google; it is one step. A home's page and its ratings open for anyone with the link. Posting also needs a verified phone.",
+    "To search homes and read full reviews, sign in with Google; it is one step. A home's page and its ratings open for anyone with the link. To post, verify with any one: phone, Aadhaar or LinkedIn.",
   ],
   [
     "Who can post a review?",
-    "A tenant or landlord with a verified phone number, about a tenancy they add. Tenants rate the home and the landlord; landlords rate the tenant.",
+    "A tenant or landlord verified with any one of phone, Aadhaar or LinkedIn, about a tenancy they add. Tenants rate the home and the landlord; landlords rate the tenant.",
   ],
   [
     "What does the green tick mean?",
@@ -259,7 +259,7 @@ const FAQ = [
   ],
   [
     "Will others see my Aadhaar, PAN or phone number?",
-    'No. Others see only a badge such as "ID verified". Aadhaar, PAN and LinkedIn are optional.',
+    'No. Others see only a badge such as "ID verified". You need any one of phone, Aadhaar or LinkedIn; the rest are optional.',
   ],
 ] as const
 
@@ -511,8 +511,9 @@ export default function HomePage() {
                 Open to everyone. Verified where it counts.
               </h2>
               <p className={cn(LEAD, "text-[#c4e4df]")}>
-                Anyone with a verified phone can post, and posts show at once as "Not verified yet".
-                The green tick means our team has checked it.
+                Verify with any one: phone, Aadhaar or LinkedIn. Then you can post, and posts show
+                at once as "Not verified yet". Green tick = approved by the {BRAND.name} team after
+                an ID check.
               </p>
             </div>
             <ul className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4.5">
