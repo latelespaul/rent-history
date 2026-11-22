@@ -287,13 +287,7 @@ export interface RentHistory {
 }
 
 export type TenancyStatus =
-  | "PENDING_CONFIRMATION"
-  | "ACTIVE"
-  | "ENDED"
-  | "DECLINED"
-  | "EXPIRED"
-  | "CANCELLED"
-  | "VOIDED"
+  "PENDING_CONFIRMATION" | "ACTIVE" | "ENDED" | "DECLINED" | "EXPIRED" | "CANCELLED" | "VOIDED"
 
 export type TenancyParty = "LANDLORD" | "TENANT"
 

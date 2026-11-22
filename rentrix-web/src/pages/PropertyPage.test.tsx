@@ -87,8 +87,8 @@ describe("PropertyPage", () => {
   it("shows a signed-in user review text and rent history when the API has them", async () => {
     api.user = TENANT
     api.rent = [
-      { from: "2024-05", to: null, monthlyRent: 36500 },
-      { from: "2023-04", to: "2024-03", monthlyRent: 34000 },
+      { fromMonth: "2024-05", toMonth: null, monthlyRentInr: 36500, share: false },
+      { fromMonth: "2023-04", toMonth: "2024-03", monthlyRentInr: 34000, share: false },
     ]
     api.reviews = [{ id: "r1", rating: 4, text: "Water supply was steady.", authorName: "Demo T." }]
     renderPage()
