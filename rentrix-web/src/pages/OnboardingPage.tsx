@@ -10,7 +10,7 @@ import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
 import { UserIcon } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
-import { safeNext, shortName } from "@/features/auth/paths"
+import { publicName, safeNext } from "@/features/auth/paths"
 import { RoleChoice } from "@/features/auth/RoleChoice"
 import { roleHome, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
@@ -165,8 +165,8 @@ export default function OnboardingPage() {
               onChange={(e) => setDisplayName(e.target.value)}
             />
             <p className="text-xs text-ink-500">
-              Shown publicly as &ldquo;{shortName(displayName || user.displayName)}&rdquo;. You can
-              change it later.
+              Shown publicly as &ldquo;{publicName(user, displayName)}&rdquo;. You can change it
+              later.
             </p>
           </div>
 

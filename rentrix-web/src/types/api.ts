@@ -82,6 +82,8 @@ export type UserStatus = "ACTIVE" | "SUSPENDED" | "DELETED"
 export interface CurrentUser {
   id: string
   displayName: string
+  /** The public short name ("Asha R."), from the API's one rule; show it as-is. */
+  shortName: string
   email?: string | null
   emailVerified: boolean
   avatarUrl?: string | null

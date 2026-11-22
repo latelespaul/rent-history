@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { PencilIcon, PlusIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
-import { shortName } from "@/features/auth/paths"
 import { bedroomsLabel, propertyTitle, typeLabel } from "@/features/property/labels"
 import { RatingLine } from "@/features/property/Rating"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
@@ -155,7 +154,7 @@ export default function LandlordDashboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold text-ink-900">
-              Hello, {shortName(state.user?.displayName ?? "")}
+              Hello, {state.user?.shortName}
             </h1>
             <p className="mt-1 text-ink-500">Your properties, tenants and tenancy requests.</p>
           </div>

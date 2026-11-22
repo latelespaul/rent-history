@@ -95,6 +95,8 @@ class DevLoginTest {
 		JsonNode body = json.readTree(response.getContentAsString());
 		assertThat(body.get("needsOnboarding").asBoolean()).isFalse();
 		assertThat(body.at("/user/demo").asBoolean()).isTrue();
+		// The one short-name rule: the seed code "PNQ-3" is skipped, so not "Demo P.".
+		assertThat(body.at("/user/shortName").asString()).isEqualTo("Demo T.");
 		assertThat(tokens.verify(body.get("accessToken").asString()).roles()).containsExactly(Role.TENANT);
 		mvc.perform(post("/auth/refresh").cookie(refreshCookie(refreshToken(response)))).andExpect(status().isOk());
 	}

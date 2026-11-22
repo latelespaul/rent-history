@@ -3,7 +3,6 @@ import { useVerificationProgress } from "@/features/verification/useVerification
 import { AppLayout } from "@/components/layout/AppLayout"
 import type { ShellViewer } from "@/components/layout/nav"
 import { useAuth } from "./authContext"
-import { shortName } from "./paths"
 
 /** The app shell drawn for whoever is signed in (W3 fills the viewer W2 left null). */
 export function ShellRoot() {
@@ -12,7 +11,7 @@ export function ShellRoot() {
   const user = state.user
   const progress = useVerificationProgress()
   const viewer: ShellViewer | null = user
-    ? { shortName: shortName(user.displayName), roles: user.roles, isDemo: user.demo, progress }
+    ? { shortName: user.shortName, roles: user.roles, isDemo: user.demo, progress }
     : null
   // Leave the page first: on a guarded page the guard would otherwise send the user to /login.
   // `signedOut` keeps the landing from sending the still-signed-in user back into the app.
