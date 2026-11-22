@@ -132,6 +132,52 @@ class StartupGuardTest {
 	}
 	
 	@Test
+	void prodRefusesTheLogSmsBackend() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "log")))
+			.hasMessageContaining("SMS_BACKEND=log");
+	}
+	
+	@Test
+	void devAndTestAllowTheLogSmsBackend() {
+		assertThatCode(() -> StartupGuard.check(env("dev").withProperty("app.jwt.secret", GOOD_SECRET)
+			.withProperty("app.sms.backend", "log"))).doesNotThrowAnyException();
+	}
+	
+	@Test
+	void refusesAnUnknownSmsBackend() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "twilio")))
+			.hasMessageContaining("SMS_BACKEND must be");
+	}
+	
+	@Test
+	void httpSmsNeedsUrlKeyAndHashKey() {
+		MockEnvironment http = prod().withProperty("app.sms.backend", "http")
+			.withProperty("app.sms.http.url", "https://sms.invalid/send")
+			.withProperty("app.sms.http.api-key", "not-a-real-key")
+			.withProperty("app.identity.hash-key", "an-id-hash-key-that-is-long-enough-0123456789");
+		assertThatCode(() -> StartupGuard.check(http)).doesNotThrowAnyException();
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "http")
+			.withProperty("app.identity.hash-key", "an-id-hash-key-that-is-long-enough-0123456789")))
+			.hasMessageContaining("SMS_HTTP_URL and SMS_API_KEY");
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "http")
+			.withProperty("app.sms.http.url", "https://sms.invalid/send")
+			.withProperty("app.sms.http.api-key", "not-a-real-key")))
+			.hasMessageContaining("needs ID_HASH_KEY");
+	}
+	
+	@Test
+	void refusesAShortIdHashKey() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.identity.hash-key", "short")))
+			.hasMessageContaining("ID_HASH_KEY");
+	}
+	
+	@Test
+	void prodStartsWithoutSmsButWarns(CapturedOutput output) {
+		assertThatCode(() -> StartupGuard.check(prod())).doesNotThrowAnyException();
+		assertThat(output).contains("SMS_BACKEND is empty in the 'prod' profile", "phone_otp_unavailable");
+	}
+	
+	@Test
 	void prodStartsWhenConfigured() {
 		assertThatCode(() -> StartupGuard.check(prod())).doesNotThrowAnyException();
 	}

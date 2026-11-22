@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.user;
 
+import com.rentrix.rentrixserver.identity.Badges;
 import com.rentrix.rentrixserver.verification.VerificationStatus;
 
 import java.time.Instant;
@@ -9,10 +10,13 @@ import java.util.UUID;
 
 /**
  * The signed-in user's own account, as returned by {@code GET /me} and the sign-in endpoints. Private fields
- * (email, phone) are shown only to the user themselves (D-57).
+ * (email, phone) are shown only to the user themselves (D-57); the phone only masked, e.g. {@code +91 XXXXXX3210}
+ * (D-106).
  *
  * @param needsOnboarding true until the first-sign-in role pick is done (D-73)
  * @param verification    approval status per held {@code TENANT} / {@code LANDLORD} role (D-89, D-91)
+ * @param badges          "ID verified" (any one of Aadhaar, PAN or phone OTP) and the optional "LinkedIn verified"
+ *                        (D-99, D-100); the same for both roles
  */
 public record UserView(
 	UUID id,
@@ -28,6 +32,7 @@ public record UserView(
 	boolean needsOnboarding,
 	Instant onboardedAt,
 	Map<Role, VerificationStatus> verification,
+	Badges badges,
 	Instant createdAt
 ) {
 }

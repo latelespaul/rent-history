@@ -14,7 +14,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | Migration (by purpose) | PLAN PR | Creates / changes | Notes |
 |---|---|---|---|
 | `V3__city_pincode_prefixes.sql` (design v2, merged) | C1 | `cities.pincode_prefixes` | unchanged by v3 |
-| `V<n>__identity_verifications.sql` | **B14** | `identity_verifications`, `phone_otp_challenges` | no change to `users` (`phone` exists in V1) |
+| `V4__identity_verifications.sql` (built in B14) | **B14** | `identity_verifications`, `phone_otp_challenges` | no change to `users` (`phone` exists in V1) |
 | `V<n>__verification_core.sql` (design v2) | B11 | `verification_applications`, `verification_events`, property review columns, `moderation_actions` rebuild | not merged yet, so written in the v3 shape: **no** `linkedin_url`, `linkedin_not_provided`, `linkedin_check` columns |
 | `V<n>__location_hierarchy.sql` | **B15** | `areas`, `area_pincodes`, `societies`, `society_towers`, `society_wings`; `properties` + `area_id`, `society_id`, `tower_id`, `wing_id` and 2 indexes | plus `db/vendor/mysql/V<n>_1__location_fks.sql` (see §3.6) |
 | `V<n>__verification_documents.sql` (design v2) | B12 | `verification_documents` | not merged yet, so written in the v3 shape: `identity_verification_id`, `id_type` ∈ `PAN`, `AADHAAR_MASKED`; no `number_last4`/`number_hmac` |

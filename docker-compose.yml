@@ -26,6 +26,11 @@ services:
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       SEED_DEMO: ${SEED_DEMO:-false}
+      ID_HASH_KEY: ${ID_HASH_KEY:-}
+      SMS_BACKEND: ${SMS_BACKEND:-}
+      SMS_HTTP_URL: ${SMS_HTTP_URL:-}
+      SMS_API_KEY: ${SMS_API_KEY:-}
+      SMS_SENDER_ID: ${SMS_SENDER_ID:-}
       LOG_FORMAT: ${LOG_FORMAT:-ecs}
     ports:
       - "${API_PORT:-8080}:8080"

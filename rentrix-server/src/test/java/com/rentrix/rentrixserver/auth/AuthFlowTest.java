@@ -364,7 +364,7 @@ class AuthFlowTest {
 				.content("{\"displayName\":\"  Asha R.  \",\"phone\":\"+919876543210\",\"addRoles\":[\"LANDLORD\"]}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.user.displayName").value("Asha R."))
-			.andExpect(jsonPath("$.user.phone").value("+919876543210"))
+			.andExpect(jsonPath("$.user.phone").value("+91 XXXXXX3210"))
 			.andExpect(jsonPath("$.user.roles", hasSize(2)))
 			.andExpect(jsonPath("$.user.verification.LANDLORD").value("DRAFT"))
 			.andReturn().getResponse();
