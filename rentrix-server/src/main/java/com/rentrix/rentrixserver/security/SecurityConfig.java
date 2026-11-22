@@ -33,7 +33,7 @@ public class SecurityConfig {
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
 	static final String[] PUBLIC_GET = {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
-		"/cities",
+		"/cities", "/stats", "/properties", "/properties/*",
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
 	};

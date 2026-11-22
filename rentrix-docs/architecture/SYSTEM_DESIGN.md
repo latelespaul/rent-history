@@ -206,6 +206,7 @@ There is no password column: v1 has no passwords (D-71).
 | `is_demo`, `deleted_at` | |
 
 - **D-21** Only users with `LANDLORD` create properties. A property is visible to others only when `PUBLISHED`; it reaches `PUBLISHED` only through admin listing approval (D-92). Archiving hides it from search but keeps its tenancies, rent history and reviews readable via direct link.
+- *Build order (PLAN B4a/B4b)*: the first properties slice ships before the location hierarchy (B15) and the approval gate (B11, B12) are built. Until B4b, `locality` is client text (trimmed, single-spaced), the location lock covers city, locality, building, street and pincode, and `submit` checks only the state; B4b switches to the area-based location of D-110 and adds the gates. No deployment has property rows before then, so nothing is backfilled.
 - **D-22** Ownership transfer between landlords is not in v1. The tenancy stores its own `landlord_id`, so history stays correct if transfer is added later.
 - After publishing, the location fields (area, society, tower, wing, building, street, pincode) are locked like the design-v2 location fields (D-92).
 
@@ -658,12 +659,12 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 **Properties**
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city` must be an active city code; `area`, `society`, `tower` take `public_id`s (D-112) |
+| GET | `/properties?city=BLR&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&sort=` | published only; `city`, when given, must be an active city code (without it every active city is searched); `locality` is a prefix, `q` matches locality, building and street; `minRating` (1–5) needs an average shown (3+ reviews, D-52); sorts `top_rated` (default, D-53), `most_reviewed`, `newest`; `area`, `society`, `tower` take `public_id`s (D-112, from PLAN B4b) |
 | GET | `/properties/{id}` | fields per D-56 |
 | POST | `/properties` | `LANDLORD`; creates `DRAFT`; location `{areaId | newArea{name, pincode}, societyId? | newSociety{name, kind, developer?}, towerId? | newTower{name, kind}, wingId? | newWing{name}}`; proposed rows are `PENDING` (D-109, D-110) |
 | PATCH | `/properties/{id}` | owner; edits (location fields locked once published, D-92) and `ARCHIVED` |
 | POST | `/properties/{id}/submit` | owner, Ⓐ landlord, needs a `PROPERTY_PROOF` document: `DRAFT`/`REJECTED` → `PENDING_REVIEW` (D-92) |
-| DELETE | `/properties/{id}` | owner; archives (D-21) |
+| DELETE | `/properties/{id}` | owner; archives a `PUBLISHED` listing (D-21); one never published (`DRAFT`, `PENDING_REVIEW`, `REJECTED`) is soft-deleted, since it has no history to keep |
 | GET / POST | `/properties/{id}/images` | upload ≤ 10 images |
 | PATCH / DELETE | `/properties/{id}/images/{imageId}` | order, primary, delete |
 | GET | `/properties/{id}/rent-history` | logged-in; D-26 |
