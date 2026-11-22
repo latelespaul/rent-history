@@ -217,8 +217,8 @@ public class LocationService {
 	 * it keeps its proposer, a joined area gains the joiner's {@code newArea.pincode}, and the same rule applies to
 	 * the proposals below it (no duplicate rows). The joiner may then read and reuse the row by id.</li>
 	 * </ul>
-	 * Proposals by a landlord are saved {@code PENDING} with {@code created_by} = the actor, so only they and
-	 * admins see them until listing approval; an admin's are {@code ACTIVE} (D-109). Call inside the transaction
+	 * Proposals by a landlord are saved {@code PENDING} with {@code created_by} = the actor, so lists show them
+	 * only to them and admins until listing approval; an admin's are {@code ACTIVE} (D-109). Call inside the transaction
 	 * that saves the property.
 	 */
 	@Transactional
