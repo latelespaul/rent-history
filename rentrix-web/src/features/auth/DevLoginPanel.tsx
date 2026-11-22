@@ -139,7 +139,7 @@ export function DevLoginPanel({ onSignIn, pending }: Props) {
                 <label
                   key={user.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-md border bg-surface px-2.5 py-2 text-sm text-ink-900",
+                    "relative flex cursor-pointer items-center gap-2.5 rounded-md border bg-surface px-2.5 py-2 text-sm text-ink-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-dev-600",
                     selected === user.id ? "border-dev-600 ring-1 ring-dev-600" : "border-line",
                   )}
                 >
@@ -149,7 +149,9 @@ export function DevLoginPanel({ onSignIn, pending }: Props) {
                     value={user.id}
                     checked={selected === user.id}
                     onChange={() => setSelected(user.id)}
-                    className="sr-only"
+                    // Invisible but covering the whole row, so a click anywhere on it (including at the
+                    // radio's own position) hits the input; an sr-only 1px input was not clickable.
+                    className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
                   />
                   <span
                     aria-hidden

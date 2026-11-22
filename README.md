@@ -63,6 +63,8 @@ GOOGLE_CLIENT_ID=…apps.googleusercontent.com
 CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
 ```
 
+Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Proto` / `-Host` / `-Port` only from `TRUSTED_PROXIES` (default: loopback and private ranges), so a web served from the API's own origin needs no CORS entry. Set `TRUSTED_PROXIES` to the proxy's IP when it is neither. See SYSTEM_DESIGN §17.
+
 ### Admins
 
 `ADMIN` is never self-service. Set `ADMIN_EMAILS` to a comma list of verified Google emails; those users get `ADMIN` on their next sign-in or refresh, and lose it when their email is removed from the list.

@@ -11,6 +11,17 @@ server:
   servlet:
     context-path: /api/v1
   shutdown: graceful
+  # Behind a reverse proxy (Caddy on the VM, Render): TRUSTED_PROXIES is a regex of proxy
+  # IPs whose X-Forwarded-For / -Proto / -Host / -Port are honoured (Tomcat RemoteIpValve).
+  # The API then sees the public scheme, host and port, so a same-origin browser call
+  # (Origin = the public origin) is not treated as cross-origin CORS, and the sign-in rate
+  # limit keys on the real client IP. Any other peer's forwarded headers are ignored, so a
+  # client cannot pick its IP or origin. Default: loopback and private ranges (a proxy on
+  # the same host or Docker network).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: '${TRUSTED_PROXIES:10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|127\.\d+\.\d+\.\d+|0:0:0:0:0:0:0:1|::1}'
 
 spring:
   application:
