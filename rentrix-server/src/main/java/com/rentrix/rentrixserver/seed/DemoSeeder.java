@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.seed;
 
+import com.rentrix.rentrixserver.admin.ModerationActionRepository;
 import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.AreaRepository;
@@ -11,6 +12,8 @@ import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.location.SocietyTowerRepository;
 import com.rentrix.rentrixserver.location.SocietyWing;
 import com.rentrix.rentrixserver.location.TowerKind;
+import com.rentrix.rentrixserver.identity.IdHasher;
+import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
 import com.rentrix.rentrixserver.property.Furnishing;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
@@ -27,6 +30,8 @@ import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
+import com.rentrix.rentrixserver.verification.VerificationEventRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -56,10 +61,11 @@ import java.util.Map;
  * <p>Tenancies (PLAN B5): every home has a current tenancy confirmed by both sides with a rent increase a year in;
  * the first and third home of each city also have an ended earlier tenancy with its own increase, so every rent
  * history shows at least one change. One request (Demo Tenant PNQ-3 on Demo Towers E) waits for the landlord's
- * confirmation. Demo users pass the interim approval gate (D-91), so dev login can run the whole flow.
+ * confirmation. Every demo party is approved and ID verified (see below), so dev login can run the whole flow.
  * <p>Runs only with the {@code dev} profile <em>and</em> {@code SEED_DEMO=true}, and only into an empty
- * database (no users, properties or areas); otherwise it does nothing. PLAN B10 extends it with reviews,
- * verification states and the pending location proposal (Demo Enclave).
+ * database (no users, properties or areas); otherwise it does nothing. Verification states (the demo admin,
+ * approved demo parties and the admin queue) come from {@link DemoVerificationSeed}. PLAN B10 extends it with
+ * reviews and the pending location proposal (Demo Enclave).
  */
 @Slf4j
 @Component
@@ -140,11 +146,15 @@ public class DemoSeeder implements ApplicationRunner {
 	private final SocietyTowerRepository towers;
 	private final TenancyRepository tenancies;
 	private final RentRecordRepository rentRecords;
+	private final DemoVerificationSeed verification;
 	private final TransactionTemplate tx;
 	
 	public DemoSeeder(UserRepository users, PropertyRepository properties, CityRepository cities,
 		AreaRepository areas, SocietyRepository societies, SocietyTowerRepository towers,
-		TenancyRepository tenancies, RentRecordRepository rentRecords, PlatformTransactionManager transactionManager) {
+		TenancyRepository tenancies, RentRecordRepository rentRecords,
+		VerificationApplicationRepository applications, VerificationEventRepository events,
+		IdentityVerificationRepository identityChecks, ModerationActionRepository audit, IdHasher hasher,
+		PlatformTransactionManager transactionManager) {
 		this.users = users;
 		this.properties = properties;
 		this.cities = cities;
@@ -153,6 +163,8 @@ public class DemoSeeder implements ApplicationRunner {
 		this.towers = towers;
 		this.tenancies = tenancies;
 		this.rentRecords = rentRecords;
+		this.verification = new DemoVerificationSeed(users, cities, applications, events, identityChecks, audit,
+			hasher, SEEDED_AT);
 		this.tx = new TransactionTemplate(transactionManager);
 	}
 	
@@ -190,9 +202,10 @@ public class DemoSeeder implements ApplicationRunner {
 			List<Property> homes = HOMES.stream().map(home -> home(home, areaByName.get(home.locality()),
 				societyByName.get(home.society()), towerByPath.get(home.society() + "/" + home.tower()))).toList();
 			int seededTenancies = tenancies(homes);
+			int seededApplications = verification.seed();
 			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
-				+ "{} tenancies.", LANDLORDS.size(), TENANTS.size(), AREAS.size(), SOCIETIES.size(), HOMES.size(),
-				seededTenancies);
+				+ "{} tenancies, {} verification applications.", LANDLORDS.size(), TENANTS.size(), AREAS.size(),
+				SOCIETIES.size(), HOMES.size(), seededTenancies, seededApplications);
 			return true;
 		});
 		return Boolean.TRUE.equals(seeded);

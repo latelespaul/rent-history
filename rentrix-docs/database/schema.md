@@ -15,8 +15,8 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 |---|---|---|---|
 | `V3__city_pincode_prefixes.sql` (design v2, merged) | C1 | `cities.pincode_prefixes` | unchanged by v3 |
 | `V4__identity_verifications.sql` (built in B14) | **B14** | `identity_verifications`, `phone_otp_challenges` | no change to `users` (`phone` exists in V1) |
-| `V<n>__verification_core.sql` (design v2) | B11 | `verification_applications`, `verification_events`, property review columns, `moderation_actions` rebuild | not merged yet, so written in the v3 shape: **no** `linkedin_url`, `linkedin_not_provided`, `linkedin_check` columns |
 | `V5__location_hierarchy.sql` (built in B15) | **B15** | `areas`, `area_pincodes`, `societies`, `society_towers`, `society_wings`; `properties` + `area_id`, `society_id`, `tower_id`, `wing_id` and 2 indexes | plus `db/vendor/mysql/V5_1__location_fks.sql` (see §3.6) |
+| `V6__verification_core.sql` (built in B11) | B11 | `verification_applications`, `verification_events`, property review columns, `moderation_actions` rebuild | written in the v3 shape: **no** `linkedin_url`, `linkedin_not_provided`, `linkedin_check` columns |
 | `V<n>__verification_documents.sql` (design v2) | B12 | `verification_documents` | not merged yet, so written in the v3 shape: `identity_verification_id`, `id_type` ∈ `PAN`, `AADHAAR_MASKED`; no `number_last4`/`number_hmac` |
 | none | B16 | `rating_aggregates` gains subject types `SOCIETY`, `AREA`, `OWNER_HOMES` | `subject_type VARCHAR(16)` has no `CHECK`, so no DDL |
 
@@ -96,7 +96,7 @@ A locked nightly job (D-08) deletes rows 24 h after `expires_at` or `consumed_at
 
 ### 2.3 Changes to the not-yet-merged design-v2 tables
 
-- `verification_applications` (B11): drop the design-v2 columns `linkedin_url`, `linkedin_not_provided`, `linkedin_check` from the planned DDL. `flags` may hold `DUPLICATE_ID` and `DUPLICATE_PHONE`. Reject codes per §5.13 of SYSTEM_DESIGN.
+- `verification_applications` (B11): drop the design-v2 columns `linkedin_url`, `linkedin_not_provided`, `linkedin_check` from the planned DDL. `flags` may hold `DUPLICATE_ID` and `DUPLICATE_PHONE`. Adds `version INTEGER NOT NULL DEFAULT 0` (optimistic lock, JPA `@Version`): a concurrent decision or resubmit of the same application loses with `409 invalid_transition`. Reject codes per §5.13 of SYSTEM_DESIGN.
 - `verification_events` (B11): `event` adds `IDENTITY_CHECKED` (replaces `LINKEDIN_CHECKED`).
 - `verification_documents` (B12): add `identity_verification_id BIGINT` (FK `identity_verifications`, set for `ID_PROOF`); `id_type` ∈ `PAN`, `AADHAAR_MASKED`; remove `number_last4` and `number_hmac` from the planned DDL; `ID_PROOF` files are deleted when their identity check is decided, so `purge_after` is set only for `RENTAL_AGREEMENT` and `PROPERTY_PROOF` (D-96); indexes `(owner_id, kind)`, `(identity_verification_id)`, `(status, purge_after)`.
 - `moderation_actions` (B11 rebuild): new `action` values `VERIFY_IDENTITY`, `REJECT_IDENTITY`, `REVOKE_IDENTITY`, `CREATE_AREA`, `UPDATE_AREA`, `APPROVE_LOCATION`, `UPDATE_LOCATION`; new `target_type` values `IDENTITY`, `AREA`, `SOCIETY`, `TOWER`, `WING`. No DDL (enum columns have no `CHECK`).

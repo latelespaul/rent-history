@@ -402,7 +402,7 @@ class TenancyApiTest {
 		// The invitee is not approved yet: confirming waits for approval, declining does not.
 		act(invitee, id, "confirm").andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("approval_required"));
-		invitee.setDemo(true);
+		data.approve(invitee);
 		act(invitee, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.tenant.id").value(invitee.getPublicId().toString()))
