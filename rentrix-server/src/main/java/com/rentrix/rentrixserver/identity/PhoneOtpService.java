@@ -133,21 +133,23 @@ public class PhoneOtpService {
 			.orElseThrow(() -> ApiException.notFound("Code request"));
 		Instant now = now();
 		if (challenge.getConsumedAt() != null || !now.isBefore(challenge.getExpiresAt())) {
-			throw ApiException.rule("otp_expired", "This code has expired. Request a new one.");
+			throw expired();
 		}
 		if (challenge.getAttempts() >= MAX_ATTEMPTS) {
-			throw ApiException.rule("otp_attempts_exceeded", "Too many wrong codes. Request a new one.");
+			throw attemptsExceeded();
 		}
 		if (!IdHasher.same(challenge.getCodeHmac(), codeHmac(challenge.getPublicId(), code.trim()))) {
-			challenge.setAttempts(challenge.getAttempts() + 1);
-			challenges.save(challenge);
-			int left = MAX_ATTEMPTS - challenge.getAttempts();
+			if (challenges.countWrongAttempt(challenge.getId(), MAX_ATTEMPTS, now) == 0) {
+				throw attemptsExceeded();
+			}
+			int left = MAX_ATTEMPTS - challenge.getAttempts() - 1;
 			String message = left == 1 ? "Wrong code. 1 try left." : "Wrong code. " + left + " tries left.";
 			throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "otp_invalid", message,
 				List.of(new ApiProblem.FieldError("code", "otp_invalid", message)));
 		}
-		challenge.setConsumedAt(now);
-		challenges.save(challenge);
+		if (challenges.consume(challenge.getId(), MAX_ATTEMPTS, now) == 0) {
+			throw expired();
+		}
 		markVerified(user, challenge, now);
 		return identity.view(user);
 	}
@@ -200,6 +202,14 @@ public class PhoneOtpService {
 	
 	private Instant now() {
 		return clock.instant().truncatedTo(ChronoUnit.MILLIS);
+	}
+	
+	private static ApiException expired() {
+		return ApiException.rule("otp_expired", "This code has expired. Request a new one.");
+	}
+	
+	private static ApiException attemptsExceeded() {
+		return ApiException.rule("otp_attempts_exceeded", "Too many wrong codes. Request a new one.");
 	}
 	
 	private static ApiException unavailable() {

@@ -26,6 +26,20 @@ public interface PhoneOtpChallengeRepository extends JpaRepository<PhoneOtpChall
 		+ " order by c.createdAt")
 	List<Instant> sentToPhoneSince(@Param("phoneHmac") String phoneHmac, @Param("since") Instant since);
 	
+	/** Counts one wrong code; 0 when the challenge already has {@code max} attempts. */
+	@Modifying
+	@Transactional
+	@Query("update PhoneOtpChallenge c set c.attempts = c.attempts + 1, c.updatedAt = :now"
+		+ " where c.id = :id and c.attempts < :max")
+	int countWrongAttempt(@Param("id") Long id, @Param("max") int max, @Param("now") Instant now);
+	
+	/** Uses the challenge up; 0 when it is already used, expired or out of attempts. */
+	@Modifying
+	@Transactional
+	@Query("update PhoneOtpChallenge c set c.consumedAt = :now, c.updatedAt = :now where c.id = :id and c.consumedAt is null"
+		+ " and c.attempts < :max and c.expiresAt > :now")
+	int consume(@Param("id") Long id, @Param("max") int max, @Param("now") Instant now);
+	
 	/** Deletes challenges that expired, or were used, before {@code cutoff}. */
 	@Modifying
 	@Transactional
