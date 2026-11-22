@@ -387,6 +387,8 @@ describe("settings", () => {
 
   it("signs out and returns home", async () => {
     h.restored = makeUser()
+    window.sessionStorage.setItem("draft:tenancy:p1", JSON.stringify({ email: "owner@example.com" }))
+    window.sessionStorage.setItem("other", "kept")
     const router = renderApp("/settings")
     const user = userEvent.setup()
 
@@ -396,6 +398,9 @@ describe("settings", () => {
     await waitFor(() => expect(where(router)).toBe("/"))
     expect(auth.logout).toHaveBeenCalled()
     expect(api.clearSession).toHaveBeenCalled()
+    expect(window.sessionStorage.getItem("draft:tenancy:p1")).toBeNull()
+    expect(window.sessionStorage.getItem("other")).toBe("kept")
+    window.sessionStorage.removeItem("other")
     expect(
       await screen.findAllByRole("link", { name: "Sign in / Sign up with Google" }),
     ).toHaveLength(2)

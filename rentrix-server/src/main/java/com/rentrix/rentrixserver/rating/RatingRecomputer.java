@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
  * flags of the review's group (D-44), then rebuilds the subject's stored {@code rating_aggregates} row from source
  * reviews, never by increment, so a row is always self-correcting. {@link #recomputeAll()} is the nightly repair
  * pass, which also refreshes every Bayesian score with the day's prior mean (D-53).
- * <p>Counting rules (§9): only {@code PUBLISHED} reviews with {@code counts_in_aggregate = true}, and for the stored
- * headline rows only green-tick reviews ({@code verification_status = VERIFIED}, D-135). In each group,
+ * <p>Counting rules (§9): only {@code PUBLISHED} reviews with {@code counts_in_aggregate = true}; in the
+ * {@code verified} headline mode ({@link RatingProperties}, D-135) only green-tick reviews as well. In each group,
  * the person reviews of one landlord–tenant pair in one direction, or the property reviews of one tenant about one
  * property, only the review of the most recent tenancy counts; older ones stay visible but stop counting.
  * <p>PLAN B16 adds the {@code SOCIETY}, {@code AREA} and {@code OWNER_HOMES} roll-ups in
@@ -53,6 +53,7 @@ public class RatingRecomputer {
 
 	private final RatingSourceRepository source;
 	private final RatingAggregateRepository aggregates;
+	private final RatingProperties properties;
 
 	/** The hook: call after a review's status, ratings or counting changed, inside the same transaction. */
 	@Transactional(propagation = Propagation.MANDATORY)
@@ -146,9 +147,12 @@ public class RatingRecomputer {
 	/** The subject's row with its counts rebuilt from source; the Bayesian score is set afterwards. */
 	private RatingAggregate totals(RatingSubjectType type, Long subjectId) {
 		List<Object[]> result = switch (type) {
-			case LANDLORD -> source.personTotals(subjectId, ReviewDirection.TENANT_TO_LANDLORD, ReviewStatus.PUBLISHED);
-			case TENANT -> source.personTotals(subjectId, ReviewDirection.LANDLORD_TO_TENANT, ReviewStatus.PUBLISHED);
-			case PROPERTY -> source.propertyTotals(subjectId, ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED);
+			case LANDLORD -> source.personTotals(subjectId, ReviewDirection.TENANT_TO_LANDLORD, ReviewStatus.PUBLISHED,
+				properties.verifiedOnly());
+			case TENANT -> source.personTotals(subjectId, ReviewDirection.LANDLORD_TO_TENANT, ReviewStatus.PUBLISHED,
+				properties.verifiedOnly());
+			case PROPERTY -> source.propertyTotals(subjectId, ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED,
+				properties.verifiedOnly());
 		};
 		Object[] t = result.get(0);
 		RatingAggregate row = aggregates.findById(new RatingAggregateId(type, subjectId))

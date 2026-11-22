@@ -238,8 +238,8 @@ public class DemoSeeder implements ApplicationRunner {
 	
 	/**
 	 * D-134 (design v4, open by default): the demo admin has given the green tick to every published demo home, every
-	 * confirmed demo tenancy and every published demo review, so the demo keeps its ratings (D-135 counts only
-	 * green-tick reviews). The pending tenancy and the review awaiting reveal stay unverified.
+	 * confirmed demo tenancy and every published demo review, so the demo keeps its ratings in either headline mode
+	 * (D-135). The pending tenancy and the review awaiting reveal stay unverified.
 	 */
 	private void greenTicks(List<Property> homes, List<Tenancy> confirmed) {
 		User admin = users.findByEmail(DemoVerificationSeed.ADMIN_EMAIL).orElseThrow();

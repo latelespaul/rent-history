@@ -122,3 +122,7 @@ Codes expire after 10 minutes (`OTP_TTL_MINUTES`) and allow 5 tries; a user gets
 ### Preview without an SMS provider (`admin-relay`)
 
 A preview deployment can run phone OTP before an SMS provider is signed up: `SMS_BACKEND=admin-relay` sends no SMS and holds each pending code in API memory until it expires. An admin reads them at `GET /api/v1/admin/sms-relay` (user, masked phone, code, expiry; admins only) and passes the code to the user. Outside `dev` and `test` it starts only with `PREVIEW_MODE=true` and an `ID_HASH_KEY`; every start logs a `WARN` naming `admin-relay`, and only `dev` writes the codes to the log. Live mode is `PREVIEW_MODE` off with `SMS_BACKEND=http`. Codes are lost on restart: the user asks for a new one.
+
+### Headline ratings (`RATINGS_HEADLINE`)
+
+`RATINGS_HEADLINE=all` (the default) makes the headline ratings count every published review. `verified` counts only reviews an admin gave the green tick (D-135); switch to it once admin approvals (W9) ship. After a switch, the nightly rating repair rebuilds the stored aggregates.

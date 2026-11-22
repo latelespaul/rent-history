@@ -144,16 +144,8 @@ class ReviewApiTest {
 		return reviews.findByPublicId(UUID.fromString(id)).orElseThrow();
 	}
 
-	/**
-	 * The subject's stored row after an admin gave every review the green tick, so the counting rules below are
-	 * checked as they apply to verified reviews (D-135 is covered by its own test). Null when no row exists.
-	 */
 	private RatingAggregate aggregate(RatingSubjectType type, Long id) {
-		if (aggregates.findById(new RatingAggregateId(type, id)).isEmpty()) {
-			return null;
-		}
-		jdbc.update("update reviews set verification_status = 'VERIFIED'");
-		return recomputer.recompute(type, id);
+		return aggregates.findById(new RatingAggregateId(type, id)).orElse(null);
 	}
 
 	// ---------------------------------------------------------- trust rules
@@ -260,7 +252,6 @@ class ReviewApiTest {
 		// anonymous: the aggregate only (D-56)
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews"))
 			.andExpect(status().isUnauthorized());
-		aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()); // the green tick (D-135)
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/rating"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.reviewCount").value(1))
@@ -499,26 +490,17 @@ class ReviewApiTest {
 	// ----------------------------------------------------------- aggregates
 
 	@Test
-	void headlineCountsOnlyGreenTickReviews() throws Exception {
+	void defaultHeadlineCountsUnverifiedPublishedReviews() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
 		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
 		Long propertyId = tenancy.getProperty().getId();
 
-		RatingAggregate unverified = aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY, propertyId))
-			.orElseThrow();
-		assertThat(unverified.getReviewCount()).as("published but not verified yet (D-135)").isZero();
-		assertThat(unverified.getAverage()).isNull();
-
-		jdbc.update("update reviews set verification_status = 'VERIFIED' where public_id = ?", id);
-		RatingAggregate verified = recomputer.recompute(RatingSubjectType.PROPERTY, propertyId);
-		assertThat(verified.getReviewCount()).isEqualTo(1);
-		assertThat(verified.getRatingSum()).isEqualTo(4);
-
-		jdbc.update("update reviews set verification_status = 'REJECTED' where public_id = ?", id);
-		assertThat(recomputer.recompute(RatingSubjectType.PROPERTY, propertyId).getReviewCount())
-			.as("rejected reviews stay visible but never count").isZero();
+		assertThat(stored(id).getVerificationStatus()).isNull();
+		RatingAggregate row = aggregate(RatingSubjectType.PROPERTY, propertyId);
+		assertThat(row.getReviewCount()).as("app.ratings.headline=all (D-135)").isEqualTo(1);
+		assertThat(row.getRatingSum()).isEqualTo(4);
 	}
 
 	@Test
@@ -532,7 +514,6 @@ class ReviewApiTest {
 			review.setSubmittedAt(Instant.now().minus(Duration.ofDays(15)));
 		}
 		service.revealDue();
-		aggregate(RatingSubjectType.LANDLORD, landlord.getId()); // the green tick (D-135)
 		// n < 3: count only, no average (D-52)
 		mvc.perform(get("/users/" + landlord.getPublicId()).header("Authorization", support.bearer(viewer)))
 			.andExpect(status().isOk())
@@ -618,7 +599,6 @@ class ReviewApiTest {
 		String id = written(landlord, tenancy, ReviewDirection.LANDLORD_TO_TENANT, 4);
 		stored(id).setSubmittedAt(Instant.now().minus(Duration.ofDays(15)));
 		service.revealDue();
-		aggregate(RatingSubjectType.TENANT, tenant.getId()); // the green tick (D-135)
 
 		mvc.perform(get("/users/" + tenant.getPublicId()).header("Authorization", support.bearer(stranger)))
 			.andExpect(status().isNotFound());

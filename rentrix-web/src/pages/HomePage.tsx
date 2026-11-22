@@ -216,7 +216,7 @@ const TRUST = [
     tag: "By our team",
     icon: <CheckIcon size={22} />,
     title: "Green tick",
-    text: "After we check a user, home, tenancy or review, it gets the tick. Headline ratings count only green-tick reviews.",
+    text: "After we check a user, home, tenancy or review, it gets the tick, so you can see what our team has checked.",
     badge: <GreenTick />,
   },
   {

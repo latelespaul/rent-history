@@ -26,11 +26,3 @@ CREATE INDEX ix_properties_verification ON properties (verification_status, crea
 CREATE INDEX ix_tenancies_verification ON tenancies (verification_status, created_at);
 CREATE INDEX ix_reviews_verification ON reviews (verification_status, created_at);
 
--- D-135: the headline aggregates count only green-tick reviews. No review is
--- VERIFIED yet, so recomputing every stored row from source gives zero counts:
--- this is that one-time recompute, run exactly once with the migration. The
--- nightly repair (D-33) and every review change rebuild rows from source as before.
-UPDATE rating_aggregates
-   SET review_count = 0, rating_sum = 0, average = NULL, bayes_score = NULL,
-       count_1 = 0, count_2 = 0, count_3 = 0, count_4 = 0, count_5 = 0,
-       sub_a_avg = NULL, sub_b_avg = NULL, sub_c_avg = NULL, last_review_at = NULL;

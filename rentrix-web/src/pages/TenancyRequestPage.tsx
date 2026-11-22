@@ -74,7 +74,7 @@ export default function TenancyRequestPage() {
   const asLandlord = isLandlord && (!propertyParam || ownsParam || !roles.includes("TENANT"))
   const target = useProperty(asLandlord ? "" : propertyParam)
 
-  const [draft, setDraft, clearDraft] = useSessionDraft(`draft:tenancy:${propertyParam}`, {
+  const [draft, setDraft, clearDraft] = useSessionDraft(`tenancy:${propertyParam}`, {
     propertyId: propertyParam,
     email: "",
     startDate: "",
