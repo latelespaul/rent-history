@@ -13,6 +13,12 @@ import com.rentrix.rentrixserver.location.SocietyWing;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
+import com.rentrix.rentrixserver.tenancy.RentRecord;
+import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
+import com.rentrix.rentrixserver.tenancy.RentRecordStatus;
+import com.rentrix.rentrixserver.tenancy.Tenancy;
+import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -23,6 +29,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,7 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The dev demo seed (D-68, D-69) on its own empty database: 4 + 4 published demo homes with demo landlords,
- * no phones, {@code example.test} emails; it never runs twice and its bean does not exist outside {@code dev}.
+ * no phones, {@code example.test} emails, and on every home a confirmed tenancy and a rent history with at least
+ * one change (PLAN B5); it never runs twice and its bean does not exist outside {@code dev}.
  */
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:sqlite:target/test-data/seed-${random.uuid}.db",
@@ -58,6 +66,12 @@ class DemoSeederTest {
 	SocietyTowerRepository towers;
 	
 	@Autowired
+	TenancyRepository tenancies;
+	
+	@Autowired
+	RentRecordRepository rentRecords;
+	
+	@Autowired
 	PlatformTransactionManager transactionManager;
 	
 	@Autowired
@@ -66,7 +80,8 @@ class DemoSeederTest {
 	@Test
 	void seedsAnEmptyDatabaseOnceWithClearlyFakeData() {
 		assertThat(context.getBeansOfType(DemoSeeder.class)).as("dev-only bean").isEmpty();
-		DemoSeeder seeder = new DemoSeeder(users, properties, cities, areas, societies, towers, transactionManager);
+		DemoSeeder seeder = new DemoSeeder(users, properties, cities, areas, societies, towers, tenancies, rentRecords,
+			transactionManager);
 		assertThat(seeder.seed()).isTrue();
 		assertThat(seeder.seed()).as("non-empty database").isFalse();
 		
@@ -114,10 +129,29 @@ class DemoSeederTest {
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));
 			
 			List<User> people = users.findAll();
-			assertThat(people).hasSize(6).allMatch(User::isDemo)
+			assertThat(people).hasSize(12).allMatch(User::isDemo)
 				.allMatch(u -> u.getEmail().endsWith("@example.test"))
 				.allMatch(u -> u.getPhone() == null && u.getGoogleSub() == null)
 				.allMatch(u -> u.getEmailVerifiedAt() != null && u.getOnboardedAt() != null);
+			
+			List<Tenancy> all = tenancies.findAll();
+			assertThat(all).hasSize(13).allMatch(t -> !t.getStartDate().isAfter(LocalDate.now()))
+				.allMatch(t -> t.getLandlord().getId().equals(t.getProperty().getLandlord().getId()));
+			assertThat(all.stream().filter(t -> t.getStatus() == TenancyStatus.PENDING_CONFIRMATION)).hasSize(1);
+			for (Property home : homes) {
+				List<Tenancy> confirmed = all.stream()
+					.filter(t -> t.getProperty().getId().equals(home.getId()))
+					.filter(t -> t.getStatus() == TenancyStatus.ACTIVE || t.getStatus() == TenancyStatus.ENDED)
+					.toList();
+				assertThat(confirmed).as(home.getBuildingName()).isNotEmpty();
+				List<RentRecord> history = rentRecords.findByTenancyPropertyIdAndStatusAndTenancyStatusInOrderByEffectiveFromAsc(
+					home.getId(), RentRecordStatus.CONFIRMED, List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED));
+				assertThat(history.stream().map(RentRecord::getMonthlyRentInr).distinct().count())
+					.as("rent change at " + home.getBuildingName()).isGreaterThanOrEqualTo(2);
+				assertThat(history).allMatch(r -> r.getEffectiveFrom().getDayOfMonth() == 1);
+			}
+			assertThat(all.stream().filter(t -> t.getStatus() == TenancyStatus.ACTIVE).map(t -> t.getTenant().getId())
+				.distinct().count()).as("one current home per tenant").isEqualTo(8);
 		});
 	}
 	

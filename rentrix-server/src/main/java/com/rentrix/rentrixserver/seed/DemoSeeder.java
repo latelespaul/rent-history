@@ -16,6 +16,14 @@ import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
+import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
+import com.rentrix.rentrixserver.tenancy.RentRecord;
+import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
+import com.rentrix.rentrixserver.tenancy.RentRecordStatus;
+import com.rentrix.rentrixserver.tenancy.Tenancy;
+import com.rentrix.rentrixserver.tenancy.TenancyParty;
+import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
@@ -29,6 +37,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -36,16 +46,20 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Minimal dev-only demo data (§16, D-68, D-69) so a local run has homes to browse: 4 published properties in
- * Bangalore and 4 in Pune, their 4 landlords and one tenant per city, all {@code is_demo}, emails on the
- * reserved {@code example.test} domain, no phone numbers, no Google ids (sign in through dev login, D-77).
+ * Dev-only demo data (§16, D-68, D-69) so a local run has homes to browse and tenancies to show: 4 published
+ * properties in Bangalore and 4 in Pune, their 4 landlords and 4 tenants per city, all {@code is_demo}, emails on
+ * the reserved {@code example.test} domain, no phone numbers, no Google ids (sign in through dev login, D-77).
  * <p>Location hierarchy (D-115): an area with real PIN codes for every seed locality, and one gated society per
  * city with 2 towers of 2 wings each (Demo Greens, Koramangala; Demo Meadows, Baner). Demo Residency A is in
  * Demo Greens Tower 1 · Wing A and Demo Towers E in Demo Meadows Tower 2 · Wing B; every other home is
  * standalone (no society).
+ * <p>Tenancies (PLAN B5): every home has a current tenancy confirmed by both sides with a rent increase a year in;
+ * the first and third home of each city also have an ended earlier tenancy with its own increase, so every rent
+ * history shows at least one change. One request (Demo Tenant PNQ-3 on Demo Towers E) waits for the landlord's
+ * confirmation. Demo users pass the interim approval gate (D-91), so dev login can run the whole flow.
  * <p>Runs only with the {@code dev} profile <em>and</em> {@code SEED_DEMO=true}, and only into an empty
- * database (no users, properties or areas); otherwise it does nothing. PLAN B10 extends it with tenancies, rent
- * history, reviews, verification states and the pending location proposal (Demo Enclave).
+ * database (no users, properties or areas); otherwise it does nothing. PLAN B10 extends it with reviews,
+ * verification states and the pending location proposal (Demo Enclave).
  */
 @Slf4j
 @Component
@@ -93,7 +107,10 @@ public class DemoSeeder implements ApplicationRunner {
 	static final List<String> WINGS = List.of("Wing A", "Wing B");
 	
 	static final List<String> LANDLORDS = List.of("BLR-1", "BLR-2", "PNQ-1", "PNQ-2");
-	static final List<String> TENANTS = List.of("BLR-1", "PNQ-1");
+	static final List<String> TENANTS = List.of("BLR-1", "BLR-2", "BLR-3", "BLR-4", "PNQ-1", "PNQ-2", "PNQ-3", "PNQ-4");
+	
+	/** Current monthly rent (before the demo increase) per home of {@link #HOMES}, same order. */
+	static final List<Long> RENTS = List.of(32_000L, 22_000L, 65_000L, 18_000L, 26_000L, 17_000L, 38_000L, 9_000L);
 	
 	static final List<DemoHome> HOMES = List.of(
 		new DemoHome("BLR", "BLR-1", "Demo Residency A", "Koramangala", "560034", PropertyType.APARTMENT, 2, 2, 1150,
@@ -121,17 +138,21 @@ public class DemoSeeder implements ApplicationRunner {
 	private final AreaRepository areas;
 	private final SocietyRepository societies;
 	private final SocietyTowerRepository towers;
+	private final TenancyRepository tenancies;
+	private final RentRecordRepository rentRecords;
 	private final TransactionTemplate tx;
 	
 	public DemoSeeder(UserRepository users, PropertyRepository properties, CityRepository cities,
 		AreaRepository areas, SocietyRepository societies, SocietyTowerRepository towers,
-		PlatformTransactionManager transactionManager) {
+		TenancyRepository tenancies, RentRecordRepository rentRecords, PlatformTransactionManager transactionManager) {
 		this.users = users;
 		this.properties = properties;
 		this.cities = cities;
 		this.areas = areas;
 		this.societies = societies;
 		this.towers = towers;
+		this.tenancies = tenancies;
+		this.rentRecords = rentRecords;
 		this.tx = new TransactionTemplate(transactionManager);
 	}
 	
@@ -166,12 +187,12 @@ public class DemoSeeder implements ApplicationRunner {
 					towerByPath.put(society.name() + "/" + TOWERS.get(i), tower(saved, TOWERS.get(i), i));
 				}
 			}
-			for (DemoHome home : HOMES) {
-				home(home, areaByName.get(home.locality()), societyByName.get(home.society()),
-					towerByPath.get(home.society() + "/" + home.tower()));
-			}
-			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties.",
-				LANDLORDS.size(), TENANTS.size(), AREAS.size(), SOCIETIES.size(), HOMES.size());
+			List<Property> homes = HOMES.stream().map(home -> home(home, areaByName.get(home.locality()),
+				societyByName.get(home.society()), towerByPath.get(home.society() + "/" + home.tower()))).toList();
+			int seededTenancies = tenancies(homes);
+			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
+				+ "{} tenancies.", LANDLORDS.size(), TENANTS.size(), AREAS.size(), SOCIETIES.size(), HOMES.size(),
+				seededTenancies);
 			return true;
 		});
 		return Boolean.TRUE.equals(seeded);
@@ -229,7 +250,7 @@ public class DemoSeeder implements ApplicationRunner {
 		return towers.save(tower);
 	}
 	
-	private void home(DemoHome home, Area area, Society society, SocietyTower tower) {
+	private Property home(DemoHome home, Area area, Society society, SocietyTower tower) {
 		User landlord = users.findByEmail(("demo-landlord-" + home.landlord() + "@example.test").toLowerCase(Locale.ROOT))
 			.orElseThrow();
 		Property property = new Property();
@@ -258,7 +279,93 @@ public class DemoSeeder implements ApplicationRunner {
 		property.setStatus(PropertyStatus.PUBLISHED);
 		property.setDemo(true);
 		property.setCreatedAt(SEEDED_AT.plusSeconds(60L * HOMES.indexOf(home)));
-		properties.save(property);
+		return properties.save(property);
+	}
+	
+	/**
+	 * Home {@code k} (0–3) of a city: a current tenancy of tenant {@code k+1} from 2024-(3+k)-01 with a 7% increase
+	 * twelve months later; homes 0 and 2 also have an ended tenancy of tenant {@code k+2}, 20 months from
+	 * 2022-(6+k)-01 with a 5% increase after a year, ending before that tenant's own current tenancy elsewhere.
+	 */
+	private int tenancies(List<Property> homes) {
+		int count = 0;
+		for (int i = 0; i < homes.size(); i++) {
+			Property home = homes.get(i);
+			String city = home.getCity().getCode();
+			int k = i % 4;
+			long rent = RENTS.get(i);
+			if (k % 2 == 0) {
+				LocalDate start = LocalDate.of(2022, 6 + k, 1);
+				LocalDate end = start.plusMonths(20).minusDays(1);
+				Tenancy past = tenancy(home, tenant(city, k + 2), start, end, round(rent * 0.88), TenancyParty.TENANT);
+				rent(past, start.plusYears(1), round(past.getInitialRentInr() * 1.05), home.getLandlord());
+				count++;
+			}
+			LocalDate start = LocalDate.of(2024, 3 + k, 1);
+			Tenancy current = tenancy(home, tenant(city, k + 1), start, null, rent,
+				k % 2 == 0 ? TenancyParty.LANDLORD : TenancyParty.TENANT);
+			rent(current, start.plusYears(1), round(rent * 1.07), home.getLandlord());
+			count++;
+		}
+		Tenancy pending = new Tenancy();
+		Property towers = homes.get(4);
+		pending.setProperty(towers);
+		pending.setLandlord(towers.getLandlord());
+		pending.setTenant(tenant("PNQ", 3));
+		pending.setStartDate(LocalDate.of(2021, 6, 1));
+		pending.setEndDate(LocalDate.of(2022, 5, 31));
+		pending.setInitialRentInr(21_000);
+		pending.setDepositInr(63_000L);
+		pending.setInitiatedBy(TenancyParty.TENANT);
+		pending.setStatus(TenancyStatus.PENDING_CONFIRMATION);
+		tenancies.save(pending);
+		return count + 1;
+	}
+	
+	private Tenancy tenancy(Property home, User tenant, LocalDate start, LocalDate end, long rent,
+		TenancyParty initiatedBy) {
+		Instant created = start.atStartOfDay().toInstant(ZoneOffset.UTC);
+		Tenancy tenancy = new Tenancy();
+		tenancy.setProperty(home);
+		tenancy.setLandlord(home.getLandlord());
+		tenancy.setTenant(tenant);
+		tenancy.setStartDate(start);
+		tenancy.setEndDate(end);
+		tenancy.setInitialRentInr(rent);
+		tenancy.setDepositInr(rent * 3);
+		tenancy.setInitiatedBy(initiatedBy);
+		tenancy.setStatus(end == null ? TenancyStatus.ACTIVE : TenancyStatus.ENDED);
+		tenancy.setEvidenceLevel(EvidenceLevel.MUTUAL);
+		tenancy.setConfirmedAt(created.plusSeconds(3 * 86_400L));
+		if (end != null) {
+			tenancy.setDepositRefundedInr(rent * 3);
+			tenancy.setEndedAt(end.atStartOfDay().toInstant(ZoneOffset.UTC));
+		}
+		tenancy.setCreatedAt(created);
+		Tenancy saved = tenancies.save(tenancy);
+		rent(saved, start.withDayOfMonth(1), rent, initiatedBy == TenancyParty.LANDLORD ? home.getLandlord() : tenant);
+		return saved;
+	}
+	
+	private void rent(Tenancy tenancy, LocalDate from, long monthlyRent, User addedBy) {
+		RentRecord record = new RentRecord();
+		record.setTenancy(tenancy);
+		record.setEffectiveFrom(from.withDayOfMonth(1));
+		record.setMonthlyRentInr(monthlyRent);
+		record.setAddedBy(addedBy);
+		record.setStatus(RentRecordStatus.CONFIRMED);
+		record.setCreatedAt(from.atStartOfDay().toInstant(ZoneOffset.UTC));
+		rentRecords.save(record);
+	}
+	
+	private User tenant(String city, int number) {
+		return users.findByEmail("demo-tenant-" + city.toLowerCase(Locale.ROOT) + "-" + number + "@example.test")
+			.orElseThrow();
+	}
+	
+	/** Rents end in 00 or 500 like real ones. */
+	private static long round(double rupees) {
+		return Math.round(rupees / 500) * 500;
 	}
 	
 }

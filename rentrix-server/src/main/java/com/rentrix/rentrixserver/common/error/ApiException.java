@@ -6,6 +6,8 @@ import org.springframework.http.HttpStatus;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * A business or request error with a stable machine {@code code} (D-60). Thrown by services;
@@ -19,6 +21,8 @@ public class ApiException extends RuntimeException {
 	private final List<ApiProblem.FieldError> errors;
 	/** Extra response headers, e.g. {@code Retry-After} on 429. */
 	private final HttpHeaders headers;
+	/** {@code {role, status}} on {@code 403 approval_required} (D-91); empty otherwise. */
+	private final Map<String, String> approval;
 
 	public ApiException(HttpStatus status, String code, String detail) {
 		this(status, code, detail, List.of());
@@ -30,11 +34,27 @@ public class ApiException extends RuntimeException {
 
 	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
 		HttpHeaders headers) {
+		this(status, code, detail, errors, headers, Map.of());
+	}
+
+	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
+		HttpHeaders headers, Map<String, String> approval) {
 		super(detail);
 		this.status = status;
 		this.code = code;
 		this.errors = List.copyOf(errors);
 		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
+		this.approval = Map.copyOf(approval);
+	}
+
+	/**
+	 * 403 {@code approval_required} (D-91): the caller's verification for {@code role} is not {@code APPROVED}.
+	 * The body carries {@code approval: {role, status}} so the web can show the matching "pending approval" state.
+	 */
+	public static ApiException approvalRequired(String role, String status) {
+		return new ApiException(HttpStatus.FORBIDDEN, "approval_required",
+			"Your " + role.toLowerCase(Locale.ROOT) + " account must be approved before you can do this.",
+			List.of(), HttpHeaders.EMPTY, Map.of("role", role, "status", status));
 	}
 
 	public static ApiException notFound(String what) {
