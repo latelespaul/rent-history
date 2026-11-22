@@ -36,6 +36,7 @@ import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
 import com.rentrix.rentrixserver.tenancy.RentRecordStatus;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyService;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -56,6 +57,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -211,6 +213,15 @@ class DemoSeederTest {
 					.filter(t -> t.getStatus() == TenancyStatus.ACTIVE || t.getStatus() == TenancyStatus.ENDED)
 					.toList();
 				assertThat(confirmed).as(home.getBuildingName()).isNotEmpty();
+				if (TenancyService.wholeHome(home)) {
+					// One tenancy at a time on a whole home (D-23): no two confirmed periods overlap.
+					List<Tenancy> byStart = confirmed.stream().sorted(Comparator.comparing(Tenancy::getStartDate)).toList();
+					for (int i = 0; i + 1 < byStart.size(); i++) {
+						Tenancy earlier = byStart.get(i);
+						assertThat(earlier.getEndDate()).as("overlap at " + home.getBuildingName()).isNotNull()
+							.isBefore(byStart.get(i + 1).getStartDate());
+					}
+				}
 				List<RentRecord> history = rentRecords.findByTenancyPropertyIdAndStatusAndTenancyStatusInOrderByEffectiveFromAsc(
 					home.getId(), RentRecordStatus.CONFIRMED, List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED));
 				assertThat(history.stream().map(RentRecord::getMonthlyRentInr).distinct().count())

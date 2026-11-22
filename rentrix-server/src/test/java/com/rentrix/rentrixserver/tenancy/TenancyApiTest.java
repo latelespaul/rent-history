@@ -3,8 +3,10 @@ package com.rentrix.rentrixserver.tenancy;
 import com.jayway.jsonpath.JsonPath;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.property.Property;
+import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
+import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.RecordingEmailSender;
 import com.rentrix.rentrixserver.support.TestData;
@@ -59,6 +61,12 @@ class TenancyApiTest {
 
 	@Autowired
 	TenancyService service;
+
+	@Autowired
+	PropertyRepository properties;
+
+	@Autowired
+	RentRecordRepository rentRecords;
 
 	// ------------------------------------------------------------ helpers
 
@@ -304,20 +312,133 @@ class TenancyApiTest {
 		create(tenant, request(property, null, TODAY.minusYears(1).minusMonths(2), null, 20_000))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("tenancy_overlap"));
-		// A landlord's request by email does not reveal the account at creation; the overlap shows on confirm.
-		String byEmail = createdId(landlord,
-			request(property, tenant.getEmail(), TODAY.minusYears(1).minusMonths(2), null, 20_000));
-		act(tenant, byEmail, "confirm").andExpect(status().isConflict())
-			.andExpect(jsonPath("$.code").value("tenancy_overlap"));
-		act(landlord, byEmail, "cancel").andExpect(status().isOk());
-		// After the old tenancy ended: fine, and a flatmate may overlap it.
+		// After the old tenancy ended: fine.
 		createdId(tenant, request(property, null, TODAY.minusMonths(6), null, 20_000));
-		User flatmate = data.approved("Flat Mate", Role.TENANT);
-		createdId(flatmate, request(property, null, TODAY.minusMonths(6), null, 12_000));
 		// Declined or cancelled requests do not block.
 		User other = data.approved("Other Tenant", Role.TENANT);
 		data.tenancy(property, other, TODAY.minusMonths(3), null, TenancyStatus.DECLINED);
 		createdId(other, request(property, null, TODAY.minusMonths(3), null, 20_000));
+	}
+
+	@Test
+	void aWholeHomeTakesOneTenancyAtATime() throws Exception {
+		User landlord = data.approved("Whole Home Landlord", Role.LANDLORD);
+		User sitting = data.approved("Sitting Tenant", Role.TENANT);
+		User next = data.approved("Next Tenant", Role.TENANT);
+		Property property = home(landlord);
+		Tenancy current = data.tenancy(property, sitting, LocalDate.of(2024, 4, 1), null, TenancyStatus.ACTIVE);
+
+		// The landlord's invite overlaps the open-ended tenancy: refused, and the landlord learns which one.
+		create(landlord, request(property, next.getEmail(), TODAY.minusMonths(1), null, 25_000))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("tenancy_overlap"))
+			.andExpect(jsonPath("$.conflict.from").value("2024-04"))
+			.andExpect(jsonPath("$.conflict.to").doesNotExist())
+			.andExpect(jsonPath("$.conflict.status").value("ACTIVE"))
+			.andExpect(jsonPath("$.conflict.tenancyId").value(current.getPublicId().toString()));
+		// Another tenant's request is refused too, without the tenancy's id.
+		create(next, request(property, null, TODAY.minusMonths(1), null, 25_000))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("tenancy_overlap"))
+			.andExpect(jsonPath("$.detail").value(
+				"This home already has a current tenancy since 2024-04. It must end before a new one can start."))
+			.andExpect(jsonPath("$.conflict.from").value("2024-04"))
+			.andExpect(jsonPath("$.conflict.tenancyId").doesNotExist());
+		// Nothing was ended automatically.
+		assertThat(tenancies.findById(current.getId()).orElseThrow().getStatus()).isEqualTo(TenancyStatus.ACTIVE);
+	}
+
+	@Test
+	void aConfirmThatLostTheRaceToAnotherTenancyIsRefused() throws Exception {
+		User landlord = data.approved("Racing Landlord", Role.LANDLORD);
+		User first = data.approved("First Tenant", Role.TENANT);
+		User second = data.approved("Second Tenant", Role.TENANT);
+		Property property = home(landlord);
+		// Two pending requests for the same months: both may exist while neither is confirmed.
+		String a = createdId(first, request(property, null, TODAY.minusMonths(2), null, 25_000));
+		String b = createdId(second, request(property, null, TODAY.minusMonths(1), null, 26_000));
+		act(landlord, a, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+		act(landlord, b, "confirm").andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("tenancy_overlap"))
+			.andExpect(jsonPath("$.conflict.tenancyId").value(a));
+		mvc.perform(get("/tenancies/" + b).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.status").value("PENDING_CONFIRMATION"));
+	}
+
+	@Test
+	void backToBackTenanciesOnAWholeHomeAreAllowed() throws Exception {
+		User landlord = data.approved("Turnover Landlord", Role.LANDLORD);
+		User before = data.approved("Earlier Tenant", Role.TENANT);
+		User after = data.approved("Later Tenant", Role.TENANT);
+		Property property = home(landlord);
+		LocalDate lastDay = TODAY.minusMonths(3).withDayOfMonth(1).minusDays(1);
+		data.tenancy(property, before, lastDay.minusYears(1), lastDay, TenancyStatus.ENDED);
+		String id = createdId(landlord, request(property, after.getEmail(), lastDay.plusDays(1), null, 27_000));
+		act(after, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+		// The same handover day overlaps by one day.
+		User late = data.approved("Overlapping Tenant", Role.TENANT);
+		Property other = home(landlord);
+		data.tenancy(other, before, lastDay.minusYears(1), lastDay, TenancyStatus.ENDED);
+		create(late, request(other, null, lastDay, null, 27_000)).andExpect(status().isConflict());
+	}
+
+	@Test
+	void aWholeHomesRentHistoryNeverShowsTwoCurrentRows() throws Exception {
+		User landlord = data.approved("Legacy Landlord", Role.LANDLORD);
+		User old = data.approved("Legacy Tenant", Role.TENANT);
+		User recent = data.approved("Recent Tenant", Role.TENANT);
+		Property property = home(landlord);
+		// Two open tenancies saved before the guard existed.
+		confirmedRent(data.tenancy(property, old, LocalDate.of(2025, 4, 1), null, TenancyStatus.ACTIVE), 23_500);
+		confirmedRent(data.tenancy(property, recent, LocalDate.of(2026, 10, 1), null, TenancyStatus.ACTIVE), 25_000);
+		mvc.perform(get("/properties/" + property.getPublicId() + "/rent-history")
+				.header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.rows", hasSize(2)))
+			.andExpect(jsonPath("$.rows[0].fromMonth").value("2025-04"))
+			.andExpect(jsonPath("$.rows[0].toMonth").value("2026-09"))
+			.andExpect(jsonPath("$.rows[1].fromMonth").value("2026-10"))
+			.andExpect(jsonPath("$.rows[1].toMonth").doesNotExist());
+	}
+
+	@Test
+	void backToBackTenanciesShareTheirBoundaryMonthInRentHistory() throws Exception {
+		User landlord = data.approved("Boundary Landlord", Role.LANDLORD);
+		User first = data.approved("Leaving Tenant", Role.TENANT);
+		User second = data.approved("Arriving Tenant", Role.TENANT);
+		Property property = home(landlord);
+		confirmedRent(data.tenancy(property, first, LocalDate.of(2024, 4, 1), LocalDate.of(2025, 3, 15),
+			TenancyStatus.ENDED), 23_500);
+		confirmedRent(data.tenancy(property, second, LocalDate.of(2025, 3, 16), null, TenancyStatus.ACTIVE), 25_000);
+		mvc.perform(get("/properties/" + property.getPublicId() + "/rent-history")
+				.header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.rows", hasSize(2)))
+			.andExpect(jsonPath("$.rows[0].fromMonth").value("2024-04"))
+			.andExpect(jsonPath("$.rows[0].toMonth").value("2025-03"))
+			.andExpect(jsonPath("$.rows[1].fromMonth").value("2025-03"))
+			.andExpect(jsonPath("$.rows[1].toMonth").doesNotExist());
+	}
+
+	private void confirmedRent(Tenancy tenancy, long rent) {
+		RentRecord record = new RentRecord();
+		record.setTenancy(tenancy);
+		record.setEffectiveFrom(tenancy.getStartDate());
+		record.setMonthlyRentInr(rent);
+		record.setAddedBy(tenancy.getLandlord());
+		record.setStatus(RentRecordStatus.CONFIRMED);
+		rentRecords.save(record);
+	}
+
+	@Test
+	void flatmatesMayOverlapInARoomOrPg() throws Exception {
+		User landlord = data.approved("PG Landlord", Role.LANDLORD);
+		User one = data.approved("Flat Mate One", Role.TENANT);
+		User two = data.approved("Flat Mate Two", Role.TENANT);
+		Property pg = home(landlord);
+		pg.setPropertyType(PropertyType.PG);
+		properties.save(pg);
+		data.tenancy(pg, one, TODAY.minusMonths(6), null, TenancyStatus.ACTIVE);
+		String id = createdId(two, request(pg, null, TODAY.minusMonths(6), null, 12_000));
+		act(landlord, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
 	}
 
 	@Test
@@ -535,9 +656,10 @@ class TenancyApiTest {
 		mvc.perform(post("/rent-records/" + disputed + "/dispute").header("Authorization", support.bearer(landlord)))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DISPUTED"));
 
-		// A pending request elsewhere on the property never shows.
+		// A pending request elsewhere on the property never shows (saved directly: the API refuses one that
+		// overlaps the current tenancy of this whole home, D-23).
 		User other = data.approved("Pending Tenant", Role.TENANT);
-		createdId(other, request(property, null, TODAY.minusMonths(2), null, 99_000));
+		data.tenancy(property, other, TODAY.minusMonths(2), null, TenancyStatus.PENDING_CONFIRMATION);
 
 		mvc.perform(get("/properties/" + property.getPublicId() + "/rent-history")
 				.header("Authorization", support.bearer(signedIn)))

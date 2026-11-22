@@ -50,6 +50,11 @@ export interface ProblemDetails {
   traceId?: string
   /** On `403 approval_required` only: the role whose approval blocks the write (D-91). */
   approval?: { role: Role; status: VerificationStatus }
+  /**
+   * On `409 tenancy_overlap` only: the tenancy already on the home, as months (`to` absent while
+   * it is current); `tenancyId` only for that home's landlord.
+   */
+  conflict?: { from: string; to?: string; status: TenancyStatus; tenancyId?: string }
 }
 
 /** Pagination envelope of list endpoints (D-59). */

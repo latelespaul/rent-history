@@ -25,6 +25,8 @@ public class ApiException extends RuntimeException {
 	private final Map<String, String> approval;
 	/** The verification steps still to do, on {@code 422 verification_incomplete} (D-105); empty otherwise. */
 	private final List<String> missing;
+	/** The clashing tenancy's period on {@code 409 tenancy_overlap}; empty otherwise. */
+	private final Map<String, String> conflict;
 
 	public ApiException(HttpStatus status, String code, String detail) {
 		this(status, code, detail, List.of());
@@ -36,11 +38,16 @@ public class ApiException extends RuntimeException {
 
 	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
 		HttpHeaders headers) {
-		this(status, code, detail, errors, headers, Map.of(), List.of());
+		this(status, code, detail, errors, headers, Map.of(), List.of(), Map.of());
 	}
 
 	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
 		HttpHeaders headers, Map<String, String> approval, List<String> missing) {
+		this(status, code, detail, errors, headers, approval, missing, Map.of());
+	}
+
+	private ApiException(HttpStatus status, String code, String detail, List<ApiProblem.FieldError> errors,
+		HttpHeaders headers, Map<String, String> approval, List<String> missing, Map<String, String> conflict) {
 		super(detail);
 		this.status = status;
 		this.code = code;
@@ -48,6 +55,7 @@ public class ApiException extends RuntimeException {
 		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
 		this.approval = Map.copyOf(approval);
 		this.missing = List.copyOf(missing);
+		this.conflict = Map.copyOf(conflict);
 	}
 
 	/**
@@ -83,6 +91,15 @@ public class ApiException extends RuntimeException {
 	/** 409: duplicate, overlap or a state transition that is not allowed (D-60). */
 	public static ApiException conflict(String code, String detail) {
 		return new ApiException(HttpStatus.CONFLICT, code, detail);
+	}
+
+	/**
+	 * 409 {@code tenancy_overlap}: the dates clash with a tenancy already on the home. {@code conflict} carries that
+	 * tenancy's period ({@code from}, {@code to}) and, for the home's landlord only, its {@code tenancyId}.
+	 */
+	public static ApiException tenancyOverlap(String detail, Map<String, String> conflict) {
+		return new ApiException(HttpStatus.CONFLICT, "tenancy_overlap", detail, List.of(), HttpHeaders.EMPTY, Map.of(),
+			List.of(), conflict);
 	}
 
 	/** 422 for a broken business rule, e.g. {@code review_window_closed}. */

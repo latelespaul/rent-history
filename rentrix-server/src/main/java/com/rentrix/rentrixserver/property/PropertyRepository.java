@@ -1,9 +1,13 @@
 package com.rentrix.rentrixserver.property;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -11,6 +15,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface PropertyRepository extends JpaRepository<Property, Long> {
+	
+	/** The property row locked for update, to serialise tenancy writes on one home (overlap guard). */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select p from Property p where p.id = :id")
+	Optional<Property> lockById(@Param("id") Long id);
 	
 	Optional<Property> findByPublicId(UUID publicId);
 	

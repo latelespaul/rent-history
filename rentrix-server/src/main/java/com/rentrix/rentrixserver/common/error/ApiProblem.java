@@ -12,6 +12,9 @@ import java.util.Map;
  * {@code X-Request-Id} response header and the log lines of the request. {@code approval} is set only on
  * {@code 403 approval_required}: {@code {role, status}} of the verification that blocks the write (D-91).
  * {@code missing} is set only on {@code 422 verification_incomplete}: the steps still to do (D-105).
+ * {@code conflict} is set only on {@code 409 tenancy_overlap}: the period of the tenancy already on the home
+ * ({@code from}, {@code to} months; no {@code to} while it is current) and, for that home's landlord only, its
+ * {@code tenancyId}.
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public record ApiProblem(
@@ -24,21 +27,24 @@ public record ApiProblem(
 	List<FieldError> errors,
 	String traceId,
 	Map<String, String> approval,
-	List<String> missing
+	List<String> missing,
+	Map<String, String> conflict
 ) {
 
 	public static final String TYPE_BASE = "https://doorwayliving.in/problems/";
 
 	public static ApiProblem of(HttpStatusCode status, String code, String detail, String instance,
 		List<FieldError> errors, String traceId) {
-		return of(status, code, detail, instance, errors, traceId, null, null);
+		return of(status, code, detail, instance, errors, traceId, null, null, null);
 	}
 
 	public static ApiProblem of(HttpStatusCode status, String code, String detail, String instance,
-		List<FieldError> errors, String traceId, Map<String, String> approval, List<String> missing) {
+		List<FieldError> errors, String traceId, Map<String, String> approval, List<String> missing,
+		Map<String, String> conflict) {
 		return new ApiProblem(TYPE_BASE + code.replace('_', '-'), title(code), status.value(), code, detail, instance,
 			errors == null ? List.of() : errors, traceId, approval == null || approval.isEmpty() ? null : approval,
-			missing == null || missing.isEmpty() ? null : missing);
+			missing == null || missing.isEmpty() ? null : missing,
+			conflict == null || conflict.isEmpty() ? null : conflict);
 	}
 
 	/** A short human title from the code, e.g. {@code review_window_closed} → "Review window closed". */

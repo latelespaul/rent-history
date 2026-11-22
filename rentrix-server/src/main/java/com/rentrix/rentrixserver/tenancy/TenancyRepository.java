@@ -62,6 +62,17 @@ public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 		@Param("excludeId") Long excludeId, @Param("statuses") Collection<TenancyStatus> statuses,
 		@Param("start") LocalDate start, @Param("end") LocalDate end);
 	
+	/**
+	 * One home holds one tenancy at a time: the other tenancies in {@code statuses} on the property, of any tenant,
+	 * whose dates overlap {@code [start, end]} ({@code end} = far future for a current tenancy), oldest first.
+	 */
+	@Query("select t from Tenancy t where t.property.id = :propertyId "
+		+ "and t.id <> :excludeId and t.status in :statuses "
+		+ "and t.startDate <= :end and (t.endDate is null or t.endDate >= :start) order by t.startDate")
+	List<Tenancy> findOverlappingOnProperty(@Param("propertyId") Long propertyId, @Param("excludeId") Long excludeId,
+		@Param("statuses") Collection<TenancyStatus> statuses, @Param("start") LocalDate start,
+		@Param("end") LocalDate end);
+	
 	/** D-35 pending cap: pending requests this user started, on either side. */
 	@Query("select count(t) from Tenancy t left join t.tenant tn where t.status = :status and ("
 		+ "(t.initiatedBy = com.rentrix.rentrixserver.tenancy.TenancyParty.LANDLORD and t.landlord.id = :userId) or "
