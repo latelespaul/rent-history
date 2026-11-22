@@ -11,7 +11,9 @@ import com.rentrix.rentrixserver.identity.IdentityStatus;
 import com.rentrix.rentrixserver.identity.IdentityVerification;
 import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
 import com.rentrix.rentrixserver.security.AccessTokenService;
+import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.support.IntegrationTest;
+import com.rentrix.rentrixserver.support.RecordingEmailSender;
 import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -82,6 +84,13 @@ class VerificationApiTest {
 
 	@Autowired
 	PlatformTransactionManager transactionManager;
+	
+	@Autowired
+	RecordingEmailSender mail;
+	
+	private List<String> subjectsTo(User user) {
+		return mail.to(user.getEmail()).stream().map(EmailMessage::subject).toList();
+	}
 
 	private String bearer(User user) {
 		return "Bearer " + tokens.issue(user.getPublicId(), user.getRoles());
@@ -189,7 +198,7 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void stateMachineWithIllegalTransitionsAndResubmitAfterReject(CapturedOutput output) throws Exception {
+	void stateMachineWithIllegalTransitionsAndResubmitAfterReject() throws Exception {
 		User user = applicant("Lifecycle", Role.TENANT);
 		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		User admin = admin();
@@ -210,7 +219,8 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$[0].status").value("REJECTED"))
 			.andExpect(jsonPath("$[0].decision.code").value("ID_UNREADABLE"))
 			.andExpect(jsonPath("$[0].decision.note").value("The PAN photo is blurred. Upload a sharper photo."));
-		assertThat(output).contains("Your Rentrix tenant verification needs changes");
+		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Rentrix tenant verification needs changes");
+		assertThat(mail.last(user.getEmail()).body()).contains("The PAN photo is blurred. Upload a sharper photo.");
 
 		submit(user, "tenant")
 			.andExpect(status().isOk())
@@ -224,14 +234,15 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.status").value("APPROVED"))
 			.andExpect(jsonPath("$.revision").value(2));
 		submit(user, "TENANT").andExpect(status().isConflict());
-		assertThat(output).contains("Your Rentrix tenant account is approved");
+		assertThat(mail.last(user.getEmail()).subject()).isEqualTo("Your Rentrix tenant account is approved");
 		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(jsonPath("$[0].decision.note").doesNotExist());
 
 		decide(admin, id, "revoke", "{\"code\": \"DUPLICATE_ACCOUNT\", \"note\": \"Same person as another account.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("REJECTED"));
-		assertThat(output).contains("Your Rentrix tenant approval was withdrawn");
+		assertThat(subjectsTo(user)).containsExactly("Your Rentrix tenant verification needs changes",
+			"Your Rentrix tenant account is approved", "Your Rentrix tenant approval was withdrawn");
 
 		new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
 			VerificationApplication application = applications.findByPublicId(id).orElseThrow();
@@ -455,10 +466,10 @@ class VerificationApiTest {
 		UUID id = submitted(user, Role.TENANT);
 		decide(admin(), id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId() + "\", \"result\": \"VERIFIED\"}]}")
 			.andExpect(status().isOk());
-		String email = user.getEmail();
-		assertThat(output).contains("Email to " + email.charAt(0) + "***@example.test")
-			.doesNotContain(email)
-			.doesNotContain("234F");
+		EmailMessage approved = mail.last(user.getEmail());
+		assertThat(approved.subject()).isEqualTo("Your Rentrix tenant account is approved");
+		assertThat(approved.subject() + approved.body()).doesNotContain("234F").doesNotContain("XXXXXX");
+		assertThat(output).doesNotContain(user.getEmail()).doesNotContain("234F");
 		JsonNode me = json.readTree(mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andReturn().getResponse().getContentAsString());
 		assertThat(me.get("verification").get("TENANT").asString()).isEqualTo("APPROVED");
