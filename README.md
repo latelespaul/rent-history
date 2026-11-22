@@ -38,7 +38,7 @@ The response holds `accessToken` (send it as `Authorization: Bearer …`) and se
 Google sign-in needs only an OAuth **client ID** (no client secret). Never commit it.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project (for example "rentrix-dev").
-2. APIs & Services → OAuth consent screen: user type **External**, app name "Rentrix (dev)", a support email, scopes `openid`, `email` and `profile` only. While the app is in "Testing", add your own Google account as a test user.
+2. APIs & Services → OAuth consent screen: user type **External**, app name "Doorway Living (dev)", a support email, scopes `openid`, `email` and `profile` only. While the app is in "Testing", add your own Google account as a test user.
 3. APIs & Services → Credentials → **Create credentials → OAuth client ID** → application type **Web application**.
 4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (Google Identity Services needs both for local dev). For production add the web origins `https://doorwayliving.in` and `https://www.doorwayliving.in`. No redirect URIs are needed.
 5. Copy the client ID (`…apps.googleusercontent.com`). Do **not** download or commit the JSON file.
@@ -105,7 +105,7 @@ TOKEN=…   # accessToken
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"phone":"+919876543210"}' http://localhost:8080/api/v1/me/identity/phone/start
 # → {"challengeId":"…","expiresAt":"…"}; the API log shows
-#   SMS to +91 XXXXXX3210 (SMS_BACKEND=log, not sent): 123456 is your Rentrix verification code.
+#   SMS to +91 XXXXXX3210 (SMS_BACKEND=log, not sent): 123456 is your Doorway Living verification code.
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"challengeId":"<challengeId>","code":"123456"}' http://localhost:8080/api/v1/me/identity/phone/confirm
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me   # badges.idVerified: true
