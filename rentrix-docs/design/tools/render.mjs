@@ -69,9 +69,10 @@ const PAGES = [
   ['verify-v4-submitted', 'mockups/verify-v4-submitted.html'],
   ['tenancy-agreement', 'mockups/tenancy-agreement.html'],
   ['admin-agreement', 'mockups/admin-agreement.html'],
+  ['admin-approvals-mobile', 'mockups/admin-approvals-mobile.html'],
 ];
 const MOBILE = new Set(['home', 'property', 'home-many-cities', 'verify-id', 'verify-rejected', 'verify-phone', 'society',
-  'welcome-created', 'verify-v4-phone', 'verify-v4-rental']);
+  'welcome-created', 'verify-v4-phone', 'verify-v4-rental', 'admin-approvals-mobile']);
 // New or changed in design v2 (copied to rentrix-docs/screenshots/design-v2/ with --copy-v2).
 const V2 = new Set(['home', 'search', 'onboarding', 'home-many-cities', 'city-picker', 'verify-profile', 'verify-linkedin', 'verify-id',
   'verify-agreement', 'verify-pending', 'verify-rejected', 'verify-approved', 'write-review-pending', 'admin-dashboard',
@@ -85,7 +86,7 @@ const copyV3 = process.argv.includes('--copy-v3');
 const onlyV3 = process.argv.includes('--only-v3');
 // New in design v4 (copied to rentrix-docs/screenshots/design-v4/ with --copy-v4).
 const V4 = new Set(['welcome-created', 'signin-toast', 'account-menu-progress', 'verify-v4-phone', 'verify-v4-id',
-  'verify-v4-rental', 'verify-v4-submitted', 'tenancy-agreement', 'admin-agreement']);
+  'verify-v4-rental', 'verify-v4-submitted', 'tenancy-agreement', 'admin-agreement', 'admin-approvals-mobile']);
 const copyV4 = process.argv.includes('--copy-v4');
 const onlyV4 = process.argv.includes('--only-v4');
 const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png' };

@@ -9,7 +9,7 @@
 <body data-brand="Doorway Living">
 <div class="mock-banner"><b>Mockup · Verify step 2: Phone (required, design v4)</b> · <code>POST /me/identity/phone/start</code>, <code>/confirm</code> · <span class="spec">illustrative number: the seed has no phones</span> · D-101 D-117</div>
 <header data-topbar data-as="tenant" data-dot></header>
-<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Your account is not verified yet. You can read everything; reviews, tenancies and enquiries open after approval. <a href="verify-v4-submitted.html">Continue verification</a></span></div></div>
+<div class="banner-pending"><div class="container"><i data-icon="clock" data-size="18"></i><span>Verify your phone to post. What you post shows at once as "Not verified yet" until an admin reviews it. <a href="verify-v4-submitted.html">Continue verification</a></span></div></div>
 <main class="container section">
   <p class="eyebrow">Verify your account · tenant</p>
   <h1 class="h1" style="margin-top:6px">Step 2 of 4 · Phone number <span class="badge badge-warn" style="vertical-align:middle">Required</span></h1>
@@ -33,7 +33,7 @@
         <div class="notice notice-dev" style="margin-top:16px"><i data-icon="code"></i><span><b>DEV ONLY.</b> No SMS is sent in dev and test: the code is in the API log (<code>LogSmsSender</code>). <span class="spec">D-101</span></span></div>
         <div class="row between" style="margin-top:20px"><a class="btn btn-ghost" href="verify-profile.html">Back</a><a class="btn btn-primary btn-lg" href="verify-v4-id.html">Verify and continue</a></div>
       </div>
-      <div class="card card-tight"><div class="notice notice-warn"><i data-icon="info"></i><span><b>When the server has no SMS provider</b> this card reads "Phone verification is not available yet. You can keep reading; we will let you know." and Submit stays off. <span class="spec">503 phone_otp_unavailable · D-117</span></span></div></div>
+      <div class="card card-tight"><div class="notice notice-warn"><i data-icon="info"></i><span><b>When the server has no SMS provider</b> this card reads "Phone verification is not available yet. You can keep reading; we will let you know." and posting stays off. On the preview the admin relays the code instead (SMS_BACKEND=admin-relay). <span class="spec">503 phone_otp_unavailable · D-117 · D-137</span></span></div></div>
     </div>
     <aside class="stack">
       <div class="card"><h2 class="h3">Why a phone</h2>

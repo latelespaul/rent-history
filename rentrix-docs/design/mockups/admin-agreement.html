@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="mock.css">
 </head>
 <body data-brand="Doorway Living">
-<div class="mock-banner"><b>Mockup · Admin approvals: rental agreement in the approval pane (design v4)</b> · <code>GET /admin/applications/{id}</code> (agreements), <code>POST /admin/agreements/{id}/anchor</code> · manual lookup, never scraped · Demo Tenant PNQ-7 · D-124 D-125 D-130</div>
+<div class="mock-banner"><b>Mockup · Admin approvals: rental agreement in the approval pane (design v4)</b> · <code>GET /admin/applications/{id}</code> (agreements), <code>POST /admin/agreements/{id}/anchor</code> · manual lookup, never scraped · Demo Tenant PNQ-7 · D-124 D-125 D-130 D-134</div>
 <header data-topbar data-as="admin"></header>
 <main class="container section">
   <p class="eyebrow">Admin · Approvals · Tenants</p>
@@ -37,9 +37,9 @@
       </div>
     </div>
     <aside class="stack">
-      <div class="card"><h2 class="h3">Decision</h2><p class="small muted">Approve needs a verified phone. The agreement and the Aadhaar check inform you; neither is required. <span class="spec">D-117</span></p>
-        <a class="btn btn-primary btn-block" href="#">Approve tenant</a><a class="btn btn-ghost btn-block" style="margin-top:8px" href="#">Reject with reason</a></div>
-      <div class="card"><h2 class="h3">Retention</h2><p class="small muted">The agreement file is deleted 30 days after your lookup or this decision. Fields, hash, number and tier stay. <span class="spec">D-131</span></p></div>
+      <div class="card"><h2 class="h3">Decision</h2><p class="small muted">Approving gives this tenant the green tick "Verified by Doorway Living". Rejecting removes no content: the user stays visible without the tick. The agreement and the Aadhaar check inform you; neither is required. <span class="spec">D-117 · D-134</span></p>
+        <a class="btn btn-primary btn-block" href="#">Approve · green tick</a><a class="btn btn-ghost btn-block" style="margin-top:8px" href="#">Reject with reason</a></div>
+      <div class="card"><h2 class="h3">Retention</h2><p class="small muted">The agreement file is deleted 30 days after the later of your decision and the other party's confirmation (90 days after upload if no other party joins). Fields, hash, number and tier stay. <span class="spec">D-131</span></p></div>
     </aside>
   </div>
 </main>

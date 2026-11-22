@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Admin · Approvals (phone)</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .phone { max-width: 390px; margin: 0 auto; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .chips .chip { flex: none; }
+  .qcard { margin-top: 12px; }
+  .qcard .meta { margin-top: 6px; }
+  .qactions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .qactions .btn { height: 48px; justify-content: center; }
+  .smscode { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--rx-teal-50); font-size: 13px; }
+</style>
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Admin approvals queue on a phone (design v4)</b> · <code>GET /admin/queue</code> (B13), <code>POST /admin/{type}/{id}/approve</code> | <code>/reject</code> · approve or reject in 1–2 taps · green tick "Verified by Doorway Living" · W9 · D-134 D-136 D-137</div>
+<header data-topbar data-as="admin"></header>
+<main class="container section phone">
+  <p class="eyebrow">Admin · Approvals</p>
+  <h1 class="h2" style="margin-top:6px">To review <span class="badge badge-info">14</span></h1>
+  <p class="xs muted">Everything here is already live and marked "Not verified yet". Approve gives the green tick; reject keeps it visible without the tick. <span class="spec">D-132 · D-134</span></p>
+  <div class="chips" style="margin-top:12px">
+    <span class="chip on">All 14</span><span class="chip">Users 4</span><span class="chip">Properties 3</span><span class="chip">Tenancies 3</span><span class="chip">Reviews 3</span><span class="chip">Agreements 1</span>
+  </div>
+
+  <div class="card qcard">
+    <div class="row between"><b><i data-icon="user" data-size="16"></i> New user · Tenant</b><span class="badge badge-warn">Not verified yet</span></div>
+    <div class="small meta">Demo Tenant BLR-9 <span class="badge badge-demo">Demo data</span></div>
+    <div class="xs muted">demo-tenant-blr9@example.test · phone <span class="masked">+91 XXXXXX3210</span> · waiting 3 h</div>
+    <div class="smscode"><div><b>SMS code (preview): 482 913</b></div><div class="xs muted">to +91 XXXXXX3210 · expires in 8 min · admin-relay <span class="spec">D-137</span></div></div>
+    <div class="qactions"><a class="btn btn-primary" href="#"><i data-icon="check" data-size="18"></i>Approve</a><a class="btn btn-secondary" href="#">Reject</a></div>
+  </div>
+
+  <div class="card qcard">
+    <div class="row between"><b><i data-icon="home" data-size="16"></i> Property</b><span class="badge badge-warn">Not verified yet</span></div>
+    <div class="small meta">Demo Annex I · 1BHK · Jayanagar, Bangalore <span class="badge badge-demo">Demo data</span></div>
+    <div class="xs muted">by Demo Landlord BLR-2 · 1 proof document · new society "Demo Enclave"</div>
+    <div class="qactions"><a class="btn btn-primary" href="#"><i data-icon="check" data-size="18"></i>Approve</a><a class="btn btn-secondary" href="#">Reject</a></div>
+  </div>
+
+  <div class="card qcard">
+    <div class="row between"><b><i data-icon="tenancy" data-size="16"></i> Tenancy</b><span class="badge badge-warn">Not verified yet</span></div>
+    <div class="small meta">Demo Studio D · Indiranagar · Feb 2025 – now · ₹19,000</div>
+    <div class="xs muted">Demo Landlord BLR-2 ↔ Demo Tenant BLR-4 · both confirmed · agreement: not checked</div>
+    <div class="qactions"><a class="btn btn-primary" href="#"><i data-icon="check" data-size="18"></i>Approve</a><a class="btn btn-secondary" href="#">Reject</a></div>
+  </div>
+
+  <div class="card qcard">
+    <div class="row between"><b><i data-icon="star" data-size="16"></i> Review · tenant → landlord</b><span class="badge badge-warn">Not verified yet</span></div>
+    <div class="small meta">★ 4 · "Repairs were done within a week and the deposit came back in full."</div>
+    <div class="xs muted">Demo Tenant PNQ-3 on Demo Landlord PNQ-1 · counts in "Not verified yet" rating until approved <span class="spec">D-135</span></div>
+    <div class="qactions"><a class="btn btn-primary" href="#"><i data-icon="check" data-size="18"></i>Approve</a><a class="btn btn-secondary" href="#">Reject</a></div>
+  </div>
+
+  <p class="xs muted" style="margin-top:14px">Reject opens one sheet: pick a reason code, optional note, "Reject". Every decision is audited. Tap a card for its full detail. <span class="spec">D-87 · D-136</span></p>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

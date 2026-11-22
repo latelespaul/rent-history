@@ -1,6 +1,6 @@
 # Rentrix — UX design (v1)
 
-Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console. Revised 2026-11-22 (**design v3**): ID verified with any one of Aadhaar (masked), PAN or phone OTP, LinkedIn as an optional bonus badge; browse by area and by gated society, society page, owner profile with all properties and a Homes rating (§2.8, §2.9, §8.2). Revised 2026-11-22 (**design v4**): product name Doorway Living; account-created screen, "Signed in as" toast and return to the page the user came from; phone required for every user, PAN / Aadhaar / LinkedIn as optional extra badges; onboarding straight into the stepper; verification progress in the account menu; rental-agreement verification with tier badges (§2.2, §2.7, §2.10, §8.3).
+Status: **current**. Date: 2026-11-21. Revised 2026-11-21 (**design v2**): searchable city picker and list-driven city cards instead of the Bangalore/Pune toggle; verification onboarding with admin approval; admin console. Revised 2026-11-22 (**design v3**): ID verified with any one of Aadhaar (masked), PAN or phone OTP, LinkedIn as an optional bonus badge; browse by area and by gated society, society page, owner profile with all properties and a Homes rating (§2.8, §2.9, §8.2). Revised 2026-11-22 (**design v4**): product name Doorway Living; account-created screen, "Signed in as" toast and return to the page the user came from; phone required for every user, PAN / Aadhaar / LinkedIn as optional extra badges; onboarding straight into the stepper; verification progress in the account menu; rental-agreement verification with tier badges; *open by default*: a user with a verified phone posts at once, everything shows "Not verified yet" until an admin gives the green tick "Verified by Doorway Living", and a mobile admin approvals queue (§2.2, §2.7, §2.10, §8.3, D-132–D-137).
 Scope: user flows, screen inventory, visual style, design tokens, icon set and static mockups for the v1 rebuild.
 Source of truth for roles, entities, permissions, API, auth and trust rules: [`../architecture/SYSTEM_DESIGN.md`](../architecture/SYSTEM_DESIGN.md).
 This document cites its decisions as `D-xx`. It introduces no deviation from them; UX-only choices are listed in §8.
@@ -62,7 +62,7 @@ Legend: `[screen]` = a mockup; `→` = navigation; `(API)` = the call behind a s
     └─ dev profile only: [Dev login] picker → POST /auth/dev-login (seed users, D-77)
 ```
 - Until onboarding completes, every other write returns `403 onboarding_required`; the web routes the user back to [Role pick] (D-73).
-- After the role pick comes verification (§2.7). The user can read everything at once; trust writes wait for approval (D-91).
+- After the role pick comes verification (§2.7). The user can read everything at once. *Changed in design v4 (open by default)*: with a verified phone the user can post at once; trust writes no longer wait for approval (D-132).
 - *Changed in design v4* (D-118, D-119): a new user goes role pick → **[Account created]** ("Welcome to Doorway Living, your account is created", name, email, role, "Verify your phone number") → the stepper. A returning user gets the toast **"Signed in as <name>"** ([Returning sign-in toast]) and lands back on the page they came from (`?next=`), not on the role home.
 - The other role is added later from settings (`PATCH /me`), shown as an "Also a landlord?" card on [My tenancies] (D-16).
 - An invite link (tenancy invite email) goes through the same sign-in, then lands on the tenancy to confirm (D-34).
@@ -132,15 +132,16 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 - Landlords do steps 1–3; each property is checked at listing time with a proof document (D-92), shown on the landlord's property form (W5).
 - Verify ID: phone OTP is verified at once (no admin); PAN and masked Aadhaar wait for an admin check, and the application can be submitted while they wait. "ID verified" shows as soon as any one method is verified; approval still opens trust writes (D-105).
 
-*Changed in design v4* (D-117, D-120, D-121):
+*Changed in design v4* (D-117, D-120, D-121, D-132, D-133):
 ```
-[Account created] ─▶ [1 Profile] ─▶ [2 Phone, required] ─▶ [3 ID, optional: PAN · masked Aadhaar · LinkedIn] ─▶ [4 Rental details, optional] ─▶ Submit
+[Account created] ─▶ [1 Profile] ─▶ [2 Phone, required] ─▶ [3 ID, optional: PAN · masked Aadhaar · LinkedIn] ─▶ [4 Rental details, optional] ─▶ Request verification
                                                                                                                           ▼
-                                                     [Submitted · waiting]  account menu "Waiting for approval" until an admin decides
+                                                     [Submitted · waiting]  account menu "Waiting for review" until an admin decides
 ```
-- Phone is the only required check; the ID cards and LinkedIn are extra badges with "Skip". PAN and Aadhaar show "Coming soon" until PLAN B12.
+- Phone is the only required check, and it is required only to post; the ID cards and LinkedIn are extra badges with "Skip". PAN and Aadhaar show "Coming soon" until PLAN B12.
+- *Open by default* (D-132, D-133): verification is optional. With a verified phone the user adds homes, tenancies, rent and reviews at once; they show "Not verified yet". The last button reads "Request verification". When an admin approves, the profile gets the green tick "Verified by Doorway Living" (D-134); a rejection keeps everything visible without the tick.
 - Rental details (both roles): upload the agreement of the home you rent now or rent out, type its key fields, see the first checks (§2.10).
-- The account menu shows "Verification: n of 4 steps", "Waiting for approval" or "Changes needed" with a dot on the avatar until approved ([Account menu progress]).
+- The account menu shows "Get verified: n of 4 steps", "Waiting for review", "Changes needed" or "Verify your phone to post" with a dot on the avatar until the green tick ([Account menu progress], D-121, D-133).
 
 ### 2.8 Browse by area and society (design v3)
 ```
@@ -169,7 +170,8 @@ other party ─▶ [Tenancy · confirm agreement] same file (sha256) ─▶ "Agr
 admin ─▶ [Admin · agreement in approvals] SHCIL / IGR lookup by hand ─▶ "Agreement verified"
 ```
 - The tier badge shows on the tenancy, its rent-history rows and review author lines; the public never sees the agreement (D-126).
-- The file is encrypted, seen only by the two parties and admins, and deleted 30 days after the check (D-131).
+- The file is encrypted, seen only by the two parties and admins, and deleted 30 days after the later of the admin decision and the other party's confirmation; with no other party within 90 days of upload it is deleted anyway (D-131).
+- The agreement tier is an extra signal next to the green tick of the tenancy (D-126, D-134).
 
 ---
 
@@ -212,15 +214,16 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 30 | Society page (v3) | `/s/:id` | anyone (review text signed in) | `GET /societies/{id}`, `/reviews` | D-107, D-111, D-112, D-57 | `mockups/society.html` | `screenshots/society-desktop.png`, `-mobile.png` |
 | 31 | Account created (v4) | `/welcome/created` | right after the role pick | `POST /me/onboarding` response | D-116, D-118 | `mockups/welcome-created.html` | `screenshots/welcome-created-desktop.png`, `-mobile.png` |
 | 32 | Returning sign-in toast (v4) | any page, from `?next=` | returning user | `POST /auth/google`, `/auth/dev-login` | D-119 | `mockups/signin-toast.html` | `screenshots/signin-toast-desktop.png` |
-| 33 | Account menu progress (v4) | top bar, every page | not approved | `GET /me/verification` | D-121 | `mockups/account-menu-progress.html` | `screenshots/account-menu-progress-desktop.png` |
+| 33 | Account menu progress (v4) | top bar, every page | no green tick yet | `GET /me/verification` | D-121, D-133 | `mockups/account-menu-progress.html` | `screenshots/account-menu-progress-desktop.png` |
 | 34 | Verify 2 · Phone, required (v4) | `/verify/phone` | signed in | `POST /me/identity/phone/start`, `/confirm` | D-101, D-117 | `mockups/verify-v4-phone.html` | `screenshots/verify-v4-phone-desktop.png`, `-mobile.png` |
 | 35 | Verify 3 · ID, optional (v4) | `/verify/id` | signed in | `GET /me/identity`, `PUT /me/identity/linkedin` (PAN / Aadhaar from B12) | D-100, D-117, D-122 | `mockups/verify-v4-id.html` | `screenshots/verify-v4-id-desktop.png` |
 | 36 | Verify 4 · Rental details (v4) | `/verify/rental` | signed in | `POST /me/agreements`, `/confirm` | D-120, D-123–D-127, D-131 | `mockups/verify-v4-rental.html` | `screenshots/verify-v4-rental-desktop.png`, `-mobile.png` |
-| 37 | Submitted · waiting (v4) | `/verify` | `PENDING` | `GET /me/verification` | D-90, D-121 | `mockups/verify-v4-submitted.html` | `screenshots/verify-v4-submitted-desktop.png` |
+| 37 | Verification requested · waiting for review (v4) | `/verify` | `PENDING` | `GET /me/verification` | D-90, D-121, D-132, D-133 | `mockups/verify-v4-submitted.html` | `screenshots/verify-v4-submitted-desktop.png` |
 | 38 | Tenancy · confirm agreement (v4) | `/tenancies/:id/agreement` | the other party | `GET /tenancies/{id}/agreement`, `POST …/confirm` | D-125, D-126, D-128 | `mockups/tenancy-agreement.html` | `screenshots/tenancy-agreement-desktop.png` |
-| 39 | Admin · agreement in approvals (v4) | `/admin/approvals?role=` (detail pane) | `ADMIN` | `GET /admin/applications/{id}`, `POST /admin/agreements/{id}/anchor` | D-124, D-125, D-130 | `mockups/admin-agreement.html` | `screenshots/admin-agreement-desktop.png` |
+| 39 | Admin · agreement in approvals (v4) | `/admin/approvals?role=` (detail pane) | `ADMIN` | `GET /admin/applications/{id}`, `POST /admin/agreements/{id}/anchor` | D-124, D-125, D-130, D-134 | `mockups/admin-agreement.html` | `screenshots/admin-agreement-desktop.png` |
+| 40 | Admin · approvals on a phone (v4) | `/admin/approvals` (390 px phone layout) | `ADMIN` | `GET /admin/queue` (B13), `POST /admin/{type}/{id}/approve`, `…/reject` | D-134, D-136, D-137 | `mockups/admin-approvals-mobile.html` | `screenshots/admin-approvals-mobile-desktop.png`, `-mobile.png` |
 
-*Changed in design v4*: #31–#39 are new. They replace #14 (LinkedIn is now a card in #35), #15 and #26 (#34 and #35: phone is its own required step, the ID chooser is optional) and #16 (#36). #10 Role pick now continues to #31; the brand reads Doorway Living on v4 pages (D-116).
+*Changed in design v4*: #31–#40 are new. *Open by default* (D-132–D-134): the v4 screens say "Request verification" and "Waiting for review", and the pending banner reads "Verify your phone to post"; #20 Write review · pending approval and the gate states of #19 and #22 are superseded, because a phone-verified user writes at once and approval only gives the green tick. #40 is the mobile-first queue an admin works from a phone (D-136). They replace #14 (LinkedIn is now a card in #35), #15 and #26 (#34 and #35: phone is its own required step, the ID chooser is optional) and #16 (#36). #10 Role pick now continues to #31; the brand reads Doorway Living on v4 pages (D-116).
 
 *Changed in design v3*: #2 Search (tabs, area and society filters, owner badges), #3 Property (location breadcrumb, owner badges), #4 Landlord profile (now the owner profile: badges, all properties grouped, Homes rating), #5 Tenant profile ("ID verified" badge), #13–#19 verification steps (#15 is now "Verify 2 · Verify ID", the method chooser, route `/verify/id`; #14 is "Verify 3 · LinkedIn, optional"), #22 Admin approvals (identity checks per method, "ID checks" tab). The area page reuses the Browse societies layout filtered to one area, with its standalone homes below.
 
@@ -436,7 +439,11 @@ Screenshots of implemented features (from the real app with dev login) go to `re
 ### 8.3 Design v4 choices
 - **The welcome is a moment, not a redirect.** A green tick, "your account is created", the facts the user gave (name, email, role) and one primary next step. "Not now" is always there, so the user is never forced into the stepper (D-118).
 - **A toast, not a page, for returning users.** "Signed in as <name>" confirms which Google account was used and gets out of the way; the user lands where they were (D-119).
-- **Phone first, badges second.** The stepper marks Phone "Required" and ID "Optional"; the ID step opens with "Phone verified: that is all you need to submit", so optional cards never feel like a blocker (D-117).
+- **Phone first, badges second.** The stepper marks Phone "Required" and ID "Optional"; the ID step opens with "Phone verified: that is all you need to post", so optional cards never feel like a blocker (D-117).
+- **Open by default, tick for trust.** Nothing waits for an admin: posts show at once with a neutral "Not verified yet" badge, and approval adds the green tick "Verified by Doorway Living". A rejection never hides content; only abuse reports and admin hide do (D-132, D-134).
+- **Two ratings, never mixed.** The headline average counts green-tick reviews only; unverified reviews show next to it with their own count and average, labelled "Not verified yet" (D-135).
+- **Approvals fit a thumb.** The admin queue on a phone is one card per item with Approve and Reject as large side-by-side buttons; approve is one tap, reject is two (reason sheet) (D-136).
+- **Preview SMS through the admin.** With `SMS_BACKEND=admin-relay` the pending code shows on the user's queue card next to the masked phone, so the preview works without an SMS provider (D-137).
 - **Progress lives where the name is.** The account menu row with a thin bar and the next step, plus a dot on the avatar, replaces hunting for a status page (D-121).
 - **Checks are explained, not scored silently.** Each rental-agreement check shows a one-line reason; "Later" marks checks that need the other party or an admin, so a user never reads a pending check as a failure (D-125).
 - **Aadhaar warning before the scan.** The upload card warns to cover Aadhaar numbers before scanning, because the manual extractor cannot redact a file (D-131).
