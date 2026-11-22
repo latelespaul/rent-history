@@ -57,19 +57,17 @@ export function ActionError({ error }: { error: unknown }) {
       </Notice>
     )
   }
-  if (isApiError(error) && error.code === "tenancy_overlap") {
+  if (isApiError(error) && error.code === "tenancy_overlap" && error.problem.conflict) {
     const conflict = error.problem.conflict
-    const period = conflict
-      ? `${monthLabel(conflict.from)} – ${monthLabel(conflict.to) ?? "now"}`
-      : null
+    const period = `${monthLabel(conflict.from)} – ${monthLabel(conflict.to) ?? "now"}`
     return (
       <Notice tone="warn" icon="tenancy">
         <p className="font-semibold">This home already has a tenancy for these dates</p>
         <p className="mt-1">
-          {period ? `A confirmed tenancy runs ${period}. ` : ""}A whole home has one tenancy at a
-          time, so the new one must start after it ends.
+          A confirmed tenancy runs {period}. A whole home has one tenancy at a time, so the new one
+          must start after it ends.
         </p>
-        {conflict?.tenancyId && conflict.status === "ACTIVE" && (
+        {conflict.tenancyId && conflict.status === "ACTIVE" && (
           <Button asChild size="sm" variant="outline" className="mt-2">
             <Link to={`/tenancies/${conflict.tenancyId}`}>End the current tenancy first</Link>
           </Button>

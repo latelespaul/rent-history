@@ -340,6 +340,8 @@ class TenancyApiTest {
 		create(next, request(property, null, TODAY.minusMonths(1), null, 25_000))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("tenancy_overlap"))
+			.andExpect(jsonPath("$.detail").value(
+				"This home already has a current tenancy since 2024-04. It must end before a new one can start."))
 			.andExpect(jsonPath("$.conflict.from").value("2024-04"))
 			.andExpect(jsonPath("$.conflict.tenancyId").doesNotExist());
 		// Nothing was ended automatically.

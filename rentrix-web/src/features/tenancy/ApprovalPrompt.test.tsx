@@ -10,7 +10,7 @@ const overlap = (conflict: ProblemDetails["conflict"]) =>
   new ApiError({
     status: 409,
     code: "tenancy_overlap",
-    detail: "This home already has a current tenancy since 2024-04-01.",
+    detail: "This home already has a current tenancy since 2024-04.",
     conflict,
   })
 
@@ -46,5 +46,20 @@ describe("ActionError on 409 tenancy_overlap", () => {
 
     expect(screen.getByText(/Jan 2023 – Dec 2024/)).toBeTruthy()
     expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it("shows the server's message for a same-tenant overlap that names no home tenancy", () => {
+    renderError(
+      new ApiError({
+        status: 409,
+        code: "tenancy_overlap",
+        detail: "This tenant already has a tenancy on this home for overlapping dates.",
+      }),
+    )
+
+    expect(
+      screen.getByText("This tenant already has a tenancy on this home for overlapping dates."),
+    ).toBeTruthy()
+    expect(screen.queryByText("This home already has a tenancy for these dates")).toBeNull()
   })
 })

@@ -468,9 +468,9 @@ public class TenancyService {
 					conflict.put("tenancyId", clash.getPublicId().toString());
 				}
 				throw ApiException.tenancyOverlap(clash.getEndDate() == null
-					? "This home already has a current tenancy since " + clash.getStartDate()
+					? "This home already has a current tenancy since " + conflict.get("from")
 						+ ". It must end before a new one can start."
-					: "This home already has a tenancy from " + clash.getStartDate() + " to " + clash.getEndDate()
+					: "This home already has a tenancy from " + conflict.get("from") + " to " + conflict.get("to")
 						+ " that overlaps these dates.", conflict);
 			});
 	}
