@@ -58,9 +58,10 @@ import java.util.stream.Collectors;
  * the first review and at most {@value #MAX_PER_DAY} reviews a day (D-45), and text that passes the D-43 rules.
  * <p>States (§7.2): a property review publishes at once (D-47); a person review waits in {@code AWAITING_REVEAL},
  * visible only to its author, until the counter-review of the same tenancy is submitted, 14 days pass or the window
- * closes; then both publish together (D-46, {@link ReviewRevealJob}). The author may edit for 7 days after
- * submitting (D-41), and a review written during the tenancy may be updated once after it ends (D-40). Withdrawal
- * is final and never gated. The subject (or the home's landlord for a property review) may post one response.
+ * closes; then both publish together (D-46, {@link ReviewRevealJob}). Until it publishes, the author may edit for 7
+ * days after submitting (D-41), and a review written during the tenancy may be updated once after it ends (D-40); a
+ * published review is frozen. Withdrawal is final and never gated. The subject (or the home's landlord for a property
+ * review) may post one response.
  * <p>Every change that can move a rating goes through {@link RatingRecomputer#reviewChanged} in the same
  * transaction (D-33). Reading is never gated by approval (D-91); visibility follows the review's subject (§10).
  */
@@ -175,17 +176,20 @@ public class ReviewService {
 		return view(review, me, caller.hasRole(Role.ADMIN));
 	}
 
-	/** {@code PATCH /reviews/{id}}: the author, inside the edit window or with the one post-end update (D-40, D-41). */
+	/**
+	 * {@code PATCH /reviews/{id}}: the author of a review still {@code AWAITING_REVEAL}, inside the edit window or with
+	 * the one post-end update (D-40, D-41). A published review is frozen.
+	 */
 	@Transactional
 	public ReviewView update(UUID reviewId, UpdateReviewRequest request, AuthenticatedUser caller) {
 		User me = currentUser(caller);
 		Review review = writable(reviewId, me, caller);
 		requireAuthor(review, me);
-		if (review.getStatus() != ReviewStatus.AWAITING_REVEAL && review.getStatus() != ReviewStatus.PUBLISHED) {
-			throw ApiException.conflict("invalid_transition", "A " + review.getStatus() + " review cannot be edited.");
+		if (review.getStatus() == ReviewStatus.PUBLISHED) {
+			throw ApiException.rule("edit_window_closed", "A review is frozen once it is published.");
 		}
-		if (!editableState(review)) {
-			throw ApiException.rule("edit_window_closed", "A review is frozen once it is revealed.");
+		if (review.getStatus() != ReviewStatus.AWAITING_REVEAL) {
+			throw ApiException.conflict("invalid_transition", "A " + review.getStatus() + " review cannot be edited.");
 		}
 		approvals.require(me, authorRole(review));
 		Instant now = now();
@@ -219,9 +223,6 @@ public class ReviewService {
 			review.setEditUntil(now.plus(EDIT_WINDOW));
 		}
 		reviews.saveAndFlush(review);
-		if (review.getStatus() == ReviewStatus.PUBLISHED) {
-			recomputer.reviewChanged(review);
-		}
 		return view(review, me, caller.hasRole(Role.ADMIN));
 	}
 
@@ -449,17 +450,9 @@ public class ReviewService {
 			&& closes != null && !today().isAfter(closes);
 	}
 
-	/**
-	 * D-41: a person review is editable only while it awaits reveal, so neither side can react to the other's
-	 * revealed review; a property review has no counterpart and stays editable once published.
-	 */
-	private static boolean editableState(Review review) {
-		return review.getStatus() == ReviewStatus.AWAITING_REVEAL
-			|| review.getStatus() == ReviewStatus.PUBLISHED && review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY;
-	}
-
+	/** D-41: only an unpublished review is editable, so neither side can react to a revealed review. */
 	private boolean canEdit(Review review) {
-		return editableState(review) && (!now().isAfter(review.getEditUntil()) || postEndUpdateAllowed(review));
+		return review.getStatus() == ReviewStatus.AWAITING_REVEAL && (!now().isAfter(review.getEditUntil()) || postEndUpdateAllowed(review));
 	}
 
 	/** D-45: email verified, and a first review needs an account at least 7 days old. */

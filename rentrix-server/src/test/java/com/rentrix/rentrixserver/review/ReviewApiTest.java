@@ -345,7 +345,7 @@ class ReviewApiTest {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
-		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, 4);
 		String edit = """
 			{"ratingOverall": 2, "body": "Water supply got worse over the year and the lift stopped working often."}""";
 
@@ -355,7 +355,6 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.ratingOverall").value(2))
 			.andExpect(jsonPath("$.editedAt").exists())
 			.andExpect(jsonPath("$.actions.edit").value(true));
-		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getRatingSum()).isEqualTo(2);
 
 		Review review = stored(id);
 		review.setEditUntil(Instant.now().minus(Duration.ofDays(1)));
@@ -366,7 +365,7 @@ class ReviewApiTest {
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("edit_window_closed"));
 
-		// D-40: once the tenancy ends, one update is allowed, which reopens the 7-day window
+		// D-40: once the tenancy ends, one update is allowed while still hidden, which reopens the 7-day window
 		tenancy.setStatus(TenancyStatus.ENDED);
 		tenancy.setEndDate(TODAY.minusDays(1));
 		tenancy.setEndedAt(Instant.now().minus(Duration.ofDays(1)));
@@ -383,6 +382,24 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.code").value("edit_window_closed"));
 		assertThat(jdbc.queryForObject("select count(*) from review_revisions where review_id = ?", Integer.class,
 			review.getId())).isEqualTo(2);
+	}
+
+	@Test
+	void publishedPropertyReviewIsFrozen() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+
+		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.status").value("PUBLISHED"))
+			.andExpect(jsonPath("$.actions.edit").value(false));
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"ratingOverall": 1, "body": "Water supply got worse over the year and the lift stopped working often."}"""))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("edit_window_closed"));
+		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getRatingSum()).isEqualTo(4);
 	}
 
 	@Test
