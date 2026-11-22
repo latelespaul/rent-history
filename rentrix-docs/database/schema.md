@@ -21,7 +21,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | none | B16 | `rating_aggregates` gains subject types `SOCIETY`, `AREA`, `OWNER_HOMES` | `subject_type VARCHAR(16)` has no `CHECK`, so no DDL |
 | `V<n>__rental_agreements.sql` (design v4) | **B18** | `rental_agreements` | §6 |
 | none (design v4) | B17 | phone required for submit, approve and the gate (D-117) | rules only, no DDL |
-| `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill |
+| `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 
@@ -385,7 +385,7 @@ CREATE INDEX ix_rental_agreements_purge ON rental_agreements (purge_after);
 | the live agreement of a tenancy (status not `REPLACED`) | `ix_rental_agreements_tenancy` |
 | the applicant's agreements in the admin approval pane | `ix_rental_agreements_application` |
 | reuse check by file hash or anchor number (D-129) | `ix_rental_agreements_sha256`, `ix_rental_agreements_anchor` |
-| retention job: files to delete (D-131; `purge_after` = 30 days after the later of `decided_at` and `counterparty_confirmed_at`, 90 days after upload while no other party is linked, 180 days at the latest) | `ix_rental_agreements_purge` |
+| retention job: files to delete (D-131; `purge_after` = 30 days after the later of `decided_at` and `counterparty_confirmed_at`, 90 days after upload when no other party is linked) | `ix_rental_agreements_purge` |
 
 Never in any column: a full Aadhaar number (typed fields are masked at intake, D-131), a full PAN, the decrypted file. `application_id` is set only while no tenancy is linked or for the admin's history; when an onboarding agreement is linked to a tenancy both stay set.
 
