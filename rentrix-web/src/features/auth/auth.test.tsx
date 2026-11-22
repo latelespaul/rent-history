@@ -322,6 +322,8 @@ describe("settings", () => {
     await waitFor(() => expect(where(router)).toBe("/"))
     expect(auth.logout).toHaveBeenCalled()
     expect(api.clearSession).toHaveBeenCalled()
-    expect(await screen.findByRole("link", { name: "Sign in / Sign up" })).toBeTruthy()
+    expect(
+      await screen.findAllByRole("link", { name: "Sign in / Sign up with Google" }),
+    ).toHaveLength(2)
   })
 })
