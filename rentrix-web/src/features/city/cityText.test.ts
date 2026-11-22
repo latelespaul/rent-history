@@ -31,7 +31,13 @@ describe("filterCities", () => {
   it("finds the cities of a region by the region's name", () => {
     const ncr: City[] = [
       { code: "DEL", name: "Delhi", aliases: ["New Delhi"], state: "Delhi", region: "Delhi NCR" },
-      { code: "GGN", name: "Gurugram", aliases: ["Gurgaon"], state: "Haryana", region: "Delhi NCR" },
+      {
+        code: "GGN",
+        name: "Gurugram",
+        aliases: ["Gurgaon"],
+        state: "Haryana",
+        region: "Delhi NCR",
+      },
       { code: "HYD", name: "Hyderabad", aliases: [], state: "Telangana", region: null },
       { code: "NOI", name: "Noida", aliases: [], state: "Uttar Pradesh", region: "Delhi NCR" },
     ]
