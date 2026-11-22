@@ -66,6 +66,9 @@ export interface CurrentUser {
   avatarUrl?: string | null
   roles: Role[]
   homeCity?: string | null
+  /** True for seed users (D-68). */
+  demo?: boolean
+  needsOnboarding?: boolean
 }
 
 /** `POST /auth/google`, `/auth/dev-login` and `/auth/refresh` (D-62, D-63, D-70). */
@@ -73,4 +76,95 @@ export interface AuthSession {
   accessToken: string
   user?: CurrentUser
   needsOnboarding?: boolean
+}
+
+/** Property kinds (SYSTEM_DESIGN §5.3). */
+export type PropertyType = "APARTMENT" | "INDEPENDENT_HOUSE" | "VILLA" | "STUDIO" | "ROOM" | "PG"
+
+/** Furnishing level (§5.3). */
+export type Furnishing = "UNFURNISHED" | "SEMI" | "FULL"
+
+/** A city as a property carries it: code and display name. */
+export interface CityRef {
+  code: string
+  name: string
+}
+
+/**
+ * A stored aggregate as cards and pages show it (§9): `average` (one decimal) is null under
+ * 3 reviews, so the UI shows "New · n reviews" instead of stars (D-52).
+ */
+export interface RatingSummary {
+  reviewCount: number
+  average: number | null
+}
+
+/** One `GET /properties` result: public fields only (D-56, D-57). */
+export interface PropertyCard {
+  id: string
+  city: CityRef
+  locality: string
+  buildingName: string | null
+  street: string | null
+  propertyType: PropertyType
+  bedrooms: number | null
+  bathrooms: number | null
+  areaSqft: number | null
+  furnishing: Furnishing | null
+  parking: boolean | null
+  demo: boolean
+  rating: RatingSummary
+  landlordName: string
+}
+
+/**
+ * The owner as a property page shows them. Anonymous visitors get the short name and rating
+ * only; `id` (the landlord profile link) comes only for signed-in callers (D-55).
+ */
+export interface LandlordSummary {
+  id?: string
+  shortName: string
+  rating: RatingSummary
+}
+
+export type PropertyStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED"
+
+/** `GET /properties/{id}`: `unitLabel` only for the owner and admins (D-56, D-57). */
+export interface PropertyDetail {
+  id: string
+  city: CityRef
+  locality: string
+  buildingName: string | null
+  street: string | null
+  pincode: string | null
+  unitLabel?: string
+  propertyType: PropertyType
+  bedrooms: number | null
+  bathrooms: number | null
+  areaSqft: number | null
+  furnishing: Furnishing | null
+  parking: boolean | null
+  description: string | null
+  status: PropertyStatus
+  demo: boolean
+  rating: RatingSummary
+  landlord: LandlordSummary
+  createdAt: string
+  updatedAt: string
+}
+
+/** One row of `GET /properties/{id}/rent-history` (D-26): no tenant identity, month precision. */
+export interface RentHistoryRow {
+  from: string
+  to: string | null
+  monthlyRent: number
+}
+
+/** One property review as `GET /properties/{id}/reviews` returns it (text only when signed in). */
+export interface PropertyReview {
+  id: string
+  rating: number
+  text?: string | null
+  authorName?: string | null
+  publishedAt?: string | null
 }

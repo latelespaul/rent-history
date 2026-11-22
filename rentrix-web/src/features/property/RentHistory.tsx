@@ -1,0 +1,112 @@
+import { Badge } from "@/components/ui/badge"
+import { TrendUpIcon } from "@/components/ui/icons.gen"
+import { EmptyState, ErrorState } from "@/components/ui/states"
+import type { RentHistoryRow } from "@/types/api"
+import { monthLabel, rupees } from "./labels"
+import { SignInPrompt } from "./SignInPrompt"
+import { useRentHistory } from "./useProperties"
+
+/** Newest first; a change is shown against the row before it in time. */
+function rowsWithChange(rows: RentHistoryRow[]) {
+  const sorted = [...rows].sort((a, b) => b.from.localeCompare(a.from))
+  return sorted.map((row, i) => {
+    const older = sorted[i + 1]
+    const change =
+      older && older.monthlyRent > 0
+        ? ((row.monthlyRent - older.monthlyRent) / older.monthlyRent) * 100
+        : null
+    return { row, change }
+  })
+}
+
+/**
+ * Rent history (D-26): monthly rent from confirmed tenancies, no tenant names, month precision.
+ * Signed-in only (D-56). Until the API serves it (B5) the card says so instead of guessing.
+ */
+export function RentHistory({ propertyId, signedIn }: { propertyId: string; signedIn: boolean }) {
+  const history = useRentHistory(propertyId, signedIn)
+
+  let body
+  if (!signedIn) {
+    body = (
+      <SignInPrompt what="Sign in to see the full rent history: what this home actually rented for." />
+    )
+  } else if (history.isPending) {
+    body = <p className="text-sm text-ink-500">Loading rent history…</p>
+  } else if (history.isError) {
+    body = (
+      <ErrorState
+        title="Rent history could not be loaded"
+        error={history.error}
+        onRetry={() => void history.refetch()}
+      />
+    )
+  } else if (history.data === null) {
+    body = (
+      <EmptyState
+        icon="trend-up"
+        title="Rent history is not available yet"
+        description="Confirmed rent from tenancies will show here once tenancy records are live."
+      />
+    )
+  } else if (history.data.length === 0) {
+    body = (
+      <EmptyState
+        icon="trend-up"
+        title="No confirmed rent yet"
+        description="Rent appears here when a landlord and tenant both confirm a tenancy."
+      />
+    )
+  } else {
+    body = (
+      <div className="overflow-x-auto">
+        <table className="num w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs tracking-wide text-ink-500 uppercase">
+              <th className="py-2 pr-4 font-semibold">From</th>
+              <th className="py-2 pr-4 font-semibold">To</th>
+              <th className="py-2 pr-4 text-right font-semibold">Monthly rent</th>
+              <th className="py-2 text-right font-semibold">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rowsWithChange(history.data).map(({ row, change }) => (
+              <tr
+                key={`${row.from}-${row.monthlyRent}`}
+                className="border-b border-line last:border-0"
+              >
+                <td className="py-2.5 pr-4">{monthLabel(row.from)}</td>
+                <td className="py-2.5 pr-4">{monthLabel(row.to) ?? "now"}</td>
+                <td className="py-2.5 pr-4 text-right font-semibold">{rupees(row.monthlyRent)}</td>
+                <td className="py-2.5 text-right text-ink-700">
+                  {change === null
+                    ? "first record"
+                    : `${change > 0 ? "+" : ""}${change.toFixed(1)}%`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  return (
+    <section
+      aria-labelledby="rent-heading"
+      className="space-y-3 rounded-xl border border-line bg-surface p-5 shadow-sm"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="rent-heading" className="inline-flex items-center gap-2 text-lg font-semibold">
+          <TrendUpIcon size={20} />
+          Rent history
+        </h2>
+        <Badge variant="verified">Confirmed by both sides</Badge>
+      </div>
+      <p className="text-sm text-ink-500">
+        Monthly rent from confirmed tenancies. No tenant names.
+      </p>
+      {body}
+    </section>
+  )
+}
