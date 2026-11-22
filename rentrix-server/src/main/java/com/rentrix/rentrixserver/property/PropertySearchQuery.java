@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.property;
 
 import com.rentrix.rentrixserver.review.RatingSubjectType;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,8 @@ public final class PropertySearchQuery {
 	
 	/** D-52: below this many counted reviews no average is shown, so it cannot pass a rating filter either. */
 	public static final int MIN_REVIEWS_FOR_AVERAGE = 3;
+	
+	private static final BigDecimal SHOWN_AVERAGE_HALF_STEP = new BigDecimal("0.05");
 	
 	private static final char LIKE_ESCAPE = '!';
 	
@@ -63,7 +66,7 @@ public final class PropertySearchQuery {
 		if (criteria.minRating() != null) {
 			sql.append(" AND ra.review_count >= ? AND ra.average >= ?");
 			params.add(MIN_REVIEWS_FOR_AVERAGE);
-			params.add(criteria.minRating());
+			params.add(criteria.minRating().subtract(SHOWN_AVERAGE_HALF_STEP));
 		}
 		if (criteria.text() != null) {
 			String pattern = "%" + escapeLike(criteria.text()) + "%";

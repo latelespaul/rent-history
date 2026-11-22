@@ -141,6 +141,31 @@ class PropertySearchTest {
 	}
 	
 	@Test
+	void bareSortNamesSortDescending() throws Exception {
+		Property strong = home("Strong", "Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		Property many = home("Many", "Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		home("Unrated", "Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		support.rating(strong, 3, 5.0);
+		support.rating(many, 10, 4.2);
+		mvc.perform(get("/properties").param("city", CITY).param("sort", "top_rated"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Strong", "Many", "Unrated")));
+		mvc.perform(get("/properties").param("city", CITY).param("sort", "newest"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Unrated", "Many", "Strong")));
+	}
+	
+	@Test
+	void minRatingMatchesTheShownOneDecimalAverage() throws Exception {
+		Property shownFour = home("Shown Four", "Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		Property shownThreeNine = home("Shown Three Nine", "Area", PropertyType.APARTMENT, 2,
+			PropertyStatus.PUBLISHED);
+		support.rating(shownFour, 50, 3.96);
+		support.rating(shownThreeNine, 50, 3.94);
+		mvc.perform(get("/properties").param("city", CITY).param("minRating", "4"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Shown Four")))
+			.andExpect(jsonPath("$.items[0].rating.average").value(4.0));
+	}
+	
+	@Test
 	void paginatesWithTheD59Envelope() throws Exception {
 		for (int i = 0; i < 5; i++) {
 			home("Home " + i, "Area", PropertyType.APARTMENT, 1, PropertyStatus.PUBLISHED);

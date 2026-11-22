@@ -62,7 +62,8 @@ public class PropertyController {
 	 * {@code GET /properties?city=&locality=&type=&bedrooms=&minRating=&q=&page=&size=&sort=}: published homes.
 	 * {@code city} is a live city code (else {@code 422 city_not_live}); without it every live city is searched.
 	 * {@code locality} is a prefix, {@code q} matches locality, building or street, {@code minRating} (1–5)
-	 * keeps homes with an average shown, i.e. 3 or more reviews (D-52).
+	 * keeps homes whose shown average (one decimal) reaches it, i.e. 3 or more reviews (D-52). A {@code sort}
+	 * name without a direction sorts descending.
 	 */
 	@GetMapping("/properties")
 	public PageResponse<PropertyCard> search(
@@ -89,7 +90,8 @@ public class PropertyController {
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		Pageable pageable = PageRequests.of(page, size, sort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
+		String searchSort = sort == null || sort.isBlank() || sort.contains(",") ? sort : sort + ",desc";
+		Pageable pageable = PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
 		return service.search(new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating,
 			textKey), pageable);
