@@ -20,6 +20,8 @@ class ReviewContentRulesTest {
 		"The second bedroom, room 2 was small",
 		"He is the #1 landlord in the area",
 		"The flat is 10 min from the metro and 2 km from the market",
+		"Close to NH-48 and the IT park, easy commute",
+		"The house is right on SH-17 near the bus stand",
 	})
 	void honestSentencesPass(String text) {
 		assertThat(ReviewContentRules.review(text + PAD, null)).isEqualTo(text + PAD);
@@ -31,6 +33,7 @@ class ReviewContentRulesTest {
 		"Our house no. 12 had a garden",
 		"Unit #5 faces the road",
 		"We stayed in A-1203",
+		"We stayed in B 402",
 		"We lived in flat B 402",
 		"Tower C-1204 has a slow lift",
 	})
