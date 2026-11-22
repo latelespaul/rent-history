@@ -19,6 +19,9 @@ import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
+import com.rentrix.rentrixserver.rating.RatingRecomputer;
+import com.rentrix.rentrixserver.review.ReviewRepository;
+import com.rentrix.rentrixserver.review.ReviewResponseRepository;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.RentRecord;
 import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
@@ -41,9 +44,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -58,14 +63,18 @@ import java.util.Map;
  * city with 2 towers of 2 wings each (Demo Greens, Koramangala; Demo Meadows, Baner). Demo Residency A is in
  * Demo Greens Tower 1 · Wing A and Demo Towers E in Demo Meadows Tower 2 · Wing B; every other home is
  * standalone (no society).
- * <p>Tenancies (PLAN B5): every home has a current tenancy confirmed by both sides with a rent increase a year in;
- * the first and third home of each city also have an ended earlier tenancy with its own increase, so every rent
- * history shows at least one change. One request (Demo Tenant PNQ-3 on Demo Towers E) waits for the landlord's
- * confirmation. Every demo party is approved and ID verified (see below), so dev login can run the whole flow.
+ * <p>Tenancies (PLAN B5): every home has three tenancies confirmed by both sides, two ended ones (2019–2021 and
+ * 2022–2024) and a current one, each with a rent increase a year in, so every rent history shows changes. One
+ * request (Demo Tenant PNQ-3 on Demo Towers E) waits for the landlord's confirmation. Every demo party is approved
+ * and ID verified (see below), so dev login can run the whole flow.
+ * <p>Reviews (PLAN B6, {@link DemoReviews}): every confirmed tenancy has its three reviews (tenant → landlord,
+ * landlord → tenant, tenant → home) with ratings spread over 1–5, except the current tenancy of Demo Villa C:
+ * there only the landlord's review is in, awaiting reveal, so Demo Tenant BLR-3 has two review tasks. One property
+ * review has the landlord's response. Aggregates are rebuilt from these reviews at the end.
  * <p>Runs only with the {@code dev} profile <em>and</em> {@code SEED_DEMO=true}, and only into an empty
  * database (no users, properties or areas); otherwise it does nothing. Verification states (the demo admin,
  * approved demo parties and the admin queue) come from {@link DemoVerificationSeed}. PLAN B10 extends it with
- * reviews and the pending location proposal (Demo Enclave).
+ * the pending location proposal (Demo Enclave).
  */
 @Slf4j
 @Component
@@ -137,6 +146,8 @@ public class DemoSeeder implements ApplicationRunner {
 			Furnishing.FULL, "Room 2"));
 	
 	private static final Instant SEEDED_AT = Instant.parse("2025-01-15T00:00:00Z");
+	/** Demo accounts predate their oldest tenancy, so their reviews read as written by real members. */
+	private static final Instant USERS_SINCE = Instant.parse("2018-11-01T00:00:00Z");
 	
 	private final UserRepository users;
 	private final PropertyRepository properties;
@@ -147,6 +158,8 @@ public class DemoSeeder implements ApplicationRunner {
 	private final TenancyRepository tenancies;
 	private final RentRecordRepository rentRecords;
 	private final DemoVerificationSeed verification;
+	private final DemoReviews reviews;
+	private final RatingRecomputer recomputer;
 	private final TransactionTemplate tx;
 	
 	public DemoSeeder(UserRepository users, PropertyRepository properties, CityRepository cities,
@@ -154,6 +167,8 @@ public class DemoSeeder implements ApplicationRunner {
 		TenancyRepository tenancies, RentRecordRepository rentRecords,
 		VerificationApplicationRepository applications, VerificationEventRepository events,
 		IdentityVerificationRepository identityChecks, ModerationActionRepository audit, IdHasher hasher,
+		ReviewRepository reviewRepository, ReviewResponseRepository responses, RatingRecomputer recomputer,
+		Clock clock,
 		PlatformTransactionManager transactionManager) {
 		this.users = users;
 		this.properties = properties;
@@ -165,6 +180,8 @@ public class DemoSeeder implements ApplicationRunner {
 		this.rentRecords = rentRecords;
 		this.verification = new DemoVerificationSeed(users, cities, applications, events, identityChecks, audit,
 			hasher, SEEDED_AT);
+		this.reviews = new DemoReviews(reviewRepository, responses, clock);
+		this.recomputer = recomputer;
 		this.tx = new TransactionTemplate(transactionManager);
 	}
 	
@@ -201,11 +218,13 @@ public class DemoSeeder implements ApplicationRunner {
 			}
 			List<Property> homes = HOMES.stream().map(home -> home(home, areaByName.get(home.locality()),
 				societyByName.get(home.society()), towerByPath.get(home.society() + "/" + home.tower()))).toList();
-			int seededTenancies = tenancies(homes);
+			List<Tenancy> confirmed = tenancies(homes);
 			int seededApplications = verification.seed();
+			int seededReviews = reviews.seed(confirmed, homes.get(2));
+			recomputer.recomputeAll();
 			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
-				+ "{} tenancies, {} verification applications.", LANDLORDS.size(), TENANTS.size(), AREAS.size(),
-				SOCIETIES.size(), HOMES.size(), seededTenancies, seededApplications);
+				+ "{} tenancies, {} reviews, {} verification applications.", LANDLORDS.size(), TENANTS.size(),
+				AREAS.size(), SOCIETIES.size(), HOMES.size(), confirmed.size() + 1, seededReviews, seededApplications);
 			return true;
 		});
 		return Boolean.TRUE.equals(seeded);
@@ -220,7 +239,7 @@ public class DemoSeeder implements ApplicationRunner {
 		user.setRoles(EnumSet.of(role));
 		user.setHomeCity(cities.getReferenceById(code.substring(0, 3)));
 		user.setDemo(true);
-		user.setCreatedAt(SEEDED_AT);
+		user.setCreatedAt(USERS_SINCE);
 		users.save(user);
 	}
 	
@@ -296,29 +315,35 @@ public class DemoSeeder implements ApplicationRunner {
 	}
 	
 	/**
-	 * Home {@code k} (0–3) of a city: a current tenancy of tenant {@code k+1} from 2024-(3+k)-01 with a 7% increase
-	 * twelve months later; homes 0 and 2 also have an ended tenancy of tenant {@code k+2}, 20 months from
-	 * 2022-(6+k)-01 with a 5% increase after a year, ending before that tenant's own current tenancy elsewhere.
+	 * Home {@code k} (0–3) of a city, oldest first: an ended tenancy of tenant {@code (k+2) mod 4 + 1}, 24 months
+	 * from 2019-(1+k)-01; an ended tenancy of tenant {@code k+2} (even {@code k}) or {@code k} (odd {@code k}),
+	 * 20 months from 2022-(6+k)-01, ending before that tenant's own current tenancy; and a current tenancy of tenant
+	 * {@code k+1} from 2024-(3+k)-01. Each has a 5% (ended) or 7% (current) increase twelve months in.
+	 *
+	 * @return the confirmed tenancies, in that order per home
 	 */
-	private int tenancies(List<Property> homes) {
-		int count = 0;
+	private List<Tenancy> tenancies(List<Property> homes) {
+		List<Tenancy> confirmed = new ArrayList<>();
 		for (int i = 0; i < homes.size(); i++) {
 			Property home = homes.get(i);
 			String city = home.getCity().getCode();
 			int k = i % 4;
 			long rent = RENTS.get(i);
-			if (k % 2 == 0) {
-				LocalDate start = LocalDate.of(2022, 6 + k, 1);
-				LocalDate end = start.plusMonths(20).minusDays(1);
-				Tenancy past = tenancy(home, tenant(city, k + 2), start, end, round(rent * 0.88), TenancyParty.TENANT);
-				rent(past, start.plusYears(1), round(past.getInitialRentInr() * 1.05), home.getLandlord());
-				count++;
-			}
+			LocalDate earlyStart = LocalDate.of(2019, 1 + k, 1);
+			Tenancy early = tenancy(home, tenant(city, (k + 2) % 4 + 1), earlyStart,
+				earlyStart.plusMonths(24).minusDays(1), round(rent * 0.8), TenancyParty.TENANT);
+			rent(early, earlyStart.plusYears(1), round(early.getInitialRentInr() * 1.05), home.getLandlord());
+			confirmed.add(early);
+			LocalDate pastStart = LocalDate.of(2022, 6 + k, 1);
+			Tenancy past = tenancy(home, tenant(city, k % 2 == 0 ? k + 2 : k), pastStart,
+				pastStart.plusMonths(20).minusDays(1), round(rent * 0.88), TenancyParty.TENANT);
+			rent(past, pastStart.plusYears(1), round(past.getInitialRentInr() * 1.05), home.getLandlord());
+			confirmed.add(past);
 			LocalDate start = LocalDate.of(2024, 3 + k, 1);
 			Tenancy current = tenancy(home, tenant(city, k + 1), start, null, rent,
 				k % 2 == 0 ? TenancyParty.LANDLORD : TenancyParty.TENANT);
 			rent(current, start.plusYears(1), round(rent * 1.07), home.getLandlord());
-			count++;
+			confirmed.add(current);
 		}
 		Tenancy pending = new Tenancy();
 		Property towers = homes.get(4);
@@ -332,7 +357,7 @@ public class DemoSeeder implements ApplicationRunner {
 		pending.setInitiatedBy(TenancyParty.TENANT);
 		pending.setStatus(TenancyStatus.PENDING_CONFIRMATION);
 		tenancies.save(pending);
-		return count + 1;
+		return confirmed;
 	}
 	
 	private Tenancy tenancy(Property home, User tenant, LocalDate start, LocalDate end, long rent,

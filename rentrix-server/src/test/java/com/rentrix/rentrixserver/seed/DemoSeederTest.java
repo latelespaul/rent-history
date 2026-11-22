@@ -20,6 +20,17 @@ import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
+import com.rentrix.rentrixserver.rating.RatingRecomputer;
+import com.rentrix.rentrixserver.review.RatingAggregate;
+import com.rentrix.rentrixserver.review.RatingAggregateId;
+import com.rentrix.rentrixserver.review.RatingAggregateRepository;
+import com.rentrix.rentrixserver.review.RatingSubjectType;
+import com.rentrix.rentrixserver.review.Review;
+import com.rentrix.rentrixserver.review.ReviewContentRules;
+import com.rentrix.rentrixserver.review.ReviewDirection;
+import com.rentrix.rentrixserver.review.ReviewRepository;
+import com.rentrix.rentrixserver.review.ReviewResponseRepository;
+import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.RentRecord;
 import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
 import com.rentrix.rentrixserver.tenancy.RentRecordStatus;
@@ -42,8 +53,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,7 +66,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The dev demo seed (D-68, D-69) on its own empty database: 4 + 4 published demo homes with demo landlords,
  * no phones, {@code example.test} emails, and on every home a confirmed tenancy and a rent history with at least
- * one change (PLAN B5); it never runs twice and its bean does not exist outside {@code dev}.
+ * one change (PLAN B5), and reviews in all three directions with their aggregates (PLAN B6); it never runs twice
+ * and its bean does not exist outside {@code dev}.
  * Verification states (D-97, D-115): a demo admin, every demo party approved and ID verified, and an admin queue.
  */
 @SpringBootTest(properties = {
@@ -87,6 +101,21 @@ class DemoSeederTest {
 	RentRecordRepository rentRecords;
 	
 	@Autowired
+	ReviewRepository reviews;
+	
+	@Autowired
+	ReviewResponseRepository responses;
+	
+	@Autowired
+	RatingAggregateRepository aggregates;
+	
+	@Autowired
+	RatingRecomputer recomputer;
+	
+	@Autowired
+	Clock clock;
+	
+	@Autowired
 	PlatformTransactionManager transactionManager;
 	
 	@Autowired
@@ -117,7 +146,8 @@ class DemoSeederTest {
 	void seedsAnEmptyDatabaseOnceWithClearlyFakeData() {
 		assertThat(context.getBeansOfType(DemoSeeder.class)).as("dev-only bean").isEmpty();
 		DemoSeeder seeder = new DemoSeeder(users, properties, cities, areas, societies, towers, tenancies, rentRecords,
-			applications, events, identityChecks, audit, hasher, transactionManager);
+			applications, events, identityChecks, audit, hasher, reviews, responses, recomputer, clock,
+			transactionManager);
 		assertThat(seeder.seed()).isTrue();
 		assertThat(seeder.seed()).as("non-empty database").isFalse();
 		
@@ -172,7 +202,7 @@ class DemoSeederTest {
 				.allMatch(u -> u.getEmailVerifiedAt() != null && u.getOnboardedAt() != null);
 			
 			List<Tenancy> all = tenancies.findAll();
-			assertThat(all).hasSize(13).allMatch(t -> !t.getStartDate().isAfter(LocalDate.now()))
+			assertThat(all).hasSize(25).allMatch(t -> !t.getStartDate().isAfter(LocalDate.now()))
 				.allMatch(t -> t.getLandlord().getId().equals(t.getProperty().getLandlord().getId()));
 			assertThat(all.stream().filter(t -> t.getStatus() == TenancyStatus.PENDING_CONFIRMATION)).hasSize(1);
 			for (Property home : homes) {
@@ -233,6 +263,43 @@ class DemoSeederTest {
 				.isSubsetOf("Demo Landlord BLR-1", "Demo Landlord PNQ-2", "Demo Tenant PNQ-2");
 			// Every decision has its audit row by the demo admin.
 			assertThat(audit.findAll()).isNotEmpty().allMatch(a -> a.getAdmin().getId().equals(admin.getId()));
+			
+			// PLAN B6: reviews in all three directions on every home, spread 1-5, one awaiting reveal, one response
+			List<Review> written = reviews.findAll();
+			assertThat(written).hasSize(70).allSatisfy(r ->
+				assertThat(ReviewContentRules.review(r.getBody(), r.getProperty().getUnitLabel())).isEqualTo(r.getBody()));
+			assertThat(written.stream().map(Review::getRatingOverall).distinct()).containsExactlyInAnyOrder(1, 2, 3, 4, 5);
+			for (Property home : homes) {
+				assertThat(written.stream().filter(r -> r.getProperty().getId().equals(home.getId()))
+					.filter(r -> r.getStatus() == ReviewStatus.PUBLISHED).map(Review::getDirection).distinct())
+					.as("published directions at " + home.getBuildingName())
+					.containsExactlyInAnyOrder(ReviewDirection.values());
+			}
+			assertThat(written).filteredOn(r -> r.getStatus() == ReviewStatus.AWAITING_REVEAL).singleElement()
+				.satisfies(r -> {
+					assertThat(r.getDirection()).isEqualTo(ReviewDirection.LANDLORD_TO_TENANT);
+					assertThat(r.getProperty().getBuildingName()).isEqualTo("Demo Villa C");
+				});
+			assertThat(responses.findAll()).hasSize(1);
+			// every home but Demo Villa C (its current tenant has not reviewed yet) and every landlord shows an average
+			for (Property home : homes) {
+				RatingAggregate rating = aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY,
+					home.getId())).orElseThrow();
+				assertThat(rating.getReviewCount()).as(home.getBuildingName())
+					.isEqualTo(home.getBuildingName().equals("Demo Villa C") ? 2 : 3);
+				assertThat(rating.getBayesScore()).isNotNull();
+			}
+			for (User landlord : people.stream().filter(u -> DemoSeeder.LANDLORDS.stream()
+				.anyMatch(code -> u.getDisplayName().equals("Demo Landlord " + code))).toList()) {
+				assertThat(aggregates.findById(new RatingAggregateId(RatingSubjectType.LANDLORD, landlord.getId()))
+					.orElseThrow().getReviewCount()).as(landlord.getDisplayName()).isEqualTo(4);
+			}
+			assertThat(written.stream().filter(Review::isCountsInAggregate)
+				.allMatch(r -> r.getStatus() == ReviewStatus.PUBLISHED)).isTrue();
+			assertThat(EnumSet.copyOf(written.stream().filter(r -> !r.isCountsInAggregate()
+				&& r.getStatus() == ReviewStatus.PUBLISHED).map(Review::getDirection).toList()))
+				.as("repeat pairs only count once (D-44)").containsExactly(ReviewDirection.TENANT_TO_LANDLORD,
+					ReviewDirection.LANDLORD_TO_TENANT);
 		});
 	}
 	
