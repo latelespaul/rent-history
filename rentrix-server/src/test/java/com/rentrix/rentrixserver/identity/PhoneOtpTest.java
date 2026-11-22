@@ -1,5 +1,7 @@
 package com.rentrix.rentrixserver.identity;
 
+import com.rentrix.rentrixserver.notification.sms.SmsSendException;
+import com.rentrix.rentrixserver.notification.sms.SmsSender;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
@@ -14,10 +16,13 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -70,6 +75,9 @@ class PhoneOtpTest {
 	
 	@Autowired
 	PhoneOtpCleanupJob cleanup;
+	
+	@MockitoSpyBean
+	SmsSender sms;
 	
 	/** A random Indian mobile number, so tests never share a per-number limit. */
 	static String phone() {
@@ -222,6 +230,24 @@ class PhoneOtpTest {
 		MockHttpServletResponse next = confirm(user, challengeId, codeSentTo(output, phone));
 		assertThat(next.getStatus()).isEqualTo(422);
 		assertThat(body(next).get("code").asString()).isEqualTo("otp_attempts_exceeded");
+		assertThat(identity.isIdVerified(user)).isFalse();
+	}
+	
+	@Test
+	void aFailedSendLeavesNoConfirmableChallenge() throws Exception {
+		User user = data.user("Nisha", Role.TENANT);
+		String phone = phone();
+		doThrow(new SmsSendException("provider down", null)).when(sms).send(anyString(), anyString());
+		MockHttpServletResponse started = start(user, phone);
+		assertThat(started.getStatus()).isEqualTo(503);
+		assertThat(body(started).get("code").asString()).isEqualTo("sms_send_failed");
+		List<PhoneOtpChallenge> sent = challenges.findAll().stream()
+			.filter(c -> c.getUser().getId().equals(user.getId())).toList();
+		assertThat(sent).hasSize(1);
+		assertThat(sent.getFirst().getConsumedAt()).isNotNull();
+		MockHttpServletResponse confirmed = confirm(user, sent.getFirst().getPublicId().toString(), "123456");
+		assertThat(confirmed.getStatus()).isEqualTo(422);
+		assertThat(body(confirmed).get("code").asString()).isEqualTo("otp_expired");
 		assertThat(identity.isIdVerified(user)).isFalse();
 	}
 	

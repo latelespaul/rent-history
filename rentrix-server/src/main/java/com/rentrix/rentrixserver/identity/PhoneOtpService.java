@@ -23,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
@@ -35,7 +36,8 @@ import java.util.regex.Pattern;
  * <p>
  * Sends are counted and recorded under a lock on the user row, so one user's parallel requests queue up, and under
  * an in-process lock keyed by the number. The cross-account per-number cap is therefore per instance until a shared
- * store exists.
+ * store exists. The SMS goes out after that commit, outside every lock; a failed send uses the challenge up, so it
+ * still counts toward the limits but can never be confirmed.
  */
 @Slf4j
 @Service
@@ -55,6 +57,8 @@ public class PhoneOtpService {
 	private static final Duration HOUR = Duration.ofHours(1);
 	private static final Duration DAY = Duration.ofDays(1);
 	private static final SecureRandom RANDOM = new SecureRandom();
+	private static final Duration LOCK_WAIT = Duration.ofSeconds(3);
+	private static final Duration LOCK_RETRY = Duration.ofSeconds(2);
 	private static final ReentrantLock[] PHONE_LOCKS = new ReentrantLock[64];
 	
 	static {
@@ -99,17 +103,40 @@ public class PhoneOtpService {
 		String phone = normalisePhone(phoneInput).orElseThrow(() -> ApiException.validation(List.of(
 			new ApiProblem.FieldError("phone", "pattern", "Use an Indian mobile number, e.g. +919876543210."))));
 		String phoneHmac = hasher.hmac(phone);
+		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
+		PhoneOtpChallenge challenge = reserve(userId, phone, phoneHmac, code);
+		try {
+			sender.send(phone, code + " is your Rentrix verification code.");
+		} catch (SmsSendException e) {
+			challenges.consume(challenge.getId(), MAX_ATTEMPTS, now());
+			log.warn("Phone OTP not sent for user {}: {}", userId, e.getMessage());
+			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "sms_send_failed",
+				"The code could not be sent. Try again in a few minutes.");
+		}
+		log.info("Phone OTP challenge {} started for user {}", challenge.getPublicId(), userId);
+		return new Started(challenge.getPublicId(), challenge.getExpiresAt());
+	}
+	
+	/** Checks the send limits and commits the challenge, under the number's stripe lock and the user row lock. */
+	private PhoneOtpChallenge reserve(UUID userId, String phone, String phoneHmac, String code) {
 		ReentrantLock phoneLock = PHONE_LOCKS[Math.floorMod(phoneHmac.hashCode(), PHONE_LOCKS.length)];
-		phoneLock.lock();
+		try {
+			if (!phoneLock.tryLock(LOCK_WAIT.toMillis(), TimeUnit.MILLISECONDS)) {
+				throw ApiException.rateLimited(LOCK_RETRY);
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw ApiException.rateLimited(LOCK_RETRY);
+		}
 		try {
 			return new TransactionTemplate(transactionManager)
-				.execute(status -> startLocked(sender, userId, phone, phoneHmac));
+				.execute(status -> insertChallenge(userId, phone, phoneHmac, code));
 		} finally {
 			phoneLock.unlock();
 		}
 	}
 	
-	private Started startLocked(SmsSender sender, UUID userId, String phone, String phoneHmac) {
+	private PhoneOtpChallenge insertChallenge(UUID userId, String phone, String phoneHmac, String code) {
 		User user = users.lockByPublicId(userId)
 			.filter(u -> u.getStatus() != UserStatus.DELETED)
 			.orElseThrow(() -> ApiException.notFound("User"));
@@ -125,7 +152,6 @@ public class PhoneOtpService {
 		checkLimits(challenges.sentToUserSince(user, now.minus(DAY)), CODES_PER_USER_PER_DAY, DAY, now);
 		checkLimits(challenges.sentToPhoneSince(phoneHmac, now.minus(DAY)), CODES_PER_PHONE_PER_DAY, DAY, now);
 		
-		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
 		PhoneOtpChallenge challenge = new PhoneOtpChallenge();
 		challenge.setUser(user);
 		challenge.setPhoneE164(phone);
@@ -133,16 +159,7 @@ public class PhoneOtpService {
 		challenge.setCodeHmac(codeHmac(challenge.getPublicId(), code));
 		challenge.setCreatedAt(now);
 		challenge.setExpiresAt(now.plus(properties.otpTtl()));
-		challenges.save(challenge);
-		try {
-			sender.send(phone, code + " is your Rentrix verification code.");
-		} catch (SmsSendException e) {
-			log.warn("Phone OTP not sent for user {}: {}", user.getPublicId(), e.getMessage());
-			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "sms_send_failed",
-				"The code could not be sent. Try again in a few minutes.");
-		}
-		log.info("Phone OTP challenge {} started for user {}", challenge.getPublicId(), user.getPublicId());
-		return new Started(challenge.getPublicId(), challenge.getExpiresAt());
+		return challenges.save(challenge);
 	}
 	
 	/**
