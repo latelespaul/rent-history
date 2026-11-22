@@ -108,8 +108,8 @@ public class PropertyService {
 	}
 	
 	/**
-	 * Resolves the location filters to ids. Unknown ids, and someone else's {@code PENDING} proposal, are
-	 * {@code 422} on the parameter; a tower outside the society, a society outside the area, or any of them outside
+	 * Resolves the location filters to ids. Unknown ids, and someone else's {@code PENDING} proposal that holds
+	 * none of the caller's homes (D-109), are {@code 422} on the parameter; a tower outside the society, a society outside the area, or any of them outside
 	 * the requested city is {@code 422 location_mismatch}; their city must be live (D-20).
 	 */
 	private PropertySearchCriteria withLocation(PropertySearchCriteria criteria, LocationFilter location,

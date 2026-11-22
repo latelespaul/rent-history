@@ -179,7 +179,10 @@ public class LocationService {
 	
 	// ---------------------------------------------------------- property filters
 	
-	/** The area behind {@code GET /properties?area=}; unknown or someone else's proposal is 422 on {@code field}. */
+	/**
+	 * The area behind {@code GET /properties?area=}; unknown, or someone else's proposal that holds none of the
+	 * caller's homes (D-109), is 422 on {@code field}.
+	 */
 	public Area areaFilter(UUID publicId, AuthenticatedUser caller, String field) {
 		return readableArea(publicId, Viewer.of(caller), field);
 	}
@@ -362,7 +365,7 @@ public class LocationService {
 		}
 		
 		try {
-			if (area.getId() == null) {
+			if (in.newArea() != null) {
 				areas.saveAndFlush(area);
 			}
 			if (society != null && society.getId() == null) {
