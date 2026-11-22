@@ -109,7 +109,7 @@ function PropertyForm({ property }: { property?: PropertyDetail }) {
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
-    const errors = editable ? checkForm(values) : {}
+    const errors = checkForm(values, editable)
     setChecked(errors)
     if (Object.keys(errors).length === 0) save.mutate()
   }

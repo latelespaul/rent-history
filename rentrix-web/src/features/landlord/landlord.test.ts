@@ -78,6 +78,9 @@ describe("property form", () => {
     }
     expect(checkForm(unnamed).location).toMatch(/name/)
     expect(checkForm({ ...unnamed, location: placed, bedrooms: "two" }).bedrooms).toBeTruthy()
+    expect(checkForm({ ...EMPTY_FORM, bedrooms: "3a" }, false)).toEqual({
+      bedrooms: "Enter a whole number.",
+    })
   })
 
   it("creates with the place and numbers, not the free-text locality", () => {

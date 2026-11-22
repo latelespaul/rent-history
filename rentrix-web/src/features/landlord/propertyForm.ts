@@ -75,8 +75,15 @@ export function formFromProperty(p: PropertyDetail): PropertyFormValues {
 }
 
 /** Client checks before the API's own (which stay the source of truth, D-60). */
-export function checkForm(values: PropertyFormValues): Record<string, string> {
+export function checkForm(
+  values: PropertyFormValues,
+  editable = true,
+): Record<string, string> {
   const errors: Record<string, string> = {}
+  for (const field of ["bedrooms", "bathrooms", "areaSqft"] as const) {
+    if (Number.isNaN(wholeNumber(values[field]))) errors[field] = "Enter a whole number."
+  }
+  if (!editable) return errors
   if (!values.city) errors.city = "Pick a city."
   if (!/^\d{6}$/.test(values.pincode.trim())) errors.pincode = "Enter the 6-digit PIN code."
   if (!hasArea(values.location)) errors.location = "Pick or suggest the area."
@@ -85,9 +92,6 @@ export function checkForm(values: PropertyFormValues): Record<string, string> {
     if (level.kind === "new" && level.name.trim().length < 2) {
       errors.location = "Give each new society, tower or wing a name."
     }
-  }
-  for (const field of ["bedrooms", "bathrooms", "areaSqft"] as const) {
-    if (Number.isNaN(wholeNumber(values[field]))) errors[field] = "Enter a whole number."
   }
   return errors
 }

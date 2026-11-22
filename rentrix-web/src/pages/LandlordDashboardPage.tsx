@@ -144,6 +144,7 @@ export default function LandlordDashboardPage() {
   const properties = useMyProperties()
   const tenancies = useMyTenancies("LANDLORD")
   const items = properties.data?.items ?? []
+  const totalProperties = properties.data?.page.totalItems ?? items.length
   const lets = tenancies.data?.items ?? []
   const active = lets.filter((t) => t.status === "ACTIVE")
   const waiting = lets.filter((t) => t.status === "PENDING_CONFIRMATION")
@@ -177,7 +178,7 @@ export default function LandlordDashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Properties" value={properties.isSuccess ? items.length : "–"} />
+          <Stat label="Properties" value={properties.isSuccess ? totalProperties : "–"} />
           <Stat
             label="Published"
             value={
@@ -214,7 +215,11 @@ export default function LandlordDashboardPage() {
             <h2 id="mine-heading" className="text-xl font-semibold">
               My properties
             </h2>
-            <span className="text-sm text-ink-500">All statuses</span>
+            <span className="text-sm text-ink-500">
+              {totalProperties > items.length
+                ? `Showing the first ${items.length} of ${totalProperties}`
+                : "All statuses"}
+            </span>
           </div>
           {properties.isPending ? (
             <p className="px-5 pb-5 text-sm text-ink-500">Loading your properties…</p>
