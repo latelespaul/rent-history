@@ -97,12 +97,20 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
             <span className="font-semibold text-ink-900">{landlord.shortName}</span>
             <Badge variant="landlord">Landlord</Badge>
           </p>
-          <RatingLine rating={landlord.rating} />
-          <p className="text-xs text-ink-500">
-            {landlord.rating.reviewCount > 0
-              ? `${reviewCount(landlord.rating.reviewCount)} as landlord`
-              : "No landlord reviews yet"}
-          </p>
+          {property.addedByTenant ? (
+            <p className="text-xs text-ink-500">
+              A tenant added this home. Its owner can claim it later.
+            </p>
+          ) : (
+            <>
+              <RatingLine rating={landlord.rating} />
+              <p className="text-xs text-ink-500">
+                {landlord.rating.reviewCount > 0
+                  ? `${reviewCount(landlord.rating.reviewCount)} as landlord`
+                  : "No landlord reviews yet"}
+              </p>
+            </>
+          )}
         </div>
       </div>
       {!signedIn && (
@@ -116,7 +124,8 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
 
 /**
  * The next step on a home for the signed-in viewer: its owner edits it or invites a tenant; a
- * tenant who rents or rented it asks the landlord to confirm the tenancy (D-34).
+ * tenant who rents or rented it records their tenancy through "Add your home", at once and without
+ * waiting for the owner (D-142).
  */
 function PropertyActions({ property }: { property: PropertyDetail }) {
   const { state } = useAuth()
@@ -143,10 +152,10 @@ function PropertyActions({ property }: { property: PropertyDetail }) {
       </div>
     )
   }
-  if (!user.roles.includes("TENANT") || property.status !== "PUBLISHED") return null
+  if (property.status !== "PUBLISHED") return null
   return (
-    <Button asChild variant="outline" size="sm">
-      <Link to={`/tenancies/new?property=${property.id}`}>
+    <Button asChild variant="outline" size="sm" data-testid="i-rent-this-home">
+      <Link to={`/homes/new?property=${property.id}`}>
         <TenancyIcon />I rent or rented this home
       </Link>
     </Button>
@@ -205,6 +214,9 @@ export default function PropertyPage() {
         <h1 className="flex flex-wrap items-center gap-3 font-display text-3xl font-semibold">
           {propertyTitle(property)}
           {property.demo && <DemoBadge />}
+          {property.addedByTenant && (
+            <Badge data-testid="added-by-tenant">Added by a tenant · not verified yet</Badge>
+          )}
         </h1>
         <p className="inline-flex items-center gap-1.5 text-ink-700">
           <MapPinIcon size={16} className="text-ink-500" />
@@ -228,7 +240,9 @@ export default function PropertyPage() {
             <p className="inline-flex items-center gap-1.5 text-sm text-ink-500">
               <LockIcon size={14} />
               {property.unitLabel
-                ? `Flat ${property.unitLabel} (shown to you as owner or admin only).`
+                ? property.unitLabelPublic
+                  ? `Flat ${property.unitLabel}.`
+                  : `Flat ${property.unitLabel} (shown to you as owner or admin only).`
                 : "Flat number visible only to the landlord and tenants of this home."}
             </p>
           </section>

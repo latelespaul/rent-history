@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.notification.email.EmailSender;
 import com.rentrix.rentrixserver.property.Property;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -74,6 +75,15 @@ class TenancyNotifier {
 			tenancy.getEndDate(), link(tenancy)));
 	}
 	
+	/** To a real landlord: a tenant recorded their own tenancy on the landlord's home (D-142). */
+	void recordedByTenant(Tenancy tenancy, User to) {
+		send(to, "A tenant recorded a tenancy on your home", """
+			%s recorded a tenancy at %s, from %s at Rs %d a month.
+			If this is wrong, report it from the tenancy page: %s""".formatted(
+			PublicNames.shortName(tenancy.getTenant().getDisplayName()), home(tenancy), tenancy.getStartDate(),
+			tenancy.getInitialRentInr(), link(tenancy)));
+	}
+	
 	void rentRecordToConfirm(RentRecord record, User to) {
 		Tenancy tenancy = record.getTenancy();
 		send(to, "Confirm a rent change at " + home(tenancy), """
@@ -83,7 +93,7 @@ class TenancyNotifier {
 	}
 	
 	private void send(User to, String subject, String body) {
-		if (to != null && to.getEmail() != null) {
+		if (to != null && to.getEmail() != null && !UnclaimedLandlord.is(to)) {
 			email.send(new EmailMessage(to.getEmail(), subject, body));
 		}
 	}

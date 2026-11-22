@@ -308,7 +308,7 @@ describe("onboarding", () => {
     expect(screen.getByText("Landlord")).toBeTruthy()
     expect(
       screen.getByRole("link", { name: /verify your phone number/i }).getAttribute("href"),
-    ).toBe("/verify/phone")
+    ).toBe("/verify/phone?next=%2Fhomes%2Fnew%3Fown%3D1")
     await user.click(screen.getByRole("link", { name: /not now/i }))
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
     expect(auth.completeOnboarding).toHaveBeenCalledWith({

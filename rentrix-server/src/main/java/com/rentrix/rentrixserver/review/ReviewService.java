@@ -6,6 +6,7 @@ import com.rentrix.rentrixserver.identity.Badges;
 import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.rating.RatingDetail;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
@@ -25,6 +26,7 @@ import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.profile.ProfileAccess;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,7 +74,6 @@ public class ReviewService {
 
 	public static final Duration EDIT_WINDOW = Duration.ofDays(7);
 	public static final Duration REVEAL_AFTER = Duration.ofDays(14);
-	public static final Duration MIN_ACCOUNT_AGE = Duration.ofDays(7);
 	public static final int MAX_PER_DAY = 10;
 
 	static final Map<TenancyParty, Set<ReviewDirection>> DIRECTIONS = Map.of(
@@ -115,7 +116,11 @@ public class ReviewService {
 				"As the tenant you review the landlord and the home; as the landlord you review the tenant.");
 		}
 		if (!ReviewWindow.confirmed(tenancy)) {
-			throw ApiException.rule("tenancy_not_confirmed", "Only a tenancy confirmed by both sides can be reviewed.");
+			throw ApiException.rule("tenancy_not_confirmed", "Only a current or ended tenancy can be reviewed.");
+		}
+		if (direction == ReviewDirection.TENANT_TO_LANDLORD && UnclaimedLandlord.is(tenancy.getLandlord())) {
+			throw ApiException.rule("landlord_not_on_platform",
+				"This home's landlord is not on the platform yet, so only the home can be reviewed.");
 		}
 		approvals.require(me, roleOf(side));
 		requireAccount(me);
@@ -380,7 +385,8 @@ public class ReviewService {
 			Map<ReviewDirection, Review> written = reviews.findByTenancyId(tenancy.getId()).stream()
 				.collect(Collectors.toMap(Review::getDirection, Function.identity()));
 			for (ReviewDirection direction : DIRECTIONS.get(side)) {
-				if (written.containsKey(direction)) {
+				if (written.containsKey(direction) || direction == ReviewDirection.TENANT_TO_LANDLORD
+					&& UnclaimedLandlord.is(tenancy.getLandlord())) {
 					continue;
 				}
 				Review counter = direction == ReviewDirection.TENANT_TO_PROPERTY ? null : written.get(counterOf(direction));
@@ -459,10 +465,6 @@ public class ReviewService {
 	private void requireAccount(User me) {
 		if (me.getEmailVerifiedAt() == null) {
 			throw ApiException.rule("email_not_verified", "Your email address is not verified.");
-		}
-		if (me.getCreatedAt().plus(MIN_ACCOUNT_AGE).isAfter(now()) && !reviews.existsByAuthorId(me.getId())) {
-			throw ApiException.rule("account_too_new",
-				"Your account must be 7 days old before you write your first review.");
 		}
 	}
 
@@ -606,14 +608,15 @@ public class ReviewService {
 			privileged ? r.getEditUntil() : null,
 			privileged ? r.getHiddenReason() : null,
 			response,
-			actions);
+			actions,
+			VerificationState.of(r.getVerificationStatus()));
 	}
 
 	/** A review about the caller that still awaits reveal: no ratings, text or author (D-46). */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
 			null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
-			ReviewView.Actions.NONE);
+			ReviewView.Actions.NONE, null);
 	}
 
 	/** D-28 author line; the id only for landlord authors, whose profiles are open to signed-in users (D-55). */

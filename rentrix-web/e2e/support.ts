@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test"
+import { expect, request, type Page } from "@playwright/test"
 
 /**
  * Shared steps for the e2e specs. They drive the real UI only; the stack must run the API in the
@@ -54,4 +54,43 @@ export function daysAgo(days: number): string {
 
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+/**
+ * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
+ * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
+ * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
+ * the way an admin passes it on in a preview.
+ */
+export async function verifyPhone(page: Page, digits: string) {
+  await expect(page).toHaveURL(/\/verify\/phone/)
+  await page.getByLabel(/your mobile number/i).fill(digits)
+  await page.getByRole("button", { name: /send code/i }).click()
+  // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
+  await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
+  // The browser calls the API at the URL `/config.js` names (D-04), not on the web origin.
+  const apiBase = await page.evaluate(() => {
+    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
+    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
+  })
+  const api = await request.newContext()
+  const users = (await (await api.get(`${apiBase}/auth/dev-users`)).json()) as Array<{
+    id: string
+    displayName: string
+  }>
+  const admin = users.find((u) => u.displayName === "Demo Admin")
+  expect(admin, "the demo seed has its admin").toBeTruthy()
+  const session = (await (
+    await api.post(`${apiBase}/auth/dev-login`, { data: { userId: admin!.id } })
+  ).json()) as { accessToken: string }
+  const relayed = (await (
+    await api.get(`${apiBase}/admin/sms-relay`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    })
+  ).json()) as Array<{ phone: string; code: string }>
+  const code = relayed.find((c) => c.phone.endsWith(digits.slice(-4)))?.code
+  await api.dispose()
+  expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
+  await page.getByLabel(/enter the 6-digit code/i).fill(code!)
+  await page.getByRole("button", { name: /verify and continue/i }).click()
 }

@@ -7,6 +7,7 @@ import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateTenancyRequest;
@@ -115,6 +116,19 @@ public class TenancyService {
 	/** {@code POST /tenancies}: a {@code PENDING_CONFIRMATION} request from the property's landlord or a tenant. */
 	@Transactional
 	public TenancyView create(CreateTenancyRequest request, AuthenticatedUser caller) {
+		return create(request, caller, false);
+	}
+	
+	/**
+	 * A tenancy the tenant records themselves through "Add your home" (D-139, D-142): it stands at once, one-sided,
+	 * without waiting for the owner; the team verifies it later from the rental agreement (D-142).
+	 */
+	@Transactional
+	public TenancyView recordOwn(CreateTenancyRequest request, AuthenticatedUser caller) {
+		return create(request, caller, true);
+	}
+	
+	private TenancyView create(CreateTenancyRequest request, AuthenticatedUser caller, boolean selfRecorded) {
 		// The row lock serialises one user's creates, so the pending cap holds under concurrent requests.
 		User me = users.lockByPublicId(caller.publicId())
 			.filter(user -> user.getDeletedAt() == null)
@@ -123,6 +137,10 @@ public class TenancyService {
 			.filter(p -> p.getStatus().isPublic() || p.getLandlord().getId().equals(me.getId()))
 			.orElseThrow(() -> ApiException.notFound("Property"));
 		boolean asLandlord = property.getLandlord().getId().equals(me.getId());
+		// A home a tenant added while its landlord is not on the platform (D-139) has nobody to confirm, and a
+		// tenant's own "Add your home" record never waits for the owner (D-142): the period stands at once,
+		// one-sided and without the green tick (D-132).
+		boolean oneSided = !asLandlord && (selfRecorded || UnclaimedLandlord.is(property.getLandlord()));
 		requireDates(request.startDate(), request.endDate());
 		String inviteEmail = null;
 		if (asLandlord) {
@@ -151,7 +169,8 @@ public class TenancyService {
 		}
 		requireEmailVerified(me);
 		approvals.require(me, asLandlord ? Role.LANDLORD : Role.TENANT);
-		if (tenancies.countInitiatedBy(me.getId(), TenancyStatus.PENDING_CONFIRMATION) >= MAX_PENDING) {
+		if (!oneSided
+			&& tenancies.countInitiatedBy(me.getId(), TenancyStatus.PENDING_CONFIRMATION) >= MAX_PENDING) {
 			throw ApiException.rule("too_many_pending", "You already have " + MAX_PENDING
 				+ " tenancy requests waiting for confirmation. Wait for them or cancel one first.");
 		}
@@ -176,6 +195,9 @@ public class TenancyService {
 		} else {
 			tenancy.setTenant(me);
 			requireNoOverlap(tenancy, HOLDS_DATES);
+		}
+		if (oneSided) {
+			return startOneSided(tenancy, me, caller);
 		}
 		Tenancy saved = tenancies.saveAndFlush(tenancy);
 
@@ -251,6 +273,29 @@ public class TenancyService {
 		first.setStatus(RentRecordStatus.CONFIRMED);
 		rentRecords.save(first);
 		notifier.confirmed(saved, initiator(saved));
+		return view(saved, me, caller);
+	}
+
+	/**
+	 * A one-sided tenant period (D-139, D-142): {@code ACTIVE}, or {@code ENDED} with an end date, at once and
+	 * without {@code confirmedAt}; the initial rent is a {@code PROPOSED} record (one side only, D-25). Owner
+	 * confirmation is optional and not asked for; a real landlord is only told the record exists.
+	 */
+	private TenancyView startOneSided(Tenancy tenancy, User me, AuthenticatedUser caller) {
+		Instant now = now();
+		tenancy.setStatus(tenancy.getEndDate() == null ? TenancyStatus.ACTIVE : TenancyStatus.ENDED);
+		if (tenancy.getEndDate() != null) {
+			tenancy.setEndedAt(now);
+		}
+		Tenancy saved = tenancies.saveAndFlush(tenancy);
+		RentRecord first = new RentRecord();
+		first.setTenancy(saved);
+		first.setEffectiveFrom(saved.getStartDate().withDayOfMonth(1));
+		first.setMonthlyRentInr(saved.getInitialRentInr());
+		first.setAddedBy(me);
+		first.setStatus(RentRecordStatus.PROPOSED);
+		rentRecords.save(first);
+		notifier.recordedByTenant(saved, saved.getLandlord());
 		return view(saved, me, caller);
 	}
 
@@ -375,6 +420,11 @@ public class TenancyService {
 		return null;
 	}
 
+	/** Both sides confirmed it, or the landlord started it: not a tenant's one-sided record (D-142). */
+	static boolean mutual(Tenancy tenancy) {
+		return tenancy.getConfirmedAt() != null || tenancy.getInitiatedBy() == TenancyParty.LANDLORD;
+	}
+
 	static Role roleOf(TenancyParty side) {
 		return side == TenancyParty.LANDLORD ? Role.LANDLORD : Role.TENANT;
 	}
@@ -441,7 +491,8 @@ public class TenancyService {
 	/**
 	 * A whole home holds one tenancy at a time (D-23): a request or confirmation whose dates overlap a confirmed
 	 * tenancy on the same property, of any tenant, is refused with {@code 409 tenancy_overlap} naming that tenancy's
-	 * period. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
+	 * period. On a home with a real landlord only tenancies both sides confirmed or the landlord started hold dates:
+	 * a tenant's one-sided record (D-142) never blocks the landlord's tenancies. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
 	 * first. The property row lock serialises concurrent confirmations on one home. ROOM and PG are exempt.
 	 */
 	private void requireHomeFree(Property property, Long excludeId, LocalDate start, LocalDate end, User me) {
@@ -451,6 +502,7 @@ public class TenancyService {
 		properties.lockById(property.getId());
 		tenancies.findOverlappingOnProperty(property.getId(), excludeId == null ? -1L : excludeId, CONFIRMED, start,
 				end == null ? OPEN_END : end).stream()
+			.filter(t -> mutual(t) || UnclaimedLandlord.is(property.getLandlord()))
 			.findFirst()
 			.ifPresent(clash -> {
 				Map<String, String> conflict = new LinkedHashMap<>();
@@ -583,6 +635,9 @@ public class TenancyService {
 	}
 
 	static PartyRef party(User user) {
+		if (UnclaimedLandlord.is(user)) {
+			return new PartyRef(null, UnclaimedLandlord.PUBLIC_NAME);
+		}
 		return new PartyRef(user.getPublicId(), PublicNames.shortName(user.getDisplayName()));
 	}
 

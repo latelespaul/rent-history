@@ -11,6 +11,7 @@ import type { PropertyReview, RatingSummary } from "@/types/api"
 import { monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { SignInPrompt } from "./SignInPrompt"
+import { ReviewTick } from "./ReviewTick"
 import { usePropertyReviews } from "./useProperties"
 
 /** Longest reply the API accepts (ReviewContentRules.RESPONSE_MAX). */
@@ -71,15 +72,15 @@ function RespondForm({ reviewId, propertyId }: { reviewId: string; propertyId: s
 function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
   return (
-    <li className="space-y-1.5 py-4 first:pt-0">
-      <p className="text-sm">
+    <li className="space-y-1.5 py-4 first:pt-0" data-testid="property-review">
+      <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
         <span className="font-semibold text-ink-900">{review.author?.shortName ?? "Tenant"}</span>
         {review.period && (
           <span className="text-ink-500">
-            {" "}
             · stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
           </span>
         )}
+        {review.verification && <ReviewTick state={review.verification} />}
       </p>
       {rating !== undefined && (
         <span role="img" className="inline-flex" aria-label={`Rated ${rating} out of 5`}>
@@ -173,6 +174,7 @@ export function PropertyReviews({
 
   return (
     <section
+      id="reviews"
       aria-labelledby="reviews-heading"
       className="space-y-3 rounded-xl border border-line bg-surface p-5 shadow-sm"
     >

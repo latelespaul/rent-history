@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.email.EmailMessage;
 import com.rentrix.rentrixserver.notification.email.EmailSender;
 import com.rentrix.rentrixserver.property.Property;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.user.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,7 @@ class ReviewNotifier {
 	void published(Review review) {
 		User to = review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY
 			? review.getProperty().getLandlord() : review.getSubjectUser();
-		if (to == null || to.getEmail() == null || to.getDeletedAt() != null) {
+		if (to == null || to.getEmail() == null || to.getDeletedAt() != null || UnclaimedLandlord.is(to)) {
 			return;
 		}
 		String about = review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY ? "your home " + home(review)

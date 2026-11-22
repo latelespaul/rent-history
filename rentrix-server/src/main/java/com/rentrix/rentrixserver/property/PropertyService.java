@@ -15,6 +15,7 @@ import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
 import com.rentrix.rentrixserver.property.dto.LandlordSummary;
+import com.rentrix.rentrixserver.property.dto.OwnerContact;
 import com.rentrix.rentrixserver.property.dto.PropertyCard;
 import com.rentrix.rentrixserver.property.dto.PropertyDetail;
 import com.rentrix.rentrixserver.property.dto.PropertyLocation;
@@ -29,6 +30,7 @@ import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -42,6 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -161,14 +164,96 @@ public class PropertyService {
 	@Transactional
 	public PropertyDetail create(CreatePropertyRequest request, AuthenticatedUser caller) {
 		User landlord = currentUser(caller);
+		Property property = build(request, landlord, landlord, false);
+		property.setStatus(PropertyStatus.DRAFT);
+		Property saved = properties.saveAndFlush(property);
+		return detail(saved, caller);
+	}
+	
+	/**
+	 * A home added through {@code POST /me/homes} (D-139, D-140): open by default it is {@code PUBLISHED} at once,
+	 * without the green tick. Its flat number is {@code OPEN} when a tenant added it, {@code MASKED} like any listing
+	 * when the owner did (D-57). {@code owner} is the caller when they own it, else the unclaimed-homes account; {@code proposer} files any new area, society, tower or wing as a proposal (D-109).
+	 */
+	@Transactional
+	public Property newHome(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
+		Property property = build(request, owner, proposer, pendingCity);
+		property.setStatus(PropertyStatus.PUBLISHED);
+		property.setUnitLabelVisibility(UnclaimedLandlord.is(owner) ? FieldVisibility.OPEN : FieldVisibility.MASKED);
+		return property;
+	}
+	
+	/** A public home for {@code POST /me/homes} with an existing {@code propertyId} ("Is it this one?"). */
+	public Property publicHome(UUID publicId) {
+		return properties.findByPublicIdAndDeletedAtIsNull(publicId)
+			.filter(p -> p.getStatus() == PropertyStatus.PUBLISHED)
+			.orElseThrow(() -> ApiException.notFound("Property"));
+	}
+	
+	/** The property page of {@code property} as {@code caller} may see it. */
+	public PropertyDetail detailOf(Property property, AuthenticatedUser caller) {
+		return detail(property, caller);
+	}
+	
+	/**
+	 * {@code GET /me/homes/matches} (D-139): published homes in the same city, PIN code and society (by id, or by name
+	 * when the society is typed as free text). A home whose flat number is {@code OPEN} must also have the flat
+	 * number typed; a {@code MASKED} one matches on the society alone, so its flat number can never be probed.
+	 * Shown as "Is it this one?" before a duplicate is added. At most 10.
+	 */
+	public List<PropertyCard> matches(String city, String pincode, UUID societyId, String societyName, String unit) {
+		String unitKey = matchKey(unit);
+		String societyKey = matchKey(societyName);
+		if (unitKey.isEmpty()) {
+			return List.of();
+		}
+		List<Property> found = properties.findByCityCodeAndPincodeAndStatusAndDeletedAtIsNull(city.trim(),
+				pincode.trim(), PropertyStatus.PUBLISHED).stream()
+			.filter(p -> p.getUnitLabelVisibility() == FieldVisibility.OPEN
+				? unitKey.equals(matchKey(p.getUnitLabel())) && (societyId == null && societyKey.isEmpty()
+					|| sameSociety(p, societyId, societyKey))
+				: sameSociety(p, societyId, societyKey))
+			.limit(10)
+			.toList();
+		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY,
+			found.stream().map(Property::getId).toList());
+		return found.stream().map(p -> card(p, ratings.get(p.getId()))).toList();
+	}
+	
+	private static boolean sameSociety(Property p, UUID societyId, String societyKey) {
+		if (societyId != null) {
+			return p.getSociety() != null && societyId.equals(p.getSociety().getPublicId());
+		}
+		return !societyKey.isEmpty() && (societyKey.equals(matchKey(p.getBuildingName()))
+			|| p.getSociety() != null && societyKey.equals(matchKey(p.getSociety().getName())));
+	}
+	
+	/** Lower case, letters and digits only: "Flat C-1204" and "c 1204" match. */
+	private static String matchKey(String value) {
+		return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]", "").replace("flat", "");
+	}
+	
+	/**
+	 * A new property from the request, owned by {@code owner}; {@code proposer} files any location proposals. A home
+	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only.
+	 */
+	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
 		String city = request.city().trim();
 		String pincode = request.pincode().trim();
-		requireLocation(city, pincode);
+		if (pendingCity) {
+			cityService.requirePincode(city, pincode);
+			if (request.location() != null) {
+				throw ApiException.validation(List.of(new ApiProblem.FieldError("home.location", "not_allowed",
+					"A new city has no areas yet; type the locality instead.")));
+			}
+		} else {
+			requireLocation(city, pincode);
+		}
 		Property property = new Property();
-		property.setLandlord(landlord);
+		property.setLandlord(owner);
 		property.setCity(cities.getReferenceById(city));
 		if (request.location() != null) {
-			place(property, locations.resolve(city, pincode, request.location(), landlord));
+			place(property, locations.resolve(city, pincode, request.location(), proposer));
 		} else {
 			property.setLocality(requireLocality(request.locality()));
 		}
@@ -183,9 +268,7 @@ public class PropertyService {
 		property.setFurnishing(request.furnishing());
 		property.setParking(request.parking());
 		property.setDescription(blankToNull(request.description()));
-		property.setStatus(PropertyStatus.DRAFT);
-		Property saved = properties.saveAndFlush(property);
-		return detail(saved, caller);
+		return property;
 	}
 	
 	/** {@code PATCH /properties/{id}}: owner edits; location locked outside DRAFT / REJECTED (D-92). */
@@ -395,9 +478,14 @@ public class PropertyService {
 	
 	private PropertyDetail detail(Property property, AuthenticatedUser caller) {
 		RatingSummary rating = RatingSummary.of(aggregate(RatingSubjectType.PROPERTY, property.getId()));
-		RatingSummary landlordRating = RatingSummary.of(
+		RatingSummary landlordRating = UnclaimedLandlord.is(property.getLandlord()) ? null : RatingSummary.of(
 			aggregate(RatingSubjectType.LANDLORD, property.getLandlord().getId()));
-		return detail(property, rating, landlordRating, caller != null, isOwner(property, caller) || isAdmin(caller));
+		PropertyDetail base = detail(property, rating, landlordRating, caller != null,
+			isOwner(property, caller) || isAdmin(caller));
+		// The owner contact a tenant entered stays private to them and admins (D-140).
+		boolean adder = caller != null && property.getAddedBy() != null
+			&& property.getAddedBy().getPublicId().equals(caller.publicId());
+		return adder || isAdmin(caller) ? base.withOwnerContact(OwnerContact.of(property)) : base;
 	}
 	
 	/**
@@ -407,19 +495,30 @@ public class PropertyService {
 	private static PropertyDetail detail(Property p, RatingSummary rating, RatingSummary landlordRating,
 		boolean signedIn, boolean privileged) {
 		User landlord = p.getLandlord();
-		LandlordSummary owner = new LandlordSummary(signedIn ? landlord.getPublicId() : null,
-			PublicNames.shortName(landlord.getDisplayName()), landlordRating);
+		// An unclaimed home (D-139) has no landlord profile to link to or rate.
+		LandlordSummary owner = UnclaimedLandlord.is(landlord)
+			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null)
+			: new LandlordSummary(signedIn ? landlord.getPublicId() : null,
+				PublicNames.shortName(landlord.getDisplayName()), landlordRating);
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
-			p.getStreet(), p.getPincode(), privileged ? p.getUnitLabel() : null, p.getPropertyType(), p.getBedrooms(),
-			p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(), p.getParking(), p.getDescription(), p.getStatus(),
-			p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
-			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()));
+			p.getStreet(), p.getPincode(),
+			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
+			p.getUnitLabelVisibility() == FieldVisibility.OPEN,
+			p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(), p.getParking(),
+			p.getDescription(), p.getStatus(), p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
+			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()), p.getAddedBy() != null,
+			VerificationState.of(p.getVerificationStatus()), null);
 	}
 	
 	private static PropertyCard card(Property p, RatingAggregate rating) {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(),
-			p.getParking(), p.isDemo(), RatingSummary.of(rating), PublicNames.shortName(p.getLandlord().getDisplayName()));
+			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()));
+	}
+	
+	private static String landlordName(User landlord) {
+		return UnclaimedLandlord.is(landlord) ? UnclaimedLandlord.PUBLIC_NAME
+			: PublicNames.shortName(landlord.getDisplayName());
 	}
 	
 	private RatingAggregate aggregate(RatingSubjectType type, Long subjectId) {

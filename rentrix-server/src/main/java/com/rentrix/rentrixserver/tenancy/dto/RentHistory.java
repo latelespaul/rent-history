@@ -12,9 +12,11 @@ public record RentHistory(UUID propertyId, List<Row> rows) {
 	/**
 	 * {@code fromMonth} and {@code toMonth} are {@code YYYY-MM}; {@code toMonth} is {@code null} while the rent is
 	 * current. {@code share} marks rows of a {@code ROOM} or {@code PG} property, where flatmate tenancies overlap
-	 * and each row is one room or share.
+	 * and each row is one room or share. {@code monthlyRentInr} is absent where the tenancy's rent is masked
+	 * (D-140). {@code confirmed} is false for a tenant's own rent on an unclaimed home, which nobody confirmed (D-139).
 	 */
-	public record Row(String fromMonth, String toMonth, long monthlyRentInr, Long maintenanceInr, boolean share) {
+	public record Row(String fromMonth, String toMonth, Long monthlyRentInr, Long maintenanceInr, boolean share,
+		boolean confirmed) {
 	}
 	
 }

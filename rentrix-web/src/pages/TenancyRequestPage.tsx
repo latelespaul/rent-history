@@ -145,11 +145,16 @@ export default function TenancyRequestPage() {
           <EmptyState
             icon="tenancy"
             title="Start from the home you rent"
-            description="Find the home in search, open it and choose “I rent this home”."
+            description="Add your home: pick it if it is listed, or add it if it is not. Your tenancy shows at once."
             action={
-              <Button asChild>
-                <Link to="/search">Search homes</Link>
-              </Button>
+              <>
+                <Button asChild>
+                  <Link to="/homes/new">Add your home</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/search">Search homes</Link>
+                </Button>
+              </>
             }
           />
         </Container>

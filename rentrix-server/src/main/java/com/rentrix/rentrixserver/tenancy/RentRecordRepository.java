@@ -14,9 +14,12 @@ public interface RentRecordRepository extends JpaRepository<RentRecord, Long> {
 	
 	List<RentRecord> findByTenancyIdOrderByEffectiveFromAsc(Long tenancyId);
 	
-	/** Public rent history of a property: confirmed rows of its confirmed tenancies (D-26). */
-	List<RentRecord> findByTenancyPropertyIdAndStatusAndTenancyStatusInOrderByEffectiveFromAsc(Long propertyId,
-		RentRecordStatus status, List<TenancyStatus> tenancyStatuses);
+	/**
+	 * Public rent history of a property: rows in the given states of its confirmed tenancies (D-26; also
+	 * {@code PROPOSED} on an unclaimed home, D-139).
+	 */
+	List<RentRecord> findByTenancyPropertyIdAndStatusInAndTenancyStatusInOrderByEffectiveFromAsc(Long propertyId,
+		Collection<RentRecordStatus> statuses, List<TenancyStatus> tenancyStatuses);
 	
 	/** A live (proposed or confirmed) record for the same month already exists. */
 	boolean existsByTenancyIdAndEffectiveFromAndStatusIn(Long tenancyId, LocalDate effectiveFrom,

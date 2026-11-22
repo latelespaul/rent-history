@@ -2,7 +2,7 @@ import { Link, Navigate, useLocation } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CheckIcon, LockIcon, MessageIcon, UserIcon } from "@/components/ui/icons.gen"
+import { CheckIcon, LockIcon, MessageIcon, PlusIcon, UserIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { useAuth } from "@/features/auth/authContext"
 import { safeNext } from "@/features/auth/paths"
@@ -41,6 +41,10 @@ export default function WelcomeCreatedPage() {
 
   const later = safeNext(location.state.next, roleHome(user.roles))
   const roles = user.roles.filter((r): r is PickableRole => r === "TENANT" || r === "LANDLORD")
+  // The new user's first job (captain 21:38): add their home, as its tenant or, for a landlord, its
+  // owner ("I own it" picked), which publishes it at once (open by default, D-132).
+  const firstJob =
+    roles.includes("TENANT") || roles.length === 0 ? "/homes/new" : "/homes/new?own=1"
 
   return (
     <main>
@@ -106,9 +110,18 @@ export default function WelcomeCreatedPage() {
             Then you can post right away. Adding an ID and your rental details is optional.
           </Notice>
           <Button asChild size="lg" className="mt-5 w-full">
-            <Link to="/verify/phone">
+            <Link
+              to={`/verify/phone?next=${encodeURIComponent(firstJob)}`}
+              data-testid="welcome-verify"
+            >
               <MessageIcon />
               Verify your phone number
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="mt-2 w-full">
+            <Link to={firstJob} data-testid="welcome-add-home">
+              <PlusIcon />
+              {firstJob === "/homes/new" ? "Add your home" : "Add your property"}
             </Link>
           </Button>
           <Button asChild variant="ghost" className="mt-2 w-full">

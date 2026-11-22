@@ -1,5 +1,6 @@
 import { useMemo } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
+import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { Notice } from "@/components/ui/notice"
 import { useCities } from "@/features/city/useCities"
@@ -92,9 +93,14 @@ export default function SearchPage() {
             <EmptyState
               title="No homes match"
               description={
-                filtered
-                  ? "Try fewer filters or another locality."
-                  : "No published homes here yet. Landlords can list theirs after verification."
+                filtered ? "Try fewer filters or another locality." : "No published homes here yet."
+              }
+              action={
+                <Button asChild variant="outline">
+                  <Link to="/homes/new" data-testid="empty-add-home">
+                    Can&rsquo;t find your home? Add it
+                  </Link>
+                </Button>
               }
             />
           ) : (
@@ -105,6 +111,19 @@ export default function SearchPage() {
                 </li>
               ))}
             </ul>
+          )}
+
+          {data && data.items.length > 0 && (
+            <p className="text-sm text-ink-700">
+              Can&rsquo;t find your home?{" "}
+              <Link
+                to="/homes/new"
+                data-testid="search-add-home"
+                className="font-semibold underline"
+              >
+                Add it
+              </Link>
+            </p>
           )}
 
           {data && (

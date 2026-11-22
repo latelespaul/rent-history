@@ -187,6 +187,52 @@ export interface PropertyDetail {
   updatedAt: string
   /** Place in the hierarchy (D-107); absent for a home placed by free-text locality only. */
   location?: PropertyLocation
+  /** A tenant added it while its landlord is not on the platform (D-139). */
+  addedByTenant?: boolean
+  /** The flat number is shown to everyone who may see the home (D-140); else only to the owner and admins. */
+  unitLabelPublic?: boolean
+  /** The green tick (D-134). */
+  verification?: VerificationState
+  /** The owner as the adding tenant named them; only for that tenant and admins (D-140). */
+  ownerContact?: OwnerContact
+}
+
+/** The owner's details a tenant typed when adding a home (D-139); private (D-140). */
+export interface OwnerContact {
+  name?: string
+  email?: string
+  phone?: string
+}
+
+/** Green tick state of a property, tenancy or review (D-134). */
+export type VerificationState = "UNVERIFIED" | "VERIFIED" | "REJECTED"
+
+/** `POST /me/homes` (D-139): a new home or a picked one, and how the caller is related to it. */
+export interface AddHomeInput {
+  propertyId?: string
+  home?: PropertyInput
+  relation: "RENT" | "OWN"
+  startDate?: string
+  endDate?: string
+  monthlyRentInr?: number
+  depositInr?: number
+  owner?: OwnerContact
+  /** A city not in the list (D-143): created pending admin approval; `home.city` is then ignored. */
+  newCity?: { name: string; state: string }
+}
+
+/** The answer of `POST /me/homes`; `accessToken` when the step added the landlord role. */
+export interface AddHomeResult {
+  property: PropertyDetail
+  tenancy?: Tenancy
+  accessToken?: string
+}
+
+/** `POST /tenancies/{id}/reviews` (D-27, D-43). */
+export interface ReviewInput {
+  direction: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
+  ratingOverall: number
+  body: string
 }
 
 /** Location row state (§5.17): `PENDING` is a landlord's proposal, shown "Pending review" (D-109). */
@@ -290,9 +336,12 @@ export type PropertyPatch = Partial<PropertyInput> & { status?: "ARCHIVED" }
 export interface RentHistoryRow {
   fromMonth: string
   toMonth?: string | null
-  monthlyRentInr: number
+  /** Absent where the tenancy's rent is masked (D-140). */
+  monthlyRentInr?: number | null
   maintenanceInr?: number | null
   share: boolean
+  /** False for a tenant's own one-sided rent, which nobody confirmed (D-142). */
+  confirmed?: boolean
 }
 
 /** `GET /properties/{id}/rent-history`. */
@@ -418,6 +467,8 @@ export interface PropertyReview {
   response?: { body: string; authorShortName?: string; createdAt?: string; editUntil?: string }
   /** What the caller may do now; the approval gate is checked on the write (D-91). */
   actions?: { edit: boolean; withdraw: boolean; respond: boolean; editResponse: boolean }
+  /** The green tick (D-134): "Not verified yet" until an admin decides. */
+  verification?: VerificationState
 }
 
 /** `GET /auth/config`: what the login page offers (D-76, D-77). */

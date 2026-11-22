@@ -6,25 +6,34 @@ import { monthLabel, rupees } from "./labels"
 import { SignInPrompt } from "./SignInPrompt"
 import { useRentHistory } from "./useProperties"
 
-/** Newest first; a change is shown against the row before it in time. */
+/**
+ * Newest first; a confirmed row's change is shown against the confirmed row before it in time. A
+ * one-sided row (confirmed === false) has no change and is never the base of one.
+ */
 function rowsWithChange(rows: RentHistoryRow[]) {
   const sorted = [...rows].sort((a, b) => b.fromMonth.localeCompare(a.fromMonth))
   return sorted.map((row, i) => {
-    const older = sorted[i + 1]
+    if (row.confirmed === false) return { row, change: undefined }
+    const older = sorted.slice(i + 1).find((r) => r.confirmed !== false)
+    const now = row.monthlyRentInr
+    const before = older?.monthlyRentInr
     const change =
-      older && older.monthlyRentInr > 0
-        ? ((row.monthlyRentInr - older.monthlyRentInr) / older.monthlyRentInr) * 100
-        : null
+      now != null && before != null && before > 0 ? ((now - before) / before) * 100 : null
     return { row, change }
   })
 }
 
 /**
- * Rent history (D-26): monthly rent from confirmed tenancies, no tenant names, month precision.
+ * Rent history (D-26): monthly rent from confirmed tenancies, plus tenants' one-sided rows marked
+ * not verified yet (D-142); no tenant names, month precision.
  * Signed-in only (D-56). Until the API serves it (B5) the card says so instead of guessing.
  */
 export function RentHistory({ propertyId, signedIn }: { propertyId: string; signedIn: boolean }) {
   const history = useRentHistory(propertyId, signedIn)
+  // A tenant's one-sided rows (D-142) show next to confirmed ones, marked not verified yet.
+  const oneSided = history.data?.some((row) => row.confirmed === false) ?? false
+  const confirmed = history.data?.some((row) => row.confirmed !== false) ?? false
+  const unconfirmed = oneSided && !confirmed
 
   let body
   if (!signedIn) {
@@ -78,7 +87,12 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
                 <td className="py-2.5 pr-4">{monthLabel(row.fromMonth)}</td>
                 <td className="py-2.5 pr-4">{monthLabel(row.toMonth) ?? "now"}</td>
                 <td className="py-2.5 pr-4 text-right font-semibold">
-                  {rupees(row.monthlyRentInr)}
+                  {row.monthlyRentInr != null ? rupees(row.monthlyRentInr) : "Hidden"}
+                  {row.confirmed === false && (
+                    <span className="block text-xs font-normal text-ink-500">
+                      added by the tenant · not verified yet
+                    </span>
+                  )}
                   {row.maintenanceInr ? (
                     <span className="block text-xs font-normal text-ink-500">
                       + {rupees(row.maintenanceInr)} maintenance
@@ -89,9 +103,11 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
                   )}
                 </td>
                 <td className="py-2.5 text-right text-ink-700">
-                  {change === null
-                    ? "first record"
-                    : `${change > 0 ? "+" : ""}${change.toFixed(1)}%`}
+                  {change === undefined
+                    ? "–"
+                    : change === null
+                      ? "first record"
+                      : `${change > 0 ? "+" : ""}${change.toFixed(1)}%`}
                 </td>
               </tr>
             ))}
@@ -111,11 +127,20 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
           <TrendUpIcon size={20} />
           Rent history
         </h2>
-        <Badge variant="verified">Confirmed tenancies</Badge>
+        {unconfirmed ? (
+          <Badge>Not verified yet</Badge>
+        ) : (
+          <Badge variant="verified">Confirmed tenancies</Badge>
+        )}
       </div>
       <p className="text-sm text-ink-500">
-        Monthly rent from confirmed tenancies. No tenant names.
+        {unconfirmed
+          ? "Monthly rent as the tenant gave it, not verified yet. No tenant names."
+          : "Monthly rent from confirmed tenancies. No tenant names."}
       </p>
+      {oneSided && confirmed && (
+        <p className="text-sm text-ink-500">Some rows added by a tenant, not verified yet</p>
+      )}
       {body}
     </section>
   )

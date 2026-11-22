@@ -42,6 +42,32 @@ public class CityService {
 			.toList();
 	}
 	
+	/**
+	 * The city a user typed in "Add your home" (D-143): an existing row with that name or alias (live or not), else
+	 * a new pending row ({@code live = false}) for an admin to approve. Its code is the first letters of the name,
+	 * made unique with a number.
+	 */
+	@Transactional
+	public City findOrCreatePending(String name, String state) {
+		String clean = name.trim().replaceAll("\\s+", " ");
+		List<String> wanted = words(clean);
+		for (City city : cities.findAll()) {
+			boolean same = Stream.concat(Stream.of(city.getName()), city.aliasList().stream())
+				.map(CityService::words)
+				.anyMatch(wanted::equals);
+			if (same) {
+				return city;
+			}
+		}
+		String letters = clean.toUpperCase(Locale.ROOT).replaceAll("[^A-Z]", "");
+		String base = (letters + "XXX").substring(0, 3);
+		String code = base;
+		for (int n = 2; cities.existsById(code); n++) {
+			code = base + n;
+		}
+		return cities.saveAndFlush(City.pending(code, clean, state.trim()));
+	}
+	
 	/** Rejects any city that is not a live row (D-20). */
 	public void requireLive(String code) {
 		if (code == null || !cities.existsByCodeAndLiveTrue(code)) {

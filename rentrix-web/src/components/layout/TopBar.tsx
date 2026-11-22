@@ -19,6 +19,7 @@ import {
   LogoutIcon,
   MenuIcon,
   MessageIcon,
+  PlusIcon,
   ShieldCheckIcon,
   UserIcon,
 } from "@/components/ui/icons.gen"
@@ -236,6 +237,15 @@ export function TopBar({
         <div className="flex items-center gap-3">
           {isAdmin && <Badge variant="admin">Admin</Badge>}
           {viewer?.isDemo && <DemoBadge className="max-sm:hidden" />}
+          {viewer && (
+            // "+ Add your home" (D-139, captain 22:22): in both modes, on every page.
+            <Button asChild size="sm" data-testid="add-home-button">
+              <Link to="/homes/new">
+                <PlusIcon />
+                <span className="max-[420px]:sr-only">Add your home</span>
+              </Link>
+            </Button>
+          )}
           {viewer ? (
             <AccountMenu viewer={viewer} onSignOut={onSignOut} />
           ) : (

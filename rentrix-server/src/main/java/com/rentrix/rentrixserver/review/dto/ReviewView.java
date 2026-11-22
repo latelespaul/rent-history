@@ -6,6 +6,7 @@ import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
+import com.rentrix.rentrixserver.verification.VerificationState;
 
 import java.time.Instant;
 import java.time.YearMonth;
@@ -17,7 +18,8 @@ import java.util.UUID;
  * landlord authors, whose profiles signed-in users can open (D-55). {@code body} is absent while a personal-data
  * report hides the text ({@code textHidden}, D-50). {@code editUntil} and {@code hiddenReason} are for the author
  * and admins only. A review about the caller that still awaits reveal is listed as a bare {@code AWAITING_REVEAL}
- * entry, with no ratings, text or author (D-46).
+ * entry, with no ratings, text or author (D-46). {@code verification} is the green tick (D-134): {@code UNVERIFIED}
+ * ("Not verified yet") until an admin decides, then {@code VERIFIED} or {@code REJECTED}.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ReviewView(
@@ -40,7 +42,8 @@ public record ReviewView(
 	Instant editUntil,
 	String hiddenReason,
 	Response response,
-	Actions actions
+	Actions actions,
+	VerificationState verification
 ) {
 	
 	@JsonInclude(JsonInclude.Include.NON_NULL)

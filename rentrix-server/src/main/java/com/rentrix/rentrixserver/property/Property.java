@@ -1,6 +1,5 @@
 package com.rentrix.rentrixserver.property;
 
-import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.persistence.PublicEntity;
 import com.rentrix.rentrixserver.location.Area;
@@ -8,6 +7,7 @@ import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.location.SocietyWing;
 import com.rentrix.rentrixserver.user.User;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -116,6 +116,33 @@ public class Property extends PublicEntity {
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "verification_status", length = 16)
 	private VerificationState verificationStatus;
+	
+	/** The tenant who added this home while its landlord was not on the platform (D-139); null for listings. */
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "added_by")
+	private User addedBy;
+	
+	/** The owner as the tenant named them (D-139): private to {@link #addedBy} and admins, for a later claim. */
+	@Column(name = "owner_name", length = 80)
+	private String ownerName;
+	
+	@Column(name = "owner_email", length = 320)
+	private String ownerEmail;
+	
+	@Column(name = "owner_phone", length = 20)
+	private String ownerPhone;
+	
+	/** Who sees {@link #getUnitLabel()} (D-140); {@code MASKED} keeps D-57, tenant-added homes are {@code OPEN}. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "unit_label_visibility", nullable = false, length = 16)
+	private FieldVisibility unitLabelVisibility = FieldVisibility.MASKED;
+	
+	/** Who sees the owner's name and contact (D-140); always {@code PRIVATE} today. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "owner_contact_visibility", nullable = false, length = 16)
+	private FieldVisibility ownerContactVisibility = FieldVisibility.PRIVATE;
 	
 	@Column(name = "is_demo", nullable = false)
 	private boolean demo;

@@ -1,9 +1,10 @@
 package com.rentrix.rentrixserver.tenancy;
 
-import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.common.persistence.PublicEntity;
+import com.rentrix.rentrixserver.property.FieldVisibility;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.user.User;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -90,6 +91,12 @@ public class Tenancy extends PublicEntity {
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "verification_status", length = 16)
 	private VerificationState verificationStatus;
+	
+	/** Who sees the exact rent of this tenancy in the property's rent history (D-140); {@code OPEN} today. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "rent_visibility", nullable = false, length = 16)
+	private FieldVisibility rentVisibility = FieldVisibility.OPEN;
 	
 	/** The admin who gave or refused the tick, when and why (D-134). */
 	@ManyToOne(fetch = FetchType.LAZY)

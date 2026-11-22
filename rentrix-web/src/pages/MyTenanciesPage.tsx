@@ -129,7 +129,16 @@ export default function MyTenanciesPage() {
                   description={
                     isLandlord
                       ? "Invite a tenant from one of your published properties."
-                      : "Find the home you rent and send its landlord a tenancy request."
+                      : "Add the home you rent or rented: your tenancy shows at once."
+                  }
+                  action={
+                    !isLandlord && (
+                      <Button asChild>
+                        <Link to="/homes/new" data-testid="empty-add-home">
+                          Add your home
+                        </Link>
+                      </Button>
+                    )
                   }
                 />
               ) : (

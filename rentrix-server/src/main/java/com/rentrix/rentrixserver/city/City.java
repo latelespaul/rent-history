@@ -44,6 +44,19 @@ public class City extends TimestampedEntity {
 	@Column(name = "region", length = 80)
 	private String region;
 	
+	/**
+	 * A city a user typed in "Add your home" (D-143): not live, so it is not offered in the pickers until an admin
+	 * approves it by setting {@code live}; any 6-digit PIN code is accepted.
+	 */
+	public static City pending(String code, String name, String state) {
+		City city = new City();
+		city.code = code;
+		city.name = name;
+		city.state = state;
+		city.live = false;
+		return city;
+	}
+	
 	public List<String> aliasList() {
 		return splitList(aliases);
 	}
