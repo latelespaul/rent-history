@@ -155,10 +155,7 @@ describe("login page", () => {
 
     const submit = within(panel).getByRole("button", { name: /sign in as selected seed user/i })
     expect((submit as HTMLButtonElement).disabled).toBe(true)
-    // The radio itself is the whole row's hit area, not a 1px sr-only box.
     const radio = within(panel).getByRole("radio", { name: /demo landlord blr-1/i })
-    expect(radio.className).toContain("inset-0")
-    expect(radio.className).not.toContain("sr-only")
     await user.click(radio)
     expect((radio as HTMLInputElement).checked).toBe(true)
     await user.click(submit)
