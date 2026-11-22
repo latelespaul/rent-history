@@ -1,0 +1,163 @@
+package com.rentrix.rentrixserver.property;
+
+import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.common.web.PageRequests;
+import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
+import com.rentrix.rentrixserver.property.dto.PropertyCard;
+import com.rentrix.rentrixserver.property.dto.PropertyDetail;
+import com.rentrix.rentrixserver.property.dto.PropertyLimits;
+import com.rentrix.rentrixserver.property.dto.UpdatePropertyRequest;
+import com.rentrix.rentrixserver.security.AuthenticatedUser;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Property endpoints (§12.2). {@code GET /properties} and {@code GET /properties/{id}} are public (fields per
+ * D-56); writes need a signed-in owner, creating needs the {@code LANDLORD} role (D-21).
+ */
+@RestController
+@RequiredArgsConstructor
+public class PropertyController {
+	
+	/** Sort allow-list (D-59); each name maps to itself and {@link PropertySearchQuery} owns the SQL. */
+	static final Map<String, String> SEARCH_SORTS = Map.of(
+		PropertySearchQuery.TOP_RATED, PropertySearchQuery.TOP_RATED,
+		PropertySearchQuery.MOST_REVIEWED, PropertySearchQuery.MOST_REVIEWED,
+		PropertySearchQuery.NEWEST, PropertySearchQuery.NEWEST);
+	static final Sort DEFAULT_SEARCH_SORT = Sort.by(Sort.Direction.DESC, PropertySearchQuery.TOP_RATED);
+	
+	static final Map<String, String> MINE_SORTS = Map.of("newest", "createdAt", "updated", "updatedAt");
+	static final Sort DEFAULT_MINE_SORT = Sort.by(Sort.Direction.DESC, "updatedAt");
+	
+	static final int MAX_TEXT = 100;
+	private static final BigDecimal MIN_RATING = BigDecimal.ONE;
+	private static final BigDecimal MAX_RATING = BigDecimal.valueOf(5);
+	
+	private final PropertyService service;
+	
+	/**
+	 * {@code GET /properties?city=&locality=&type=&bedrooms=&minRating=&q=&page=&size=&sort=}: published homes.
+	 * {@code city} is a live city code (else {@code 422 city_not_live}); without it every live city is searched.
+	 * {@code locality} is a prefix, {@code q} matches locality, building or street, {@code minRating} (1–5)
+	 * keeps homes whose shown average (one decimal) reaches it, i.e. 3 or more reviews (D-52). A {@code sort}
+	 * name without a direction sorts descending.
+	 */
+	@GetMapping("/properties")
+	public PageResponse<PropertyCard> search(
+		@RequestParam(required = false) String city,
+		@RequestParam(required = false) String locality,
+		@RequestParam(required = false) String type,
+		@RequestParam(required = false) Integer bedrooms,
+		@RequestParam(required = false) BigDecimal minRating,
+		@RequestParam(required = false) String q,
+		@RequestParam(required = false) Integer page,
+		@RequestParam(required = false) Integer size,
+		@RequestParam(required = false) String sort) {
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		String localityKey = text("locality", locality, 120, errors);
+		String textKey = text("q", q, MAX_TEXT, errors);
+		PropertyType propertyType = propertyType(type, errors);
+		if (bedrooms != null && (bedrooms < 0 || bedrooms > PropertyLimits.MAX_ROOMS)) {
+			errors.add(new ApiProblem.FieldError("bedrooms", "range",
+				"Must be between 0 and " + PropertyLimits.MAX_ROOMS + "."));
+		}
+		if (minRating != null && (minRating.compareTo(MIN_RATING) < 0 || minRating.compareTo(MAX_RATING) > 0)) {
+			errors.add(new ApiProblem.FieldError("minRating", "range", "Must be between 1 and 5."));
+		}
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		String searchSort = sort == null || sort.isBlank() || sort.contains(",") ? sort : sort + ",desc";
+		Pageable pageable = PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
+		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
+		return service.search(new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating,
+			textKey), pageable);
+	}
+	
+	@GetMapping("/properties/{id}")
+	public PropertyDetail get(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
+		return service.get(id, caller);
+	}
+	
+	@PostMapping("/properties")
+	@PreAuthorize("hasRole('LANDLORD')")
+	public ResponseEntity<PropertyDetail> create(@Valid @RequestBody CreatePropertyRequest request,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		PropertyDetail created = service.create(request, caller);
+		return ResponseEntity.created(URI.create("/api/v1/properties/" + created.id())).body(created);
+	}
+	
+	@PatchMapping("/properties/{id}")
+	public PropertyDetail update(@PathVariable UUID id, @Valid @RequestBody UpdatePropertyRequest request,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		return service.update(id, request, caller);
+	}
+	
+	@PostMapping("/properties/{id}/submit")
+	public PropertyDetail submit(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
+		return service.submit(id, caller);
+	}
+	
+	@DeleteMapping("/properties/{id}")
+	public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
+		service.delete(id, caller);
+		return ResponseEntity.noContent().build();
+	}
+	
+	/** {@code GET /me/properties}: the caller's own listings, every state, with unit labels. */
+	@GetMapping("/me/properties")
+	public PageResponse<PropertyDetail> mine(@RequestParam(required = false) Integer page,
+		@RequestParam(required = false) Integer size, @RequestParam(required = false) String sort,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		return service.mine(caller, PageRequests.of(page, size, sort, MINE_SORTS, DEFAULT_MINE_SORT));
+	}
+	
+	private static String text(String field, String value, int max, List<ApiProblem.FieldError> errors) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		String key = Property.localityKey(value);
+		if (key.length() > max) {
+			errors.add(new ApiProblem.FieldError(field, "size", "At most " + max + " characters."));
+			return null;
+		}
+		return key;
+	}
+	
+	private static PropertyType propertyType(String value, List<ApiProblem.FieldError> errors) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return PropertyType.valueOf(value.trim().toUpperCase(Locale.ROOT));
+		} catch (IllegalArgumentException e) {
+			errors.add(new ApiProblem.FieldError("type", "not_allowed",
+				"Use one of " + List.of(PropertyType.values()) + "."));
+			return null;
+		}
+	}
+	
+}

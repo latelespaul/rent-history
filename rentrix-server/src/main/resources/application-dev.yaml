@@ -1,6 +1,7 @@
 # =============================================================================
 # dev profile: local development. Needs nothing but Java 21.
 #   SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
+# Add SEED_DEMO=true for demo homes on an empty database (seed/DemoSeeder).
 # SQLite file under ./data, Swagger UI on, built-in JWT secret (dev only).
 # =============================================================================
 server:
