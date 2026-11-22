@@ -9,6 +9,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -28,9 +30,10 @@ class MigrationVendorParseTest {
 		JdbcDataSource dataSource = new JdbcDataSource();
 		dataSource.setURL("jdbc:h2:mem:" + UUID.randomUUID() + ";MODE=" + mode + extra + ";DB_CLOSE_DELAY=-1");
 		
+		// the same locations as spring.flyway.locations, with {vendor} resolved (db/vendor/postgresql has no files)
 		MigrateResult result = Flyway.configure()
 			.dataSource(dataSource)
-			.locations("classpath:db/migration")
+			.locations("classpath:db/migration", "classpath:db/vendor/" + product.toLowerCase(Locale.ROOT))
 			.placeholders(MigrationPlaceholders.forProduct(product))
 			.load()
 			.migrate();
@@ -41,6 +44,14 @@ class MigrationVendorParseTest {
 		assertThat(jdbc.queryForObject("select count(*) from cities where live = true", Integer.class)).isEqualTo(2);
 		assertThat(jdbc.queryForObject("select pincode_prefixes from cities where code = 'BLR'", String.class))
 			.isEqualTo("56");
+		// V5 location hierarchy, plus the MySQL-only V5.1 foreign keys (D-114)
+		assertThat(jdbc.queryForObject("select count(*) from area_pincodes", Integer.class)).isZero();
+		boolean mysql = product.equals("MySQL");
+		List<String> versions = result.migrations.stream().map(m -> m.version).toList();
+		assertThat(versions).contains("5");
+		assertThat(versions.contains("5.1")).as("5.1 only on MySQL").isEqualTo(mysql);
+		assertThat(jdbc.queryForObject("select count(*) from information_schema.table_constraints"
+			+ " where lower(constraint_name) = 'fk_properties_area'", Integer.class)).isEqualTo(mysql ? 1 : 0);
 	}
 	
 	@ParameterizedTest(name = "{0}")

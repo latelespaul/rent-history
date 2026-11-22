@@ -1,6 +1,15 @@
 package com.rentrix.rentrixserver.seed;
 
 import com.rentrix.rentrixserver.city.CityRepository;
+import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.AreaRepository;
+import com.rentrix.rentrixserver.location.LocationStatus;
+import com.rentrix.rentrixserver.location.Society;
+import com.rentrix.rentrixserver.location.SocietyKind;
+import com.rentrix.rentrixserver.location.SocietyRepository;
+import com.rentrix.rentrixserver.location.SocietyTower;
+import com.rentrix.rentrixserver.location.SocietyTowerRepository;
+import com.rentrix.rentrixserver.location.SocietyWing;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
@@ -40,6 +49,15 @@ class DemoSeederTest {
 	CityRepository cities;
 	
 	@Autowired
+	AreaRepository areas;
+	
+	@Autowired
+	SocietyRepository societies;
+	
+	@Autowired
+	SocietyTowerRepository towers;
+	
+	@Autowired
 	PlatformTransactionManager transactionManager;
 	
 	@Autowired
@@ -48,7 +66,7 @@ class DemoSeederTest {
 	@Test
 	void seedsAnEmptyDatabaseOnceWithClearlyFakeData() {
 		assertThat(context.getBeansOfType(DemoSeeder.class)).as("dev-only bean").isEmpty();
-		DemoSeeder seeder = new DemoSeeder(users, properties, cities, transactionManager);
+		DemoSeeder seeder = new DemoSeeder(users, properties, cities, areas, societies, towers, transactionManager);
 		assertThat(seeder.seed()).isTrue();
 		assertThat(seeder.seed()).as("non-empty database").isFalse();
 		
@@ -64,6 +82,37 @@ class DemoSeederTest {
 				.containsExactlyInAnyOrder("Demo Landlord BLR-1", "Demo Landlord BLR-2", "Demo Landlord PNQ-1",
 					"Demo Landlord PNQ-2");
 			assertThat(homes).allMatch(p -> p.getPincode().startsWith(p.getCity().getCode().equals("BLR") ? "56" : "41"));
+			// D-115: every home points at its area, whose PIN codes include the home's; the society homes match
+			assertThat(homes).allMatch(p -> p.getArea() != null && p.getArea().isDemo()
+				&& p.getArea().getCity().getCode().equals(p.getCity().getCode())
+				&& p.getArea().pincodeList().contains(p.getPincode())
+				&& p.getArea().getName().equals(p.getLocality()));
+			Map<String, String> placed = homes.stream().filter(p -> p.getSociety() != null)
+				.collect(Collectors.toMap(Property::getBuildingName, p -> p.getSociety().getName() + " / "
+					+ p.getTower().getName() + " / " + p.getWing().getName()));
+			assertThat(placed).containsExactlyInAnyOrderEntriesOf(Map.of(
+				"Demo Residency A", "Demo Greens / Tower 1 / Wing A",
+				"Demo Towers E", "Demo Meadows / Tower 2 / Wing B"));
+			assertThat(homes).filteredOn(p -> p.getSociety() == null).hasSize(6)
+				.allMatch(p -> p.getTower() == null && p.getWing() == null);
+			
+			List<Society> gated = societies.findAll();
+			assertThat(gated).hasSize(2).allMatch(Society::isDemo)
+				.allMatch(s -> s.getKind() == SocietyKind.GATED_COMMUNITY && s.getStatus() == LocationStatus.ACTIVE)
+				.allMatch(s -> s.getCity().getCode().equals(s.getArea().getCity().getCode()));
+			assertThat(gated.stream().map(s -> s.getCity().getCode())).containsExactlyInAnyOrder("BLR", "PNQ");
+			for (Society society : gated) {
+				List<SocietyTower> its = towers.findBySocietyOrderBySortOrderAscNameKeyAsc(society);
+				assertThat(its).extracting(SocietyTower::getName).containsExactly("Tower 1", "Tower 2");
+				assertThat(its).allSatisfy(t -> assertThat(t.getWings()).extracting(SocietyWing::getName)
+					.containsExactly("Wing A", "Wing B"));
+			}
+			List<Area> seededAreas = areas.findAll();
+			assertThat(seededAreas).hasSize(9).allMatch(Area::isDemo)
+				.allMatch(a -> a.getStatus() == LocationStatus.ACTIVE && !a.pincodeList().isEmpty())
+				.allMatch(a -> a.pincodeList().stream()
+					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));
+			
 			List<User> people = users.findAll();
 			assertThat(people).hasSize(6).allMatch(User::isDemo)
 				.allMatch(u -> u.getEmail().endsWith("@example.test"))
