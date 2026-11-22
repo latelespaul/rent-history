@@ -70,7 +70,7 @@ public class RentRecordService {
 		}
 		if (!TenancyService.CONFIRMED.contains(tenancy.getStatus())) {
 			throw ApiException.conflict("tenancy_not_confirmed",
-				"Rent can be added once both parties confirmed the tenancy.");
+				"Rent can be added once the tenancy is current or ended.");
 		}
 		approvals.require(me, TenancyService.roleOf(side));
 		LocalDate month = request.effectiveFrom().withDayOfMonth(1);

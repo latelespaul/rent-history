@@ -116,7 +116,7 @@ public class ReviewService {
 				"As the tenant you review the landlord and the home; as the landlord you review the tenant.");
 		}
 		if (!ReviewWindow.confirmed(tenancy)) {
-			throw ApiException.rule("tenancy_not_confirmed", "Only a tenancy confirmed by both sides can be reviewed.");
+			throw ApiException.rule("tenancy_not_confirmed", "Only a current or ended tenancy can be reviewed.");
 		}
 		if (direction == ReviewDirection.TENANT_TO_LANDLORD && UnclaimedLandlord.is(tenancy.getLandlord())) {
 			throw ApiException.rule("landlord_not_on_platform",

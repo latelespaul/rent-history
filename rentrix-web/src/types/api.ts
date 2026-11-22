@@ -189,6 +189,8 @@ export interface PropertyDetail {
   location?: PropertyLocation
   /** A tenant added it while its landlord is not on the platform (D-138). */
   addedByTenant?: boolean
+  /** The flat number is shown to everyone who may see the home (D-139); else only to the owner and admins. */
+  unitLabelPublic?: boolean
   /** The green tick (D-134). */
   verification?: VerificationState
   /** The owner as the adding tenant named them; only for that tenant and admins (D-139). */

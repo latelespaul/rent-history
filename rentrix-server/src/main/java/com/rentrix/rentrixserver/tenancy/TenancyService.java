@@ -278,8 +278,8 @@ public class TenancyService {
 
 	/**
 	 * A one-sided tenant period (D-138, D-141): {@code ACTIVE}, or {@code ENDED} with an end date, at once and
-	 * without {@code confirmedAt}; the initial rent is a {@code PROPOSED} record (one side only, D-25). No email:
-	 * owner confirmation is optional and not asked for yet.
+	 * without {@code confirmedAt}; the initial rent is a {@code PROPOSED} record (one side only, D-25). Owner
+	 * confirmation is optional and not asked for; a real landlord is only told the record exists.
 	 */
 	private TenancyView startOneSided(Tenancy tenancy, User me, AuthenticatedUser caller) {
 		Instant now = now();
@@ -295,6 +295,7 @@ public class TenancyService {
 		first.setAddedBy(me);
 		first.setStatus(RentRecordStatus.PROPOSED);
 		rentRecords.save(first);
+		notifier.recordedByTenant(saved, saved.getLandlord());
 		return view(saved, me, caller);
 	}
 
@@ -485,7 +486,8 @@ public class TenancyService {
 	/**
 	 * A whole home holds one tenancy at a time (D-23): a request or confirmation whose dates overlap a confirmed
 	 * tenancy on the same property, of any tenant, is refused with {@code 409 tenancy_overlap} naming that tenancy's
-	 * period. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
+	 * period. On a home with a real landlord only tenancies both sides confirmed or the landlord started hold dates:
+	 * a tenant's one-sided record (D-141) never blocks the landlord's tenancies. Nothing is ended automatically; the home's landlord also gets the tenancy's id so they can end it
 	 * first. The property row lock serialises concurrent confirmations on one home. ROOM and PG are exempt.
 	 */
 	private void requireHomeFree(Property property, Long excludeId, LocalDate start, LocalDate end, User me) {
@@ -495,6 +497,8 @@ public class TenancyService {
 		properties.lockById(property.getId());
 		tenancies.findOverlappingOnProperty(property.getId(), excludeId == null ? -1L : excludeId, CONFIRMED, start,
 				end == null ? OPEN_END : end).stream()
+			.filter(t -> t.getConfirmedAt() != null || t.getInitiatedBy() == TenancyParty.LANDLORD
+				|| UnclaimedLandlord.is(property.getLandlord()))
 			.findFirst()
 			.ifPresent(clash -> {
 				Map<String, String> conflict = new LinkedHashMap<>();

@@ -240,7 +240,7 @@ export default function PropertyPage() {
             <p className="inline-flex items-center gap-1.5 text-sm text-ink-500">
               <LockIcon size={14} />
               {property.unitLabel
-                ? property.addedByTenant
+                ? property.unitLabelPublic
                   ? `Flat ${property.unitLabel}.`
                   : `Flat ${property.unitLabel} (shown to you as owner or admin only).`
                 : "Flat number visible only to the landlord and tenants of this home."}

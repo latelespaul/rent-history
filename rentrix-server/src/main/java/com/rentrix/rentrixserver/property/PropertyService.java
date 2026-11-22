@@ -172,14 +172,14 @@ public class PropertyService {
 	
 	/**
 	 * A home added through {@code POST /me/homes} (D-138, D-139): open by default it is {@code PUBLISHED} at once,
-	 * without the green tick, and its flat number is {@code OPEN}. {@code owner} is the caller when they own it, else
-	 * the unclaimed-homes account; {@code proposer} files any new area, society, tower or wing as a proposal (D-109).
+	 * without the green tick. Its flat number is {@code OPEN} when a tenant added it, {@code MASKED} like any listing
+	 * when the owner did (D-57). {@code owner} is the caller when they own it, else the unclaimed-homes account; {@code proposer} files any new area, society, tower or wing as a proposal (D-109).
 	 */
 	@Transactional
 	public Property newHome(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
 		Property property = build(request, owner, proposer, pendingCity);
 		property.setStatus(PropertyStatus.PUBLISHED);
-		property.setUnitLabelVisibility(FieldVisibility.OPEN);
+		property.setUnitLabelVisibility(UnclaimedLandlord.is(owner) ? FieldVisibility.OPEN : FieldVisibility.MASKED);
 		return property;
 	}
 	
@@ -196,9 +196,10 @@ public class PropertyService {
 	}
 	
 	/**
-	 * {@code GET /me/homes/matches} (D-138): published homes in the same city and PIN code whose flat number is the
-	 * one typed, in the same society (by id, or by name when the society is typed as free text). Shown as "Is it
-	 * this one?" before a duplicate is added. At most 10.
+	 * {@code GET /me/homes/matches} (D-138): published homes in the same city, PIN code and society (by id, or by name
+	 * when the society is typed as free text). A home whose flat number is {@code OPEN} must also have the flat
+	 * number typed; a {@code MASKED} one matches on the society alone, so its flat number can never be probed.
+	 * Shown as "Is it this one?" before a duplicate is added. At most 10.
 	 */
 	public List<PropertyCard> matches(String city, String pincode, UUID societyId, String societyName, String unit) {
 		String unitKey = matchKey(unit);
@@ -208,15 +209,23 @@ public class PropertyService {
 		}
 		List<Property> found = properties.findByCityCodeAndPincodeAndStatusAndDeletedAtIsNull(city.trim(),
 				pincode.trim(), PropertyStatus.PUBLISHED).stream()
-			.filter(p -> unitKey.equals(matchKey(p.getUnitLabel())))
-			.filter(p -> societyId != null ? p.getSociety() != null && societyId.equals(p.getSociety().getPublicId())
-				: societyKey.isEmpty() || societyKey.equals(matchKey(p.getBuildingName()))
-					|| p.getSociety() != null && societyKey.equals(matchKey(p.getSociety().getName())))
+			.filter(p -> p.getUnitLabelVisibility() == FieldVisibility.OPEN
+				? unitKey.equals(matchKey(p.getUnitLabel())) && (societyId == null && societyKey.isEmpty()
+					|| sameSociety(p, societyId, societyKey))
+				: sameSociety(p, societyId, societyKey))
 			.limit(10)
 			.toList();
 		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY,
 			found.stream().map(Property::getId).toList());
 		return found.stream().map(p -> card(p, ratings.get(p.getId()))).toList();
+	}
+	
+	private static boolean sameSociety(Property p, UUID societyId, String societyKey) {
+		if (societyId != null) {
+			return p.getSociety() != null && societyId.equals(p.getSociety().getPublicId());
+		}
+		return !societyKey.isEmpty() && (societyKey.equals(matchKey(p.getBuildingName()))
+			|| p.getSociety() != null && societyKey.equals(matchKey(p.getSociety().getName())));
 	}
 	
 	/** Lower case, letters and digits only: "Flat C-1204" and "c 1204" match. */
@@ -494,6 +503,7 @@ public class PropertyService {
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPincode(),
 			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
+			p.getUnitLabelVisibility() == FieldVisibility.OPEN,
 			p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(), p.getParking(),
 			p.getDescription(), p.getStatus(), p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
 			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()), p.getAddedBy() != null,

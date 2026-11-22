@@ -16,7 +16,8 @@ import java.util.UUID;
  * {@code addedByTenant} marks a home a tenant added while its landlord is not on the platform (D-138), shown "Added
  * by a tenant · not verified yet". {@code verification} is the green tick (D-134). {@code ownerContact} is what that
  * tenant entered about the owner: private, present only for them and admins (D-139). Where
- * {@code unitLabelVisibility} is {@code OPEN} (D-139), the flat number is shown to everyone who may see the home.
+ * {@code unitLabelPublic} is true (flat number {@code OPEN}, D-139), the flat number is shown to everyone who may
+ * see the home.
  */
 public record PropertyDetail(
 	UUID id,
@@ -26,6 +27,7 @@ public record PropertyDetail(
 	String street,
 	String pincode,
 	@JsonInclude(JsonInclude.Include.NON_NULL) String unitLabel,
+	boolean unitLabelPublic,
 	PropertyType propertyType,
 	Integer bedrooms,
 	Integer bathrooms,
@@ -47,7 +49,7 @@ public record PropertyDetail(
 	
 	/** This page with the owner contact a tenant entered (D-139), for that tenant and admins only. */
 	public PropertyDetail withOwnerContact(OwnerContact contact) {
-		return new PropertyDetail(id, city, locality, buildingName, street, pincode, unitLabel, propertyType, bedrooms,
+		return new PropertyDetail(id, city, locality, buildingName, street, pincode, unitLabel, unitLabelPublic, propertyType, bedrooms,
 			bathrooms, areaSqft, furnishing, parking, description, status, demo, rating, landlord, createdAt, updatedAt,
 			location, addedByTenant, verification, contact);
 	}

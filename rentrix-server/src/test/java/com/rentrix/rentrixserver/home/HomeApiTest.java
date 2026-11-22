@@ -11,6 +11,7 @@ import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.support.IntegrationTest;
+import com.rentrix.rentrixserver.support.RecordingEmailSender;
 import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -63,6 +64,9 @@ class HomeApiTest {
 	
 	@Autowired
 	CityRepository cities;
+	
+	@Autowired
+	RecordingEmailSender mail;
 
 	private Area area;
 	private Society society;
@@ -131,7 +135,9 @@ class HomeApiTest {
 		mvc.perform(get("/properties/" + id).header("Authorization", support.bearer(other)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.unitLabel").value("Flat 1203"))
+			.andExpect(jsonPath("$.unitLabelPublic").value(true))
 			.andExpect(jsonPath("$.ownerContact").doesNotExist());
+		assertThat(mail.to(UnclaimedLandlord.EMAIL)).isEmpty();
 		// Its rent shows at once, marked unconfirmed (nobody can confirm it yet).
 		mvc.perform(get("/properties/" + id + "/rent-history").header("Authorization", support.bearer(other)))
 			.andExpect(status().isOk())
@@ -178,6 +184,21 @@ class HomeApiTest {
 				.param("unit", "C-1205"))
 			.andExpect(jsonPath("$.length()").value(0));
 
+		// A listing's flat number is MASKED (D-57): it matches on the society alone, whatever flat is typed.
+		User owner = tenant("Masked Owner");
+		String masked = added(owner, """
+			{"home": %s, "relation": "OWN"}""".formatted(newHome("Flat 9901"))).at("/property/id").asString();
+		for (String unit : new String[] {"9901", "1"}) {
+			mvc.perform(get("/me/homes/matches").header("Authorization", support.bearer(second))
+					.param("city", CITY).param("pincode", "300201").param("society", society.getPublicId().toString())
+					.param("unit", unit))
+				.andExpect(jsonPath("$[?(@.id == '%s')]".formatted(masked)).isNotEmpty())
+				.andExpect(jsonPath("$[0].unitLabel").doesNotExist());
+		}
+		mvc.perform(get("/me/homes/matches").header("Authorization", support.bearer(second))
+				.param("city", CITY).param("pincode", "300201").param("unit", "9901"))
+			.andExpect(jsonPath("$.length()").value(0));
+
 		// "Is it this one?" → yes: the second tenancy goes on the same home.
 		String picked = """
 			{"propertyId": "%s", "relation": "RENT", "startDate": "%s", "monthlyRentInr": 45000}"""
@@ -200,6 +221,19 @@ class HomeApiTest {
 				.header("Authorization", support.bearer(tenant)))
 			.andExpect(jsonPath("$.rows[0].monthlyRentInr").value(30000))
 			.andExpect(jsonPath("$.rows[0].confirmed").value(false));
+		assertThat(mail.last(landlord.getEmail()).subject()).isEqualTo("A tenant recorded a tenancy on your home");
+
+		// The one-sided record holds no dates against the landlord's own tenancies (D-141).
+		User real = data.approved("Real Tenant", Role.TENANT);
+		String invite = """
+			{"propertyId": "%s", "counterpartyEmail": "%s", "startDate": "%s", "endDate": "%s", "initialRentInr": 28000}"""
+			.formatted(listed.getPublicId(), real.getEmail(), TODAY.minusYears(1), TODAY.minusMonths(1));
+		String id = json.readTree(mvc.perform(post("/tenancies").header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content(invite))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+		mvc.perform(post("/tenancies/" + id + "/confirm").header("Authorization", support.bearer(real)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("ENDED"));
 	}
 	
 	@Test
@@ -238,6 +272,12 @@ class HomeApiTest {
 		assertThat(result.at("/property/landlord/shortName").asString()).isEqualTo("Owner T.");
 		assertThat(result.has("tenancy")).isFalse();
 		assertThat(result.get("accessToken").asString()).isNotBlank();
+		// An owner's flat number stays MASKED like any listing (D-57, D-139): others do not see it.
+		User other = tenant("Owner Reader");
+		mvc.perform(get("/properties/" + result.at("/property/id").asString())
+				.header("Authorization", support.bearer(other)))
+			.andExpect(jsonPath("$.unitLabel").doesNotExist())
+			.andExpect(jsonPath("$.unitLabelPublic").value(false));
 
 		add(owner, """
 			{"propertyId": "%s", "relation": "OWN"}""".formatted(result.at("/property/id").asString()))
