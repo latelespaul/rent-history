@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.persistence;
 
 import com.rentrix.rentrixserver.RentrixServerApplication;
+import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -48,7 +49,8 @@ class VendorDatabaseContainerTest {
 			.properties("server.port=0", "DB_URL=" + db.getJdbcUrl(), "DB_USERNAME=" + db.getUsername(),
 				"DB_PASSWORD=" + db.getPassword())
 			.run()) {
-			assertThat(app.getBean(CityRepository.class).findByLiveTrueOrderByNameAsc()).hasSize(2);
+			assertThat(app.getBean(CityRepository.class).findByLiveTrueOrderByNameAsc()).extracting(City::getCode)
+				.containsExactlyInAnyOrder("BLR", "DEL", "GGN", "HYD", "MUM", "NOI", "PNQ");
 			UserRepository users = app.getBean(UserRepository.class);
 			User user = new User();
 			user.setDisplayName("Demo Vendor");
