@@ -155,7 +155,9 @@ describe("login page", () => {
 
     const submit = within(panel).getByRole("button", { name: /sign in as selected seed user/i })
     expect((submit as HTMLButtonElement).disabled).toBe(true)
-    await user.click(within(panel).getByLabelText(/demo landlord blr-1/i))
+    const radio = within(panel).getByRole("radio", { name: /demo landlord blr-1/i })
+    await user.click(radio)
+    expect((radio as HTMLInputElement).checked).toBe(true)
     await user.click(submit)
 
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
