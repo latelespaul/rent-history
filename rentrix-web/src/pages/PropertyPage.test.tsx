@@ -39,6 +39,7 @@ const TENANT: CurrentUser = {
   email: "demo-tenant-blr-1@example.test",
   emailVerified: true,
   displayName: "Demo Tenant BLR-1",
+  shortName: "Demo T.",
   roles: ["TENANT"],
   status: "ACTIVE",
   demo: true,

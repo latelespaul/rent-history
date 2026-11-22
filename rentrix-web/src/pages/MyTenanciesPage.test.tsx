@@ -36,6 +36,7 @@ const LANDLORD: CurrentUser = {
   email: "demo-landlord-pnq-1@example.test",
   emailVerified: true,
   displayName: "Demo Landlord PNQ-1",
+  shortName: "Demo L.",
   roles: ["LANDLORD"],
   status: "ACTIVE",
   demo: true,

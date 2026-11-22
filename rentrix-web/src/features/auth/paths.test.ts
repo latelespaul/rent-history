@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { CurrentUser } from "@/types/api"
-import { afterSignInPath, loginPath, safeNext, shortName } from "./paths"
+import { makeUser } from "@/test/users"
+import { afterSignInPath, loginPath, publicName, safeNext, shortName } from "./paths"
 
 describe("auth paths", () => {
   it("keeps only same-app next paths", () => {
@@ -27,7 +28,20 @@ describe("auth paths", () => {
   it("makes the public short name", () => {
     expect(shortName("Asha Rao")).toBe("Asha R.")
     expect(shortName("  Demo tenant BLR-1 ")).toBe("Demo T.")
+    expect(shortName("Demo Landlord PNQ-2")).toBe("Demo L.")
+    expect(shortName("asha   kumari rao")).toBe("asha R.")
+    expect(shortName("Mary-Jane O'Brien")).toBe("Mary-Jane O.")
+    expect(shortName("Ravi Kumar 2")).toBe("Ravi K.")
+    expect(shortName("Élodie émile")).toBe("Élodie É.")
     expect(shortName("Cher")).toBe("Cher")
-    expect(shortName(" ")).toBe("?")
+    expect(shortName("Cher 42")).toBe("Cher")
+    expect(shortName(" ")).toBe("Member")
+  })
+
+  it("shows the API's short name for a saved name and previews a typed one", () => {
+    const user = makeUser({ displayName: "Demo Tenant BLR-1", shortName: "Demo T." })
+    expect(publicName(user)).toBe("Demo T.")
+    expect(publicName(user, "  ")).toBe("Demo T.")
+    expect(publicName(user, "Asha Rao")).toBe("Asha R.")
   })
 })

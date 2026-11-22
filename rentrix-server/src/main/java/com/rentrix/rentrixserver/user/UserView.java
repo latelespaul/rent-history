@@ -13,6 +13,7 @@ import java.util.UUID;
  * (email, phone) are shown only to the user themselves (D-57); the phone only masked, e.g. {@code +91 XXXXXX3210}
  * (D-106).
  *
+ * @param shortName       the public short name ({@link PublicNames#shortName}), shown as-is by the web
  * @param needsOnboarding true until the first-sign-in role pick is done (D-73)
  * @param verification    approval status per held {@code TENANT} / {@code LANDLORD} role (D-89, D-91)
  * @param badges          "ID verified" (any one of Aadhaar, PAN or phone OTP) and the optional "LinkedIn verified"
@@ -21,6 +22,7 @@ import java.util.UUID;
 public record UserView(
 	UUID id,
 	String displayName,
+	String shortName,
 	String email,
 	boolean emailVerified,
 	String avatarUrl,

@@ -12,7 +12,7 @@ import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
 import { LogoutIcon, PlusIcon } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
-import { shortName } from "@/features/auth/paths"
+import { publicName } from "@/features/auth/paths"
 import { ROLE_COPY, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
 import { useIdentity } from "@/features/verification/useVerification"
@@ -79,8 +79,7 @@ function ProfileForm({ user }: { user: CurrentUser }) {
           onChange={(e) => setDisplayName(e.target.value)}
         />
         <p className="text-xs text-ink-500">
-          {fieldError("displayName") ??
-            `Shown publicly as “${shortName(displayName || user.displayName)}”.`}
+          {fieldError("displayName") ?? `Shown publicly as “${publicName(user, displayName)}”.`}
         </p>
       </div>
       <div className="space-y-1.5">

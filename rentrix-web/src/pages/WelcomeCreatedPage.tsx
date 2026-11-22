@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { CheckIcon, LockIcon, MessageIcon, UserIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { useAuth } from "@/features/auth/authContext"
-import { safeNext, shortName } from "@/features/auth/paths"
+import { safeNext } from "@/features/auth/paths"
 import { ROLE_COPY, roleHome, type PickableRole } from "@/features/auth/roles"
 import { progressOf } from "@/features/verification/progress"
 import { useVerification } from "@/features/verification/useVerification"
@@ -79,7 +79,7 @@ export default function WelcomeCreatedPage() {
               <dd className="min-w-0 text-ink-900">
                 <b>{user.displayName}</b>{" "}
                 <span className="text-xs text-ink-500">
-                  · shown publicly as &ldquo;{shortName(user.displayName)}&rdquo;
+                  · shown publicly as &ldquo;{user.shortName}&rdquo;
                 </span>
               </dd>
               <dt className="text-ink-500">Email</dt>

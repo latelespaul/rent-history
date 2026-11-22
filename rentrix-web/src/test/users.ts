@@ -1,8 +1,11 @@
+import { shortName } from "@/features/auth/paths"
 import type { CurrentUser } from "@/types/api"
 
 /** Test data only: users as `/me`, `/auth/*` and `/auth/dev-users` return them. */
 export function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
+  const displayName = overrides.displayName ?? "Asha Rao"
   return {
+    shortName: shortName(displayName),
     id: "00000000-0000-7000-8000-000000000001",
     displayName: "Asha Rao",
     email: "asha@example.test",
