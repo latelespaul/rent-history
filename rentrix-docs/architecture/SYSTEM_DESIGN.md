@@ -162,7 +162,7 @@ Common columns on every table: `id BIGINT PK`, `created_at`, `updated_at`. Table
 | `email` | from the Google `email` claim; unique, lower-cased, private; refreshed on each sign-in |
 | `email_verified_at` | set from Google's `email_verified=true` claim; sign-in is refused without it |
 | `google_name` | `name` claim as last received from Google |
-| `display_name` | 2–60 chars, initialised from `google_name`, user-editable. Shown publicly as first word + last initial, e.g. "Demo L." |
+| `display_name` | 2–60 chars, initialised from `google_name`, user-editable. Shown publicly as first word + initial of the last name word, skipping code words with a digit, e.g. "Demo Tenant BLR-1" → "Demo T."; the API computes it (`PublicNames.shortName`) and sends it as `user.shortName` |
 | `avatar_url` | `picture` claim (Google-hosted URL, not copied to our storage); shown only where the full profile is visible (D-54, D-55) |
 | `phone` | optional, E.164, private; never shown publicly; set only by a confirmed phone OTP (D-101), cleared from verification when changed |
 | `roles` | separate `user_roles(user_id, role)` table; empty until onboarding completes |
