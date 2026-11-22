@@ -340,7 +340,7 @@ export interface RentHistoryRow {
   monthlyRentInr?: number | null
   maintenanceInr?: number | null
   share: boolean
-  /** False for a tenant's own rent on an unclaimed home, which nobody confirmed (D-139). */
+  /** False for a tenant's own one-sided rent, which nobody confirmed (D-142). */
   confirmed?: boolean
 }
 

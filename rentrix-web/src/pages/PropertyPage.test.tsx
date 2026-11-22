@@ -107,6 +107,35 @@ describe("PropertyPage", () => {
     expect(screen.queryByText(/Sign in to read/)).toBeNull()
   })
 
+  it("keeps a tenant's one-sided rent row out of the confirmed history's change", async () => {
+    api.user = TENANT
+    api.rent = [
+      { fromMonth: "2026-01", toMonth: null, monthlyRentInr: 22000, share: false, confirmed: true },
+      {
+        fromMonth: "2025-06",
+        toMonth: null,
+        monthlyRentInr: 50000,
+        share: false,
+        confirmed: false,
+      },
+      {
+        fromMonth: "2025-01",
+        toMonth: "2025-12",
+        monthlyRentInr: 20000,
+        share: false,
+        confirmed: true,
+      },
+    ]
+    renderPage()
+
+    expect(await screen.findByText("+10.0%")).toBeTruthy()
+    expect(screen.getByText("–")).toBeTruthy()
+    expect(screen.getByText("first record")).toBeTruthy()
+    expect(screen.getByText("Confirmed tenancies")).toBeTruthy()
+    expect(screen.getByText("Some rows added by a tenant, not verified yet")).toBeTruthy()
+    expect(screen.getByText("added by the tenant · not verified yet")).toBeTruthy()
+  })
+
   it("shows clear empty states while the API does not serve rent history or reviews yet", async () => {
     api.user = TENANT
     renderPage()
