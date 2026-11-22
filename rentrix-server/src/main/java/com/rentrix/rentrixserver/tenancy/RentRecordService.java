@@ -160,7 +160,7 @@ public class RentRecordService {
 		for (int i = 0; i + 1 < rows.size(); i++) {
 			Row row = rows.get(i);
 			YearMonth next = rows.get(i + 1).from();
-			if (row.to() == null || !row.to().isBefore(next)) {
+			if (row.to() == null || row.to().isAfter(next)) {
 				YearMonth to = next.minusMonths(1);
 				rows.set(i, new Row(row.from(), to.isBefore(row.from()) ? row.from() : to, row.record()));
 			}

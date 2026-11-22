@@ -433,10 +433,6 @@ public class TenancyService {
 		}
 	}
 
-	/**
-	 * D-23: one tenant cannot hold two overlapping tenancies on the same property. A tenant's own request is checked
-	 * against pending ones too; claim and confirm only against confirmed ones, so a sibling pending request never blocks.
-	 */
 	/** Whether the property is let as a whole home, one tenancy at a time (D-23); ROOM and PG take flatmates. */
 	public static boolean wholeHome(Property property) {
 		return property.getPropertyType() != PropertyType.ROOM && property.getPropertyType() != PropertyType.PG;
@@ -475,6 +471,10 @@ public class TenancyService {
 			});
 	}
 
+	/**
+	 * D-23: one tenant cannot hold two overlapping tenancies on the same property. A tenant's own request is checked
+	 * against pending ones too; claim and confirm only against confirmed ones, so a sibling pending request never blocks.
+	 */
 	private void requireNoOverlap(Tenancy tenancy, Collection<TenancyStatus> against) {
 		users.lockByPublicId(tenancy.getTenant().getPublicId());
 		boolean overlap = !tenancies.lockOverlapping(tenancy.getProperty().getId(), tenancy.getTenant().getId(),

@@ -400,6 +400,24 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.rows[1].toMonth").doesNotExist());
 	}
 
+	@Test
+	void backToBackTenanciesShareTheirBoundaryMonthInRentHistory() throws Exception {
+		User landlord = data.approved("Boundary Landlord", Role.LANDLORD);
+		User first = data.approved("Leaving Tenant", Role.TENANT);
+		User second = data.approved("Arriving Tenant", Role.TENANT);
+		Property property = home(landlord);
+		confirmedRent(data.tenancy(property, first, LocalDate.of(2024, 4, 1), LocalDate.of(2025, 3, 15),
+			TenancyStatus.ENDED), 23_500);
+		confirmedRent(data.tenancy(property, second, LocalDate.of(2025, 3, 16), null, TenancyStatus.ACTIVE), 25_000);
+		mvc.perform(get("/properties/" + property.getPublicId() + "/rent-history")
+				.header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.rows", hasSize(2)))
+			.andExpect(jsonPath("$.rows[0].fromMonth").value("2024-04"))
+			.andExpect(jsonPath("$.rows[0].toMonth").value("2025-03"))
+			.andExpect(jsonPath("$.rows[1].fromMonth").value("2025-03"))
+			.andExpect(jsonPath("$.rows[1].toMonth").doesNotExist());
+	}
+
 	private void confirmedRent(Tenancy tenancy, long rent) {
 		RentRecord record = new RentRecord();
 		record.setTenancy(tenancy);
