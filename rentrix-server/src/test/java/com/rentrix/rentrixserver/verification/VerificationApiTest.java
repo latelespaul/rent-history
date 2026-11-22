@@ -31,6 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -117,7 +118,7 @@ class VerificationApiTest {
 
 	private UUID submitted(User user, Role role) throws Exception {
 		String body = submit(user, role.name()).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		return UUID.fromString(json.readTree(body).get("id").asText());
+		return UUID.fromString(json.readTree(body).get("id").asString());
 	}
 
 	private ResultActions decide(User admin, UUID application, String decision, String body) throws Exception {
@@ -234,14 +235,11 @@ class VerificationApiTest {
 
 		new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
 			VerificationApplication application = applications.findByPublicId(id).orElseThrow();
-			assertThat(events.findByApplicationOrderByCreatedAtAscIdAsc(application))
-				.extracting(VerificationEvent::getEvent, VerificationEvent::getRevision)
-				.containsExactly(
-					org.assertj.core.groups.Tuple.tuple(VerificationEventType.SUBMITTED, 1),
-					org.assertj.core.groups.Tuple.tuple(VerificationEventType.REJECTED, 1),
-					org.assertj.core.groups.Tuple.tuple(VerificationEventType.SUBMITTED, 2),
-					org.assertj.core.groups.Tuple.tuple(VerificationEventType.APPROVED, 2),
-					org.assertj.core.groups.Tuple.tuple(VerificationEventType.REVOKED, 2));
+			List<String> history = new ArrayList<>();
+			for (VerificationEvent event : events.findByApplicationOrderByCreatedAtAscIdAsc(application)) {
+				history.add(event.getEvent() + "/" + event.getRevision());
+			}
+			assertThat(history).containsExactly("SUBMITTED/1", "REJECTED/1", "SUBMITTED/2", "APPROVED/2", "REVOKED/2");
 		});
 	}
 
@@ -463,7 +461,7 @@ class VerificationApiTest {
 			.doesNotContain("234F");
 		JsonNode me = json.readTree(mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andReturn().getResponse().getContentAsString());
-		assertThat(me.get("verification").get("TENANT").asText()).isEqualTo("APPROVED");
+		assertThat(me.get("verification").get("TENANT").asString()).isEqualTo("APPROVED");
 		assertThat(me.get("badges").get("idVerified").asBoolean()).isTrue();
 	}
 

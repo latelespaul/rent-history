@@ -43,6 +43,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -218,12 +219,17 @@ class DemoSeederTest {
 			
 			// Only masked data: last 4 of at most 4 characters, never a full number.
 			List<IdentityVerification> rows = identityChecks.findAll();
-			assertThat(rows).filteredOn(r -> r.getMethod() != IdentityMethod.LINKEDIN)
-				.allMatch(r -> r.getLast4() != null && r.getLast4().length() == 4);
-			assertThat(rows).filteredOn(r -> r.getMethod() == IdentityMethod.LINKEDIN
-					&& r.getStatus() == IdentityStatus.VERIFIED)
-				.extracting(r -> r.getUser().getDisplayName())
-				.contains("Demo Landlord BLR-1", "Demo Landlord PNQ-2")
+			List<String> linkedinVerified = new ArrayList<>();
+			for (IdentityVerification row : rows) {
+				if (row.getMethod() == IdentityMethod.LINKEDIN) {
+					if (row.getStatus() == IdentityStatus.VERIFIED) {
+						linkedinVerified.add(row.getUser().getDisplayName());
+					}
+				} else {
+					assertThat(row.getLast4()).hasSize(4);
+				}
+			}
+			assertThat(linkedinVerified).contains("Demo Landlord BLR-1", "Demo Landlord PNQ-2")
 				.isSubsetOf("Demo Landlord BLR-1", "Demo Landlord PNQ-2", "Demo Tenant PNQ-2");
 			// Every decision has its audit row by the demo admin.
 			assertThat(audit.findAll()).isNotEmpty().allMatch(a -> a.getAdmin().getId().equals(admin.getId()));
