@@ -19,6 +19,7 @@ Start the API first: `SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-bo
 | `npm run lint` | ESLint |
 | `npm test` | Vitest (`src/**/*.test.{ts,tsx}`; component tests run in jsdom) |
 | `npm run build` | Type-check and build `dist/` |
+| `npm run e2e` | Playwright end-to-end specs in `e2e/` against a running seeded stack ([e2e/README.md](e2e/README.md)) |
 | `npm run gen:api` | Regenerate `src/types/api.gen.ts` from `openapi/openapi.json` |
 | `npm run gen:api:fetch` | Refresh `openapi/openapi.json` from a running dev API, then regenerate (`OPENAPI_URL` overrides the source) |
 
@@ -33,7 +34,8 @@ of its own and nothing to commit:
   client"; authorized JavaScript origin `http://localhost:5173` for dev). Without it the button is hidden.
 - **Dev login** (`devLogin: true`, API in the `dev` profile with `DEV_LOGIN_ENABLED=true`): a purple
   "DEV ONLY" picker lists the demo seed users (`GET /auth/dev-users`, seeded by `SEED_DEMO=true` on an empty
-  database); pick one and sign in, no Google needed.
+  database); pick one and sign in, no Google needed. "Sign in as a new user" creates a new account with no role
+  yet, to try the first sign-in.
 - A first sign-in goes to `/welcome` to pick tenant, landlord or both (+ optional home city), which posts
   `/me/onboarding` and swaps in the fresh token. `/settings` edits the profile, adds the other role and
   signs out. `/search`, `/settings`, `/me/*` and `/welcome` need a session (`/` is the logged-out landing; a signed-in visitor goes on to `/search`); `/admin/*` needs `ADMIN`.

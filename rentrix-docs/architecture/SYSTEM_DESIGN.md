@@ -754,6 +754,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | POST | `/auth/logout` | revokes current refresh token |
 | GET | `/auth/dev-users` | **`dev`/`test` profile only** (D-77): seed users for the login picker |
 | POST | `/auth/dev-login` | **`dev`/`test` profile only** (D-77): `{userId}` of a seed user → same response as `/auth/google` |
+| POST | `/auth/dev-login/new` | **`dev`/`test` profile only** (D-77): no body; signs in as a brand-new, non-demo user with no role (a made-up `@example.test` email) → same response as `/auth/google` with `needsOnboarding: true` |
 
 **Me**
 | Method | Path | Notes |
@@ -890,7 +891,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 - **D-63** Refresh token: opaque random 256-bit value, 30-day lifetime, **rotated on every refresh**, stored only as a SHA-256 hash in `refresh_tokens(user_id, token_hash, family_id, expires_at, revoked_at)`. Rotation is a conditional update (`revoked_at IS NULL`), so two simultaneous rotations of one token cannot both succeed. **Reuse grace** (30 s, `app.auth.refresh-reuse-grace`): presenting the family's most recently rotated token again within 30 s of its rotation (two tabs, or a lost race, refreshing at once) returns a fresh access token for the user and **no** new cookie; the current successor stays valid and is not rotated again. Any other reuse of a rotated or revoked token (outside the window, or an older token in the chain) revokes the whole family (theft detection). The web also serialises refreshes across tabs (W3). Delivered as an `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth` cookie. This keeps API instances stateless while allowing logout and revocation.
 - **D-64** Fail closed: `SPRING_PROFILES_ACTIVE` has no default (the `${SPRING_PROFILES_ACTIVE:dev}` default in `application.yaml` is removed), and the API refuses to start unless it is set explicitly to `dev`, `test` or `prod`. The hard-coded dev `JWT_SECRET` exists only when `dev` or `test` is explicitly active; any other profile refuses to start without a real `JWT_SECRET` of at least 32 bytes. Secrets come from env only, never from tracked files. Local run: `SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run`.
 - Web and API must be same-site for the cookie (production: `doorwayliving.in` and `api.doorwayliving.in`); in dev the Vite dev server proxies `/api` to the API. CORS allow-list from `CORS_ALLOWED_ORIGINS`; when it is empty in `prod` the API starts with a warning and allows no cross-origin origin (an old Render deployment without the variable keeps starting).
-- Rate limit on `/auth/google` and `/auth/dev-login`: 20 requests per 15 min per IP (`429`).
+- Rate limit on `/auth/google`, `/auth/dev-login` and `/auth/dev-login/new`: 20 requests per 15 min per IP (`429`).
 - Suspended or deleted users: sign-in and refresh fail (`403 account_suspended`); access tokens expire within 15 min (accepted window).
 
 ### 13.1 Sign in with Google

@@ -1,0 +1,25 @@
+# =============================================================================
+# End-to-end stack: docker-compose.yml with the API in the dev profile, the demo
+# seed and dev login on, on a fresh SQLite file every time the API container is
+# created. Never for anything public (dev login signs in without Google).
+#   export JWT_SECRET=e2e-only-jwt-secret-not-for-production-0123456789
+#   docker compose -p rentrix-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
+#   (cd rentrix-web && npm run e2e)
+#   docker compose -p rentrix-e2e -f docker-compose.yml -f docker-compose.e2e.yml down -v
+# Web: http://localhost:8081  API: http://localhost:8080/api/v1
+# =============================================================================
+services:
+  api:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # The dev profile listens on 127.0.0.1 by default; the web container and the host need the bridge.
+      SERVER_BIND: 0.0.0.0
+      # Outside the /app/data volume, so every new container starts empty and gets the seed.
+      DB_URL: jdbc:sqlite:/tmp/rentrix-e2e.db
+      SEED_DEMO: "true"
+      DEV_LOGIN_ENABLED: "true"
+      # docker-compose.yml passes these through empty; e2e-only values, public in git like the dev ones.
+      ID_HASH_KEY: e2e-only-id-hash-key-not-for-production-0123456789
+      SMS_BACKEND: log # phone OTP codes go to the API log, never to a phone
+      # Every spec signs in; the default 20 sign-ins per 15 minutes per IP would stop a run.
+      APP_AUTH_RATELIMIT_REQUESTS: "10000"

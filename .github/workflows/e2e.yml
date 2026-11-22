@@ -1,0 +1,102 @@
+name: E2E
+
+# Playwright against the docker compose dev stack (dev profile, demo seed, dev login on),
+# on every PR. One job; Docker layers, npm and the Playwright browser are cached.
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright E2E (dev stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Dummy, CI only. The e2e stack runs the dev profile, which never serves real users.
+      JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+      COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
+      COMPOSE_PROJECT_NAME: rentrix-e2e
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build images (layers cached in GitHub Actions)
+        uses: docker/bake-action@v6
+        with:
+          source: .
+          files: |
+            docker-compose.yml
+            docker-compose.e2e.yml
+          targets: api,web
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=e2e
+            *.cache-to=type=gha,scope=e2e,mode=max
+
+      - name: Start the seeded dev stack
+        run: docker compose up -d --no-build --wait --wait-timeout 240
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: rentrix-web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: rentrix-web
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('rentrix-web/package-lock.json') }}
+
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: rentrix-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Chromium system libraries
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        working-directory: rentrix-web
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright
+        working-directory: rentrix-web
+        run: npm run e2e
+
+      - name: Upload report, screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            rentrix-web/playwright-report
+            rentrix-web/test-results
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v

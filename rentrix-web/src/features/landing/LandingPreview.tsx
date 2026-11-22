@@ -149,6 +149,7 @@ function SampleReview({ review }: { review: (typeof SAMPLE_REVIEWS)[number] }) {
       </div>
       <span
         className="inline-flex items-center gap-1.5"
+        role="img"
         aria-label={`${review.stars} out of 5 stars`}
       >
         <Stars value={review.stars} />
