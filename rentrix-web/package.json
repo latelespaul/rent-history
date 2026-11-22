@@ -14,6 +14,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report",
     "gen:api": "openapi-typescript openapi/openapi.json -o src/types/api.gen.ts",
     "gen:api:fetch": "node scripts/fetch-openapi.mjs && npm run gen:api",
     "sync:design": "node scripts/sync-design.mjs"
@@ -39,7 +41,9 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "^10",
+    "@playwright/test": "1.65.0",
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
