@@ -75,10 +75,7 @@ export function formFromProperty(p: PropertyDetail): PropertyFormValues {
 }
 
 /** Client checks before the API's own (which stay the source of truth, D-60). */
-export function checkForm(
-  values: PropertyFormValues,
-  editable = true,
-): Record<string, string> {
+export function checkForm(values: PropertyFormValues, editable = true): Record<string, string> {
   const errors: Record<string, string> = {}
   for (const field of ["bedrooms", "bathrooms", "areaSqft"] as const) {
     if (Number.isNaN(wholeNumber(values[field]))) errors[field] = "Enter a whole number."
