@@ -30,7 +30,8 @@ class StartupGuardTest {
 		return env("prod")
 			.withProperty("app.jwt.secret", GOOD_SECRET)
 			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix")
-			.withProperty("app.cors.allowed-origins", "https://rentrix.in");
+			.withProperty("app.cors.allowed-origins", "https://rentrix.in")
+			.withProperty("app.auth.google.client-id", "123-prod.apps.googleusercontent.com");
 	}
 	
 	@Test
@@ -102,6 +103,32 @@ class StartupGuardTest {
 	void prodDoesNotWarnAboutSqliteOnManagedDatabase(CapturedOutput output) {
 		StartupGuard.check(prod());
 		assertThat(output).doesNotContain("DB_URL is SQLite");
+	}
+	
+	@Test
+	void prodStartsWithoutGoogleClientIdButWarns(CapturedOutput output) {
+		// Like an empty CORS list: Render and the compose smoke test set no GOOGLE_CLIENT_ID yet.
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.auth.google.client-id", "")))
+			.doesNotThrowAnyException();
+		assertThat(output).contains("GOOGLE_CLIENT_ID is empty in the 'prod' profile");
+	}
+	
+	@Test
+	void prodDoesNotWarnAboutGoogleWhenConfigured(CapturedOutput output) {
+		StartupGuard.check(prod());
+		assertThat(output).doesNotContain("GOOGLE_CLIENT_ID is empty");
+	}
+	
+	@Test
+	void applicationRefusesProdWithDevLoginEnabled() {
+		SpringApplication app = new SpringApplication(RentrixServerApplication.class);
+		app.setWebApplicationType(WebApplicationType.NONE);
+		app.setAdditionalProfiles("prod");
+		// Command-line arguments outrank the config files, like real env vars do.
+		assertThatThrownBy(() -> app.run("--app.jwt.secret=" + GOOD_SECRET,
+				"--spring.datasource.url=jdbc:sqlite:target/test-data/never-created.db", "--app.dev-login.enabled=true"))
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("DEV_LOGIN_ENABLED");
 	}
 	
 	@Test

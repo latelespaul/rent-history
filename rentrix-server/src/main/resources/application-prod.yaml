@@ -4,6 +4,15 @@
 # built-in defaults here. Set CORS_ALLOWED_ORIGINS to the web origin(s): when it is
 # empty the API starts with a warning and allows no cross-origin browser request.
 # The Docker image defaults DB_URL to SQLite under /app/data.
+# Set GOOGLE_CLIENT_ID for "Sign in with Google": without it the API starts with a
+# warning and POST /auth/google answers 503 google_sign_in_disabled.
+# TRUSTED_PROXIES is a regex of proxy IPs whose X-Forwarded-For / -Proto / -Host
+# are honoured (Tomcat RemoteIpValve); requests from any other peer keep their own
+# address, so a client cannot pick its rate-limit IP. Default: loopback and private
+# ranges (a reverse proxy such as Caddy on the same host or Docker network).
 # =============================================================================
 server:
-  forward-headers-strategy: framework
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: '${TRUSTED_PROXIES:10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|127\.\d+\.\d+\.\d+|0:0:0:0:0:0:0:1|::1}'

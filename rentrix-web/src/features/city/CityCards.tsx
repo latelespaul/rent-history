@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ChevronRightIcon, CityIcon } from "@/components/ui/icons.gen"
+import { ErrorState } from "@/components/ui/states"
 import { cn } from "@/lib/utils"
 import { CITY_CARDS_VISIBLE, plural, sortForCards, statsByCity } from "./cityText"
 import { useCities, useStats } from "./useCities"
@@ -25,9 +26,15 @@ export function CityCards() {
     [cities.data, counts],
   )
 
-  if (cities.isPending) return <p className="text-sm text-muted-foreground">Loading cities…</p>
+  if (cities.isPending) return <p className="text-sm text-ink-500">Loading cities…</p>
   if (cities.isError) {
-    return <p className="text-sm text-destructive">Could not load cities from the API.</p>
+    return (
+      <ErrorState
+        title="Cities could not be loaded"
+        error={cities.error}
+        onRetry={() => void cities.refetch()}
+      />
+    )
   }
   if (sorted.length === 0) return null
 
@@ -49,26 +56,38 @@ export function CityCards() {
             <li key={city.code}>
               <Link
                 to={`/search?city=${encodeURIComponent(city.code)}`}
-                className="flex h-full flex-col gap-3 rounded-xl border bg-card p-5 transition-colors hover:border-ring focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-              >
-                <span className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Building2 className="size-5 text-muted-foreground" aria-hidden />
-                </span>
-                <span>
-                  <span className="text-lg font-semibold">{city.name}</span>{" "}
-                  <span className="text-sm text-muted-foreground">{detail}</span>
-                </span>
-                {counts && (
-                  <span className="text-sm text-muted-foreground">
-                    {c && c.publishedProperties > 0
-                      ? `${plural(c.publishedProperties, "property", "properties")} · ${plural(
-                          c.confirmedTenancies,
-                          "confirmed tenancy",
-                          "confirmed tenancies",
-                        )}`
-                      : "No properties yet"}
-                  </span>
+                className={cn(
+                  "flex h-full gap-3.5 rounded-xl border border-line bg-surface p-5 text-ink-900 no-underline shadow-sm transition-colors hover:border-teal-600 hover:no-underline",
+                  few ? "items-center" : "flex-col items-start",
                 )}
+              >
+                <span
+                  className={cn(
+                    "grid shrink-0 place-items-center",
+                    few ? "size-13 rounded-[14px]" : "size-10 rounded-[10px]",
+                    !counts || (c && c.publishedProperties > 0)
+                      ? "bg-teal-50 text-teal-700"
+                      : "bg-sunk text-ink-500",
+                  )}
+                >
+                  <CityIcon size={few ? 24 : 20} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-lg font-semibold">{city.name}</span>{" "}
+                  <span className="text-sm text-ink-500">{detail}</span>
+                  {counts && (
+                    <span className="block text-sm text-ink-700">
+                      {c && c.publishedProperties > 0
+                        ? `${plural(c.publishedProperties, "property", "properties")} · ${plural(
+                            c.confirmedTenancies,
+                            "confirmed tenancy",
+                            "confirmed tenancies",
+                          )}`
+                        : "No properties yet"}
+                    </span>
+                  )}
+                </span>
+                {few && <ChevronRightIcon size={18} className="text-teal-700" />}
               </Link>
             </li>
           )

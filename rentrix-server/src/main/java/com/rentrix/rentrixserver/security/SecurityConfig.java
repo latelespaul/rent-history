@@ -24,22 +24,29 @@ import java.util.List;
 /**
  * Stateless security (D-06, D-62): no session, no CSRF token, no form or basic login. Every
  * request is authenticated only by its bearer token. Errors are problem+json (D-60).
- * Feature PRs add their public routes to {@link #PUBLIC_GET}.
+ * Feature PRs add their public routes to {@link #PUBLIC_GET}. Callers who have not picked a role yet are
+ * held to the onboarding allow-list by {@link OnboardingFilter} (D-73).
  */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
+	/** Anonymous POST routes: sign-in, and the cookie-based refresh and logout (§13). */
+	static final String[] PUBLIC_POST = {
+		"/auth/google", "/auth/dev-login", "/auth/refresh", "/auth/logout",
+	};
+
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
 	static final String[] PUBLIC_GET = {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
 		"/cities", "/stats", "/properties", "/properties/*",
+		"/auth/config", "/auth/dev-users",
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
 	};
 
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, AccessTokenService tokens,
+	SecurityFilterChain securityFilterChain(HttpSecurity http, AccessTokenService tokens, ProblemWriter problems,
 		AuthenticationEntryPoint entryPoint, AccessDeniedHandler accessDeniedHandler,
 		CorsConfigurationSource corsConfigurationSource) throws Exception {
 		http.cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -52,10 +59,12 @@ public class SecurityConfig {
 			.exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint).accessDeniedHandler(accessDeniedHandler))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
+				.requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
 				.requestMatchers("/error").permitAll()
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated())
-			.addFilterBefore(new JwtAuthenticationFilter(tokens), UsernamePasswordAuthenticationFilter.class);
+			.addFilterBefore(new JwtAuthenticationFilter(tokens), UsernamePasswordAuthenticationFilter.class)
+			.addFilterAfter(new OnboardingFilter(problems), JwtAuthenticationFilter.class);
 		return http.build();
 	}
 

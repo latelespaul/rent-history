@@ -59,7 +59,11 @@ function renderAt(path: string) {
 
 async function openPicker() {
   const user = userEvent.setup()
-  const trigger = await screen.findByRole("button", { name: /city/i, expanded: false })
+  // The page's own picker; the top bar has another one (shell tests cover it).
+  const trigger = await within(await screen.findByRole("main")).findByRole("button", {
+    name: /city/i,
+    expanded: false,
+  })
   await vi.waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false))
   await user.click(trigger)
   return { user, input: screen.getByRole("combobox", { name: "Search city" }) }
@@ -156,7 +160,9 @@ describe("Home city cards and launch copy", () => {
   /** Under the search box and in the footer. */
   const expectLaunchCopy = (copy: string) => {
     expect(screen.getByText(copy)).toBeTruthy()
-    expect(screen.getByRole("contentinfo").textContent).toBe(`Rentrix · ${copy}`)
+    expect(screen.getByRole("contentinfo").querySelector("p")?.textContent).toBe(
+      `Rentrix · ${copy}`,
+    )
   }
 
   const cardNames = () =>

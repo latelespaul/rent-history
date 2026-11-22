@@ -28,6 +28,9 @@ import java.util.Set;
  * an existing deployment that predates the variable (Render) starting.
  * <p>A {@code jdbc:sqlite:} {@code DB_URL} outside dev and test also starts with one warning: the
  * data is lost on redeploy unless {@code /app/data} is on a persistent disk.
+ * <p>An empty {@code GOOGLE_CLIENT_ID} outside dev and test starts with one warning too: Google sign-in
+ * stays off ({@code 503}), like an empty CORS list, so a deployment without it (Render, the compose smoke
+ * test) keeps starting.
  * <p>Registered in {@code META-INF/spring.factories}, so it also guards tests.
  */
 public class StartupGuard implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
@@ -73,6 +76,10 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 			LOG.warn("DB_URL is SQLite ({}) in the '{}' profile: the data lives inside the container at that path "
 				+ "and is lost on redeploy unless a persistent disk is mounted at /app/data or DB_URL points to a "
 				+ "managed database.", dbUrl, profile);
+		}
+		if (!StringUtils.hasText(env.getProperty("app.auth.google.client-id"))) {
+			LOG.warn("GOOGLE_CLIENT_ID is empty in the '{}' profile: Google sign-in is off and POST /auth/google "
+				+ "answers 503, so nobody can sign in. Set it to the OAuth web client id (README).", profile);
 		}
 		boolean hasOrigin = Binder.get(env).bind("app.cors.allowed-origins", Bindable.listOf(String.class))
 			.orElse(List.of()).stream().anyMatch(StringUtils::hasText);

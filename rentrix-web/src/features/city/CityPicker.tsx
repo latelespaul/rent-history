@@ -1,5 +1,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react"
-import { Building2, Check, ChevronDown, MapPin, Search } from "lucide-react"
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CityIcon,
+  MapPinIcon,
+  SearchIcon,
+} from "@/components/ui/icons.gen"
 import { cn } from "@/lib/utils"
 import type { City } from "@/types/api"
 import {
@@ -28,7 +34,7 @@ function Marked({ parts }: { parts: TextPart[] }) {
     <>
       {parts.map((part, i) =>
         part.match ? (
-          <mark key={i} className="rounded-sm bg-amber-200/70 text-inherit dark:bg-amber-400/30">
+          <mark key={i} className="rounded-[3px] bg-marigold-100 px-px text-inherit">
             {part.text}
           </mark>
         ) : (
@@ -169,17 +175,16 @@ export function CityPicker({
           }
         }}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg border bg-background px-3 text-left transition-colors outline-none",
-          "hover:bg-muted/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          "disabled:cursor-not-allowed disabled:opacity-60",
+          "flex w-full items-center gap-3 rounded-md border border-line-strong bg-surface px-3 text-left transition-colors",
+          "hover:bg-sunk/60 disabled:cursor-not-allowed disabled:opacity-60",
           label ? "min-h-14 py-2" : "min-h-11 py-2",
-          open && "border-ring",
+          open && "border-teal-600 ring-3 ring-teal-50",
         )}
       >
-        <Building2 className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <CityIcon size={18} className="text-ink-500" />
         <span className="min-w-0 flex-1">
           {label && (
-            <span id={labelId} className="block text-xs text-muted-foreground">
+            <span id={labelId} className="block text-xs text-ink-500">
               {label}
             </span>
           )}
@@ -187,27 +192,24 @@ export function CityPicker({
             {triggerText ??
               (selected ? (
                 <>
-                  <span className="font-medium">{selected.name}</span>{" "}
-                  <span className="text-sm text-muted-foreground">{selected.state}</span>
+                  <span className="font-semibold text-ink-900">{selected.name}</span>{" "}
+                  <span className="text-sm text-ink-500">{selected.state}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">{placeholder}</span>
+                <span className="text-ink-500">{placeholder}</span>
               ))}
           </span>
         </span>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-180",
-          )}
-          aria-hidden
+        <ChevronDownIcon
+          size={18}
+          className={cn("text-ink-500 transition-transform", open && "rotate-180")}
         />
       </button>
 
       {open && (
-        <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg sm:right-auto sm:w-96">
-          <div className="flex items-center gap-2 border-b px-3">
-            <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-line-strong bg-surface text-ink-900 shadow-md sm:right-auto sm:w-[340px]">
+          <div className="flex items-center gap-2 border-b border-line px-3">
+            <SearchIcon size={18} className="text-ink-500" />
             <input
               ref={inputRef}
               role="combobox"
@@ -225,16 +227,16 @@ export function CityPicker({
               placeholder={
                 list[0] ? `Search city, e.g. ${list[0].aliases[0] ?? list[0].name}` : "Search city"
               }
-              className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-ink-500"
             />
-            <span className="shrink-0 text-xs text-muted-foreground">{list.length} active</span>
+            <span className="shrink-0 text-xs text-ink-500">{list.length} active</span>
           </div>
 
           <ul
             id={listId}
             role="listbox"
             aria-label="Cities"
-            className="max-h-80 overflow-y-auto p-1"
+            className="max-h-[300px] overflow-y-auto p-1.5"
             hidden={matches.length === 0}
           >
             {matches.map((city, index) => {
@@ -250,40 +252,42 @@ export function CityPicker({
                   onPointerMove={() => setActive(index)}
                   onClick={() => choose(city)}
                   className={cn(
-                    "flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2",
-                    index === active && "bg-muted",
+                    "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-sm px-2.5 py-2 text-sm",
+                    index === active && "bg-teal-50",
                   )}
                 >
-                  <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <MapPinIcon size={18} className="text-ink-500" />
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium">
+                    <span className="block font-semibold text-ink-900">
                       <Marked parts={highlight(city.name, query)} />
                     </span>
                     {cityDetail(city) && (
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block truncate text-xs text-ink-500">
                         <Marked parts={highlight(cityDetail(city), query)} />
                       </span>
                     )}
                   </span>
                   {count !== null && (
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-xs text-ink-500">
                       {count > 0 ? plural(count, "property", "properties") : "new"}
                     </span>
                   )}
-                  {isSelected && <Check className="size-4 shrink-0 text-primary" aria-hidden />}
+                  {isSelected && <CheckIcon size={18} className="text-teal-700" />}
                 </li>
               )
             })}
           </ul>
 
           {matches.length === 0 && (
-            <div role="status" className="space-y-1 px-4 py-5 text-sm">
-              <p className="font-medium">Rentrix is not live in “{query.trim()}” yet.</p>
-              <p className="text-muted-foreground">{launchCopy(list)}.</p>
+            <div role="status" className="space-y-1 px-4 py-4 text-sm text-ink-700">
+              <p className="font-semibold text-ink-900">
+                Rentrix is not live in “{query.trim()}” yet.
+              </p>
+              <p className="text-ink-500">{launchCopy(list)}.</p>
             </div>
           )}
 
-          <p className="border-t bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
+          <p className="border-t border-line bg-sunk px-3 py-2 text-xs text-ink-500">
             {launchCopy(list)}
           </p>
         </div>

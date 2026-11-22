@@ -13,3 +13,6 @@ coverage
 .env.local
 src/types/api.gen.ts
 openapi/openapi.json
+src/styles/tokens.css
+src/components/ui/icon-paths.gen.ts
+src/components/ui/icons.gen.ts

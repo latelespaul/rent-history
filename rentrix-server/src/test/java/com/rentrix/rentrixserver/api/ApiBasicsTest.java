@@ -140,7 +140,7 @@ class ApiBasicsTest {
 		mvc.perform(get("/test-only/page").header(HttpHeaders.AUTHORIZATION, bearer(Role.TENANT)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.size").value(20));
-		mvc.perform(get("/test-only/page?size=51&sort=password,desc").header(HttpHeaders.AUTHORIZATION, bearer()))
+		mvc.perform(get("/test-only/page?size=51&sort=password,desc").header(HttpHeaders.AUTHORIZATION, bearer(Role.TENANT)))
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.errors[?(@.field == 'size')]").exists())
 			.andExpect(jsonPath("$.errors[?(@.field == 'sort')]").exists());
