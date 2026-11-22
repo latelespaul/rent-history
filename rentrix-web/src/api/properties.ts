@@ -2,7 +2,10 @@ import type {
   Page,
   PropertyCard,
   PropertyDetail,
+  PropertyInput,
+  PropertyPatch,
   PropertyReview,
+  RentHistory,
   RentHistoryRow,
 } from "@/types/api"
 import { api, type Query } from "./client"
@@ -30,6 +33,7 @@ export const propertyKeys = {
   rentHistory: (id: string, viewer: string | null) =>
     ["properties", "rent-history", id, viewer] as const,
   reviews: (id: string, viewer: string | null) => ["properties", "reviews", id, viewer] as const,
+  mine: (viewer: string | null, page: number) => ["properties", "mine", viewer, page] as const,
 }
 
 /** `GET /properties`: published homes, D-59 envelope. */
@@ -64,12 +68,55 @@ async function optionalList<T>(path: string, signal?: AbortSignal): Promise<T[] 
   }
 }
 
-/** `GET /properties/{id}/rent-history` (D-26, signed-in only); null until the API serves it. */
-export function fetchRentHistory(id: string, signal?: AbortSignal) {
-  return optionalList<RentHistoryRow>(`/properties/${encodeURIComponent(id)}/rent-history`, signal)
+/**
+ * `GET /properties/{id}/rent-history` (D-26, signed-in only): the `rows` of the B5 body. Null
+ * when the API does not serve it (404 / 405).
+ */
+export async function fetchRentHistory(
+  id: string,
+  signal?: AbortSignal,
+): Promise<RentHistoryRow[] | null> {
+  try {
+    const body = await api.get<RentHistory>(`/properties/${encodeURIComponent(id)}/rent-history`, {
+      signal,
+    })
+    return body?.rows ?? []
+  } catch (error) {
+    if (isApiError(error) && (error.status === 404 || error.status === 405)) return null
+    throw error
+  }
 }
 
 /** `GET /properties/{id}/reviews` (text only when signed in, D-56); null until the API serves it. */
 export function fetchPropertyReviews(id: string, signal?: AbortSignal) {
   return optionalList<PropertyReview>(`/properties/${encodeURIComponent(id)}/reviews`, signal)
+}
+
+/** `GET /me/properties`: the landlord's own listings, every state, with unit labels. */
+export function fetchMyProperties(
+  page = 0,
+  size = 50,
+  signal?: AbortSignal,
+): Promise<Page<PropertyDetail>> {
+  return api.get<Page<PropertyDetail>>("/me/properties", { query: { page, size }, signal })
+}
+
+/** `POST /properties`: a new `DRAFT` (D-21). */
+export function createProperty(body: PropertyInput): Promise<PropertyDetail> {
+  return api.post<PropertyDetail>("/properties", body)
+}
+
+/** `PATCH /properties/{id}`: owner edits; location fields lock after submit (D-92). */
+export function updateProperty(id: string, body: PropertyPatch): Promise<PropertyDetail> {
+  return api.patch<PropertyDetail>(`/properties/${encodeURIComponent(id)}`, body)
+}
+
+/** `POST /properties/{id}/submit`: `DRAFT` / `REJECTED` → `PENDING_REVIEW` (D-92). */
+export function submitProperty(id: string): Promise<PropertyDetail> {
+  return api.post<PropertyDetail>(`/properties/${encodeURIComponent(id)}/submit`)
+}
+
+/** `DELETE /properties/{id}`: archives a published listing, removes one never published. */
+export function deleteProperty(id: string): Promise<void> {
+  return api.delete(`/properties/${encodeURIComponent(id)}`)
 }
