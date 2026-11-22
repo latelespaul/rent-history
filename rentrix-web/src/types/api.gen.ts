@@ -29,6 +29,7 @@ export interface components {
             name?: string;
             aliases?: string[];
             state?: string;
+            region?: string;
         };
     };
     responses: never;

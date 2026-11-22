@@ -134,7 +134,7 @@ describe("CityPicker", () => {
       "Doorway Living is not live in “Goa” yet.",
     )
     expect(screen.getByRole("status").textContent).toContain(
-      "Starting in Bangalore and Pune, more cities coming",
+      "Live in Bangalore and Pune; other cities on request",
     )
   })
 
@@ -191,7 +191,7 @@ describe("City cards and launch copy", () => {
 
     await screen.findAllByText("4 properties · 6 confirmed tenancies")
     expect(cardNames()).toEqual(["Bangalore", "Pune"])
-    expectLaunchCopy("Starting in Bangalore and Pune, more cities coming")
+    expectLaunchCopy("Live in Bangalore and Pune; other cities on request")
   })
 
   it("changes when a third city is added to the response", async () => {
@@ -200,7 +200,7 @@ describe("City cards and launch copy", () => {
 
     await screen.findByText("No properties yet")
     expect(cardNames()).toEqual(["Bangalore", "Pune", "Hyderabad"])
-    expectLaunchCopy("Starting in Bangalore, Hyderabad and Pune, more cities coming")
+    expectLaunchCopy("Live in Bangalore, Hyderabad and Pune; other cities on request")
   })
 
   it("shows eight cards, then all nine after Show all", async () => {
@@ -210,7 +210,7 @@ describe("City cards and launch copy", () => {
 
     await screen.findAllByText("No properties yet")
     expect(cardNames()).toHaveLength(8)
-    expectLaunchCopy("Live in 9 cities, more coming")
+    expectLaunchCopy("Live in 9 cities; other cities on request")
 
     await user.click(screen.getByRole("button", { name: "Show all 9 cities" }))
     expect(cardNames()).toHaveLength(9)

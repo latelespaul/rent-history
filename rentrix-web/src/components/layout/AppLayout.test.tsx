@@ -163,7 +163,7 @@ describe("footer and empty state", () => {
     renderShell()
     expect(
       await within(screen.getByRole("contentinfo")).findByText(
-        "Doorway Living · Starting in Bangalore and Pune, more cities coming",
+        "Doorway Living · Live in Bangalore and Pune; other cities on request",
       ),
     ).toBeTruthy()
   })

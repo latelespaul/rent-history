@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -44,13 +46,15 @@ class CityApiTest {
 		insertCity("ZZA", "Aaa Dormant", null, "Nowhere", false, null);
 		mvc.perform(get("/cities"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$", hasSize(2)))
-			.andExpect(jsonPath("$[0].code").value("BLR"))
+			.andExpect(jsonPath("$", hasSize(7)))
+			.andExpect(jsonPath("$[*].code").value(contains("BLR", "DEL", "GGN", "HYD", "MUM", "NOI", "PNQ")))
 			.andExpect(jsonPath("$[0].name").value("Bangalore"))
 			.andExpect(jsonPath("$[0].aliases[0]").value("Bengaluru"))
 			.andExpect(jsonPath("$[0].state").value("Karnataka"))
-			.andExpect(jsonPath("$[1].code").value("PNQ"))
-			.andExpect(jsonPath("$[1].aliases", hasSize(0)));
+			.andExpect(jsonPath("$[0].region").value(nullValue()))
+			.andExpect(jsonPath("$[1].region").value("Delhi NCR"))
+			.andExpect(jsonPath("$[6].code").value("PNQ"))
+			.andExpect(jsonPath("$[6].aliases", hasSize(0)));
 	}
 	
 	@Test
@@ -59,12 +63,17 @@ class CityApiTest {
 			.andExpect(jsonPath("$", hasSize(1)))
 			.andExpect(jsonPath("$[0].code").value("BLR"));
 		mvc.perform(get("/cities").param("q", "MAHA"))
-			.andExpect(jsonPath("$", hasSize(1)))
-			.andExpect(jsonPath("$[0].code").value("PNQ"));
+			.andExpect(jsonPath("$", hasSize(2)))
+			.andExpect(jsonPath("$[0].code").value("MUM"))
+			.andExpect(jsonPath("$[1].code").value("PNQ"));
+		mvc.perform(get("/cities").param("q", "ncr"))
+			.andExpect(jsonPath("$[*].code").value(contains("DEL", "GGN", "NOI")));
+		mvc.perform(get("/cities").param("q", "gurgaon"))
+			.andExpect(jsonPath("$[0].code").value("GGN"));
 		mvc.perform(get("/cities").param("q", "pnq"))
 			.andExpect(jsonPath("$[0].code").value("PNQ"));
 		mvc.perform(get("/cities").param("q", "  "))
-			.andExpect(jsonPath("$", hasSize(2)));
+			.andExpect(jsonPath("$", hasSize(7)));
 		mvc.perform(get("/cities").param("q", "galore"))
 			.andExpect(jsonPath("$", hasSize(0)));
 	}
@@ -73,11 +82,13 @@ class CityApiTest {
 	@Transactional
 	void searchMatchesMultiWordNamesFromAnyWord() throws Exception {
 		insertCity("ZZN", "Navi Mumbai", null, "Maharashtra", true, null);
-		for (String q : new String[] {"navi mumbai", "  Navi   MUMBAI ", "navi mu", "mumbai"}) {
+		for (String q : new String[] {"navi mumbai", "  Navi   MUMBAI ", "navi mu"}) {
 			mvc.perform(get("/cities").param("q", q))
 				.andExpect(jsonPath("$", hasSize(1)))
 				.andExpect(jsonPath("$[0].code").value("ZZN"));
 		}
+		mvc.perform(get("/cities").param("q", "mumbai"))
+			.andExpect(jsonPath("$[*].code").value(contains("MUM", "ZZN")));
 		mvc.perform(get("/cities").param("q", "mumbai navi"))
 			.andExpect(jsonPath("$", hasSize(0)));
 	}
@@ -85,20 +96,20 @@ class CityApiTest {
 	@Test
 	@Transactional
 	void activatingARowNeedsNoCodeChange() throws Exception {
-		insertCity("HYD", "Hyderabad", "Cyberabad, Secunderabad", "Telangana", false, "50");
-		mvc.perform(get("/cities").param("q", "hyd")).andExpect(jsonPath("$", hasSize(0)));
-		assertThatThrownBy(() -> cityService.requireLive("HYD")).isInstanceOf(ApiException.class);
+		insertCity("MAA", "Chennai", "Madras, Tambaram", "Tamil Nadu", false, "60");
+		mvc.perform(get("/cities").param("q", "chen")).andExpect(jsonPath("$", hasSize(0)));
+		assertThatThrownBy(() -> cityService.requireLive("MAA")).isInstanceOf(ApiException.class);
 		
-		jdbc.update("update cities set live = true where code = 'HYD'");
+		jdbc.update("update cities set live = true where code = 'MAA'");
 		
 		mvc.perform(get("/cities"))
-			.andExpect(jsonPath("$", hasSize(3)))
-			.andExpect(jsonPath("$[1].code").value("HYD"));
-		mvc.perform(get("/cities").param("q", "secu"))
-			.andExpect(jsonPath("$[0].code").value("HYD"))
-			.andExpect(jsonPath("$[0].aliases[1]").value("Secunderabad"));
-		assertThatCode(() -> cityService.requireLive("HYD")).doesNotThrowAnyException();
-		assertThatCode(() -> cityService.requirePincode("HYD", "500081")).doesNotThrowAnyException();
+			.andExpect(jsonPath("$", hasSize(8)))
+			.andExpect(jsonPath("$[1].code").value("MAA"));
+		mvc.perform(get("/cities").param("q", "tamb"))
+			.andExpect(jsonPath("$[0].code").value("MAA"))
+			.andExpect(jsonPath("$[0].aliases[1]").value("Tambaram"));
+		assertThatCode(() -> cityService.requireLive("MAA")).doesNotThrowAnyException();
+		assertThatCode(() -> cityService.requirePincode("MAA", "600041")).doesNotThrowAnyException();
 	}
 	
 	@Test
@@ -107,6 +118,10 @@ class CityApiTest {
 		assertThatCode(() -> cityService.requirePincode("PNQ", "411045")).doesNotThrowAnyException();
 		assertPincodeError("BLR", "411045", "city_mismatch");
 		assertPincodeError("PNQ", "560034", "city_mismatch");
+		assertThatCode(() -> cityService.requirePincode("GGN", "122002")).doesNotThrowAnyException();
+		assertThatCode(() -> cityService.requirePincode("NOI", "201301")).doesNotThrowAnyException();
+		assertThatCode(() -> cityService.requirePincode("DEL", "110017")).doesNotThrowAnyException();
+		assertPincodeError("GGN", "110017", "city_mismatch");
 		assertPincodeError("BLR", "56003", "pattern");
 		assertPincodeError("BLR", "56003a", "pattern");
 		assertPincodeError("BLR", null, "pattern");

@@ -70,7 +70,8 @@ public class CityService {
 	}
 	
 	private static boolean matches(City city, String query) {
-		return Stream.concat(Stream.of(city.getCode(), city.getName(), city.getState()), city.aliasList().stream())
+		return Stream.concat(Stream.of(city.getCode(), city.getName(), city.getState(), city.getRegion()),
+				city.aliasList().stream())
 			.map(CityService::words)
 			.anyMatch(words -> IntStream.range(0, words.size())
 				.anyMatch(i -> String.join(" ", words.subList(i, words.size())).startsWith(query)));

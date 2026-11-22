@@ -12,7 +12,7 @@ This file only orders the work. If a PR must deviate from the design, it updates
 - Google is never called in tests: `FakeGoogleTokenVerifier` (D-75).
 - Every UI PR body has: run command(s), URL, test logins (dev-login seed users, D-77), the pages to shoot, and the screenshots. Images are also committed to `rentrix-docs/screenshots/<pr-id>/` (`git add -f`, the root `.gitignore` ignores `rentrix-docs/`).
 - Screenshots come from a local headless browser (Playwright) against local dev servers only.
-- No invented numbers or testimonials anywhere (D-03). No hard-coded city list, city name or "only these cities" copy anywhere in API or web: cities come from `GET /cities` (D-20, D-85). Launch cities are Bangalore and Pune; more are added as data.
+- No invented numbers or testimonials anywhere (D-03). No hard-coded city list, city name or "only these cities" copy anywhere in API or web: cities come from `GET /cities` (D-20, D-85). Launch cities are Bangalore, Pune, Mumbai, Hyderabad and Delhi NCR (Delhi, Gurugram, Noida), from `V8__launch_cities.sql`; more are added as data.
 
 ## Tracks
 
