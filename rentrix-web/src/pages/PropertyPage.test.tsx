@@ -90,7 +90,14 @@ describe("PropertyPage", () => {
       { fromMonth: "2024-05", toMonth: null, monthlyRentInr: 36500, share: false },
       { fromMonth: "2023-04", toMonth: "2024-03", monthlyRentInr: 34000, share: false },
     ]
-    api.reviews = [{ id: "r1", rating: 4, text: "Water supply was steady.", authorName: "Demo T." }]
+    api.reviews = [
+      {
+        id: "r1",
+        ratingOverall: 4,
+        body: "Water supply was steady.",
+        author: { shortName: "Demo T." },
+      },
+    ]
     renderPage()
 
     expect(await screen.findByText("Water supply was steady.")).toBeTruthy()

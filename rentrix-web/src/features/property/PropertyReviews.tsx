@@ -1,10 +1,113 @@
+import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { respondToReview } from "@/api/properties"
+import { Button } from "@/components/ui/button"
 import { StarIcon } from "@/components/ui/icons.gen"
+import { Label } from "@/components/ui/label"
 import { EmptyState, ErrorState } from "@/components/ui/states"
-import type { RatingSummary } from "@/types/api"
+import { Textarea } from "@/components/ui/textarea"
+import { ActionError } from "@/features/tenancy/ApprovalPrompt"
+import type { PropertyReview, RatingSummary } from "@/types/api"
 import { monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { SignInPrompt } from "./SignInPrompt"
 import { usePropertyReviews } from "./useProperties"
+
+/** Longest reply the API accepts (ReviewContentRules.RESPONSE_MAX). */
+const RESPONSE_MAX = 1000
+
+/** The landlord's one public reply form, shown only when the API offers `actions.respond`. */
+function RespondForm({ reviewId, propertyId }: { reviewId: string; propertyId: string }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState("")
+  const queryClient = useQueryClient()
+  const send = useMutation({
+    mutationFn: () => respondToReview(reviewId, text.trim()),
+    onSuccess: () => {
+      setOpen(false)
+      setText("")
+      void queryClient.invalidateQueries({ queryKey: ["properties", "reviews", propertyId] })
+    },
+  })
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        Respond
+      </Button>
+    )
+  }
+  const fieldId = `respond-${reviewId}`
+  return (
+    <form
+      className="space-y-2 rounded-lg border border-line p-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        send.mutate()
+      }}
+    >
+      <Label htmlFor={fieldId}>
+        Your public reply{" "}
+        <span className="font-normal text-ink-500">(once, shown to everyone)</span>
+      </Label>
+      <Textarea
+        id={fieldId}
+        value={text}
+        maxLength={RESPONSE_MAX}
+        onChange={(e) => setText(e.target.value)}
+      />
+      {send.isError && <ActionError error={send.error} />}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" size="sm" disabled={send.isPending || !text.trim()}>
+          {send.isPending ? "Sending…" : "Post reply"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
+  const rating = review.ratingOverall
+  return (
+    <li className="space-y-1.5 py-4 first:pt-0">
+      <p className="text-sm">
+        <span className="font-semibold text-ink-900">{review.author?.shortName ?? "Tenant"}</span>
+        {review.period && (
+          <span className="text-ink-500">
+            {" "}
+            · stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
+          </span>
+        )}
+      </p>
+      {rating !== undefined && (
+        <span role="img" className="inline-flex" aria-label={`Rated ${rating} out of 5`}>
+          <Stars value={rating} />
+        </span>
+      )}
+      {review.body ? (
+        <p className="whitespace-pre-line text-ink-700">{review.body}</p>
+      ) : review.textHidden ? (
+        <p className="text-sm text-ink-500 italic">The text is hidden while a report is checked.</p>
+      ) : null}
+      {review.publishedAt && (
+        <p className="text-xs text-ink-500">Published {monthLabel(review.publishedAt)}</p>
+      )}
+      {review.response && (
+        <div className="mt-2 rounded-lg border-l-2 border-line bg-sunk/40 px-3 py-2">
+          <p className="text-xs font-semibold text-ink-700">
+            Reply from {review.response.authorShortName ?? "the landlord"}
+          </p>
+          <p className="text-sm whitespace-pre-line text-ink-700">{review.response.body}</p>
+        </div>
+      )}
+      {review.actions?.respond && !review.response && (
+        <RespondForm reviewId={review.id} propertyId={propertyId} />
+      )}
+    </li>
+  )
+}
 
 /**
  * What tenants say about the home. Review text is for signed-in users (D-56); anonymous visitors
@@ -62,14 +165,7 @@ export function PropertyReviews({
     body = (
       <ul className="divide-y divide-line">
         {reviews.data.map((review) => (
-          <li key={review.id} className="space-y-1.5 py-4 first:pt-0">
-            <p className="text-sm font-semibold text-ink-900">{review.authorName ?? "Tenant"}</p>
-            <Stars value={review.rating} />
-            {review.text && <p className="text-ink-700">{review.text}</p>}
-            {review.publishedAt && (
-              <p className="text-xs text-ink-500">Published {monthLabel(review.publishedAt)}</p>
-            )}
-          </li>
+          <ReviewItem key={review.id} review={review} propertyId={propertyId} />
         ))}
       </ul>
     )

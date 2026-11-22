@@ -92,6 +92,11 @@ export function fetchPropertyReviews(id: string, signal?: AbortSignal) {
   return optionalList<PropertyReview>(`/properties/${encodeURIComponent(id)}/reviews`, signal)
 }
 
+/** `POST /reviews/{id}/response`: the subject's one public reply (1–1000 characters, §5.7). */
+export function respondToReview(id: string, body: string) {
+  return api.post<PropertyReview>(`/reviews/${encodeURIComponent(id)}/response`, { body })
+}
+
 /** `GET /me/properties`: the landlord's own listings, every state, with unit labels. */
 export function fetchMyProperties(
   page = 0,

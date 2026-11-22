@@ -372,13 +372,35 @@ export interface RentRecordInput {
   maintenanceInr?: number
 }
 
-/** One property review as `GET /properties/{id}/reviews` returns it (text only when signed in). */
+/**
+ * One review as `GET /properties/{id}/reviews` returns it (the server's `ReviewView`, absent fields
+ * omitted): `body` is missing while a report hides the text (`textHidden`), and `author.id` only for
+ * landlord authors (D-55, D-57).
+ */
 export interface PropertyReview {
   id: string
-  rating: number
-  text?: string | null
-  authorName?: string | null
-  publishedAt?: string | null
+  direction?: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
+  status?: string
+  ratingOverall?: number
+  ratingA?: number
+  ratingB?: number
+  ratingC?: number
+  body?: string
+  textHidden?: boolean
+  author?: {
+    id?: string
+    shortName: string
+    badges?: { idVerified: boolean; linkedinVerified: boolean }
+  }
+  /** The reviewed home; no unit label (D-57). */
+  property?: { id: string; buildingName: string; locality: string; city: CityRef }
+  period?: { from: string; to?: string }
+  publishedAt?: string
+  editedAt?: string
+  /** The subject's one public reply. */
+  response?: { body: string; authorShortName?: string; createdAt?: string; editUntil?: string }
+  /** What the caller may do now; the approval gate is checked on the write (D-91). */
+  actions?: { edit: boolean; withdraw: boolean; respond: boolean; editResponse: boolean }
 }
 
 /** `GET /auth/config`: what the login page offers (D-76, D-77). */
