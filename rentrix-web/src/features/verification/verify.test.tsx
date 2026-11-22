@@ -16,6 +16,12 @@ const h = vi.hoisted(() => ({
   user: null as CurrentUser | null,
   verification: [] as VerificationEntry[],
   identity: null as IdentityView | null,
+  android: false,
+}))
+
+vi.mock("@/features/verification/truecaller", () => ({
+  canUseTruecaller: vi.fn(() => h.android),
+  openDeepLink: vi.fn(),
 }))
 
 vi.mock("@/api/client", () => ({
@@ -44,6 +50,12 @@ vi.mock("@/api/verification", () => ({
     expiresAt: "2026-11-22T10:10:00Z",
   })),
   confirmPhoneCheck: vi.fn(),
+  startTruecaller: vi.fn(async () => ({
+    requestId: "r1",
+    deepLink: "truecallersdk://truesdk/web_verify?type=btmsheet&requestNonce=r1",
+    expiresAt: "2026-11-22T10:10:00Z",
+  })),
+  fetchTruecallerRequest: vi.fn(),
   requestVerification: vi.fn(),
   saveLinkedin: vi.fn(),
   removeLinkedin: vi.fn(),
@@ -65,6 +77,7 @@ configure({ asyncUtilTimeout: 5000 })
 vi.setConfig({ testTimeout: 30_000 })
 
 const verification = await import("@/api/verification")
+const truecaller = await import("@/features/verification/truecaller")
 const { routes } = await import("@/routes/router")
 
 function renderApp(path: string) {
@@ -94,11 +107,14 @@ beforeEach(() => {
   h.user = makeUser({ verification: { TENANT: "DRAFT" } })
   h.verification = [entry()]
   h.identity = identity(null)
+  h.android = false
 })
 
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  // Only spies made with vi.spyOn (document.hasFocus); module mocks keep their implementations.
+  vi.restoreAllMocks()
 })
 
 describe("verification stepper", () => {
@@ -173,6 +189,58 @@ describe("verification stepper", () => {
     await user.click(screen.getByRole("button", { name: /verify and continue/i }))
 
     await waitFor(() => expect(where(router)).toBe("/me/tenancies?tab=pending"))
+  })
+
+  it("offers Truecaller first on Android and continues once Truecaller's callback has landed", async () => {
+    h.identity = identity(null, true, true)
+    h.android = true
+    vi.spyOn(document, "hasFocus").mockReturnValue(false)
+    vi.mocked(verification.fetchTruecallerRequest).mockImplementation(async () => {
+      phoneConfirmed()
+      return { requestId: "r1", status: "VERIFIED", masked: "+91 XXXXXX3210" }
+    })
+    const router = renderApp("/verify/phone")
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole("button", { name: /verify with truecaller/i }))
+    expect(truecaller.openDeepLink).toHaveBeenCalledWith(
+      "truecallersdk://truesdk/web_verify?type=btmsheet&requestNonce=r1",
+    )
+    expect(await screen.findByRole("heading", { name: /step 3 of 4 · id/i })).toBeTruthy()
+    expect(where(router)).toBe("/verify/id")
+    expect(verification.fetchTruecallerRequest).toHaveBeenCalledWith("r1")
+  })
+
+  it("falls back to the SMS code when the user declines in Truecaller", async () => {
+    h.identity = identity(null, true, true)
+    h.android = true
+    vi.spyOn(document, "hasFocus").mockReturnValue(false)
+    vi.mocked(verification.fetchTruecallerRequest).mockResolvedValue({
+      requestId: "r1",
+      status: "REJECTED",
+      reason: "user_rejected",
+    })
+    renderApp("/verify/phone")
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole("button", { name: /verify with truecaller/i }))
+    expect(await screen.findByText(/truecaller verification was cancelled/i)).toBeTruthy()
+    expect(screen.getByLabelText(/your mobile number/i)).toBeTruthy()
+    expect(screen.getByRole("button", { name: /verify with truecaller/i })).toBeTruthy()
+  })
+
+  it("hides Truecaller off Android and when the API has no Truecaller key", async () => {
+    h.identity = identity(null, true, true)
+    renderApp("/verify/phone")
+    expect(await screen.findByLabelText(/your mobile number/i)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /verify with truecaller/i })).toBeNull()
+    cleanup()
+
+    h.android = true
+    h.identity = identity(null, true, false)
+    renderApp("/verify/phone")
+    expect(await screen.findByLabelText(/your mobile number/i)).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /verify with truecaller/i })).toBeNull()
   })
 
   it("says phone verification is not available when the API has no SMS sender", async () => {

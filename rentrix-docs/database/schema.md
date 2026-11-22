@@ -31,14 +31,14 @@ Order on master is whatever order the PRs merge; the plan's intended order is B1
 
 ### 2.1 `identity_verifications`
 
-One row per user per method. "ID verified" = any row with `method IN ('AADHAAR','PAN','PHONE_OTP') AND status = 'VERIFIED'` (D-99). *Changed in design v4* (D-117, D-100): the gate needs `method = 'PHONE_OTP' AND status = 'VERIFIED'`; the "ID verified" badge needs `method IN ('AADHAAR','PAN') AND status = 'VERIFIED'`.
+One row per user per method. "ID verified" = any row with `method IN ('AADHAAR','PAN','PHONE_OTP') AND status = 'VERIFIED'` (D-99). *Changed in design v4* (D-117, D-100): the gate needs `method IN ('PHONE_OTP','TRUECALLER') AND status = 'VERIFIED'` (`TRUECALLER` from D-138); the "ID verified" badge needs `method IN ('AADHAAR','PAN') AND status = 'VERIFIED'`.
 
 ```sql
 CREATE TABLE identity_verifications (
     id              BIGINT            NOT NULL,
     public_id       CHAR(36)          NOT NULL,
     user_id         BIGINT            NOT NULL,
-    method          VARCHAR(16)       NOT NULL,   -- AADHAAR | PAN | PHONE_OTP | LINKEDIN
+    method          VARCHAR(16)       NOT NULL,   -- AADHAAR | PAN | PHONE_OTP | LINKEDIN | TRUECALLER
     status          VARCHAR(16)       NOT NULL,   -- PENDING | VERIFIED | REJECTED | REVOKED
     last4           VARCHAR(4),                   -- PAN, Aadhaar, phone: last 4 only; null for LINKEDIN
     value_hmac      CHAR(64),                     -- HMAC-SHA256 hex of PAN or E.164 phone; null for AADHAAR, LINKEDIN
@@ -66,6 +66,7 @@ CREATE INDEX ix_identity_verifications_queue ON identity_verifications (status, 
 | Method | `last4` | `value_hmac` | How it becomes `VERIFIED` |
 |---|---|---|---|
 | `PHONE_OTP` | last 4 digits of the phone | HMAC of E.164 phone | user confirms the SMS code (D-101) |
+| `TRUECALLER` | last 4 digits of the phone | HMAC of E.164 phone | Truecaller's callback and profile fetch (D-138) |
 | `PAN` | last 4 characters | HMAC of the upper-cased PAN | admin compares the uploaded card (D-102) |
 | `AADHAAR` | last 4 digits as printed on the masked copy | **none** (full number never received) | admin checks the masked copy (D-103) |
 | `LINKEDIN` | none | none | admin opens the URL; bonus badge only (D-93, D-100) |

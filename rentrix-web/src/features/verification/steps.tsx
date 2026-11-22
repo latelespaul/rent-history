@@ -28,6 +28,8 @@ import type {
 } from "@/types/api"
 import { useNext, useWithNext } from "./next"
 import { StepFrame } from "./StepFrame"
+import { canUseTruecaller } from "./truecaller"
+import { TruecallerCard } from "./TruecallerCard"
 import { useRefreshVerification } from "./useVerification"
 
 /** Seconds before "Resend code" opens again. The API also limits codes per hour (D-101). */
@@ -35,6 +37,14 @@ const RESEND_AFTER = 60
 
 function method(identity: IdentityView | undefined, name: IdentityMethodView["method"]) {
   return identity?.methods.find((m) => m.method === name)
+}
+
+/** The account's phone: whichever of SMS code or Truecaller verified it, else the SMS method. */
+function phoneMethod(identity: IdentityView | undefined) {
+  const verified = ["PHONE_OTP", "TRUECALLER"]
+    .map((name) => method(identity, name as IdentityMethodView["method"]))
+    .find((m) => m?.status === "VERIFIED")
+  return verified ?? method(identity, "PHONE_OTP")
 }
 
 /** "+91 98765 43210", "9876543210" → "+919876543210"; other input is sent as typed for the API to judge. */
@@ -149,8 +159,9 @@ function clock(seconds: number): string {
 }
 
 /**
- * Step 2 · Phone, required (D-117, mockup `verify-v4-phone.html`): send a 6-digit code, type it,
- * done. With `?next=` the user goes straight back to what they were doing (D-119).
+ * Step 2 · Phone, required (D-117, mockup `verify-v4-phone.html`): "Verify with Truecaller" first
+ * (Android with a Truecaller key on the API), else or after it an SMS code. With `?next=` the user
+ * goes straight back to what they were doing (D-119).
  */
 export function PhoneStep({
   entries,
@@ -163,8 +174,10 @@ export function PhoneStep({
   const next = useNext()
   const withNext = useWithNext()
   const refresh = useRefreshVerification()
-  const phone = method(identity, "PHONE_OTP")
+  const phone = phoneMethod(identity)
+  const sms = method(identity, "PHONE_OTP")
   const verified = phone?.status === "VERIFIED"
+  const truecaller = method(identity, "TRUECALLER")?.available === true && canUseTruecaller()
   const [changing, setChanging] = useState(false)
   const [number, setNumber] = useState("")
   const [challenge, setChallenge] = useState<PhoneChallenge | null>(null)
@@ -191,7 +204,14 @@ export function PhoneStep({
     },
   })
 
-  if (phone && !phone.available && !verified) {
+  const truecallerVerified = async () => {
+    await refresh()
+    setChanging(false)
+    setChallenge(null)
+    navigate(next ?? withNext("/verify/id"))
+  }
+
+  if (sms && !sms.available && !verified && !truecaller) {
     return (
       <StepFrame step="phone" entries={entries}>
         <Notice tone="warn">
@@ -229,56 +249,67 @@ export function PhoneStep({
   return (
     <StepFrame step="phone" entries={entries}>
       <div className="space-y-6">
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault()
-            start.mutate()
-          }}
-          className="space-y-2"
-        >
-          <Label htmlFor="verify-phone">1 · Your mobile number</Label>
-          <div className="flex flex-wrap gap-2">
-            <Input
-              id="verify-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="+91 98765 43210"
-              value={number}
-              disabled={challenge !== null}
-              onChange={(event) => setNumber(event.target.value)}
-              className="max-w-[260px]"
-            />
-            {challenge ? (
-              <>
-                <Badge variant="success" className="self-center">
-                  {challenge.delivery === "TEAM" ? "Code requested" : "Code sent"}
-                </Badge>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setChallenge(null)
-                    setSentAt(null)
-                  }}
-                >
-                  Change number
-                </Button>
-              </>
-            ) : (
-              <Button type="submit" disabled={start.isPending || number.trim() === ""}>
-                <MessageIcon />
-                {start.isPending ? "Sending…" : "Send code"}
-              </Button>
+        {truecaller && <TruecallerCard onVerified={truecallerVerified} />}
+        {truecaller && sms && !sms.available && (
+          <Notice tone="warn">SMS codes are not available yet. Use Truecaller for now.</Notice>
+        )}
+        {(!truecaller || sms?.available !== false) && (
+          <>
+            {truecaller && (
+              <p className="text-sm font-medium text-ink-700">Or verify with an SMS code</p>
             )}
-          </div>
-          <p className="text-xs text-ink-500">
-            Every tenant and landlord verifies a phone number. Indian mobile numbers only. Private:
-            never shown on your profile.
-          </p>
-          {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
-        </form>
+            <form
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault()
+                start.mutate()
+              }}
+              className="space-y-2"
+            >
+              <Label htmlFor="verify-phone">1 · Your mobile number</Label>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  id="verify-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="+91 98765 43210"
+                  value={number}
+                  disabled={challenge !== null}
+                  onChange={(event) => setNumber(event.target.value)}
+                  className="max-w-[260px]"
+                />
+                {challenge ? (
+                  <>
+                    <Badge variant="success" className="self-center">
+                      {challenge.delivery === "TEAM" ? "Code requested" : "Code sent"}
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setChallenge(null)
+                        setSentAt(null)
+                      }}
+                    >
+                      Change number
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="submit" disabled={start.isPending || number.trim() === ""}>
+                    <MessageIcon />
+                    {start.isPending ? "Sending…" : "Send code"}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-ink-500">
+                Every tenant and landlord verifies a phone number. Indian mobile numbers only.
+                Private: never shown on your profile.
+              </p>
+              {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
+            </form>
+          </>
+        )}
 
         {challenge && (
           <form
@@ -366,7 +397,7 @@ export function IdStep({
 }) {
   const withNext = useWithNext()
   const refresh = useRefreshVerification()
-  const phone = method(identity, "PHONE_OTP")
+  const phone = phoneMethod(identity)
   const linkedin = method(identity, "LINKEDIN")
   const [url, setUrl] = useState("")
   const save = useMutation({
@@ -528,7 +559,7 @@ export function SubmitStep({
   const withNext = useWithNext()
   const refresh = useRefreshVerification()
   const open = entries.filter((e) => e.status === "DRAFT" || e.status === "REJECTED")
-  const phone = method(identity, "PHONE_OTP")
+  const phone = phoneMethod(identity)
   const steps = entries[0]?.steps
   const send = useMutation({
     mutationFn: async () => {

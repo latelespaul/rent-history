@@ -27,7 +27,8 @@ import java.util.Set;
  *   log) is refused outside dev and test; {@code http} needs {@code SMS_HTTP_URL}, {@code SMS_API_KEY} and an
  *   {@code ID_HASH_KEY}; {@code admin-relay} (codes shown to admins, D-137) is refused outside dev and test unless
  *   {@code PREVIEW_MODE=true}, needs an {@code ID_HASH_KEY} there, and logs one warning on every start;</li>
- *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one).</li>
+ *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one);</li>
+ *   <li>{@code TRUECALLER_FAKE=true} (any access token verifies any number) is refused outside dev and test.</li>
  * </ul>
  * <p>No {@code SMS_BACKEND} outside dev and test starts with one warning: phone OTP is unavailable
  * ({@code 503 phone_otp_unavailable}, D-101), so a deployment without an SMS provider keeps starting.
@@ -98,6 +99,10 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		}
 		if (LOCAL_PROFILES.contains(profile)) {
 			return;
+		}
+		if (env.getProperty("app.truecaller.fake", Boolean.class, false)) {
+			throw new IllegalStateException("Refusing to start: TRUECALLER_FAKE=true accepts made-up Truecaller tokens "
+				+ "and is allowed only in the dev and test profiles.");
 		}
 		if (sms.equals("log")) {
 			throw new IllegalStateException("Refusing to start: SMS_BACKEND=log writes OTP codes to the log and is "

@@ -30,4 +30,11 @@ public interface IdentityVerificationRepository extends JpaRepository<IdentityVe
 	long countVerifiedOnOtherAccounts(@Param("method") IdentityMethod method, @Param("hmac") String hmac,
 		@Param("user") User user, @Param("deleted") UserStatus deleted);
 	
+	/** Other accounts with the same value verified by any of {@code methods} (the phone by SMS or Truecaller). */
+	@Query("select count(distinct v.user) from IdentityVerification v where v.method in :methods"
+		+ " and v.valueHmac = :hmac and v.status = com.rentrix.rentrixserver.identity.IdentityStatus.VERIFIED"
+		+ " and v.user <> :user and v.user.status <> :deleted")
+	long countVerifiedOnOtherAccountsIn(@Param("methods") Collection<IdentityMethod> methods,
+		@Param("hmac") String hmac, @Param("user") User user, @Param("deleted") UserStatus deleted);
+	
 }

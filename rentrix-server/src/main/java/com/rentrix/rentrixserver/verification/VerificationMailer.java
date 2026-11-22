@@ -50,7 +50,7 @@ class VerificationMailer {
 			case REVOKED -> new EmailMessage(decided.email(), "Your " + brand + " " + role + " approval was withdrawn",
 				hello + "An admin withdrew the approval of your " + role + " account.\n\n" + reason
 					+ "\n\nFix the steps in " + brand + " and submit again.\n\n" + brand);
-			case SUBMITTED, IDENTITY_CHECKED -> throw new IllegalArgumentException("Not a decision: " + decided.outcome());
+			case SUBMITTED, IDENTITY_CHECKED, PHONE_VERIFIED -> throw new IllegalArgumentException("Not a decision: " + decided.outcome());
 		};
 	}
 	

@@ -468,7 +468,8 @@ export interface VerificationEntry {
   decision?: { code?: string; note?: string; decidedAt: string }
 }
 
-export type IdentityMethod = "AADHAAR" | "PAN" | "PHONE_OTP" | "LINKEDIN"
+/** `TRUECALLER` is the phone verified by Truecaller; it counts like `PHONE_OTP` (either one is the phone). */
+export type IdentityMethod = "AADHAAR" | "PAN" | "PHONE_OTP" | "LINKEDIN" | "TRUECALLER"
 export type IdentityStatus = "PENDING" | "VERIFIED" | "REJECTED" | "REVOKED"
 
 /** One method on `GET /me/identity`: masked values only (D-106). */
@@ -490,6 +491,27 @@ export interface IdentityView {
   idVerified: boolean
   linkedinVerified: boolean
   methods: IdentityMethodView[]
+}
+
+/** `POST /me/identity/truecaller/start`: open `deepLink` on the phone, then poll `requestId`. */
+export interface TruecallerStart {
+  requestId: string
+  deepLink: string
+  expiresAt: string
+}
+
+/** Where a Truecaller request stands; `VERIFIED`, `REJECTED`, `FAILED` and `EXPIRED` are final. */
+export type TruecallerStatus =
+  "PENDING" | "INVOKED" | "VERIFYING" | "VERIFIED" | "REJECTED" | "FAILED" | "EXPIRED"
+
+/** `GET /me/identity/truecaller/{requestId}`. */
+export interface TruecallerRequest {
+  requestId: string
+  status: TruecallerStatus
+  /** The verified number, masked (`+91 XXXXXX3210`). */
+  masked?: string | null
+  /** Why it did not verify, e.g. `user_rejected`, `profile_unavailable`, `not_indian_mobile`. */
+  reason?: string | null
 }
 
 /** `POST /me/identity/phone/start`: the code was sent (D-101). */

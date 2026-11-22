@@ -36,5 +36,10 @@ app:
   identity:
     # Test-only value, public in git. Any profile other than dev/test sets its own ID_HASH_KEY.
     hash-key: ${ID_HASH_KEY:test-only-id-hash-key-not-for-production-0123456789}
+  truecaller:
+    # Test-only placeholder key: FakeTruecallerVerifier reads the access token "fake:<phone>" as a verified
+    # number and never calls Truecaller.
+    app-key: ${TRUECALLER_APP_KEY:test-only-fake-truecaller-key}
+    fake: ${TRUECALLER_FAKE:true}
   sms:
     backend: ${SMS_BACKEND:log}   # OTP codes go to the API log, never to a phone
