@@ -9,6 +9,10 @@ import com.rentrix.rentrixserver.notification.sms.SmsSender;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserStatus;
+import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
+import com.rentrix.rentrixserver.verification.VerificationEvent;
+import com.rentrix.rentrixserver.verification.VerificationEventRepository;
+import com.rentrix.rentrixserver.verification.VerificationEventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -72,6 +76,8 @@ public class PhoneOtpService {
 	private final PhoneOtpChallengeRepository challenges;
 	private final IdentityVerificationRepository checks;
 	private final UserRepository users;
+	private final VerificationApplicationRepository applications;
+	private final VerificationEventRepository events;
 	private final IdentityService identity;
 	private final PhoneOtpAvailability availability;
 	private final BrandProperties brand;
@@ -227,6 +233,16 @@ public class PhoneOtpService {
 		identity.revokeOtherPhone(user, IdentityMethod.PHONE_OTP, row.getValueHmac());
 		user.setPhone(phone);
 		users.save(user);
+		applications.findByUser(user).forEach(application -> {
+			VerificationEvent event = new VerificationEvent();
+			event.setApplication(application);
+			event.setRevision(application.getRevision());
+			event.setEvent(VerificationEventType.PHONE_VERIFIED);
+			event.setActor(user);
+			event.setCode("SMS_OTP");
+			event.setCreatedAt(now);
+			events.save(event);
+		});
 		long others = identity.phoneVerifiedOnOtherAccounts(user, row.getValueHmac());
 		if (others > 0) {
 			log.info("Phone verified for user {}; the same phone is verified on {} other account(s): {}",

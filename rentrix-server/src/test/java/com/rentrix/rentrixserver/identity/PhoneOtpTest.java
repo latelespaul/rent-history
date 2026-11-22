@@ -8,6 +8,11 @@ import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.verification.VerificationApplication;
+import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
+import com.rentrix.rentrixserver.verification.VerificationEvent;
+import com.rentrix.rentrixserver.verification.VerificationEventRepository;
+import com.rentrix.rentrixserver.verification.VerificationEventType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,6 +80,12 @@ class PhoneOtpTest {
 	
 	@Autowired
 	PhoneOtpCleanupJob cleanup;
+	
+	@Autowired
+	VerificationApplicationRepository applications;
+	
+	@Autowired
+	VerificationEventRepository events;
 	
 	@MockitoSpyBean
 	SmsSender sms;
@@ -192,6 +203,21 @@ class PhoneOtpTest {
 		assertThat(output.getAll().lines().filter(l -> l.contains(code)))
 			.allMatch(l -> SMS_LINE.matcher(l).find());
 		assertThat(identity.isPhoneVerified(saved)).isTrue();
+	}
+	
+	@Test
+	void aConfirmedCodeWritesOnePhoneVerifiedEvent(CapturedOutput output) throws Exception {
+		User user = data.user("Neel", Role.TENANT);
+		VerificationApplication application = new VerificationApplication();
+		application.setUser(user);
+		application.setRole(Role.TENANT);
+		applications.save(application);
+		
+		verify(user, phone(), output);
+		
+		List<VerificationEvent> history = events.findByApplicationOrderByCreatedAtAscIdAsc(application);
+		assertThat(history).extracting(VerificationEvent::getEvent).containsExactly(VerificationEventType.PHONE_VERIFIED);
+		assertThat(history.getFirst().getCode()).isEqualTo("SMS_OTP");
 	}
 	
 	@Test
