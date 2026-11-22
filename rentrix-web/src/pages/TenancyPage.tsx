@@ -3,15 +3,23 @@ import { isApiError } from "@/api/errors"
 import { Container } from "@/components/layout/Container"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LockIcon } from "@/components/ui/icons.gen"
+import { LockIcon, StarIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { rupees } from "@/features/property/labels"
 import { RentRecords } from "@/features/tenancy/RentRecords"
 import { TenancyActions } from "@/features/tenancy/TenancyActions"
 import { TenancyFacts } from "@/features/tenancy/TenancyCard"
-import { counterparty, dateLabel, TENANCY_STATUS, tenancyHome } from "@/features/tenancy/labels"
+import {
+  counterparty,
+  dateLabel,
+  TENANCY_STATUS,
+  tenancyHome,
+  today,
+} from "@/features/tenancy/labels"
+import { reviewWindow } from "@/features/tenancy/reviewWindow"
 import { useTenancy } from "@/features/tenancy/useTenancies"
+import { BRAND } from "@/lib/brand"
 import type { Tenancy } from "@/types/api"
 
 function StatusNote({ tenancy }: { tenancy: Tenancy }) {
@@ -30,14 +38,43 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
     return <Notice tone="warn">Declined: {tenancy.declineReason}</Notice>
   }
   if (tenancy.status === "ACTIVE" || tenancy.status === "ENDED") {
-    return (
+    // A tenant's own record (D-141) stands without the owner; the team verifies it later.
+    return tenancy.confirmedAt ? (
       <Notice tone="teal">
-        Confirmed{tenancy.confirmedAt ? ` on ${dateLabel(tenancy.confirmedAt)}` : ""}. Its confirmed
-        rent shows in the home&apos;s public rent history, with no names.
+        Confirmed on {dateLabel(tenancy.confirmedAt)}. Its confirmed rent shows in the home&apos;s
+        public rent history, with no names.
+      </Notice>
+    ) : (
+      <Notice tone="teal">
+        Recorded by you. It shows on the home&apos;s page, with no names, marked &ldquo;Not verified
+        yet&rdquo; until the {BRAND.name} team verifies it.
       </Notice>
     )
   }
   return null
+}
+
+/** "Write a review" on the tenant's current or ended tenancy, while the D-39 window is open. */
+function ReviewCta({ tenancy }: { tenancy: Tenancy }) {
+  if (tenancy.myRole !== "TENANT") return null
+  const reviews = reviewWindow(tenancy, today())
+  if (reviews.state === "none") return null
+  if (reviews.state === "open")
+    return (
+      <Button asChild data-testid="tenancy-write-review">
+        <Link to={`/tenancies/${tenancy.id}/review`}>
+          <StarIcon />
+          Write a review
+        </Link>
+      </Button>
+    )
+  return (
+    <p className="text-sm text-ink-500" data-testid="tenancy-review-window">
+      {reviews.state === "not_yet"
+        ? `You can review this home from ${dateLabel(reviews.opens)}.`
+        : `Reviews for this tenancy closed on ${dateLabel(reviews.closes)}.`}
+    </p>
+  )
 }
 
 /**
@@ -152,6 +189,7 @@ export default function TenancyPage() {
             Exact dates, deposit and flat number are private to the two of you.
           </p>
           <StatusNote tenancy={tenancy} />
+          <ReviewCta tenancy={tenancy} />
           <TenancyActions tenancy={tenancy} />
         </section>
 

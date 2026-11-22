@@ -19,6 +19,7 @@ import com.rentrix.rentrixserver.identity.IdentityVerification;
 import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.review.RatingAggregate;
@@ -197,7 +198,8 @@ class DemoSeederTest {
 				.allMatch(a -> a.pincodeList().stream()
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));
 			
-			List<User> people = users.findAll();
+			// The unclaimed-homes system account (D-138) is not demo data.
+			List<User> people = users.findAll().stream().filter(u -> !UnclaimedLandlord.is(u)).toList();
 			// 4 landlords + 8 tenants with homes, the demo admin and 4 verification-queue users
 			assertThat(people).hasSize(17).allMatch(User::isDemo)
 				.allMatch(u -> u.getEmail().endsWith("@example.test"))
@@ -223,8 +225,8 @@ class DemoSeederTest {
 							.isBefore(byStart.get(i + 1).getStartDate());
 					}
 				}
-				List<RentRecord> history = rentRecords.findByTenancyPropertyIdAndStatusAndTenancyStatusInOrderByEffectiveFromAsc(
-					home.getId(), RentRecordStatus.CONFIRMED, List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED));
+				List<RentRecord> history = rentRecords.findByTenancyPropertyIdAndStatusInAndTenancyStatusInOrderByEffectiveFromAsc(
+					home.getId(), List.of(RentRecordStatus.CONFIRMED), List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED));
 				assertThat(history.stream().map(RentRecord::getMonthlyRentInr).distinct().count())
 					.as("rent change at " + home.getBuildingName()).isGreaterThanOrEqualTo(2);
 				assertThat(history).allMatch(r -> r.getEffectiveFrom().getDayOfMonth() == 1);

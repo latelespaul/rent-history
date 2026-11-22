@@ -17,6 +17,7 @@ import com.rentrix.rentrixserver.identity.IdentityVerificationRepository;
 import com.rentrix.rentrixserver.property.Furnishing;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
+import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
@@ -198,7 +199,8 @@ public class DemoSeeder implements ApplicationRunner {
 	/** Seeds an empty database; returns false (and changes nothing) when any user, property or area exists. */
 	public boolean seed() {
 		Boolean seeded = tx.execute(status -> {
-			if (users.count() > 0 || properties.count() > 0 || areas.count() > 0) {
+			// The unclaimed-homes account (D-138) is created at startup and does not count as data.
+			if (users.countByEmailNot(UnclaimedLandlord.EMAIL) > 0 || properties.count() > 0 || areas.count() > 0) {
 				log.info("Demo seed skipped: the database is not empty.");
 				return false;
 			}

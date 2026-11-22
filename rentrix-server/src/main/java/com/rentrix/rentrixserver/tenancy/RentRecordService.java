@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.tenancy;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.property.FieldVisibility;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyType;
@@ -121,8 +122,12 @@ public class RentRecordService {
 			.orElseThrow(() -> ApiException.notFound("Property"));
 		boolean share = property.getPropertyType() == PropertyType.ROOM || property.getPropertyType() == PropertyType.PG;
 		Map<Long, List<RentRecord>> byTenancy = new LinkedHashMap<>();
-		rentRecords.findByTenancyPropertyIdAndStatusAndTenancyStatusInOrderByEffectiveFromAsc(property.getId(),
-				RentRecordStatus.CONFIRMED, TenancyService.CONFIRMED)
+		// A one-sided tenancy (D-138, D-141) has nobody who confirmed its rent, so its tenant's own records show,
+		// marked not confirmed; proposals on a tenancy both sides confirmed stay hidden until confirmed (D-25).
+		rentRecords.findByTenancyPropertyIdAndStatusInAndTenancyStatusInOrderByEffectiveFromAsc(property.getId(),
+				List.of(RentRecordStatus.CONFIRMED, RentRecordStatus.PROPOSED), TenancyService.CONFIRMED)
+			.stream()
+			.filter(r -> r.getStatus() == RentRecordStatus.CONFIRMED || r.getTenancy().getConfirmedAt() == null)
 			.forEach(r -> byTenancy.computeIfAbsent(r.getTenancy().getId(), id -> new ArrayList<>()).add(r));
 		List<Row> rows = new ArrayList<>();
 		for (List<RentRecord> records : byTenancy.values()) {
@@ -144,8 +149,13 @@ public class RentRecordService {
 			closeOverlaps(rows);
 		}
 		return new RentHistory(property.getPublicId(), rows.stream()
-			.map(row -> new RentHistory.Row(row.from().toString(), row.to() == null ? null : row.to().toString(),
-				row.record().getMonthlyRentInr(), row.record().getMaintenanceInr(), share))
+			.map(row -> {
+				// D-139: a MASKED rent shows its months but not the amount.
+				boolean open = row.record().getTenancy().getRentVisibility() == FieldVisibility.OPEN;
+				return new RentHistory.Row(row.from().toString(), row.to() == null ? null : row.to().toString(),
+					open ? row.record().getMonthlyRentInr() : null, open ? row.record().getMaintenanceInr() : null, share,
+					row.record().getStatus() == RentRecordStatus.CONFIRMED);
+			})
 			.toList());
 	}
 

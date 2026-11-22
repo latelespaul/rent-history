@@ -20,6 +20,8 @@ services:
       DEV_LOGIN_ENABLED: "true"
       # docker-compose.yml passes these through empty; e2e-only values, public in git like the dev ones.
       ID_HASH_KEY: e2e-only-id-hash-key-not-for-production-0123456789
-      SMS_BACKEND: log # phone OTP codes go to the API log, never to a phone
+      # Phone OTP codes are never sent: they wait for an admin at /admin/sms-relay (D-137), which the
+      # new-user journey spec reads as the demo admin.
+      SMS_BACKEND: admin-relay
       # Every spec signs in; the default 20 sign-ins per 15 minutes per IP would stop a run.
       APP_AUTH_RATELIMIT_REQUESTS: "10000"

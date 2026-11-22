@@ -11,10 +11,10 @@ function rowsWithChange(rows: RentHistoryRow[]) {
   const sorted = [...rows].sort((a, b) => b.fromMonth.localeCompare(a.fromMonth))
   return sorted.map((row, i) => {
     const older = sorted[i + 1]
+    const now = row.monthlyRentInr
+    const before = older?.monthlyRentInr
     const change =
-      older && older.monthlyRentInr > 0
-        ? ((row.monthlyRentInr - older.monthlyRentInr) / older.monthlyRentInr) * 100
-        : null
+      now != null && before != null && before > 0 ? ((now - before) / before) * 100 : null
     return { row, change }
   })
 }
@@ -25,6 +25,8 @@ function rowsWithChange(rows: RentHistoryRow[]) {
  */
 export function RentHistory({ propertyId, signedIn }: { propertyId: string; signedIn: boolean }) {
   const history = useRentHistory(propertyId, signedIn)
+  // An unclaimed home (D-138) shows its tenant's rent before anyone could confirm it.
+  const unconfirmed = history.data?.some((row) => row.confirmed === false) ?? false
 
   let body
   if (!signedIn) {
@@ -78,7 +80,12 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
                 <td className="py-2.5 pr-4">{monthLabel(row.fromMonth)}</td>
                 <td className="py-2.5 pr-4">{monthLabel(row.toMonth) ?? "now"}</td>
                 <td className="py-2.5 pr-4 text-right font-semibold">
-                  {rupees(row.monthlyRentInr)}
+                  {row.monthlyRentInr != null ? rupees(row.monthlyRentInr) : "Hidden"}
+                  {row.confirmed === false && (
+                    <span className="block text-xs font-normal text-ink-500">
+                      added by the tenant · not verified yet
+                    </span>
+                  )}
                   {row.maintenanceInr ? (
                     <span className="block text-xs font-normal text-ink-500">
                       + {rupees(row.maintenanceInr)} maintenance
@@ -111,10 +118,16 @@ export function RentHistory({ propertyId, signedIn }: { propertyId: string; sign
           <TrendUpIcon size={20} />
           Rent history
         </h2>
-        <Badge variant="verified">Confirmed tenancies</Badge>
+        {unconfirmed ? (
+          <Badge>Not verified yet</Badge>
+        ) : (
+          <Badge variant="verified">Confirmed tenancies</Badge>
+        )}
       </div>
       <p className="text-sm text-ink-500">
-        Monthly rent from confirmed tenancies. No tenant names.
+        {unconfirmed
+          ? "Monthly rent as the tenant gave it, not verified yet. No tenant names."
+          : "Monthly rent from confirmed tenancies. No tenant names."}
       </p>
       {body}
     </section>

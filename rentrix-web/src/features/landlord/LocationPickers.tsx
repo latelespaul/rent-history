@@ -108,21 +108,26 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
           {areas.isSuccess && areas.data.length === 0 && (
             <li className="text-sm text-ink-500">No area matches “{typed}”.</li>
           )}
-          {typed.length >= 2 && !/^\d+$/.test(typed) && !exact && (
-            <li>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  onChange(setLevel(value, "area", { kind: "new", name: typed, extra: {} }))
-                }
-              >
-                <PlusIcon />
-                Suggest new area “{typed}”
-              </Button>
-            </li>
-          )}
+          {/* Only once the search answered: a tap before that would propose an area that exists. */}
+          {typed.length >= 2 &&
+            !/^\d+$/.test(typed) &&
+            areas.isSuccess &&
+            !areas.isFetching &&
+            !exact && (
+              <li>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    onChange(setLevel(value, "area", { kind: "new", name: typed, extra: {} }))
+                  }
+                >
+                  <PlusIcon />
+                  Suggest new area “{typed}”
+                </Button>
+              </li>
+            )}
         </ul>
       )}
     </div>

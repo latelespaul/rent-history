@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, pickRole } from "./support"
+import { daysAgo, freshLogin, pickRole, verifyPhone } from "./support"
 
 /**
  * The new-user journey, from a brand-new account (dev-only fresh-user login) to something on a
- * property page. The tenant half waits for the "+ Add your home" flow being built now; flip it
- * to `test` when that PR merges.
+ * property page.
  */
 
 test("a new landlord picks the role, adds a property and sees its page", async ({ page }) => {
@@ -31,68 +30,87 @@ test("a new landlord picks the role, adds a property and sees its page", async (
   await expect(page.getByRole("link", { name: "Edit listing" })).toBeVisible()
 })
 
-// The "+ Add your home" stepped flow (captain 2026-11-22 22:22), built on fm/rxm-journey. Written
-// against the flow as specified; align the selectors with its data-testids and flip to `test`
-// when that PR merges.
-test.fixme("a new tenant adds their home, records the tenancy, reviews it and finds it in search [captain 2026-11-22 22:22 Add your home; fm/rxm-journey]", async ({
+// The "+ Add your home" journey (captain 2026-11-22 21:38 / 22:22; D-138–D-141): a brand-new
+// tenant verifies the phone, adds the flat through the hierarchy with a society typed in, records
+// the tenancy and the owner's contact, reviews the home and finds it, "not verified yet".
+test("a new tenant adds their home, records the tenancy, reviews it and finds it in search", async ({
   page,
 }) => {
   const tag = Date.now().toString(36)
   const society = `E2E Society ${tag}`
   const flat = `F-${tag}`
+  const phone = `9${Date.now().toString().slice(-9)}`
   const ownerPhone = "+919800012345"
   const review =
     "Bright rooms and steady water supply. The landlord fixed every repair within a week."
   await freshLogin(page)
-  await pickRole(page, "I rent a home")
 
-  await test.step("add the home: hierarchy, or a free-text society", async () => {
-    await page.getByRole("link", { name: /add your home/i }).click()
-    await page.getByLabel("City").selectOption({ label: "Bangalore" })
-    await page.getByRole("button", { name: /^Koramangala/ }).click()
-    await page.getByLabel(/society/i).fill(society)
-    await page.getByLabel(/flat/i).fill(flat)
-    await page.getByRole("button", { name: /continue|next/i }).click()
+  await test.step("role pick, then the account-created screen leads to the phone and back", async () => {
+    await page.locator("label").filter({ hasText: "I rent a home" }).click()
+    await page.getByRole("checkbox", { name: /I accept the Terms/ }).check()
+    await page.getByRole("button", { name: "Continue" }).click()
+    await expect(page.getByText("Your account is created.")).toBeVisible()
+    await page.getByTestId("welcome-verify").click()
+    await verifyPhone(page, phone)
+    await expect(page).toHaveURL(/\/homes\/new$/)
+  })
+
+  await test.step("add the home: city > area > a society typed in > flat and PIN", async () => {
+    await expect(page.getByTestId("add-home-step")).toHaveText(/step 1 of 4/i)
+    await page.locator("#ah-city").selectOption({ label: "Bangalore" })
+    await page.locator("#pf-area").fill("Koramangala")
+    await page
+      .getByRole("list", { name: "Areas" })
+      .getByRole("button", { name: /^Koramangala/ })
+      .click()
+    await page.locator("#pf-society").selectOption({ label: "+ Add a society…" })
+    await page.getByLabel("New society name").fill(society)
+    await page.getByLabel("Flat / house no.").fill(flat)
+    await page.getByLabel("PIN code").fill("560034")
+    await page.getByTestId("ah-next").click()
   })
 
   await test.step("a near-duplicate is offered first: 'Is it this one?'", async () => {
-    const duplicate = page.getByRole("region", { name: /is it this one/i })
-    if (await duplicate.isVisible()) {
-      await duplicate
-        .getByRole("button", { name: /no, (it is )?a different home|none of these/i })
-        .click()
-    }
+    const step2 = page.getByTestId("add-home-step").filter({ hasText: /step 2 of 4/i })
+    await expect(step2.or(page.getByTestId("home-matches"))).toBeVisible()
+    if (await page.getByTestId("home-matches").isVisible())
+      await page.getByTestId("home-match-none").click()
+    await expect(step2).toBeVisible()
   })
 
   await test.step("I rent it: dates and rent, then the owner's contact", async () => {
-    await page.getByRole("button", { name: /I rent it/i }).click()
-    await page.getByLabel("Start date").fill(daysAgo(60))
+    await page.getByTestId("ah-relation-rent").click()
+    await page.getByTestId("ah-next").click()
+    await page.getByLabel("Moved in").fill(daysAgo(90))
     await page.getByLabel(/monthly rent/i).fill("24000")
-    await page.getByRole("button", { name: /continue|next/i }).click()
-    await page.getByLabel(/owner.*(phone|contact)/i).fill(ownerPhone)
-    await page.getByRole("button", { name: /continue|next/i }).click()
+    await page.getByTestId("ah-next").click()
+    await page.getByLabel(/owner’s phone/i).fill(ownerPhone)
+    await page.getByTestId("ah-save").click()
+    const done = page.getByTestId("add-home-done")
+    await expect(done.getByText(/added by a tenant · not verified yet/i)).toBeVisible()
+    await done.getByTestId("add-home-write-review").click()
   })
 
-  await test.step("an optional review, then saved as added by a tenant", async () => {
-    await page.getByRole("radio", { name: /4 stars?/i }).check()
+  await test.step("the review, then 'You submitted this review'", async () => {
+    await page.getByTestId("review-star-4").click()
     await page.getByLabel(/your review/i).fill(review)
-    await page.getByRole("button", { name: /submit|save/i }).click()
-    await expect(page.getByText(/you submitted this review/i)).toBeVisible()
+    await page.getByTestId("review-submit").click()
+    const submitted = page.getByTestId("review-submitted")
+    await expect(submitted.getByText(/you submitted this review/i)).toBeVisible()
+    await expect(submitted.getByTestId("tick-unverified")).toHaveText("Not verified yet")
+    await submitted.getByTestId("review-view-home").click()
   })
 
   await test.step("the home is on its property page and in search, owner contact never shown", async () => {
-    await page.getByRole("link", { name: /view (the )?(home|property)|see it/i }).click()
     await expect(page).toHaveURL(/\/p\//)
-    await expect(page.getByText(/added by a tenant · not verified yet/i)).toBeVisible()
-    const reviews = page.getByRole("region", { name: /what tenants say about the home/i })
-    const mine = reviews.getByRole("listitem").filter({ hasText: review })
+    await expect(page.getByTestId("added-by-tenant")).toBeVisible()
+    const mine = page.getByTestId("property-review").filter({ hasText: review })
     await expect(mine).toBeVisible()
-    await expect(mine.getByText(/^(verified|unverified)/i)).toBeVisible()
-    await expect(page.getByText(ownerPhone)).toHaveCount(0)
+    await expect(mine.getByTestId("tick-unverified")).toHaveText("Not verified yet")
     await expect(page.getByText(/9800012345/)).toHaveCount(0)
 
     await page.goto("/search?city=BLR&locality=Koramangala")
-    await expect(page.getByRole("link", { name: new RegExp(society) })).toBeVisible()
+    await expect(page.getByRole("link", { name: new RegExp(society) }).first()).toBeVisible()
     await expect(page.getByText(/9800012345/)).toHaveCount(0)
   })
 })

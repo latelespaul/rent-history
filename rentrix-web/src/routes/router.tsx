@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
+import AddHomePage from "@/pages/AddHomePage"
 import ComingSoonPage from "@/pages/ComingSoonPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
@@ -18,6 +19,7 @@ import TenancyPage from "@/pages/TenancyPage"
 import TenancyRequestPage from "@/pages/TenancyRequestPage"
 import VerifyPage from "@/pages/VerifyPage"
 import WelcomeCreatedPage from "@/pages/WelcomeCreatedPage"
+import WriteReviewPage from "@/pages/WriteReviewPage"
 import { RouteError } from "@/routes/RouteError"
 
 export const routes = [
@@ -43,7 +45,9 @@ export const routes = [
           { path: "/verify/*", element: <VerifyPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/me/tenancies", element: <MyTenanciesPage /> },
+          { path: "/homes/new", element: <AddHomePage /> },
           { path: "/tenancies/new", element: <TenancyRequestPage /> },
+          { path: "/tenancies/:id/review", element: <WriteReviewPage /> },
           { path: "/tenancies/:id", element: <TenancyPage /> },
           { path: "/tenancy-invite", element: <TenancyInvitePage /> },
           { path: "/me/*", element: <NotFoundPage /> },
