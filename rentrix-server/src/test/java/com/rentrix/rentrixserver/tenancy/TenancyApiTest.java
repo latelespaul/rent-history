@@ -129,6 +129,7 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.actions.confirm").value(false))
 			.andExpect(jsonPath("$.expiresAt").exists())
 			.andExpect(jsonPath("$.currentRentInr").doesNotExist())
+			.andExpect(jsonPath("$.currentRentFrom").doesNotExist())
 			.andReturn().getResponse().getContentAsString();
 		String id = JsonPath.read(body, "$.id");
 		assertThat(mail.last(landlord.getEmail()).subject()).startsWith("Confirm your tenancy");
@@ -148,6 +149,7 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.evidenceLevel").value("MUTUAL"))
 			.andExpect(jsonPath("$.confirmedAt").exists())
 			.andExpect(jsonPath("$.currentRentInr").value(30_000))
+			.andExpect(jsonPath("$.currentRentFrom").value(start.toString()))
 			.andExpect(jsonPath("$.actions.end").value(true))
 			.andExpect(jsonPath("$.actions.addRentRecord").value(true));
 		assertThat(mail.last(tenant.getEmail()).subject()).startsWith("Tenancy confirmed");
@@ -687,7 +689,8 @@ class TenancyApiTest {
 		mvc.perform(get("/properties/" + property.getPublicId() + "/rent-history")).andExpect(status().isUnauthorized());
 
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(tenant)))
-			.andExpect(jsonPath("$.currentRentInr").value(27_500));
+			.andExpect(jsonPath("$.currentRentInr").value(27_500))
+			.andExpect(jsonPath("$.currentRentFrom").value(raise.toString()));
 		mvc.perform(get("/tenancies/" + id + "/rent-records").header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$", hasSize(3)))
 			.andExpect(jsonPath("$[1].status").value("DISPUTED"))
@@ -702,7 +705,8 @@ class TenancyApiTest {
 		mvc.perform(post("/rent-records/" + upcoming + "/confirm").header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isOk());
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(tenant)))
-			.andExpect(jsonPath("$.currentRentInr").value(27_500));
+			.andExpect(jsonPath("$.currentRentInr").value(27_500))
+			.andExpect(jsonPath("$.currentRentFrom").value(raise.toString()));
 	}
 
 	@Test

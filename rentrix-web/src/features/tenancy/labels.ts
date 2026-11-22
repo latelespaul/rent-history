@@ -1,3 +1,4 @@
+import { rupees } from "@/features/property/labels"
 import type { PropertyStatus, RentRecordStatus, Tenancy, TenancyStatus } from "@/types/api"
 
 type Variant = "neutral" | "warn" | "success" | "danger" | "info" | "tenant"
@@ -88,4 +89,12 @@ export function wholeNumber(value: string): number | undefined {
   if (!trimmed) return undefined
   const n = Number(trimmed)
   return Number.isFinite(n) ? Math.round(n) : Number.NaN
+}
+
+/** "Current rent ₹34,000 / month from 1 Mar 2025"; the proposed rent while unconfirmed. */
+export function rentLine(tenancy: Tenancy): string {
+  if (tenancy.currentRentInr === null) return `${rupees(tenancy.initialRentInr)} / month`
+  const label = tenancy.status === "ACTIVE" ? "Current rent" : "Last rent"
+  const from = dateLabel(tenancy.currentRentFrom ?? tenancy.startDate)
+  return `${label} ${rupees(tenancy.currentRentInr)} / month from ${from}`
 }

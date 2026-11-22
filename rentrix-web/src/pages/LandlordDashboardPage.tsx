@@ -9,10 +9,10 @@ import { PencilIcon, PlusIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
 import { shortName } from "@/features/auth/paths"
-import { bedroomsLabel, propertyTitle, rupees, typeLabel } from "@/features/property/labels"
+import { bedroomsLabel, propertyTitle, typeLabel } from "@/features/property/labels"
 import { RatingLine } from "@/features/property/Rating"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
-import { PROPERTY_STATUS } from "@/features/tenancy/labels"
+import { PROPERTY_STATUS, rentLine } from "@/features/tenancy/labels"
 import { TenancyCard } from "@/features/tenancy/TenancyCard"
 import {
   useMyProperties,
@@ -73,9 +73,7 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
             {tenancy ? (
               <>
                 <Badge variant="tenant">Occupied</Badge>{" "}
-                <span className="num">
-                  {rupees(tenancy.currentRentInr ?? tenancy.initialRentInr)} / month
-                </span>
+                <span className="num">{rentLine(tenancy)}</span>
               </>
             ) : (
               <Badge>No active tenancy</Badge>

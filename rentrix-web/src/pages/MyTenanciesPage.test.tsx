@@ -63,6 +63,7 @@ function tenancy(overrides: Partial<Tenancy> = {}): Tenancy {
     endDate: null,
     initialRentInr: 27000,
     currentRentInr: null,
+    currentRentFrom: null,
     depositInr: 100000,
     depositRefundedInr: null,
     status: "PENDING_CONFIRMATION",

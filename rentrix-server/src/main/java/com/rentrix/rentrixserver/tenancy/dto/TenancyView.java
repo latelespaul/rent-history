@@ -13,7 +13,9 @@ import java.util.UUID;
  * {@code myRole} is the caller's side ({@code null} for an admin who is not a party); {@code tenant} is
  * {@code null} for the landlord until a landlord-started request is confirmed; {@code inviteEmail} is shown masked
  * to the landlord and in full to admins only.
- * {@code currentRentInr} is the latest confirmed rent; {@code expiresAt} is set while confirmation is pending.
+ * {@code currentRentInr} is the latest confirmed rent in effect today and {@code currentRentFrom} the date it applies
+ * from (the start date when the rent never changed); both are null until the tenancy is confirmed.
+ * {@code expiresAt} is set while confirmation is pending.
  */
 public record TenancyView(
 	UUID id,
@@ -26,6 +28,7 @@ public record TenancyView(
 	LocalDate endDate,
 	long initialRentInr,
 	Long currentRentInr,
+	LocalDate currentRentFrom,
 	Long depositInr,
 	Long depositRefundedInr,
 	TenancyStatus status,

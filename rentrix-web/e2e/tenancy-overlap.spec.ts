@@ -81,10 +81,10 @@ test("landlord adds a home, invites a tenant who confirms, and a second tenancy 
     await form.getByLabel(/Building name/).fill(building)
     await form.getByRole("button", { name: "Save as draft" }).click()
     await expect(page).toHaveURL(/\/edit\?saved=1$/)
-    const submit = page.getByRole("button", { name: "Submit for review" })
-    await submit.click()
-    // The button goes once the submit is saved; reloading earlier races the write (SQLITE_BUSY).
-    await expect(submit).toHaveCount(0)
+    await page.getByRole("button", { name: "Submit for review" }).click()
+    // The heading badge changes only after the submit is saved and refetched; the button alone
+    // turns into "Submitting…" at once, and reloading then races the write (SQLITE_BUSY).
+    await expect(page.getByRole("heading", { level: 1 }).getByText("Pending review")).toBeVisible()
 
     await page.goto("/me/properties")
     const row = page
