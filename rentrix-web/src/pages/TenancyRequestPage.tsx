@@ -123,7 +123,10 @@ export default function TenancyRequestPage() {
     event.preventDefault()
     const errors = checkTenancyForm({ asLandlord, email, startDate, endDate, rent, deposit })
     setChecked(errors)
-    if (Object.keys(errors).length > 0) return
+    if (Object.keys(errors).length > 0) {
+      create.reset()
+      return
+    }
     const depositInr = wholeNumber(deposit)
     create.mutate({
       propertyId: chosen,
