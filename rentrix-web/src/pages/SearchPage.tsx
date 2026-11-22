@@ -116,7 +116,11 @@ export default function SearchPage() {
           {data && data.items.length > 0 && (
             <p className="text-sm text-ink-700">
               Can&rsquo;t find your home?{" "}
-              <Link to="/homes/new" data-testid="search-add-home">
+              <Link
+                to="/homes/new"
+                data-testid="search-add-home"
+                className="font-semibold underline"
+              >
                 Add it
               </Link>
             </p>

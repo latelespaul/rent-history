@@ -68,18 +68,23 @@ export async function verifyPhone(page: Page, digits: string) {
   await page.getByRole("button", { name: /send code/i }).click()
   // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
   await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
-  const api = await request.newContext({ baseURL: new URL(page.url()).origin })
-  const users = (await (await api.get("/api/v1/auth/dev-users")).json()) as Array<{
+  // The browser calls the API at the URL `/config.js` names (D-04), not on the web origin.
+  const apiBase = await page.evaluate(() => {
+    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
+    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
+  })
+  const api = await request.newContext()
+  const users = (await (await api.get(`${apiBase}/auth/dev-users`)).json()) as Array<{
     id: string
     displayName: string
   }>
   const admin = users.find((u) => u.displayName === "Demo Admin")
   expect(admin, "the demo seed has its admin").toBeTruthy()
   const session = (await (
-    await api.post("/api/v1/auth/dev-login", { data: { userId: admin!.id } })
+    await api.post(`${apiBase}/auth/dev-login`, { data: { userId: admin!.id } })
   ).json()) as { accessToken: string }
   const relayed = (await (
-    await api.get("/api/v1/admin/sms-relay", {
+    await api.get(`${apiBase}/admin/sms-relay`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
   ).json()) as Array<{ phone: string; code: string }>
