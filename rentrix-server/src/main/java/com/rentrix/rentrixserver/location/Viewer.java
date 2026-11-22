@@ -8,8 +8,9 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 /**
- * Who is reading location rows, for the {@code PENDING} rule of D-109: a proposed row is seen only by its proposer
- * and by admins. {@code publicId} is null for anonymous callers.
+ * Who is reading location rows, for the {@code PENDING} rule of D-109: a proposed row is listed only for its
+ * proposer and admins, and read by id also by a landlord with a home on it. {@code publicId} is null for anonymous
+ * callers.
  */
 record Viewer(UUID publicId, boolean admin) {
 	
