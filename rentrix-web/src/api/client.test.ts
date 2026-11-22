@@ -167,10 +167,11 @@ describe("api client", () => {
   })
 
   it("keeps the session when the refresh keeps failing transiently", async () => {
-    // 503 gets its one retry, 429 none: retrying a rate limit at once cannot help.
+    // 503 gets its one retry; 429 and other 4xx none: retrying them at once cannot help.
     for (const [status, refreshCalls] of [
       [503, 2],
       [429, 1],
+      [400, 1],
     ] as const) {
       const onSessionExpired = vi.fn()
       const f = fakeFetch(
@@ -197,6 +198,21 @@ describe("api client", () => {
     await expect(api.restoreSession()).resolves.toBe(true)
     expect(api.getAccessToken()).toBe("tok-2")
     expect(f.calls.map((c) => c.url)).toEqual([`${BASE}/auth/refresh`, `${BASE}/auth/refresh`])
+  })
+
+  it("treats a refresh reply it cannot read as a failed refresh", async () => {
+    const onSessionExpired = vi.fn()
+    const f = fakeFetch(
+      () => problem(401, "unauthenticated"),
+      () => new Response("<html>not json</html>", { status: 200 }),
+    )
+    const api = createApiClient({ baseUrl: BASE, fetch: f.fn, onSessionExpired })
+    api.setAccessToken("tok-1")
+
+    await expect(api.get("/me")).rejects.toMatchObject({ status: 401, code: "unauthenticated" })
+    expect(f.calls).toHaveLength(2)
+    expect(api.getAccessToken()).toBe("tok-1")
+    expect(onSessionExpired).not.toHaveBeenCalled()
   })
 
   it("restoreSession retries once after a network drop, then gives up", async () => {

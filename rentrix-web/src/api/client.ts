@@ -12,7 +12,8 @@ import { ApiError, CLIENT_ERROR_CODES, networkError, toApiError } from "./errors
  *   then retries the original request once. If the refresh is refused (`401`/`403`), the token is
  *   cleared and, when the user was signed in, `onSessionExpired` runs. A refresh that failed for a
  *   passing reason (`409` from a concurrent write, `5xx`, offline) is tried once more first; any
- *   failure after that, or a `429`, keeps the token, and the caller sees the original error.
+ *   failure after that, or any other status (`429`, `400`, ...), keeps the token, and the caller
+ *   sees the original error.
  * - Every failure rejects with an `ApiError` mapped from Problem Details (D-60).
  */
 
@@ -126,11 +127,16 @@ export function createApiClient(options: ApiClientOptions) {
         if (wasSignedIn) options.onSessionExpired?.()
         return false
       }
-      return retry && response.status !== 429 ? retryRefresh() : false
+      const passing = response.status === 409 || response.status >= 500
+      return retry && passing ? retryRefresh() : false
     }
-    const session = await readBody<AuthSession | undefined>(response)
-    accessToken = session?.accessToken ?? null
-    return accessToken !== null
+    try {
+      const session = await readBody<AuthSession | undefined>(response)
+      accessToken = session?.accessToken ?? null
+      return accessToken !== null
+    } catch {
+      return false
+    }
   }
 
   async function retryRefresh(): Promise<boolean> {
