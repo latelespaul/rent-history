@@ -11,6 +11,6 @@ public interface SocietyWingRepository extends JpaRepository<SocietyWing, Long> 
 	@EntityGraph(attributePaths = {"tower", "createdBy"})
 	Optional<SocietyWing> findByPublicId(UUID publicId);
 	
-	boolean existsByTowerAndNameKey(SocietyTower tower, String nameKey);
+	Optional<SocietyWing> findByTowerAndNameKey(SocietyTower tower, String nameKey);
 	
 }

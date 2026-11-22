@@ -16,7 +16,7 @@ public interface AreaRepository extends JpaRepository<Area, Long>, JpaSpecificat
 	@EntityGraph(attributePaths = {"city", "createdBy"})
 	Optional<Area> findByPublicId(UUID publicId);
 	
-	boolean existsByCityCodeAndNameKey(String cityCode, String nameKey);
+	Optional<Area> findByCityCodeAndNameKey(String cityCode, String nameKey);
 	
 	/** {@code [area id, published homes]} for the given areas (index ix_properties_area_status). */
 	@Query("select p.area.id, count(p) from Property p where p.area.id in :ids"

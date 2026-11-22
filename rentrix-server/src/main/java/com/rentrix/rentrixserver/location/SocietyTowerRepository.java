@@ -14,7 +14,7 @@ public interface SocietyTowerRepository extends JpaRepository<SocietyTower, Long
 	
 	List<SocietyTower> findBySocietyOrderBySortOrderAscNameKeyAsc(Society society);
 	
-	boolean existsBySocietyAndNameKey(Society society, String nameKey);
+	Optional<SocietyTower> findBySocietyAndNameKey(Society society, String nameKey);
 	
 	long countBySociety(Society society);
 	

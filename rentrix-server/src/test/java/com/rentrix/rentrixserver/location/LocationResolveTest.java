@@ -51,6 +51,12 @@ class LocationResolveTest {
 	@Autowired
 	AreaRepository areas;
 	
+	@Autowired
+	SocietyRepository societies;
+	
+	@Autowired
+	SocietyTowerRepository towers;
+	
 	private User landlord;
 	private Area area;
 	private Society society;
@@ -208,6 +214,7 @@ class LocationResolveTest {
 	
 	@Test
 	void namesAreUniquePerParent() {
+		assertThat(area.getStatus()).isEqualTo(LocationStatus.ACTIVE);
 		ApiException sameArea = rejected(() -> service.resolve(CITY, "200001", new LocationInput(null,
 			new LocationInput.NewArea("resolve   AREA", "200001"), null, null, null, null, null, null), landlord));
 		assertThat(sameArea.getStatus()).isEqualTo(HttpStatus.CONFLICT);
@@ -229,10 +236,48 @@ class LocationResolveTest {
 	}
 	
 	@Test
+	void aSecondProposalOfTheSameNameJoinsThePendingRow() {
+		Placement first = service.resolve(CITY, "200060", new LocationInput(null,
+			new LocationInput.NewArea("Lake View", "200060"), null,
+			new LocationInput.NewSociety("Sky Towers", SocietyKind.GATED_COMMUNITY, null, null), null,
+			new LocationInput.NewTower("T1", null), null, null), landlord);
+		long areaRows = areas.count();
+		long societyRows = societies.count();
+		long towerRows = towers.count();
+		
+		User other = data.user("Second Proposer", Role.LANDLORD);
+		Placement second = service.resolve(CITY, "200060", new LocationInput(null,
+			new LocationInput.NewArea("  lake   VIEW ", "200060"), null,
+			new LocationInput.NewSociety("SKY towers", SocietyKind.APARTMENT_COMPLEX, null, null), null,
+			new LocationInput.NewTower("t1", null), null, null), other);
+		
+		assertThat(second.area().getPublicId()).isEqualTo(first.area().getPublicId());
+		assertThat(second.society().getPublicId()).isEqualTo(first.society().getPublicId());
+		assertThat(second.tower().getPublicId()).isEqualTo(first.tower().getPublicId());
+		assertThat(second.society().getStatus()).isEqualTo(LocationStatus.PENDING);
+		assertThat(second.society().getCreatedBy()).isEqualTo(landlord);
+		assertThat(areas.count()).isEqualTo(areaRows);
+		assertThat(societies.count()).isEqualTo(societyRows);
+		assertThat(towers.count()).isEqualTo(towerRows);
+		
+		// a society proposal under an existing area joins the same way
+		Society proposed = service.resolve(CITY, "200001", new LocationInput(area.getPublicId(), null, null,
+			new LocationInput.NewSociety("Palm Court", SocietyKind.GATED_COMMUNITY, null, null), null, null, null,
+			null), landlord).society();
+		assertThat(service.resolve(CITY, "200001", new LocationInput(area.getPublicId(), null, null,
+			new LocationInput.NewSociety(" palm   COURT", SocietyKind.GATED_COMMUNITY, null, null), null, null, null,
+			null), other).society().getPublicId()).isEqualTo(proposed.getPublicId());
+		assertThat(societies.count()).isEqualTo(societyRows + 1);
+	}
+	
+	@Test
 	void hiddenRowsTakeNoNewHomes() {
 		Area hidden = locations.area(CITY, "Hidden Area", null, LocationStatus.HIDDEN, null, "200001");
 		ApiException e = rejected(() -> service.resolve(CITY, "200001", place(hidden, null, null, null), landlord));
 		assertThat(e.getErrors().getFirst().code()).isEqualTo("hidden");
+		ApiException proposed = rejected(() -> service.resolve(CITY, "200001", new LocationInput(null,
+			new LocationInput.NewArea("hidden area", "200001"), null, null, null, null, null, null), landlord));
+		assertThat(proposed.getCode()).isEqualTo("location_exists");
 	}
 	
 	@Test

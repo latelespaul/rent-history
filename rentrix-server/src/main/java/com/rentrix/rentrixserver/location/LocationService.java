@@ -208,7 +208,9 @@ public class LocationService {
 	 * <li>the wing belongs to the tower, the tower to the society, the society to the area and the area to the
 	 * city ({@code 422 location_mismatch});</li>
 	 * <li>the {@code pincode} is one of the area's PIN codes ({@code 422 pincode_not_in_area});</li>
-	 * <li>a proposal's name is new under its parent ({@code 409 location_exists}).</li>
+	 * <li>a proposal's name is new under its parent, else {@code 409 location_exists} when the existing row is
+	 * {@code ACTIVE} or {@code HIDDEN}; a {@code PENDING} row of that name is joined instead: the home goes on it,
+	 * it keeps its proposer, and the same rule applies to the proposals below it (no duplicate rows).</li>
 	 * </ul>
 	 * Proposals by a landlord are saved {@code PENDING} with {@code created_by} = the actor, so only they and
 	 * admins see them until listing approval; an admin's are {@code ACTIVE} (D-109). Call inside the transaction
@@ -271,14 +273,15 @@ public class LocationService {
 		} else {
 			String areaPincode = in.newArea().pincode().trim();
 			requireAreaPincode(cityCode, areaPincode);
-			if (areas.existsByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name()))) {
-				throw exists("An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
+			area = pendingTwin(areas.findByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name())),
+				Area::getStatus, "An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
+			if (area == null) {
+				area = new Area();
+				area.setCity(city);
+				area.setName(in.newArea().name());
+				area.addPincode(areaPincode);
+				proposed(area::setStatus, area::setCreatedBy, actor, viewer);
 			}
-			area = new Area();
-			area.setCity(city);
-			area.setName(in.newArea().name());
-			area.addPincode(areaPincode);
-			proposed(area::setStatus, area::setCreatedBy, actor, viewer);
 		}
 		if (!area.pincodeList().contains(pincode)) {
 			throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
@@ -294,16 +297,20 @@ public class LocationService {
 				throw mismatch("societyId", "This society is not in " + area.getName() + ".");
 			}
 		} else if (in.newSociety() != null) {
-			if (area.getId() != null && societies.existsByAreaAndNameKey(area, LocationNames.key(in.newSociety().name()))) {
-				throw exists("A society with this name already exists in " + area.getName() + "; pick it instead.");
+			if (area.getId() != null) {
+				society = pendingTwin(societies.findByAreaAndNameKey(area, LocationNames.key(in.newSociety().name())),
+					Society::getStatus,
+					"A society with this name already exists in " + area.getName() + "; pick it instead.");
 			}
-			society = new Society();
-			society.setArea(area);
-			society.setName(in.newSociety().name());
-			society.setKind(in.newSociety().kind());
-			society.setDeveloper(LocationNames.clean(blankToNull(in.newSociety().developer())));
-			society.setStreet(LocationNames.clean(blankToNull(in.newSociety().street())));
-			proposed(society::setStatus, society::setCreatedBy, actor, viewer);
+			if (society == null) {
+				society = new Society();
+				society.setArea(area);
+				society.setName(in.newSociety().name());
+				society.setKind(in.newSociety().kind());
+				society.setDeveloper(LocationNames.clean(blankToNull(in.newSociety().developer())));
+				society.setStreet(LocationNames.clean(blankToNull(in.newSociety().street())));
+				proposed(society::setStatus, society::setCreatedBy, actor, viewer);
+			}
 		}
 		
 		SocietyTower tower = null;
@@ -314,16 +321,19 @@ public class LocationService {
 				throw mismatch("towerId", "This tower is not in " + society.getName() + ".");
 			}
 		} else if (in.newTower() != null) {
-			if (society.getId() != null && towers.existsBySocietyAndNameKey(society,
-				LocationNames.key(in.newTower().name()))) {
-				throw exists("A tower with this name already exists in " + society.getName() + "; pick it instead.");
+			if (society.getId() != null) {
+				tower = pendingTwin(towers.findBySocietyAndNameKey(society, LocationNames.key(in.newTower().name())),
+					SocietyTower::getStatus,
+					"A tower with this name already exists in " + society.getName() + "; pick it instead.");
 			}
-			tower = new SocietyTower();
-			tower.setSociety(society);
-			tower.setName(in.newTower().name());
-			tower.setKind(in.newTower().kind() == null ? TowerKind.TOWER : in.newTower().kind());
-			tower.setSortOrder(society.getId() == null ? 0 : (int) towers.countBySociety(society));
-			proposed(tower::setStatus, tower::setCreatedBy, actor, viewer);
+			if (tower == null) {
+				tower = new SocietyTower();
+				tower.setSociety(society);
+				tower.setName(in.newTower().name());
+				tower.setKind(in.newTower().kind() == null ? TowerKind.TOWER : in.newTower().kind());
+				tower.setSortOrder(society.getId() == null ? 0 : (int) towers.countBySociety(society));
+				proposed(tower::setStatus, tower::setCreatedBy, actor, viewer);
+			}
 		}
 		
 		SocietyWing wing = null;
@@ -334,11 +344,15 @@ public class LocationService {
 				throw mismatch("wingId", "This wing is not in " + tower.getName() + ".");
 			}
 		} else if (in.newWing() != null) {
-			if (tower.getId() != null && wings.existsByTowerAndNameKey(tower, LocationNames.key(in.newWing().name()))) {
-				throw exists("A wing with this name already exists in " + tower.getName() + "; pick it instead.");
+			if (tower.getId() != null) {
+				wing = pendingTwin(wings.findByTowerAndNameKey(tower, LocationNames.key(in.newWing().name())),
+					SocietyWing::getStatus,
+					"A wing with this name already exists in " + tower.getName() + "; pick it instead.");
 			}
-			wing = tower.addWing(in.newWing().name(), LocationStatus.PENDING, actor);
-			proposed(wing::setStatus, wing::setCreatedBy, actor, viewer);
+			if (wing == null) {
+				wing = tower.addWing(in.newWing().name(), LocationStatus.PENDING, actor);
+				proposed(wing::setStatus, wing::setCreatedBy, actor, viewer);
+			}
 		}
 		
 		try {
@@ -494,6 +508,21 @@ public class LocationService {
 				"This " + what + " no longer takes new homes; pick another or ask an admin.")));
 		}
 		return found;
+	}
+	
+	/**
+	 * The row a proposal joins: a {@code PENDING} row of the same name under the same parent is reused as is
+	 * (its {@code created_by} unchanged); an {@code ACTIVE} or {@code HIDDEN} one is a {@code 409 location_exists}.
+	 * Null when the name is new.
+	 */
+	private static <T> T pendingTwin(Optional<T> existing, Function<T, LocationStatus> status, String detail) {
+		if (existing.isEmpty()) {
+			return null;
+		}
+		if (status.apply(existing.get()) != LocationStatus.PENDING) {
+			throw exists(detail);
+		}
+		return existing.get();
 	}
 	
 	/** A landlord's proposal is {@code PENDING} until listing approval; an admin creates {@code ACTIVE} rows. */

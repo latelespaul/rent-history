@@ -16,7 +16,7 @@ public interface SocietyRepository extends JpaRepository<Society, Long>, JpaSpec
 	@EntityGraph(attributePaths = {"area", "city", "createdBy"})
 	Optional<Society> findByPublicId(UUID publicId);
 	
-	boolean existsByAreaAndNameKey(Area area, String nameKey);
+	Optional<Society> findByAreaAndNameKey(Area area, String nameKey);
 	
 	/** {@code [society id, published homes]} (index ix_properties_society_status). */
 	@Query("select p.society.id, count(p) from Property p where p.society.id in :ids"
