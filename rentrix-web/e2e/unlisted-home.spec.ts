@@ -3,7 +3,9 @@ import { daysAgo, devLogin } from "./support"
 
 // E2E-notes bug: a tenant whose home is not listed yet cannot record the tenancy (the request
 // form needs a listed home). Queued for a fix crew; flip this to `test` when that fix merges.
-test.fixme("a tenant adds a home that is not listed and records the tenancy", async ({ page }) => {
+test.fixme("a tenant adds a home that is not listed and records the tenancy [E2E notes: unlisted home; queued fix]", async ({
+  page,
+}) => {
   await devLogin(page, "Demo Tenant BLR-2")
   await page.goto("/tenancies/new")
   await page.getByRole("link", { name: /not listed|add (the|your) home/i }).click()

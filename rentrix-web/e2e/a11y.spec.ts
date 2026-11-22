@@ -65,7 +65,7 @@ test("onboarding page has no new accessibility violations", async ({ page }) => 
 })
 
 // Fails today on KNOWN_RULES; flip to `test` with their fix.
-test.fixme("home, search, property and onboarding pass every WCAG 2.1 AA rule", async ({
+test.fixme("home, search, property and onboarding pass every WCAG 2.1 AA rule [axe: color-contrast + label-content-name-mismatch baseline]", async ({
   page,
 }) => {
   const check = () => expectNoViolations(page, { all: true })

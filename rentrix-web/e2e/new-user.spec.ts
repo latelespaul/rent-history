@@ -34,7 +34,7 @@ test("a new landlord picks the role, adds a property and sees its page", async (
 // The "+ Add your home" stepped flow (captain 2026-11-22 22:22), built on fm/rxm-journey. Written
 // against the flow as specified; align the selectors with its data-testids and flip to `test`
 // when that PR merges.
-test.fixme("a new tenant adds their home, records the tenancy, reviews it and finds it in search", async ({
+test.fixme("a new tenant adds their home, records the tenancy, reviews it and finds it in search [captain 2026-11-22 22:22 Add your home; fm/rxm-journey]", async ({
   page,
 }) => {
   const tag = Date.now().toString(36)
