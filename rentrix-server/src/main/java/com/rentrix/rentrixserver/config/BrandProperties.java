@@ -16,9 +16,4 @@ public record BrandProperties(String name) {
 		name = StringUtils.hasText(name) ? name.trim() : DEFAULT_NAME;
 	}
 	
-	/** The fallback display name of a user who has none, e.g. "Doorway Living user". */
-	public String userFallback() {
-		return name + " user";
-	}
-	
 }

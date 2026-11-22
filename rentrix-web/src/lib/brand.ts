@@ -4,7 +4,6 @@
  */
 export const BRAND = {
   name: "Doorway Living",
-  shortName: "Doorway",
   tagline: "Rent with confidence: ratings only from tenancies both sides confirmed.",
   webDomain: "doorwayliving.in",
   apiDomain: "api.doorwayliving.in",

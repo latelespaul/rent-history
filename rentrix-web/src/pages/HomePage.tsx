@@ -1,4 +1,5 @@
-import { Link, Navigate, useLocation } from "react-router-dom"
+import { useEffect } from "react"
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { Container } from "@/components/layout/Container"
 import { Button } from "@/components/ui/button"
 import { TenancyIcon } from "@/components/ui/icons.gen"
@@ -43,7 +44,11 @@ function GoogleMark() {
 export default function HomePage() {
   const { state } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const signingOut = (location.state as { signedOut?: boolean } | null)?.signedOut === true
+  useEffect(() => {
+    if (signingOut && state.status === "anonymous") navigate("/", { replace: true })
+  }, [signingOut, state.status, navigate])
   if (state.status === "loading") return <AuthPending />
   if (state.status === "signedIn" && !signingOut) {
     return <Navigate to={appHome(state.user)} replace />

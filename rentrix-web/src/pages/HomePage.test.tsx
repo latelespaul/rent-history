@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { cleanup, render, screen } from "@testing-library/react"
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { AuthState } from "@/features/auth/authContext"
 import { makeUser } from "@/test/users"
@@ -12,11 +12,14 @@ vi.mock("@/features/auth/authContext", () => ({
   useAuth: () => ({ state: h.state }),
 }))
 
-function renderHome() {
-  const router = createMemoryRouter([
-    { path: "/", element: <HomePage /> },
-    { path: "*", element: <main>App page</main> },
-  ])
+function renderHome(initialEntries?: { pathname: string; state: unknown }[]) {
+  const router = createMemoryRouter(
+    [
+      { path: "/", element: <HomePage /> },
+      { path: "*", element: <main>App page</main> },
+    ],
+    { initialEntries },
+  )
   render(<RouterProvider router={router} />)
   return router
 }
@@ -54,5 +57,25 @@ describe("HomePage", () => {
     const router = renderHome()
 
     expect(router.state.location.pathname).toBe("/admin")
+  })
+
+  it("drops the sign-out flag once signed out, so Back after a new sign-in goes into the app", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    const router = renderHome([{ pathname: "/", state: { signedOut: true } }])
+    await waitFor(() => expect(router.state.location.state).toBeNull())
+
+    await act(() => router.navigate("/login"))
+    h.state = { status: "signedIn", user: makeUser() } as AuthState
+    await act(() => router.navigate(-1))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/search"))
+  })
+
+  it("keeps the landing for a user still signing out", () => {
+    h.state = { status: "signedIn", user: makeUser() } as AuthState
+    const router = renderHome([{ pathname: "/", state: { signedOut: true } }])
+
+    expect(router.state.location.pathname).toBe("/")
+    expect(screen.getByRole("link", { name: "Sign in / Sign up" })).toBeTruthy()
   })
 })
