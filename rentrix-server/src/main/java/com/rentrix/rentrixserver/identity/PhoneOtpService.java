@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.identity;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.config.BrandProperties;
+import com.rentrix.rentrixserver.notification.sms.AdminRelaySmsSender;
 import com.rentrix.rentrixserver.notification.sms.SmsSendException;
 import com.rentrix.rentrixserver.notification.sms.SmsSender;
 import com.rentrix.rentrixserver.user.User;
@@ -79,8 +80,15 @@ public class PhoneOtpService {
 	private final Clock clock;
 	private final PlatformTransactionManager transactionManager;
 	
-	/** The answer to {@code POST /me/identity/phone/start}. */
-	public record Started(UUID challengeId, Instant expiresAt) {
+	/**
+	 * The answer to {@code POST /me/identity/phone/start}. {@code delivery} is {@code SMS} when a provider sends the
+	 * code, or {@code TEAM} under the preview-only admin relay (D-137), where the team passes the code on by hand.
+	 */
+	public record Started(UUID challengeId, Instant expiresAt, String delivery) {
+		
+		public static final String SMS = "SMS";
+		public static final String TEAM = "TEAM";
+		
 	}
 	
 	/**
@@ -116,7 +124,8 @@ public class PhoneOtpService {
 				"The code could not be sent. Try again in a few minutes.");
 		}
 		log.info("Phone OTP challenge {} started for user {}", challenge.getPublicId(), userId);
-		return new Started(challenge.getPublicId(), challenge.getExpiresAt());
+		return new Started(challenge.getPublicId(), challenge.getExpiresAt(),
+			sender instanceof AdminRelaySmsSender ? Started.TEAM : Started.SMS);
 	}
 	
 	/** Checks the send limits and commits the challenge, under the number's stripe lock and the user row lock. */

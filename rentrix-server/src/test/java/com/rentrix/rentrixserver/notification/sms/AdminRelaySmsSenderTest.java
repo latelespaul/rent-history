@@ -71,4 +71,23 @@ class AdminRelaySmsSenderTest {
 		assertThat(relay.pending()).isEmpty();
 	}
 	
+	@Test
+	void pushesEachHeldCodeAndAPushFailureNeverBreaksTheSend(CapturedOutput output) {
+		java.util.List<String> pushed = new java.util.ArrayList<>();
+		AdminRelaySmsSender relay = new AdminRelaySmsSender(Duration.ofMinutes(10), clock, false,
+			(phone, code, expiresAt) -> pushed.add(phone + " " + code + " " + expiresAt));
+		relay.send(PHONE, "482913 is your Rentrix verification code.");
+		assertThat(pushed).containsExactly(PHONE + " 482913 2026-11-22T10:10:00Z");
+		
+		AdminRelaySmsSender failing = new AdminRelaySmsSender(Duration.ofMinutes(10), clock, false,
+			(phone, code, expiresAt) -> {
+				throw new IllegalStateException("telegram down " + code);
+			});
+		failing.send(PHONE, "111222 is your Rentrix verification code.");
+		assertThat(failing.pending()).singleElement().extracting(AdminRelaySmsSender.RelayedCode::code)
+			.isEqualTo("111222");
+		assertThat(output.getAll()).contains("Relay push failed for +91 XXXXXX3210 (IllegalStateException)")
+			.doesNotContain("telegram down");
+	}
+	
 }

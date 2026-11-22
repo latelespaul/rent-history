@@ -494,4 +494,9 @@ export interface IdentityView {
 export interface PhoneChallenge {
   challengeId: string
   expiresAt: string
+  /**
+   * `SMS`: a provider sent it. `TEAM`: the preview-only admin relay (D-137), where our team passes
+   * the code on by WhatsApp or SMS.
+   */
+  delivery?: "SMS" | "TEAM"
 }

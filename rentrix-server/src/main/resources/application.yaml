@@ -142,3 +142,8 @@ app:
       url: ${SMS_HTTP_URL:}
       api-key: ${SMS_API_KEY:}
       sender-id: ${SMS_SENDER_ID:}
+    # Optional with "admin-relay" (D-137): also push each held code to these Telegram chats.
+    # Both must be set; the token is secret (env only, never logged). Chat ids: comma list.
+    telegram:
+      bot-token: ${ADMIN_RELAY_TELEGRAM_BOT_TOKEN:}
+      chat-id-list: ${ADMIN_RELAY_TELEGRAM_CHAT_IDS:}

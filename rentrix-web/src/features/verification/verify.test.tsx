@@ -123,6 +123,7 @@ describe("verification stepper", () => {
     expect(verification.startPhoneCheck).toHaveBeenCalledWith("+919876543210")
     expect(await screen.findByText("Code sent")).toBeTruthy()
     expect(screen.getByText(/^resend code in (1:00|0:5\d)$/i)).toBeTruthy()
+    expect(screen.getByText(/we sent it by sms/i)).toBeTruthy()
 
     await user.type(screen.getByLabelText(/enter the 6-digit code/i), "111111")
     await user.click(screen.getByRole("button", { name: /verify and continue/i }))
@@ -138,6 +139,27 @@ describe("verification stepper", () => {
     expect(where(router)).toBe("/verify/id")
     expect(screen.getByText(/phone verified · \+91 xxxxxx3210/i)).toBeTruthy()
     expect(screen.getAllByText("Coming soon")).toHaveLength(2)
+  })
+
+  it("says the team will message the code when the API relays it by hand", async () => {
+    vi.mocked(verification.startPhoneCheck).mockImplementationOnce(async () => ({
+      challengeId: "c1",
+      expiresAt: "2026-11-22T10:10:00Z",
+      delivery: "TEAM",
+    }))
+    renderApp("/verify/phone")
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText(/your mobile number/i), "98765 43210")
+    await user.click(screen.getByRole("button", { name: /send code/i }))
+
+    expect(await screen.findByText("Code requested")).toBeTruthy()
+    expect(
+      screen.getByText(
+        /we'll message you the code shortly \(whatsapp\/sms from the doorway living team\)/i,
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText(/we sent it by sms/i)).toBeNull()
   })
 
   it("returns to the page the user started from once the phone is verified", async () => {
