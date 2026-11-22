@@ -41,7 +41,7 @@ class MigrationVendorParseTest {
 		assertThat(result.success).isTrue();
 		assertThat(result.migrationsExecuted).isPositive();
 		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-		assertThat(jdbc.queryForObject("select count(*) from cities where live = true", Integer.class)).isEqualTo(2);
+		assertThat(jdbc.queryForObject("select count(*) from cities where live = true", Integer.class)).isEqualTo(7);
 		assertThat(jdbc.queryForObject("select pincode_prefixes from cities where code = 'BLR'", String.class))
 			.isEqualTo("56");
 		// V5 location hierarchy, plus the MySQL-only V5.1 foreign keys (D-114)

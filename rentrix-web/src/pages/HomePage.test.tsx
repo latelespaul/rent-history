@@ -144,7 +144,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
     await waitFor(
       () =>
         expect(texts("section[aria-labelledby=hero-title] span")).toContain(
-          "Starting in Bangalore and Pune, more cities coming",
+          "Live in Bangalore and Pune; other cities on request",
         ),
       { timeout: 10_000 },
     )

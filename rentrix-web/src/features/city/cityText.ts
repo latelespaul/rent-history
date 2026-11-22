@@ -5,17 +5,19 @@ import type { City, CityStats } from "@/types/api"
  * Every city name comes from the `GET /cities` list passed in; none is written here.
  */
 
-/** How many cities the launch copy names before it switches to a count (D-85). */
-export const LAUNCH_COPY_MAX_NAMES = 3
+/** How many cities or regions the launch copy names before it switches to a count (D-85). */
+export const LAUNCH_COPY_MAX_NAMES = 6
 
 /** How many city cards Home shows before "Show all N cities" (D-85). */
 export const CITY_CARDS_VISIBLE = 8
 
 const normalize = (value: string) => value.trim().toLocaleLowerCase()
 
-/** The searchable text of a city: code, name, every alias and the state (D-82). */
+/** The searchable text of a city: code, name, every alias, the state and the region (D-82). */
 function fields(city: City): string[] {
-  return [city.code, city.name, ...city.aliases, city.state].filter(Boolean)
+  return [city.code, city.name, ...city.aliases, city.state, city.region].filter(
+    (field): field is string => Boolean(field),
+  )
 }
 
 /**
@@ -69,13 +71,40 @@ function joinNames(names: string[]): string {
 }
 
 /**
- * The launch line built from the active list (D-85): names up to 3 cities ("Starting in A and
- * B, more cities coming"), counts beyond ("Live in 9 cities, more coming"). Never says "only".
+ * The names the launch copy lists, in API order: a city on its own, or its region once, at its
+ * first city, with every city of the region, e.g. "Delhi NCR (Delhi · Gurugram · Noida)".
+ */
+export function launchNames(cities: City[]): string[] {
+  const regions = new Map<string, string[]>()
+  const order: { name: string; region: boolean }[] = []
+  for (const city of cities) {
+    if (!city.region) {
+      order.push({ name: city.name, region: false })
+      continue
+    }
+    const members = regions.get(city.region)
+    if (members) members.push(city.name)
+    else {
+      regions.set(city.region, [city.name])
+      order.push({ name: city.region, region: true })
+    }
+  }
+  return order.map(({ name, region }) =>
+    region ? `${name} (${(regions.get(name) ?? []).join(" · ")})` : name,
+  )
+}
+
+/**
+ * The launch line built from the active list (D-85): names up to LAUNCH_COPY_MAX_NAMES (6)
+ * entries from launchNames ("Live in A and B; other cities on request"), counts cities beyond
+ * ("Live in 9 cities; other cities on request"). Never says "only".
  */
 export function launchCopy(cities: City[]): string {
   if (cities.length === 0) return "Cities coming soon"
-  if (cities.length > LAUNCH_COPY_MAX_NAMES) return `Live in ${cities.length} cities, more coming`
-  return `Starting in ${joinNames(cities.map((c) => c.name))}, more cities coming`
+  const names = launchNames(cities)
+  if (names.length > LAUNCH_COPY_MAX_NAMES)
+    return `Live in ${cities.length} cities; other cities on request`
+  return `Live in ${joinNames(names)}; other cities on request`
 }
 
 /** "Alias · State": aliases then state, for the second line of a picker option and card. */

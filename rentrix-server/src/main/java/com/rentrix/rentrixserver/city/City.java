@@ -40,6 +40,10 @@ public class City extends TimestampedEntity {
 	@Column(name = "pincode_prefixes", length = 64)
 	private String pincodePrefixes;
 	
+	/** Optional group the web shows these cities under, e.g. "Delhi NCR" for Delhi, Gurugram and Noida. */
+	@Column(name = "region", length = 80)
+	private String region;
+	
 	public List<String> aliasList() {
 		return splitList(aliases);
 	}

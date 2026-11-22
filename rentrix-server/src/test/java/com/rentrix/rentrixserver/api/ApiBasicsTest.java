@@ -51,10 +51,10 @@ class ApiBasicsTest {
 	void citiesListsTheLiveSeedRows() throws Exception {
 		mvc.perform(get("/cities"))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$", hasSize(2)))
+			.andExpect(jsonPath("$", hasSize(7)))
 			.andExpect(jsonPath("$[0].code").value("BLR"))
 			.andExpect(jsonPath("$[0].aliases[0]").value("Bengaluru"))
-			.andExpect(jsonPath("$[1].code").value("PNQ"));
+			.andExpect(jsonPath("$[6].code").value("PNQ"));
 	}
 	
 	@Test

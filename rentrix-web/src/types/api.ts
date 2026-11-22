@@ -11,8 +11,11 @@ import type { components } from "./api.gen"
 
 type Schemas = components["schemas"]
 
-/** `GET /cities`: an active city (D-20, D-82). The list is data; the web never names a city. */
-export type City = Required<Schemas["CityResponse"]>
+/**
+ * `GET /cities`: an active city (D-20, D-82). The list is data; the web never names a city.
+ * `region` (null for most) groups cities the copy shows together, e.g. Delhi NCR.
+ */
+export type City = Required<Omit<Schemas["CityResponse"], "region">> & { region?: string | null }
 
 /** Real counts for one active city inside `GET /stats` (D-03, D-85; hand-written until B4). */
 export interface CityStats {
