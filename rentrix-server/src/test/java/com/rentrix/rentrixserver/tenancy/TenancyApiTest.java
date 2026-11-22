@@ -291,8 +291,12 @@ class TenancyApiTest {
 		create(tenant, request(property, null, TODAY.minusYears(1).minusMonths(2), null, 20_000))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.code").value("tenancy_overlap"));
-		create(landlord, request(property, tenant.getEmail(), TODAY.minusYears(1).minusMonths(2), null, 20_000))
-			.andExpect(status().isConflict());
+		// A landlord's request by email does not reveal the account at creation; the overlap shows on confirm.
+		String byEmail = createdId(landlord,
+			request(property, tenant.getEmail(), TODAY.minusYears(1).minusMonths(2), null, 20_000));
+		act(tenant, byEmail, "confirm").andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("tenancy_overlap"));
+		act(landlord, byEmail, "cancel").andExpect(status().isOk());
 		// After the old tenancy ended: fine, and a flatmate may overlap it.
 		createdId(tenant, request(property, null, TODAY.minusMonths(6), null, 20_000));
 		User flatmate = data.approved("Flat Mate", Role.TENANT);
@@ -350,7 +354,7 @@ class TenancyApiTest {
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.initiatedBy").value("LANDLORD"))
 			.andExpect(jsonPath("$.tenant").doesNotExist())
-			.andExpect(jsonPath("$.inviteEmail").value(email))
+			.andExpect(jsonPath("$.inviteEmail").value("n***@e***.test"))
 			.andReturn().getResponse().getContentAsString();
 		String id = JsonPath.read(body, "$.id");
 		EmailMessage invite = mail.last(email);
@@ -382,15 +386,61 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.code").value("approval_required"));
 		invitee.setDemo(true);
 		act(invitee, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.tenant.id").value(invitee.getPublicId().toString()))
+			.andExpect(jsonPath("$.inviteEmail").value("n***@e***.test"));
 	}
 
 	@Test
-	void inviteToAnExistingAccountBindsAtOnce() throws Exception {
+	void landlordRequestByEmailNeverRevealsWhetherTheAccountExists() throws Exception {
 		User landlord = data.approved("Known Owner", Role.LANDLORD);
 		User tenant = data.approved("Known Tenant", Role.TENANT);
-		String id = createdId(landlord, request(home(landlord), tenant.getEmail(), TODAY.minusMonths(2), null, 22_000));
+		String unknown = "nobody-" + UUID.randomUUID() + "@example.test";
+		String known = create(landlord, request(home(landlord), tenant.getEmail(), TODAY.minusMonths(2), null, 22_000))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		String absent = create(landlord, request(home(landlord), unknown, TODAY.minusMonths(2), null, 22_000))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		java.util.Map<String, Object> knownView = JsonPath.read(known, "$");
+		java.util.Map<String, Object> absentView = JsonPath.read(absent, "$");
+		assertThat(knownView.keySet()).isEqualTo(absentView.keySet());
+		for (java.util.Map<String, Object> view : java.util.List.of(knownView, absentView)) {
+			assertThat(view.get("tenant")).isNull();
+			assertThat(view.get("status")).isEqualTo("PENDING_CONFIRMATION");
+			assertThat((String) view.get("inviteEmail")).matches("[a-z0-9]\\*\\*\\*@e\\*\\*\\*\\.test");
+		}
+		String id = (String) knownView.get("id");
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.tenant").doesNotExist())
+			.andExpect(jsonPath("$.inviteEmail").value(knownView.get("inviteEmail")));
+		String mine = mvc.perform(get("/me/tenancies?role=LANDLORD").header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.items", hasSize(2))).andReturn().getResponse().getContentAsString();
+		java.util.List<java.util.Map<String, Object>> items = JsonPath.read(mine, "$.items");
+		assertThat(items).allSatisfy(item -> assertThat(item.get("tenant")).isNull());
+
+		// The linked account sees the request on its own side and confirms it; only then is it named.
 		assertThat(mail.last(tenant.getEmail()).subject()).startsWith("Confirm your tenancy");
+		mvc.perform(get("/me/tenancies?role=TENANT").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items[0].id").value(id))
+			.andExpect(jsonPath("$.items[0].inviteEmail").doesNotExist())
+			.andExpect(jsonPath("$.items[0].actions.confirm").value(true));
 		act(tenant, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.tenant.id").value(tenant.getPublicId().toString()));
+		User admin = data.user("Audit Admin", Role.ADMIN, Role.TENANT);
+		mvc.perform(get("/tenancies/" + JsonPath.read(absent, "$.id")).header("Authorization", support.bearer(admin)))
+			.andExpect(jsonPath("$.inviteEmail").value(unknown));
+	}
+
+	@Test
+	void anAccountWithoutTheTenantRoleIsOnlyInvited() throws Exception {
+		User landlord = data.approved("Inviting Landlord Two", Role.LANDLORD);
+		User otherLandlord = data.approved("Landlord Only", Role.LANDLORD);
+		String id = createdId(landlord,
+			request(home(landlord), otherLandlord.getEmail(), TODAY.minusMonths(2), null, 22_000));
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(otherLandlord)))
+			.andExpect(status().isNotFound());
+		assertThat(INVITE_TOKEN.matcher(mail.last(otherLandlord.getEmail()).body()).find()).isTrue();
+		assertThat(tenancies.findByPublicId(UUID.fromString(id)).orElseThrow().getTenant()).isNull();
 	}
 
 	private ResultActions claim(User caller, String token) throws Exception {
@@ -480,6 +530,17 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$", hasSize(3)))
 			.andExpect(jsonPath("$[1].status").value("DISPUTED"))
 			.andExpect(jsonPath("$[1].canRespond").value(false));
+
+		// A confirmed rent from next month is history, but not yet the current rent.
+		String upcoming = JsonPath.read(mvc.perform(post("/tenancies/" + id + "/rent-records")
+				.header("Authorization", support.bearer(landlord)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"effectiveFrom\": \"" + TODAY.withDayOfMonth(1).plusMonths(1)
+					+ "\", \"monthlyRentInr\": 30000}"))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
+		mvc.perform(post("/rent-records/" + upcoming + "/confirm").header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk());
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.currentRentInr").value(27_500));
 	}
 
 	@Test

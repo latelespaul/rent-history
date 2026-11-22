@@ -45,9 +45,11 @@ import java.util.UUID;
  * either party. Guards at creation and confirmation (D-35): approved verification for the acting side (D-91),
  * email-verified accounts, valid dates, no overlapping tenancy of the same tenant on the same property (D-23) and
  * at most {@value #MAX_PENDING} pending requests started per user. Decline, cancel and end are never gated (D-91).
- * <p>A landlord names the tenant by email. An existing, email-verified account with that email is bound at once;
- * otherwise a single-use invite (§5.12) goes to the email and binds the tenancy to whoever claims it while signed in
- * with that same verified email (D-34).
+ * <p>A landlord names the tenant by email, and the answer never shows whether that email has an account: the
+ * landlord sees only a masked email and no tenant until the tenancy is confirmed. An existing, email-verified account
+ * with the TENANT role is linked internally so it can confirm or decline from {@code /me/tenancies}; otherwise a
+ * single-use invite (§5.12) goes to the email and binds the tenancy to whoever claims it while signed in with that
+ * same verified email (D-34). The overlap guard (D-23) for such a request runs at claim and at confirm.
  * <p>Visibility: a tenancy is readable by its parties and admins only; anyone else gets {@code 404} (D-60).
  */
 @Slf4j
@@ -158,12 +160,11 @@ public class TenancyService {
 		if (asLandlord) {
 			tenancy.setInviteEmail(inviteEmail);
 			users.findByEmail(inviteEmail)
-				.filter(user -> user.getDeletedAt() == null && user.getEmailVerifiedAt() != null)
+				.filter(user -> user.getDeletedAt() == null && user.getEmailVerifiedAt() != null
+					&& user.hasRole(Role.TENANT))
 				.ifPresent(tenancy::setTenant);
 		} else {
 			tenancy.setTenant(me);
-		}
-		if (tenancy.getTenant() != null) {
 			requireNoOverlap(tenancy);
 		}
 		Tenancy saved = tenancies.saveAndFlush(tenancy);
@@ -458,10 +459,12 @@ public class TenancyService {
 			pending && side == t.getInitiatedBy(),
 			t.getStatus() == TenancyStatus.ACTIVE,
 			side != null && CONFIRMED.contains(t.getStatus()));
+		boolean tenantHidden = side == TenancyParty.LANDLORD && !admin && t.getInitiatedBy() == TenancyParty.LANDLORD
+			&& !CONFIRMED.contains(t.getStatus());
 		Property p = t.getProperty();
 		Long currentRent = CONFIRMED.contains(t.getStatus())
 			? rentRecords.findByTenancyIdOrderByEffectiveFromAsc(t.getId()).stream()
-			.filter(r -> r.getStatus() == RentRecordStatus.CONFIRMED)
+			.filter(r -> r.getStatus() == RentRecordStatus.CONFIRMED && !r.getEffectiveFrom().isAfter(today()))
 			.reduce((a, b) -> b)
 			.map(RentRecord::getMonthlyRentInr)
 			.orElse(t.getInitialRentInr())
@@ -472,8 +475,8 @@ public class TenancyService {
 				p.getUnitLabel(), p.getPropertyType()),
 			side,
 			party(t.getLandlord()),
-			t.getTenant() == null ? null : party(t.getTenant()),
-			side == TenancyParty.LANDLORD || admin ? t.getInviteEmail() : null,
+			t.getTenant() == null || tenantHidden ? null : party(t.getTenant()),
+			admin ? t.getInviteEmail() : side == TenancyParty.LANDLORD ? maskEmail(t.getInviteEmail()) : null,
 			t.getStartDate(),
 			t.getEndDate(),
 			t.getInitialRentInr(),
@@ -489,6 +492,19 @@ public class TenancyService {
 			t.getConfirmedAt(),
 			t.getEndedAt(),
 			actions);
+	}
+
+	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */
+	static String maskEmail(String email) {
+		if (email == null) {
+			return null;
+		}
+		int at = email.indexOf('@');
+		String local = at > 0 ? email.substring(0, at) : email;
+		String domain = at >= 0 ? email.substring(at + 1) : "";
+		int dot = domain.lastIndexOf('.');
+		String suffix = dot >= 0 ? domain.substring(dot) : "";
+		return local.charAt(0) + "***@" + (domain.isEmpty() ? "" : domain.charAt(0)) + "***" + suffix;
 	}
 
 	static PartyRef party(User user) {
