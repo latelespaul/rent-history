@@ -432,6 +432,19 @@ class TenancyApiTest {
 	}
 
 	@Test
+	void overlappingPendingRequestsDoNotBlockEachOtherUntilOneIsConfirmed() throws Exception {
+		User landlord = data.approved("Resending Landlord", Role.LANDLORD);
+		User tenant = data.approved("Resent Tenant", Role.TENANT);
+		Property property = home(landlord);
+		String first = createdId(landlord, request(property, tenant.getEmail(), TODAY.minusMonths(3), null, 20_000));
+		String second = createdId(landlord, request(property, tenant.getEmail(), TODAY.minusMonths(2), null, 21_000));
+		act(tenant, second, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
+		act(tenant, first, "confirm").andExpect(status().isConflict())
+			.andExpect(jsonPath("$.code").value("tenancy_overlap"));
+		act(tenant, first, "decline").andExpect(status().isOk());
+	}
+
+	@Test
 	void anAccountWithoutTheTenantRoleIsOnlyInvited() throws Exception {
 		User landlord = data.approved("Inviting Landlord Two", Role.LANDLORD);
 		User otherLandlord = data.approved("Landlord Only", Role.LANDLORD);

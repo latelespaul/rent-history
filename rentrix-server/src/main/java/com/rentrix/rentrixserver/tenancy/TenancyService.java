@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -49,7 +50,8 @@ import java.util.UUID;
  * landlord sees only a masked email and no tenant until the tenancy is confirmed. An existing, email-verified account
  * with the TENANT role is linked internally so it can confirm or decline from {@code /me/tenancies}; otherwise a
  * single-use invite (§5.12) goes to the email and binds the tenancy to whoever claims it while signed in with that
- * same verified email (D-34). The overlap guard (D-23) for such a request runs at claim and at confirm.
+ * same verified email (D-34). The overlap guard (D-23) for such a request runs at claim and at confirm, against
+ * confirmed tenancies only.
  * <p>Visibility: a tenancy is readable by its parties and admins only; anyone else gets {@code 404} (D-60).
  */
 @Slf4j
@@ -165,7 +167,7 @@ public class TenancyService {
 				.ifPresent(tenancy::setTenant);
 		} else {
 			tenancy.setTenant(me);
-			requireNoOverlap(tenancy);
+			requireNoOverlap(tenancy, HOLDS_DATES);
 		}
 		Tenancy saved = tenancies.saveAndFlush(tenancy);
 
@@ -204,7 +206,7 @@ public class TenancyService {
 		}
 		requireRole(me, Role.TENANT);
 		tenancy.setTenant(me);
-		requireNoOverlap(tenancy);
+		requireNoOverlap(tenancy, CONFIRMED);
 		invite.setUsedAt(now());
 		invites.save(invite);
 		return view(tenancies.saveAndFlush(tenancy), me, caller);
@@ -222,7 +224,7 @@ public class TenancyService {
 		requireCounterparty(tenancy, me);
 		requireEmailVerified(me);
 		approvals.require(me, roleOf(sideOf(tenancy, me)));
-		requireNoOverlap(tenancy);
+		requireNoOverlap(tenancy, CONFIRMED);
 		Instant now = now();
 		tenancy.setStatus(tenancy.getEndDate() == null ? TenancyStatus.ACTIVE : TenancyStatus.ENDED);
 		tenancy.setConfirmedAt(now);
@@ -407,10 +409,13 @@ public class TenancyService {
 		}
 	}
 
-	/** D-23: one tenant cannot hold two overlapping tenancies on the same property. */
-	private void requireNoOverlap(Tenancy tenancy) {
+	/**
+	 * D-23: one tenant cannot hold two overlapping tenancies on the same property. A tenant's own request is checked
+	 * against pending ones too; claim and confirm only against confirmed ones, so a sibling pending request never blocks.
+	 */
+	private void requireNoOverlap(Tenancy tenancy, Collection<TenancyStatus> against) {
 		boolean overlap = tenancies.existsOverlap(tenancy.getProperty().getId(), tenancy.getTenant().getId(),
-			tenancy.getId() == null ? -1L : tenancy.getId(), HOLDS_DATES, tenancy.getStartDate(),
+			tenancy.getId() == null ? -1L : tenancy.getId(), against, tenancy.getStartDate(),
 			tenancy.getEndDate() == null ? OPEN_END : tenancy.getEndDate());
 		if (overlap) {
 			throw ApiException.conflict("tenancy_overlap",
