@@ -50,8 +50,9 @@ public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 		@Param("statuses") Collection<TenancyStatus> statuses, Pageable pageable);
 	
 	/**
-	 * D-23: another live tenancy of the same tenant on the same property whose dates overlap
-	 * {@code [start, end]} ({@code end} = far future for a current tenancy).
+	 * D-23: the other tenancies in {@code statuses} of the same tenant on the same property whose dates overlap
+	 * {@code [start, end]} ({@code end} = far future for a current tenancy). A locking read, so on MySQL's
+	 * REPEATABLE READ it sees rows committed by a concurrent transition, not the transaction's old snapshot.
 	 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select t from Tenancy t where t.property.id = :propertyId and t.tenant.id = :tenantId "
