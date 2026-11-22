@@ -111,7 +111,7 @@ erDiagram
     users ||--o{ phone_otp_challenges : "OTP sends"
     users ||--o{ verification_applications : "one per role"
     identity_verifications ||--o{ verification_documents : "ID_PROOF file (PAN, masked Aadhaar)"
-    verification_applications ||--o{ verification_documents : "RENTAL_AGREEMENT"
+    verification_applications ||--o{ rental_agreements : "onboarding agreement (design v4, D-123)"
 
     identity_verifications {
         bigint id PK
