@@ -35,4 +35,13 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 	
 	boolean existsByFamilyIdAndRevokedAtIsNullAndExpiresAtAfter(UUID familyId, Instant now);
 	
+	/** When the family's first token was issued: the sign-in that started the session ({@code auth_time}, D-157). */
+	@Query("select min(t.createdAt) from RefreshToken t where t.familyId = :familyId")
+	Instant findFamilyStart(@Param("familyId") UUID familyId);
+	
+	/** Ends every session of the user, main site and admin console alike (account deletion, D-160). */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("delete from RefreshToken t where t.user.id = :userId")
+	int deleteByUserId(@Param("userId") Long userId);
+	
 }

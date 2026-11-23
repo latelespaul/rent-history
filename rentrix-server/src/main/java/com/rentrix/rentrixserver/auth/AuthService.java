@@ -136,7 +136,8 @@ public class AuthService {
 		requireActive(user);
 		user.setLastLoginAt(now());
 		String refresh = refreshTokens.issue(user, UUID.randomUUID());
-		return new Session(accessToken(user), refresh, userViews.of(user));
+		return new Session(accessTokens.issue(user.getPublicId(), userRoles.effective(user), now()), refresh,
+			userViews.of(user));
 	}
 	
 	/** Rotates the refresh token (D-63); roles are re-read from the database for the new access token. */
@@ -146,7 +147,9 @@ public class AuthService {
 			throw RefreshTokenService.invalid();
 		}
 		RefreshTokenService.Rotation rotation = refreshTokens.rotate(refreshToken);
-		return new Session(accessToken(rotation.user()), rotation.token(), userViews.of(rotation.user()));
+		User user = rotation.user();
+		return new Session(accessTokens.issue(user.getPublicId(), userRoles.effective(user), rotation.signedInAt()),
+			rotation.token(), userViews.of(user));
 	}
 	
 	/** Starts an admin console session (§13.3) for a member who passed a sign-in check. */
@@ -184,6 +187,7 @@ public class AuthService {
 		refreshTokens.revoke(refreshToken);
 	}
 	
+	/** A fresh access token for the caller's running session (it keeps the session's {@code auth_time}). */
 	public String accessToken(User user) {
 		return accessTokens.issue(user.getPublicId(), userRoles.effective(user));
 	}

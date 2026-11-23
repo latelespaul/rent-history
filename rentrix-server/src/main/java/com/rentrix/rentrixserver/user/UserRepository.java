@@ -21,6 +21,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	
 	Optional<User> findByGoogleSub(String googleSub);
 	
+	/** True when the account was deleted: its access tokens are refused at once (D-160). */
+	boolean existsByPublicIdAndStatus(UUID publicId, UserStatus status);
+	
 	Optional<User> findByEmail(String email);
 	
 	/** Users other than the given (system) account; the demo seed treats only those as data (D-139). */

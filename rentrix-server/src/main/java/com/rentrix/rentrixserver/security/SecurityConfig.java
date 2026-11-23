@@ -1,6 +1,8 @@
 package com.rentrix.rentrixserver.security;
 
 import com.rentrix.rentrixserver.common.error.ProblemWriter;
+import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.user.UserStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -54,7 +56,7 @@ public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, AccessTokenService tokens, AdminHosts adminHosts,
-		ProblemWriter problems,
+		UserRepository users, ProblemWriter problems,
 		AuthenticationEntryPoint entryPoint, AccessDeniedHandler accessDeniedHandler,
 		CorsConfigurationSource corsConfigurationSource) throws Exception {
 		http.cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -71,7 +73,8 @@ public class SecurityConfig {
 				.requestMatchers("/error").permitAll()
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated())
-			.addFilterBefore(new JwtAuthenticationFilter(tokens, adminHosts), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new JwtAuthenticationFilter(tokens, adminHosts,
+				id -> users.existsByPublicIdAndStatus(id, UserStatus.DELETED)), UsernamePasswordAuthenticationFilter.class)
 			.addFilterAfter(new AdminHostFilter(adminHosts, problems), JwtAuthenticationFilter.class)
 			.addFilterAfter(new OnboardingFilter(problems), AdminHostFilter.class);
 		return http.build();

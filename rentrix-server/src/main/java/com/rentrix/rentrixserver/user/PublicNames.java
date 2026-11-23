@@ -17,6 +17,15 @@ public final class PublicNames {
 	private PublicNames() {
 	}
 	
+	/** How a deleted account is named everywhere it still appears (D-58). */
+	public static final String DELETED_USER = "Deleted user";
+	
+	/** The public name of {@code user}: {@link #DELETED_USER} once the account is deleted, else the short name. */
+	public static String of(User user) {
+		return user.getStatus() == UserStatus.DELETED || user.getDeletedAt() != null ? DELETED_USER
+			: shortName(user.getDisplayName());
+	}
+	
 	public static String shortName(String displayName) {
 		if (displayName == null || displayName.isBlank()) {
 			return "Member";
