@@ -179,7 +179,15 @@ export function fieldPlace(field: string): { step: HomeStep; key: string } {
   if (path.startsWith("newCity"))
     return { step: "address", key: path === "newCity.state" ? "otherState" : "otherCity" }
   const address: Record<string, string> = { home: "city", location: "area", propertyId: "form" }
-  const keys = ["city", "buildingName", "unitLabel", "pincode", "propertyType", "bedrooms", "locality"]
+  const keys = [
+    "city",
+    "buildingName",
+    "unitLabel",
+    "pincode",
+    "propertyType",
+    "bedrooms",
+    "locality",
+  ]
   return { step: "address", key: address[path] ?? (keys.includes(path) ? path : "form") }
 }
 

@@ -623,11 +623,7 @@ export default function AddHomePage() {
                     ))}
                   </select>
                 </Field>
-                <Field
-                  id="ah-bedrooms"
-                  label={<>Bedrooms {optional}</>}
-                  error={error("bedrooms")}
-                >
+                <Field id="ah-bedrooms" label={<>Bedrooms {optional}</>} error={error("bedrooms")}>
                   <Input
                     id="ah-bedrooms"
                     inputMode="numeric"
