@@ -3,6 +3,7 @@
 # seed and dev login on, on a fresh SQLite file every time the API container is
 # created. Never for anything public (dev login signs in without Google).
 #   export JWT_SECRET=e2e-only-jwt-secret-not-for-production-0123456789
+#   export DOCUMENT_ENCRYPTION_KEY=e2e-only-document-key-not-for-production-0123456789
 #   docker compose -p rentrix-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
 #   (cd rentrix-web && npm run e2e)
 #   docker compose -p rentrix-e2e -f docker-compose.yml -f docker-compose.e2e.yml down -v

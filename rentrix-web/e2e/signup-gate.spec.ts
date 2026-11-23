@@ -7,7 +7,7 @@ import { apiBaseUrl, recordNewUsers, verifyPhone, testPhone } from "./support"
  * Release gate (captain 2026-11-23 13:26): the complete new-user chain at 390 px. Landing, sign
  * up (the fresh-user dev login stands in for Google, which is checked by hand on LIVE), phone
  * verification with the held code accepted, profile, the any-one-method gate, "Add your home"
- * steps 1-4 with the home-size chip, the next-steps screen (#63) and a review written from it, the
+ * steps 1-4 with the home-size chip, the next-steps screen (agreement upload and review) and a review written from it, the
  * home's page showing what was entered, then sign out and back in keeping it all.
  *
  * One screenshot per step goes to the test output, and to `SIGNUP_GATE_SHOTS` when set
@@ -123,14 +123,13 @@ test.describe("new-user sign-up release gate (390 px)", () => {
       await page.getByTestId("ah-save").click()
       await expect(page.getByText("Verify your phone to post")).toHaveCount(0)
       const done = page.getByTestId("add-home-done")
-      await expect(done.getByTestId("add-home-steps-left")).toHaveText(
-        /home added\. 1 optional step left/i,
-      )
+      await expect(done.getByTestId("steps-left")).toHaveText("Home added. 2 optional steps left")
+      await expect(done.getByTestId("next-step-agreement")).toBeVisible()
       await shot(page, testInfo, "12-saved-next-steps")
     })
 
     await test.step("7 rate and review it from the next-steps screen", async () => {
-      await page.getByTestId("add-home-done").getByTestId("add-home-write-review").click()
+      await page.getByTestId("add-home-done").getByTestId("next-step-review").click()
       await page.getByTestId("review-star-4").click()
       await page.getByLabel(/your review/i).fill(review)
       await shot(page, testInfo, "13-review")
@@ -147,7 +146,10 @@ test.describe("new-user sign-up release gate (390 px)", () => {
       await expect(page.getByText("2 BHK").first()).toBeVisible()
       await expect(page.getByText(/Suresh Owner/)).toHaveCount(0)
       await expect(page.getByTestId("property-review").filter({ hasText: review })).toBeVisible()
-      await expect(page.getByTestId("home-next-steps")).toHaveCount(0)
+      const here = page.getByTestId("your-tenancy-here")
+      await expect(here.getByTestId("steps-left")).toHaveText("1 optional step left")
+      await expect(here.getByTestId("review-status")).toHaveText("You reviewed this home")
+      await expect(here.getByTestId("next-step-review")).toHaveCount(0)
       await shot(page, testInfo, "14-home-page")
     })
 

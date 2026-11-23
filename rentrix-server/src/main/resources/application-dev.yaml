@@ -33,6 +33,9 @@ app:
     enabled: ${DEV_LOGIN_ENABLED:true}
   admin-console:
     hosts: ${ADMIN_HOSTS:admin.localhost}   # the admin console on http://admin.localhost:5173 (§13.3)
+  documents:
+    # Dev-only value, public in git. Any profile other than dev/test sets its own DOCUMENT_ENCRYPTION_KEY.
+    encryption-key: ${DOCUMENT_ENCRYPTION_KEY:dev-only-document-key-not-for-production-0123456789}
   identity:
     # Dev-only value, public in git. Any profile other than dev/test sets its own ID_HASH_KEY.
     hash-key: ${ID_HASH_KEY:dev-only-id-hash-key-not-for-production-0123456789}

@@ -24,6 +24,7 @@ import java.util.UUID;
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:sqlite:target/test-data/rentrix-prod-identity-${random.uuid}.db",
 	"app.jwt.secret=prod-profile-test-secret-that-is-long-enough-0123456789",
+	"app.documents.encryption-key=prod-profile-test-document-key-long-enough-0123456789",
 	"app.auth.google.client-id=",
 	"app.identity.hash-key=",
 	"app.sms.backend=",

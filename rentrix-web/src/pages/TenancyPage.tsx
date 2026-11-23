@@ -3,7 +3,7 @@ import { isApiError } from "@/api/errors"
 import { Container } from "@/components/layout/Container"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { LockIcon, StarIcon } from "@/components/ui/icons.gen"
+import { LockIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { rupees } from "@/features/property/labels"
@@ -16,9 +16,8 @@ import {
   monthlyRent,
   TENANCY_STATUS,
   tenancyHome,
-  today,
 } from "@/features/tenancy/labels"
-import { reviewWindow } from "@/features/tenancy/reviewWindow"
+import { NextSteps } from "@/features/tenancy/NextSteps"
 import { useTenancy } from "@/features/tenancy/useTenancies"
 import { BRAND } from "@/lib/brand"
 import type { Tenancy } from "@/types/api"
@@ -39,6 +38,13 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
     return <Notice tone="warn">Declined: {tenancy.declineReason}</Notice>
   }
   if (tenancy.status === "ACTIVE" || tenancy.status === "ENDED") {
+    if (tenancy.verificationStatus === "VERIFIED") {
+      return (
+        <Notice tone="teal" data-testid="tenancy-verified">
+          Verified by {BRAND.name}: the team checked this tenancy from its rental agreement.
+        </Notice>
+      )
+    }
     // A tenant's own record (D-142) stands without the owner; the team verifies it later.
     return tenancy.confirmedAt ? (
       <Notice tone="teal">
@@ -53,27 +59,6 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
     )
   }
   return null
-}
-
-/** "Write a review" on the tenant's current or ended tenancy, while the D-39 window is open. */
-function ReviewCta({ tenancy }: { tenancy: Tenancy }) {
-  if (tenancy.myRole !== "TENANT") return null
-  const reviews = reviewWindow(tenancy, today())
-  if (reviews.state === "none") return null
-  if (reviews.state === "open")
-    return (
-      <Button asChild data-testid="tenancy-write-review">
-        <Link to={`/tenancies/${tenancy.id}/review`}>
-          <StarIcon />
-          Write a review
-        </Link>
-      </Button>
-    )
-  return (
-    <p className="text-sm text-ink-500" data-testid="tenancy-review-window">
-      You can review this home from {dateLabel(reviews.opens)}.
-    </p>
-  )
 }
 
 /**
@@ -188,7 +173,7 @@ export default function TenancyPage() {
             Exact dates, deposit and flat number are private to the two of you.
           </p>
           <StatusNote tenancy={tenancy} />
-          <ReviewCta tenancy={tenancy} />
+          <NextSteps tenancy={tenancy} />
           <TenancyActions tenancy={tenancy} />
         </section>
 

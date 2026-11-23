@@ -20,7 +20,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | `V6__verification_core.sql` (built in B11) | B11 | `verification_applications`, `verification_events`, property review columns, `moderation_actions` rebuild | written in the v3 shape: **no** `linkedin_url`, `linkedin_not_provided`, `linkedin_check` columns |
 | `V<n>__verification_documents.sql` (design v2) | B12 | `verification_documents` | not merged yet, so written in the v3 shape: `identity_verification_id`, `id_type` ∈ `PAN`, `AADHAAR_MASKED`; no `number_last4`/`number_hmac`; *changed in design v4*: no `RENTAL_AGREEMENT` kind and no `application_id` (replaced by `rental_agreements`, D-123, D-131) |
 | none | B16 | `rating_aggregates` gains subject types `SOCIETY`, `AREA`, `OWNER_HOMES` | `subject_type VARCHAR(16)` has no `CHECK`, so no DDL |
-| `V<n>__rental_agreements.sql` (design v4) | **B18** | `rental_agreements` | §6 |
+| `V13__rental_agreements.sql` (design v4, built in the agreement intake PR) | **B18** | `rental_agreements` | §6, as designed |
 | none (design v4) | B17 | phone required for submit, approve and the gate (D-117) | rules only, no DDL |
 | `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
 | `V9__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V9_1__home_records_fks.sql` for `added_by` |
@@ -391,7 +391,7 @@ CREATE INDEX ix_rental_agreements_purge ON rental_agreements (purge_after);
 | the live agreement of a tenancy (status not `REPLACED`) | `ix_rental_agreements_tenancy` |
 | the applicant's agreements in the admin approval pane | `ix_rental_agreements_application` |
 | reuse check by file hash or anchor number (D-129) | `ix_rental_agreements_sha256`, `ix_rental_agreements_anchor` |
-| retention job: files to delete (D-131; `purge_after` = 30 days after the later of `decided_at` and `counterparty_confirmed_at`, 90 days after upload when no other party is linked) | `ix_rental_agreements_purge` |
+| retention job: files to delete (`purge_after`, rule in SYSTEM_DESIGN D-131) | `ix_rental_agreements_purge` |
 
 Never in any column: a full Aadhaar number (typed fields are masked at intake, D-131), a full PAN, the decrypted file. `application_id` is set only while no tenancy is linked or for the admin's history; when an onboarding agreement is linked to a tenancy both stay set.
 

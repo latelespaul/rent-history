@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
 import AddHomePage from "@/pages/AddHomePage"
+import AgreementUploadPage from "@/pages/AgreementUploadPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
 import LegalPage from "@/pages/LegalPage"
@@ -47,6 +48,7 @@ export const routes = [
           { path: "/homes/new", element: <AddHomePage /> },
           { path: "/tenancies/new", element: <TenancyRequestPage /> },
           { path: "/tenancies/:id/review", element: <WriteReviewPage /> },
+          { path: "/tenancies/:id/agreement", element: <AgreementUploadPage /> },
           { path: "/tenancies/:id", element: <TenancyPage /> },
           { path: "/tenancy-invite", element: <TenancyInvitePage /> },
           { path: "/me/*", element: <NotFoundPage /> },

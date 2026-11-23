@@ -9,7 +9,8 @@ import { LAUNCH_CITIES } from "@/test/cities"
 import { detail } from "@/test/properties"
 import { makeUser } from "@/test/users"
 
-// The new-user journey (captain 2026-11-22 21:38 / 22:22): add your home, then review it.
+// The new-user journey (captain 2026-11-22 21:38 / 22:22): add your home, then review it; the
+// flow goes on after "Save my home" with the two optional steps (captain 2026-11-23 14:53).
 const TENANCY: Tenancy = {
   id: "t9",
   property: {
@@ -39,6 +40,9 @@ const TENANCY: Tenancy = {
   confirmedAt: null,
   endedAt: null,
   actions: { confirm: false, decline: false, cancel: false, end: true, addRentRecord: true },
+  verificationStatus: "UNVERIFIED",
+  verificationReason: null,
+  agreement: null,
 } as Tenancy
 
 const ADDED: AddHomeResult = {
@@ -79,6 +83,11 @@ vi.mock("@/api/homes", () => ({
   addHome: vi.fn(async () => ADDED),
   writeReview: vi.fn(async () => REVIEW),
 }))
+vi.mock("@/api/agreements", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/agreements")>()),
+  // The review is still to write: its window is open and nothing is written yet.
+  fetchReviewTasks: vi.fn(async () => [{ tenancyId: "t9", direction: "TENANT_TO_PROPERTY" }]),
+}))
 vi.mock("@/api/tenancies", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/tenancies")>()),
   fetchTenancy: vi.fn(async () => TENANCY),
@@ -116,7 +125,7 @@ afterEach(() => {
 })
 
 describe("new-user journey", () => {
-  it("adds a rented home in a city not in the list, in four steps, then offers the review", async () => {
+  it("adds a rented home in a city not in the list, in four steps, then offers the agreement and the review", async () => {
     renderAt("/homes/new")
     const user = userEvent.setup({ delay: null })
 
@@ -166,17 +175,17 @@ describe("new-user journey", () => {
       monthlyRentInr: 18000,
       owner: { name: "Ravi", email: undefined, phone: undefined },
     })
-    // The flow goes on (captain 2026-11-23 14:53): the review counts; the agreement card is a
-    // placeholder until PR #62 and is not counted.
-    expect(within(done).getByTestId("add-home-steps-left").textContent).toMatch(
-      /home added\. 1 optional step left/i,
-    )
+    expect(await within(done).findByText("Home added. 2 optional steps left")).toBeTruthy()
     expect(
       within(done)
-        .getByRole("link", { name: /write a review/i })
+        .getByRole("link", { name: /upload your rental agreement/i })
         .getAttribute("href"),
+    ).toBe("/tenancies/t9/agreement?next=review")
+    expect(
+      (await within(done).findByRole("link", { name: /rate and review this home/i })).getAttribute(
+        "href",
+      ),
     ).toBe("/tenancies/t9/review")
-    expect(within(done).getByTestId("next-step-agreement").textContent).toMatch(/coming soon/i)
     expect(within(done).getByTestId("add-home-skip").getAttribute("href")).toBe("/me/tenancies")
   })
 
@@ -205,5 +214,11 @@ describe("new-user journey", () => {
         .getByRole("link", { name: /see it on the home/i })
         .getAttribute("href"),
     ).toBe("/p/p9#reviews")
+    // The agreement is still to upload: it is offered next.
+    expect(
+      within(submitted)
+        .getByRole("link", { name: /upload your rental agreement/i })
+        .getAttribute("href"),
+    ).toBe("/tenancies/t9/agreement")
   })
 })

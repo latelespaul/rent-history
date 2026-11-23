@@ -25,8 +25,6 @@ import {
   type HomeDraft,
   type HomeErrors,
 } from "@/features/home/addHome"
-import { NextSteps } from "@/features/home/NextSteps"
-import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
 import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
 import {
@@ -39,6 +37,8 @@ import {
 } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today } from "@/features/tenancy/labels"
+import { NextSteps } from "@/features/tenancy/NextSteps"
+import { reviewWindow } from "@/features/tenancy/reviewWindow"
 import { useRefreshTenancyData } from "@/features/tenancy/useTenancies"
 import { BRAND } from "@/lib/brand"
 import { useSessionDraft } from "@/lib/draft"
@@ -156,65 +156,62 @@ function Matches({
   )
 }
 
-/** The saved home, with the optional review as the next step (D-139, captain 21:38 / 22:22). */
+/**
+ * The saved home, and the flow goes on (captain 2026-11-23 14:53): "Home added. 2 optional steps
+ * left": upload the rental agreement (the team's green tick, D-147) and rate and review the home,
+ * each skippable. Both stay as prompts on My tenancies and the home's page until done.
+ */
 function Added({ result }: { result: AddHomeResult }) {
   const { property, tenancy } = result
-  const left = tenancy ? stepsLeft(tenancy) : 0
+  const reviews = tenancy ? reviewWindow(tenancy, today()) : null
   return (
     <section
       data-testid="add-home-done"
-      className="rounded-xl border border-line bg-surface p-6 text-center shadow-sm"
+      className="rounded-xl border border-line bg-surface p-6 shadow-sm"
     >
-      <span className="mx-auto grid size-14 place-items-center rounded-full bg-success-100 text-success-600">
-        <CheckIcon size={30} />
-      </span>
-      <h1 className="mt-3 font-display text-2xl font-semibold text-ink-900">Your home is added</h1>
-      <p className="mt-1 text-ink-700">
-        <b>{propertyTitle(property)}</b>
-      </p>
-      {unitLine(property.location, property.unitLabel) && (
-        <p data-testid="added-unit-line" className="text-sm font-medium text-ink-700">
-          {unitLine(property.location, property.unitLabel)}
+      <div className="text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-full bg-success-100 text-success-600">
+          <CheckIcon size={30} />
+        </span>
+        <h1 className="mt-3 font-display text-2xl font-semibold text-ink-900">Home added</h1>
+        <p className="mt-1 text-ink-700">
+          <b>{propertyTitle(property)}</b>
         </p>
-      )}
-      <p className="text-sm text-ink-500">{placeLine(property)}</p>
-      <p className="mt-3 flex flex-wrap justify-center gap-1.5">
-        {property.addedByTenant && (
-          <Badge data-testid="added-by-tenant">Added by a tenant · not verified yet</Badge>
+        {unitLine(property.location, property.unitLabel) && (
+          <p data-testid="added-unit-line" className="text-sm font-medium text-ink-700">
+            {unitLine(property.location, property.unitLabel)}
+          </p>
         )}
-        {tenancy && (
-          <Badge variant="tenant">
-            Your tenancy ·{" "}
-            {tenancy.initialRentInr === null
-              ? "Rent not shared"
-              : `${rupees(tenancy.initialRentInr)}/mo`}
-          </Badge>
-        )}
-      </p>
-      <p className="mt-4 text-sm text-ink-700">
-        It shows on the home&rsquo;s page now. The {BRAND.name} team verifies it later from your
-        rental agreement.
-      </p>
-      {tenancy && left > 0 && (
-        <div className="mt-5 space-y-3 text-left">
-          <h2
-            data-testid="add-home-steps-left"
-            className="text-center text-lg font-semibold text-ink-900"
-          >
-            Home added. {stepsLeftLabel(left)}
-          </h2>
-          <NextSteps tenancy={tenancy} />
-        </div>
-      )}
-      {tenancy?.reviewed && left === 0 && (
-        <Notice tone="info" className="mt-5 text-left" data-testid="add-home-no-steps">
-          You&rsquo;ve reviewed this home.
-        </Notice>
+        <p className="text-sm text-ink-500">{placeLine(property)}</p>
+        <p className="mt-3 flex flex-wrap justify-center gap-1.5">
+          {property.addedByTenant && (
+            <Badge data-testid="added-by-tenant">Added by a tenant · not verified yet</Badge>
+          )}
+          {tenancy && (
+            <Badge variant="tenant">
+              Your tenancy ·{" "}
+              {tenancy.initialRentInr === null
+                ? "Rent not shared"
+                : `${rupees(tenancy.initialRentInr)}/mo`}
+            </Badge>
+          )}
+        </p>
+        <p className="mt-4 text-sm text-ink-700">
+          It shows on the home&rsquo;s page now, marked not verified yet.
+        </p>
+      </div>
+      {tenancy && (
+        <NextSteps
+          tenancy={tenancy}
+          title="Home added"
+          className="mt-5"
+          then={reviews?.state === "open" ? "review" : undefined}
+        />
       )}
       <Button asChild variant="outline" className="mt-4 w-full" data-testid="add-home-view">
         <Link to={`/p/${property.id}`}>See the home&rsquo;s page</Link>
       </Button>
-      {left > 0 && (
+      {tenancy && (
         <Button asChild variant="ghost" className="mt-1 w-full" data-testid="add-home-skip">
           <Link to="/me/tenancies">Skip for now</Link>
         </Button>
@@ -229,7 +226,7 @@ function Added({ result }: { result: AddHomeResult }) {
  * location hierarchy, with a new society typed in when it is not listed; a duplicate check offers
  * "Is it this one?". 2) I rent(ed) it / I own it. 3) the tenancy: from-to or "I still live here",
  * rent, deposit. 4) the owner's name and contact, private. Save stores the home, the tenancy and its
- * first rent at once, "not verified yet"; the review is offered next. What was typed stays in the
+ * first rent at once, "not verified yet"; the agreement upload and the review are offered next. What was typed stays in the
  * tab, so a detour to verify the account loses nothing.
  */
 export default function AddHomePage() {

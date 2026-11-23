@@ -24,6 +24,7 @@ jobs:
     env:
       # Dummy, CI only. The e2e stack runs the dev profile, which never serves real users.
       JWT_SECRET: ci-only-jwt-secret-not-for-production-0123456789
+      DOCUMENT_ENCRYPTION_KEY: ci-only-document-key-not-for-production-0123456789
       COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
       COMPOSE_PROJECT_NAME: rentrix-e2e
 

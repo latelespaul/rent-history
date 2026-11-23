@@ -1,5 +1,7 @@
 package com.rentrix.rentrixserver.tenancy;
 
+import com.rentrix.rentrixserver.agreement.AgreementService;
+import com.rentrix.rentrixserver.agreement.dto.AgreementSummary;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageResponse;
@@ -22,6 +24,7 @@ import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -88,6 +91,7 @@ public class TenancyService {
 	private final ApprovalGuard approvals;
 	private final TenancyNotifier notifier;
 	private final ReviewRepository reviews;
+	private final AgreementService agreements;
 	private final Clock clock;
 
 	// ---------------------------------------------------------------- reads
@@ -110,7 +114,8 @@ public class TenancyService {
 		} else {
 			page = tenancies.findByPartyAndStatusIn(me.getId(), filter, pageable);
 		}
-		return PageResponse.of(page, t -> view(t, me, caller));
+		Map<Long, AgreementSummary> live = agreements.summaries(page.getContent(), me);
+		return PageResponse.of(page, t -> view(t, me, caller, live.get(t.getId())));
 	}
 
 	// --------------------------------------------------------------- writes
@@ -581,6 +586,11 @@ public class TenancyService {
 	}
 
 	TenancyView view(Tenancy t, User me, AuthenticatedUser caller) {
+		return view(t, me, caller, agreements.summaries(List.of(t), me).get(t.getId()));
+	}
+
+	/** {@code agreement} is the tenancy's live rental agreement, shown to its parties and admins only (D-131). */
+	private TenancyView view(Tenancy t, User me, AuthenticatedUser caller, AgreementSummary agreement) {
 		TenancyParty side = sideOf(t, me);
 		boolean admin = caller.hasRole(Role.ADMIN);
 		boolean pending = t.getStatus() == TenancyStatus.PENDING_CONFIRMATION;
@@ -631,7 +641,10 @@ public class TenancyService {
 			t.getConfirmedAt(),
 			t.getEndedAt(),
 			actions,
-			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()));
+			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()),
+			VerificationState.of(t.getVerificationStatus()),
+			t.getVerificationStatus() == VerificationState.REJECTED && side != null ? t.getVerificationReason() : null,
+			side == null && !admin ? null : agreement);
 	}
 
 	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */

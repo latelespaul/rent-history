@@ -14,10 +14,11 @@ import { ReviewTick } from "@/features/property/ReviewTick"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { isGateError } from "@/features/tenancy/gate"
 import { tenancyHome } from "@/features/tenancy/labels"
+import { agreementHref, agreementStep } from "@/features/tenancy/stepState"
 import { useTenancy } from "@/features/tenancy/useTenancies"
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
-import type { PropertyReview } from "@/types/api"
+import type { PropertyReview, Tenancy } from "@/types/api"
 
 /** The server's D-43 length rule for a review body. */
 export const REVIEW_MIN = 30
@@ -49,8 +50,15 @@ function Stars({ value, onChange }: { value: number; onChange: (n: number) => vo
   )
 }
 
-/** "You submitted this review" (captain 21:38): what was published, with its tick state. */
-function Submitted({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
+/**
+ * "You submitted this review" (captain 21:38): what was published, with its tick state, and the
+ * rental agreement as the next step while it is not uploaded (captain 2026-11-23 14:53).
+ */
+function Submitted({ review, tenancy }: { review: PropertyReview; tenancy: Tenancy | undefined }) {
+  const propertyId = tenancy?.property.id ?? ""
+  const agreement = tenancy ? agreementStep(tenancy) : null
+  const agreementLeft =
+    agreement?.state === "todo" || agreement?.state === "draft" || agreement?.state === "rejected"
   return (
     <section
       data-testid="review-submitted"
@@ -76,7 +84,24 @@ function Submitted({ review, propertyId }: { review: PropertyReview; propertyId:
           {review.body}
         </blockquote>
       </figure>
-      <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-home">
+      {tenancy && agreementLeft && (
+        <div className="mt-5 space-y-1" data-testid="review-next-agreement">
+          <p className="text-sm font-semibold text-ink-900">1 optional step left</p>
+          <p className="text-xs text-ink-500">
+            Upload your rental agreement: the team gives your tenancy the green tick from it.
+          </p>
+          <Button asChild size="lg" className="w-full" data-testid="next-step-agreement">
+            <Link to={agreementHref(tenancy.id)}>Upload your rental agreement</Link>
+          </Button>
+        </div>
+      )}
+      <Button
+        asChild
+        size="lg"
+        variant={tenancy && agreementLeft ? "outline" : "default"}
+        className="mt-3 w-full"
+        data-testid="review-view-home"
+      >
         <Link to={`/p/${propertyId}#reviews`}>See it on the home&rsquo;s page</Link>
       </Button>
     </section>
@@ -104,10 +129,11 @@ export default function WriteReviewPage() {
         body: body.trim(),
       }),
     onSuccess: async () => {
-      // Tenancies too: their "Rate and review" next step is now done.
+      // Tenancies and review tasks too: their "Rate and review" next step is now done.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["properties"] }),
         queryClient.invalidateQueries({ queryKey: tenancyKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ["review-tasks"] }),
       ])
       window.scrollTo?.({ top: 0 })
     },
@@ -122,13 +148,11 @@ export default function WriteReviewPage() {
       </main>
     )
   }
-  const propertyId = tenancy.data?.property.id ?? ""
-
   if (write.data) {
     return (
       <main>
         <Container className="max-w-[560px] py-8">
-          <Submitted review={write.data} propertyId={propertyId} />
+          <Submitted review={write.data} tenancy={tenancy.data} />
         </Container>
       </main>
     )

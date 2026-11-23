@@ -35,6 +35,13 @@ app:
       client-id: ${GOOGLE_CLIENT_ID:fake-test-client-id}
   scheduling:
     enabled: false              # tests call jobs directly
+  documents:
+    # Test-only value, public in git. Any profile other than dev/test sets its own DOCUMENT_ENCRYPTION_KEY.
+    encryption-key: ${DOCUMENT_ENCRYPTION_KEY:test-only-document-key-not-for-production-0123456789}
+  storage:
+    # One folder for the test run: keys are random, so contexts never clash (a ${random.uuid} here
+    # would resolve anew on every read, so beans would disagree on the folder).
+    local-dir: ${STORAGE_LOCAL_DIR:target/test-data/media}
   identity:
     # Test-only value, public in git. Any profile other than dev/test sets its own ID_HASH_KEY.
     hash-key: ${ID_HASH_KEY:test-only-id-hash-key-not-for-production-0123456789}

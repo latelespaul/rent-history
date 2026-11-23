@@ -91,6 +91,8 @@ export interface QueueItem {
   link: string | null
   actions: QueueAction[]
   rejectCodes: string[]
+  /** Tenancy cards: the live rental agreement (D-123), whose file opens through a signed link. */
+  agreementId?: string | null
 }
 
 export interface QueueView {
@@ -102,6 +104,13 @@ export interface QueueDecided {
   type: QueueType
   id: string
   outcome: string
+}
+
+/** `GET /admin/agreements/{id}/url`: a 5-minute link to the agreement file, audited `VIEW_DOCUMENT` (D-95). */
+export function fetchAgreementFileUrl(id: string): Promise<{ url: string; expiresAt: string }> {
+  return adminApi.get<{ url: string; expiresAt: string }>(
+    `/admin/agreements/${encodeURIComponent(id)}/url`,
+  )
 }
 
 /** `GET /admin/queue`: everything waiting for the green tick, newest first. */

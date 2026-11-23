@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import {
   adminKeys,
   decideQueueItem,
+  fetchAgreementFileUrl,
   fetchQueue,
   type QueueAction,
   type QueueItem,
@@ -32,6 +33,38 @@ const REFRESH_MS = 30_000
 
 type Mode = { action: Exclude<QueueAction, "APPROVE"> } | null
 type DecisionBody = { code: string; note?: string; noteFallback?: string }
+
+/**
+ * "Open the agreement" on a tenancy card (D-151): asks for a 5-minute signed link (audited
+ * `VIEW_DOCUMENT`, D-95), then offers it, so the admin compares the file with the typed lines.
+ */
+function AgreementFile({ agreementId }: { agreementId: string }) {
+  const link = useMutation({ mutationFn: () => fetchAgreementFileUrl(agreementId) })
+  if (link.data) {
+    return (
+      <Button asChild size="sm" variant="outline" className="mt-3">
+        <a href={link.data.url} target="_blank" rel="noreferrer" data-testid="agreement-file-link">
+          Open the file (link works 5 minutes)
+        </a>
+      </Button>
+    )
+  }
+  return (
+    <div className="mt-3">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={link.isPending}
+        onClick={() => link.mutate()}
+        data-testid="agreement-file"
+      >
+        {link.isPending ? "Getting the file…" : "Open the rental agreement"}
+      </Button>
+      {link.isError && <p className="mt-1 text-sm text-danger-600">{errorMessage(link.error)}</p>}
+    </div>
+  )
+}
 
 /**
  * One card (D-136): the facts to decide on, and the answer bar at the bottom where a thumb reaches.
@@ -83,6 +116,7 @@ function QueueCard({
             ))}
           </ul>
         )}
+        {item.agreementId && <AgreementFile agreementId={item.agreementId} />}
       </div>
 
       {mode ? (

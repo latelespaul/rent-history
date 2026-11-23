@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { agreementKeys, fetchReviewTasks } from "@/api/agreements"
 import { fetchMyProperties, propertyKeys } from "@/api/properties"
 import { fetchMyTenancies, fetchRentRecords, fetchTenancy, tenancyKeys } from "@/api/tenancies"
 import { useSignedIn } from "@/features/property/useProperties"
@@ -50,5 +51,17 @@ export function useRefreshTenancyData() {
     Promise.all([
       client.invalidateQueries({ queryKey: tenancyKeys.all }),
       client.invalidateQueries({ queryKey: ["properties"] }),
+      client.invalidateQueries({ queryKey: ["review-tasks"] }),
+      client.invalidateQueries({ queryKey: ["agreements"] }),
     ])
+}
+
+/** `GET /me/review-tasks`: which reviews the caller can still write (the review next step). */
+export function useReviewTasks(enabled = true) {
+  const { ready, signedIn, viewer } = useSignedIn()
+  return useQuery({
+    queryKey: agreementKeys.reviewTasks(viewer),
+    queryFn: ({ signal }) => fetchReviewTasks(signal),
+    enabled: enabled && ready && signedIn,
+  })
 }

@@ -61,7 +61,10 @@ Web `https://doorwayliving.in`, API `https://api.doorwayliving.in`. They are sam
 SPRING_PROFILES_ACTIVE=prod
 GOOGLE_CLIENT_ID=…apps.googleusercontent.com
 CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
+DOCUMENT_ENCRYPTION_KEY=…   # openssl rand -base64 48; secret, never committed
 ```
+
+`DOCUMENT_ENCRYPTION_KEY` (at least 32 bytes) encrypts uploaded rental agreements at rest and signs their 5-minute download links (SYSTEM_DESIGN D-131); the API refuses to start in `prod` without it. Keep it with the other secrets: a lost or changed key makes the stored files unreadable. The files live under `STORAGE_LOCAL_DIR` (the Docker image uses `/app/data/media`, on the data volume).
 
 Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Proto` / `-Host` / `-Port` only from `TRUSTED_PROXIES` (default: loopback and private ranges), so a web served from the API's own origin needs no CORS entry. Set `TRUSTED_PROXIES` to the proxy's IP when it is neither. See SYSTEM_DESIGN §17.
 

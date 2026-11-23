@@ -76,6 +76,9 @@ function tenancy(overrides: Partial<Tenancy> = {}): Tenancy {
     confirmedAt: null,
     endedAt: null,
     actions: { confirm: true, decline: true, cancel: false, end: false, addRentRecord: false },
+    verificationStatus: "UNVERIFIED",
+    verificationReason: null,
+    agreement: null,
     ...overrides,
   }
 }

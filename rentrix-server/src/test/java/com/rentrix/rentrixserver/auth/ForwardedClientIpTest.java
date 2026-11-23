@@ -22,6 +22,7 @@ class ForwardedClientIpTest {
 	
 	private static final String PROD = "spring.datasource.url=jdbc:sqlite:target/test-data/rentrix-prod-${random.uuid}.db";
 	private static final String SECRET = "app.jwt.secret=prod-profile-test-secret-that-is-long-enough-0123456789";
+	private static final String DOCUMENT_KEY = "app.documents.encryption-key=prod-profile-test-document-key-long-enough-0123456789";
 	private static final String LIMIT = "app.auth.rate-limit.requests=3";
 	
 	abstract static class Base {
@@ -45,7 +46,7 @@ class ForwardedClientIpTest {
 	
 	@Nested
 	@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-		properties = {PROD, SECRET, LIMIT, "TRUSTED_PROXIES=192\\.0\\.2\\.1"})
+		properties = {PROD, SECRET, DOCUMENT_KEY, LIMIT, "TRUSTED_PROXIES=192\\.0\\.2\\.1"})
 	@ActiveProfiles("prod")
 	@DirtiesContext
 	class FromAnUntrustedPeer extends Base {
@@ -61,7 +62,7 @@ class ForwardedClientIpTest {
 	}
 	
 	@Nested
-	@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {PROD, SECRET, LIMIT})
+	@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {PROD, SECRET, DOCUMENT_KEY, LIMIT})
 	@ActiveProfiles("prod")
 	@DirtiesContext
 	class FromATrustedLocalProxy extends Base {

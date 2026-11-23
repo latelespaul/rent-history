@@ -22,6 +22,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
@@ -82,6 +83,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		log.warn("Concurrent write refused on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
 		return problem(HttpStatus.CONFLICT, "concurrent_update", "Another change was saved at the same time. Try again.",
 			List.of(), request.getRequestURI());
+	}
+
+	/** An upload over the multipart limit, refused before it is read: one field error on {@code file} (D-67). */
+	@Override
+	protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+		HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		String message = "The file is larger than 10 MB.";
+		return problem(HttpStatus.CONTENT_TOO_LARGE, "file_too_large", message,
+			List.of(new ApiProblem.FieldError("file", "file_too_large", message)), path(request));
 	}
 
 	@ExceptionHandler(Exception.class)

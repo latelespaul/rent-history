@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
 	"spring.datasource.url=jdbc:sqlite:target/test-data/rentrix-prod-admin-${random.uuid}.db",
 	"app.jwt.secret=prod-profile-test-secret-that-is-long-enough-0123456789",
+	"app.documents.encryption-key=prod-profile-test-document-key-long-enough-0123456789",
 	"app.auth.google.client-id=prod-admin-test-client",
 	"app.admin-console.hosts=admin.localhost",
 	"app.admin-console.emails=listed-admin@example.test",
