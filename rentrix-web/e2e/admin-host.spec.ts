@@ -102,23 +102,23 @@ test("the approvals queue answers a card in one tap and opens reports", async ({
   // The seed leaves one tenancy waiting for the other side, with no tick yet (D-134).
   await filters.getByRole("button", { name: /^Tenancies/ }).click()
   await expect(page).toHaveURL(/type=TENANCY/)
-  const card = page
+  // Only tenancy cards: right after the tap the list can still show the previous filter's cards.
+  const tenancy = page
     .getByRole("listitem")
-    .filter({ has: page.getByRole("button", { name: /^Approve:/ }) })
+    .filter({ has: page.getByText("Tenancy", { exact: true }) })
+  const card = tenancy.filter({ has: page.getByRole("button", { name: /^Approve:/ }) })
   const empty = page.getByText("Nothing waiting")
   await expect(card.first().or(empty)).toBeVisible()
   if (await card.count()) {
+    // Pin the card by its title: while the reasons are open it has no Approve button, so the
+    // filtered `card` locator would no longer match it.
+    const title = await card.first().getByRole("heading").first().innerText()
+    const pinned = tenancy.and(page.getByRole("listitem", { name: title, exact: true })).first()
     // Reject takes two taps and can be cancelled before the reason is picked.
-    await card
-      .first()
-      .getByRole("button", { name: /^Reject:/ })
-      .click()
-    await expect(card.first().getByRole("button", { name: "Can't confirm" })).toBeVisible()
-    await card.first().getByRole("button", { name: "Cancel" }).click()
-    await card
-      .first()
-      .getByRole("button", { name: /^Approve:/ })
-      .click()
+    await pinned.getByRole("button", { name: /^Reject:/ }).click()
+    await expect(pinned.getByRole("button", { name: "Can't confirm" })).toBeVisible()
+    await pinned.getByRole("button", { name: "Cancel" }).click()
+    await pinned.getByRole("button", { name: /^Approve:/ }).click()
     await expect(page.getByText(/Approved · Verified by Doorway Living/)).toBeVisible()
   }
 
