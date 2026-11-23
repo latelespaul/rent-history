@@ -156,7 +156,7 @@ export function PropertyReviews({
       <EmptyState
         icon="star"
         title="Reviews are not available yet"
-        description="Reviews from confirmed tenancies will show here once reviews are live."
+        description="Reviews will show here once reviews are live."
       />
     )
   } else if (reviews.data.length === 0) {
@@ -164,7 +164,7 @@ export function PropertyReviews({
       <EmptyState
         icon="star"
         title="No reviews yet"
-        description="Only tenants with a confirmed tenancy here can review this home."
+        description="Anyone signed in who verified their phone or email can review this home. Each review shows Verified or Not verified yet."
       />
     )
   } else {

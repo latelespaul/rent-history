@@ -27,8 +27,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 	@EntityGraph(attributePaths = {"city", "landlord"})
 	Optional<Property> findByPublicIdAndDeletedAtIsNull(UUID publicId);
 	
-	/** Loads one search page (ids from {@link PropertySearchQuery}) with city and landlord. */
-	@EntityGraph(attributePaths = {"city", "landlord"})
+	/** Loads one search page (ids from {@link PropertySearchQuery}) with city, landlord and place. */
+	@EntityGraph(attributePaths = {"city", "landlord", "area", "society", "tower", "wing"})
 	List<Property> findByIdIn(Collection<Long> ids);
 	
 	/** Search by city (index ix_properties_city_status_locality). */

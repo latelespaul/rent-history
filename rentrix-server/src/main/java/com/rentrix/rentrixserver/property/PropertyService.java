@@ -10,6 +10,7 @@ import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
 import com.rentrix.rentrixserver.location.LocationService;
+import com.rentrix.rentrixserver.location.LocationStatus;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.property.dto.CityRef;
@@ -519,7 +520,19 @@ public class PropertyService {
 	private static PropertyCard card(Property p, RatingAggregate rating) {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(),
-			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()));
+			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p));
+	}
+	
+	/** True when any level of the home's place is a {@code PENDING} proposal (see {@link PropertyCard}). */
+	private static boolean locationPending(Property p) {
+		return pending(p.getArea() == null ? null : p.getArea().getStatus())
+			|| pending(p.getSociety() == null ? null : p.getSociety().getStatus())
+			|| pending(p.getTower() == null ? null : p.getTower().getStatus())
+			|| pending(p.getWing() == null ? null : p.getWing().getStatus());
+	}
+	
+	private static boolean pending(LocationStatus status) {
+		return status == LocationStatus.PENDING;
 	}
 	
 	private static String landlordName(User landlord) {

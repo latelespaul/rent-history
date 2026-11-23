@@ -312,4 +312,32 @@ class HomeApiTest {
 			.andExpect(jsonPath("$.errors[1].field").value("monthlyRentInr"));
 	}
 
+	/** #53 click-test bugs 1 and 2: a one-letter wing or tower saves, and the new names show at once, tagged pending. */
+	@Test
+	void oneLetterTowerAndWingSaveAndShowAtOnceTaggedPending() throws Exception {
+		User tenant = tenant("Wing Tenant");
+		String home = """
+			{"city": "%s", "pincode": "300201", "unitLabel": "1204", "propertyType": "APARTMENT",
+			 "location": {"areaId": "%s", "newSociety": {"name": "Aparna Lake View", "kind": "APARTMENT_COMPLEX"},
+			 "newTower": {"name": "4", "kind": "TOWER"}, "newWing": {"name": "B"}}}""".formatted(CITY,
+			area.getPublicId());
+		JsonNode property = added(tenant, rentBody(home, TODAY.minusMonths(8))).get("property");
+		assertThat(property.at("/location/tower/name").asString()).isEqualTo("4");
+		assertThat(property.at("/location/wing/name").asString()).isEqualTo("B");
+		assertThat(property.at("/location/wing/status").asString()).isEqualTo("PENDING");
+
+		// Open by default (R2 / R8): anonymous search lists it at once, with the pending tag.
+		mvc.perform(get("/properties").param("city", CITY))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].locationPending".formatted(property.get("id").asString()))
+				.value(true));
+
+		add(tenant, rentBody("""
+			{"city": "%s", "pincode": "300201", "unitLabel": "1205", "propertyType": "APARTMENT",
+			 "location": {"areaId": "%s", "societyId": "%s", "towerId": "%s", "newWing": {"name": "-"}}}"""
+			.formatted(CITY, area.getPublicId(), society.getPublicId(), tower.getPublicId()), TODAY.minusMonths(8)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("location.newWing.name"));
+	}
+
 }

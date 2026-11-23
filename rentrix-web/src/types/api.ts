@@ -149,6 +149,8 @@ export interface PropertyCard {
   demo: boolean
   rating: RatingSummary
   landlordName: string
+  /** The area, society, tower or wing is a new name the team has not reviewed yet; shown tagged. */
+  locationPending?: boolean
 }
 
 /**

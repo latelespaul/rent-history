@@ -87,7 +87,7 @@ cd rentrix-server
 SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true ./mvnw spring-boot:run
 ```
 
-The demo seed (empty database only) adds an area for every demo locality and one gated society per city with 2 towers of 2 wings: **Demo Greens** (Koramangala, Bangalore) and **Demo Meadows** (Baner, Pune). Demo Residency A is in Demo Greens Tower 1 · Wing A, Demo Towers E in Demo Meadows Tower 2 · Wing B; the other demo homes are standalone. All of it is fake (`is_demo`).
+The demo seed (empty database only) adds an area for every demo locality and one gated society per city with 2 towers of 2 wings: **Demo Greens** (Koramangala, Bangalore) and **Demo Meadows** (Baner, Pune). Demo Residency A is in Demo Greens Tower 1 · Wing A, Demo Towers E in Demo Meadows Tower 2 · Wing B; the other demo homes are standalone. All of it is fake (`is_demo`). Hyderabad, Gurugram, Delhi, Noida and Mumbai get 10–12 real areas each from a Flyway migration in every profile, demo data or not.
 
 ```sh
 API=http://localhost:8080/api/v1

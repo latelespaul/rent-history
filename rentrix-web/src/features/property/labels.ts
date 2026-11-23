@@ -80,3 +80,34 @@ export function monthLabel(value: string | null | undefined): string | null {
   const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1))
   return date.toLocaleDateString("en-IN", { month: "short", year: "numeric", timeZone: "UTC" })
 }
+
+/**
+ * "Tower 4 · Wing B · Flat 1204": the home's place inside its society. A bare tower or wing name
+ * ("4", "B") gets its word; one that already says it ("Tower 4", "Wing A", "Block C") is kept.
+ * Empty when the home has no tower, wing or visible flat number.
+ */
+export function unitLine(
+  location: { tower?: { name: string }; wing?: { name: string } } | undefined,
+  unitLabel?: string | null,
+): string {
+  const tower = location?.tower?.name.trim()
+  const wing = location?.wing?.name.trim()
+  const unit = unitLabel?.trim()
+  return [
+    tower && (/\b(tower|block)\b/i.test(tower) ? tower : `Tower ${tower}`),
+    wing && (/\bwing\b/i.test(wing) ? wing : `Wing ${wing}`),
+    unit && (/\b(flat|house|villa|unit)\b/i.test(unit) ? unit : `Flat ${unit}`),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+/** True when any level of the home's place is a new name the team has not reviewed yet. */
+export function locationPending(
+  location: Partial<Record<"area" | "society" | "tower" | "wing", { status: string }>> | undefined,
+): boolean {
+  if (!location) return false
+  return (["area", "society", "tower", "wing"] as const).some(
+    (level) => location[level]?.status === "PENDING",
+  )
+}

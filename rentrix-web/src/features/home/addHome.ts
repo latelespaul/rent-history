@@ -93,6 +93,7 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
       if (!draft.otherState.trim()) errors.otherState = "Type the state."
       if (!draft.locality.trim()) errors.locality = "Type the area or locality."
     } else if (!hasArea(draft.location)) errors.area = "Pick or type the area."
+    else Object.assign(errors, checkNewNames(draft))
     if (!PIN.test(draft.pincode.trim())) errors.pincode = "Enter the 6-digit PIN code."
     if (!draft.unitLabel.trim()) errors.unitLabel = "Enter the flat or house number."
   }
@@ -117,6 +118,60 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
   if (step === "owner" && draft.ownerEmail.trim() && !EMAIL.test(draft.ownerEmail.trim()))
     errors.ownerEmail = "Enter a valid email, or leave it empty."
   return errors
+}
+
+/** Rules of the API's `LocationService`: societies 2+ characters, towers and wings 1+ with a letter or digit. */
+const LABEL = /[\p{L}\p{N}]/u
+
+/** Errors on the society, tower and wing names typed in step 1, keyed by level. */
+function checkNewNames(draft: HomeDraft): HomeErrors {
+  const errors: HomeErrors = {}
+  const { society, tower, wing } = draft.location
+  if (society.kind === "new" && society.name.trim().length < 2)
+    errors.society = "Type the society name (2 or more characters)."
+  if (tower.kind === "new" && !LABEL.test(tower.name))
+    errors.tower = "Type the tower or block name, e.g. 4 or C."
+  if (wing.kind === "new" && !LABEL.test(wing.name))
+    errors.wing = "Type the wing name, e.g. A or B."
+  return errors
+}
+
+/**
+ * Where an API field error belongs: its step and the form field that shows it. The API names
+ * fields by request path (`home.pincode`, `location.newWing.name`, `owner.email`); every one of
+ * them maps here, so no field error is left as a bare "invalid fields" message.
+ */
+export function fieldPlace(field: string): { step: HomeStep; key: string } {
+  const path = field.replace(/^home\./, "")
+  const location = /^location\.(?:new)?(area|society|tower|wing)/i.exec(path)
+  if (location) return { step: "address", key: location[1].toLowerCase() }
+  if (path === "relation") return { step: "relation", key: "relation" }
+  if (path === "startDate" || path === "endDate") return { step: "tenancy", key: path }
+  if (path === "monthlyRentInr") return { step: "tenancy", key: "rent" }
+  if (path === "depositInr") return { step: "tenancy", key: "deposit" }
+  const owner = /^owner\.(name|email|phone)$/.exec(path)
+  if (owner) return { step: "owner", key: `owner${owner[1][0].toUpperCase()}${owner[1].slice(1)}` }
+  if (path.startsWith("newCity"))
+    return { step: "address", key: path === "newCity.state" ? "otherState" : "otherCity" }
+  const address: Record<string, string> = { home: "city", location: "area", propertyType: "type" }
+  return { step: "address", key: address[path] ?? path }
+}
+
+/** The API's field errors as form errors, with the first step that holds one; null when none. */
+export function placeFieldErrors(
+  fieldErrors: Array<{ field: string; message: string }>,
+  steps: HomeStep[],
+): { step: number; errors: HomeErrors } | null {
+  if (fieldErrors.length === 0) return null
+  const errors: HomeErrors = {}
+  let step = steps.length - 1
+  for (const { field, message } of fieldErrors) {
+    const place = fieldPlace(field)
+    errors[place.key] ??= message
+    const index = steps.indexOf(place.step)
+    if (index >= 0 && index < step) step = index
+  }
+  return { step, errors }
 }
 
 /** The "Is it this one?" query, or null while the address is not complete enough to search. */

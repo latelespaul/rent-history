@@ -192,8 +192,8 @@ class DemoSeederTest {
 				assertThat(its).allSatisfy(t -> assertThat(t.getWings()).extracting(SocietyWing::getName)
 					.containsExactly("Wing A", "Wing B"));
 			}
-			List<Area> seededAreas = areas.findAll();
-			assertThat(seededAreas).hasSize(9).allMatch(Area::isDemo)
+			List<Area> seededAreas = areas.findAll().stream().filter(Area::isDemo).toList();
+			assertThat(seededAreas).hasSize(9)
 				.allMatch(a -> a.getStatus() == LocationStatus.ACTIVE && !a.pincodeList().isEmpty())
 				.allMatch(a -> a.pincodeList().stream()
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));

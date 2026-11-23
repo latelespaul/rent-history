@@ -18,6 +18,8 @@ public interface AreaRepository extends JpaRepository<Area, Long>, JpaSpecificat
 	
 	Optional<Area> findByCityCodeAndNameKey(String cityCode, String nameKey);
 	
+	boolean existsByDemoTrue();
+	
 	/** Whether the landlord with {@code landlord} public id has a non-deleted home on this area. */
 	@Query("select count(p) > 0 from Property p where p.area.id = :id and p.landlord.publicId = :landlord"
 		+ " and p.deletedAt is null")

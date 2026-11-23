@@ -17,6 +17,7 @@ import {
   EMPTY_HOME,
   matchQuery,
   OTHER_CITY,
+  placeFieldErrors,
   STEP_TITLES,
   stepsFor,
   toAddHomeBody,
@@ -25,7 +26,7 @@ import {
 } from "@/features/home/addHome"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
 import { EMPTY_DRAFT } from "@/features/landlord/locationDraft"
-import { placeLine, propertyTitle, rupees, typeLabel } from "@/features/property/labels"
+import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { dateLabel, today } from "@/features/tenancy/labels"
 import { reviewWindow } from "@/features/tenancy/reviewWindow"
@@ -127,8 +128,12 @@ function Added({ result }: { result: AddHomeResult }) {
       <h1 className="mt-3 font-display text-2xl font-semibold text-ink-900">Your home is added</h1>
       <p className="mt-1 text-ink-700">
         <b>{propertyTitle(property)}</b>
-        {property.unitLabel ? ` · ${property.unitLabel}` : ""}
       </p>
+      {unitLine(property.location, property.unitLabel) && (
+        <p data-testid="added-unit-line" className="text-sm font-medium text-ink-700">
+          {unitLine(property.location, property.unitLabel)}
+        </p>
+      )}
       <p className="text-sm text-ink-500">{placeLine(property)}</p>
       <p className="mt-3 flex flex-wrap justify-center gap-1.5">
         {property.addedByTenant && (
@@ -215,6 +220,16 @@ export default function AddHomePage() {
       ])
       window.scrollTo?.({ top: 0 })
     },
+    // A field error goes next to its field, on its step (#53 click-test bug 1), never as a bare
+    // "invalid fields" message.
+    onError: (failure) => {
+      if (!isApiError(failure)) return
+      const placed = placeFieldErrors(failure.fieldErrors, stepsFor(draft))
+      if (!placed) return
+      setErrors(placed.errors)
+      setStepIndex(placed.step)
+      window.scrollTo?.({ top: 0 })
+    },
   })
 
   if (result) {
@@ -231,12 +246,13 @@ export default function AddHomePage() {
   const index = Math.min(stepIndex, steps.length - 1)
   const step = steps[index]
   const last = index === steps.length - 1
-  const apiError = (field: string) =>
-    isApiError(save.error) ? save.error.fieldError(field) : undefined
-  const error = (field: string) => errors[field] ?? apiError(field)
+  const error = (field: string) => errors[field]
+  // Field errors are shown by their fields (see `onError`); other failures as a notice.
+  const fieldFailure = isApiError(save.error) && save.error.fieldErrors.length > 0
 
   const go = (to: number) => {
     setErrors({})
+    if (fieldFailure) save.reset()
     setStepIndex(to)
     window.scrollTo?.({ top: 0 })
   }
@@ -318,7 +334,7 @@ export default function AddHomePage() {
           )}
           {step === "address" && !picked && (
             <>
-              <Field id="ah-city" label="City" error={error("city") ?? apiError("home.city")}>
+              <Field id="ah-city" label="City" error={error("city")}>
                 <select
                   id="ah-city"
                   className={selectClass}
@@ -362,7 +378,7 @@ export default function AddHomePage() {
                     id="ah-locality"
                     label="Area or locality"
                     hint="A new city is checked by the team before it is listed. Your home is saved now."
-                    error={error("locality") ?? apiError("home.locality")}
+                    error={error("locality")}
                   >
                     <Input
                       id="ah-locality"
@@ -379,7 +395,13 @@ export default function AddHomePage() {
                   city={draft.city}
                   value={draft.location}
                   onChange={(location) => set("location", location)}
-                  error={error("area") ?? apiError("home.location.areaId")}
+                  error={error("area")}
+                  hint="Pick the area. If it or your society is missing, add it: new names show at once, tagged “Pending review”, and the team reviews them."
+                  levelErrors={{
+                    society: error("society"),
+                    tower: error("tower"),
+                    wing: error("wing"),
+                  }}
                 />
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -393,11 +415,7 @@ export default function AddHomePage() {
                     className="h-11"
                   />
                 </Field>
-                <Field
-                  id="ah-pincode"
-                  label="PIN code"
-                  error={error("pincode") ?? apiError("home.pincode")}
-                >
+                <Field id="ah-pincode" label="PIN code" error={error("pincode")}>
                   <Input
                     id="ah-pincode"
                     inputMode="numeric"
@@ -524,11 +542,7 @@ export default function AddHomePage() {
                 </Field>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field
-                  id="ah-rent"
-                  label="Monthly rent (₹)"
-                  error={error("rent") ?? apiError("monthlyRentInr")}
-                >
+                <Field id="ah-rent" label="Monthly rent (₹)" error={error("rent")}>
                   <Input
                     id="ah-rent"
                     inputMode="numeric"
@@ -557,7 +571,11 @@ export default function AddHomePage() {
                 Private: only you and the {BRAND.name} team see this. It lets the owner claim the
                 home later. We do not contact them yet.
               </p>
-              <Field id="ah-owner-name" label={<>Owner&rsquo;s name {optional}</>}>
+              <Field
+                id="ah-owner-name"
+                label={<>Owner&rsquo;s name {optional}</>}
+                error={error("ownerName")}
+              >
                 <Input
                   id="ah-owner-name"
                   value={draft.ownerName}
@@ -569,7 +587,7 @@ export default function AddHomePage() {
               <Field
                 id="ah-owner-email"
                 label={<>Owner&rsquo;s email {optional}</>}
-                error={error("ownerEmail") ?? apiError("owner.email")}
+                error={error("ownerEmail")}
               >
                 <Input
                   id="ah-owner-email"
@@ -579,7 +597,11 @@ export default function AddHomePage() {
                   className="h-11"
                 />
               </Field>
-              <Field id="ah-owner-phone" label={<>Owner&rsquo;s phone {optional}</>}>
+              <Field
+                id="ah-owner-phone"
+                label={<>Owner&rsquo;s phone {optional}</>}
+                error={error("ownerPhone")}
+              >
                 <Input
                   id="ah-owner-phone"
                   type="tel"
@@ -592,7 +614,13 @@ export default function AddHomePage() {
             </>
           )}
 
-          <ActionError error={save.error} startDate={draft.startDate} />
+          {fieldFailure ? (
+            <p className="text-sm text-danger-600" data-testid="ah-fix-fields">
+              Check the field marked in red, then save again.
+            </p>
+          ) : (
+            <ActionError error={save.error} startDate={draft.startDate} />
+          )}
 
           {!(step === "address" && matches && matches.length > 0) && (
             <div className="flex gap-2 pt-1">

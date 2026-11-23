@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 import {
   checkStep,
   EMPTY_HOME,
+  fieldPlace,
   matchQuery,
   OTHER_CITY,
+  placeFieldErrors,
   stepsFor,
   toAddHomeBody,
   type HomeDraft,
@@ -34,6 +36,45 @@ describe("add your home form (D-139)", () => {
     expect(checkStep("address", address, TODAY)).toEqual({})
     // A home picked from "Is it this one?" needs no address.
     expect(checkStep("address", { ...EMPTY_HOME, propertyId: "p1" }, TODAY)).toEqual({})
+  })
+
+  it("takes a one-letter tower or wing, and stops on step 1 for an empty one (#53 bug 1)", () => {
+    const inTower = (tower: string, wing: string): HomeDraft => ({
+      ...address,
+      location: {
+        ...address.location,
+        tower: { kind: "new", name: tower, extra: { towerKind: "TOWER" } },
+        wing: { kind: "new", name: wing, extra: {} },
+      },
+    })
+    expect(checkStep("address", inTower("4", "B"), TODAY)).toEqual({})
+    expect(checkStep("address", inTower(" ", "-"), TODAY)).toEqual({
+      tower: "Type the tower or block name, e.g. 4 or C.",
+      wing: "Type the wing name, e.g. A or B.",
+    })
+  })
+
+  it("puts every API field error by its field on its step (#53 bug 1)", () => {
+    expect(fieldPlace("location.newWing.name")).toEqual({ step: "address", key: "wing" })
+    expect(fieldPlace("home.location.areaId")).toEqual({ step: "address", key: "area" })
+    expect(fieldPlace("location.newSociety.kind")).toEqual({ step: "address", key: "society" })
+    expect(fieldPlace("home.pincode")).toEqual({ step: "address", key: "pincode" })
+    expect(fieldPlace("monthlyRentInr")).toEqual({ step: "tenancy", key: "rent" })
+    expect(fieldPlace("owner.email")).toEqual({ step: "owner", key: "ownerEmail" })
+    const steps = stepsFor({ ...address, relation: "RENT" })
+    expect(
+      placeFieldErrors(
+        [
+          { field: "owner.email", message: "Not an email." },
+          { field: "location.newWing.name", message: "Must be 1 to 60 characters." },
+        ],
+        steps,
+      ),
+    ).toEqual({
+      step: 0,
+      errors: { ownerEmail: "Not an email.", wing: "Must be 1 to 60 characters." },
+    })
+    expect(placeFieldErrors([], steps)).toBeNull()
   })
 
   it("checks the tenancy: dates in order, not in the future, a rent in rupees", () => {

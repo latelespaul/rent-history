@@ -12,7 +12,14 @@ import {
 } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { initials } from "@/components/layout/nav"
-import { placeLine, propertyTitle, reviewCount } from "@/features/property/labels"
+import {
+  locationPending,
+  placeLine,
+  propertyTitle,
+  reviewCount,
+  unitLine,
+} from "@/features/property/labels"
+import { LocationPendingBadge } from "@/features/property/LocationPendingBadge"
 import { PersonTick } from "@/features/property/PersonTick"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
 import { PropertyReviews } from "@/features/property/PropertyReviews"
@@ -26,6 +33,7 @@ import { BRAND } from "@/lib/brand"
 
 function Breadcrumb({ property }: { property: PropertyDetail }) {
   const city = encodeURIComponent(property.city.code)
+  const areaPending = property.location?.area.status === "PENDING"
   return (
     <nav aria-label="Breadcrumb" className="text-sm text-ink-700">
       <ol className="flex flex-wrap items-center gap-1.5">
@@ -42,6 +50,7 @@ function Breadcrumb({ property }: { property: PropertyDetail }) {
           >
             {property.locality}
           </Link>
+          {areaPending && <span className="ml-1 text-xs text-warn-600">(pending review)</span>}
         </li>
         <ChevronRightIcon size={14} className="text-ink-300" />
         <li aria-current="page" className="text-ink-500">
@@ -219,11 +228,17 @@ export default function PropertyPage() {
           {property.addedByTenant && (
             <Badge data-testid="added-by-tenant">Added by a tenant · not verified yet</Badge>
           )}
+          {locationPending(property.location) && <LocationPendingBadge />}
         </h1>
         <p className="inline-flex items-center gap-1.5 text-ink-700">
           <MapPinIcon size={16} className="text-ink-500" />
           {[property.street, placeLine(property)].filter(Boolean).join(", ")}
         </p>
+        {unitLine(property.location, property.unitLabel) && (
+          <p data-testid="unit-line" className="text-sm font-medium text-ink-700">
+            {unitLine(property.location, property.unitLabel)}
+          </p>
+        )}
         <PropertyActions property={property} />
       </div>
 

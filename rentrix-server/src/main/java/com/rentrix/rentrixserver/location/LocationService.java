@@ -247,10 +247,10 @@ public class LocationService {
 			optional(in.newSociety().street(), "newSociety.street", MAX_STREET, errors);
 		}
 		if (in.newTower() != null) {
-			name(in.newTower().name(), "newTower.name", MAX_TOWER_NAME, errors);
+			label(in.newTower().name(), "newTower.name", errors);
 		}
 		if (in.newWing() != null) {
-			name(in.newWing().name(), "newWing.name", MAX_TOWER_NAME, errors);
+			label(in.newWing().name(), "newWing.name", errors);
 		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
@@ -572,6 +572,19 @@ public class LocationService {
 		String cleaned = LocationNames.clean(value);
 		if (cleaned == null || cleaned.length() < 2 || cleaned.length() > max) {
 			errors.add(field(LOCATION + fieldName, "size", "Must be 2 to " + max + " characters."));
+		}
+	}
+	
+	/**
+	 * A tower or wing name: 1 to {@value #MAX_TOWER_NAME} characters with at least one letter or digit, so the
+	 * usual one-letter "A" / "B" wing and "Tower 1" both pass (captain 2026-11-23, #53 click-test).
+	 */
+	private static void label(String value, String fieldName, List<ApiProblem.FieldError> errors) {
+		String cleaned = LocationNames.clean(value);
+		if (cleaned == null || cleaned.isEmpty() || cleaned.length() > MAX_TOWER_NAME
+			|| cleaned.codePoints().noneMatch(Character::isLetterOrDigit)) {
+			errors.add(field(LOCATION + fieldName, "size",
+				"Must be 1 to " + MAX_TOWER_NAME + " characters, with a letter or a digit."));
 		}
 	}
 	
