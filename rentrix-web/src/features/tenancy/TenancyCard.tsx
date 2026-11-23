@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { BuildingIcon, CalendarIcon, KeyIcon, LockIcon, RupeeIcon } from "@/components/ui/icons.gen"
+import {
+  BuildingIcon,
+  CalendarIcon,
+  KeyIcon,
+  LockIcon,
+  PencilIcon,
+  RupeeIcon,
+} from "@/components/ui/icons.gen"
 import { rupees } from "@/features/property/labels"
 import type { Tenancy } from "@/types/api"
 import { counterparty, dateLabel, rentLine, TENANCY_STATUS, tenancyHome } from "./labels"
@@ -32,6 +39,25 @@ export function TenancyFacts({ tenancy }: { tenancy: Tenancy }) {
         </span>
       )}
     </div>
+  )
+}
+
+/** "Edit" for the party who added the tenancy (D-156); free until the team verifies it. */
+export function EditTenancyButton({
+  tenancy,
+  size = "sm",
+}: {
+  tenancy: Tenancy
+  size?: "sm" | "default"
+}) {
+  if (!tenancy.actions.edit) return null
+  return (
+    <Button asChild variant="outline" size={size} data-testid="tenancy-edit">
+      <Link to={`/tenancies/${tenancy.id}/edit`}>
+        <PencilIcon />
+        Edit
+      </Link>
+    </Button>
   )
 }
 
@@ -68,9 +94,12 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
           </p>
           <TenancyFacts tenancy={tenancy} />
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to={`/tenancies/${tenancy.id}`}>Open</Link>
-        </Button>
+        <div className="flex gap-2">
+          <EditTenancyButton tenancy={tenancy} />
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/tenancies/${tenancy.id}`}>Open</Link>
+          </Button>
+        </div>
       </div>
       <TenancyActions tenancy={tenancy} compact />
     </article>

@@ -1,7 +1,9 @@
 import type {
   AddHomeInput,
   AddHomeResult,
+  HomeUpdate,
   PropertyCard,
+  PropertyDetail,
   PropertyReview,
   ReviewInput,
 } from "@/types/api"
@@ -43,4 +45,14 @@ export function addHome(body: AddHomeInput): Promise<AddHomeResult> {
 /** `POST /tenancies/{id}/reviews` (D-27): published at once, without the green tick (D-132). */
 export function writeReview(tenancyId: string, body: ReviewInput): Promise<PropertyReview> {
   return api.post<PropertyReview>(`/tenancies/${encodeURIComponent(tenancyId)}/reviews`, body)
+}
+
+/** `PATCH /me/homes/{id}`: the person who added the home corrects its address or size (D-156). */
+export function updateHome(id: string, body: HomeUpdate): Promise<PropertyDetail> {
+  return api.patch<PropertyDetail>(`/me/homes/${encodeURIComponent(id)}`, body)
+}
+
+/** `DELETE /me/homes/{id}`: the person who added the home removes it with their own records (D-156). */
+export function deleteHome(id: string): Promise<void> {
+  return api.delete<void>(`/me/homes/${encodeURIComponent(id)}`)
 }

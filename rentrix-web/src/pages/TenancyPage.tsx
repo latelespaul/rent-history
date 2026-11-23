@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom"
 import { isApiError } from "@/api/errors"
 import { Container } from "@/components/layout/Container"
-import { Badge } from "@/components/ui/badge"
+import { Badge, VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LockIcon, StarIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
@@ -9,7 +9,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import { rupees } from "@/features/property/labels"
 import { RentRecords } from "@/features/tenancy/RentRecords"
 import { TenancyActions } from "@/features/tenancy/TenancyActions"
-import { TenancyFacts } from "@/features/tenancy/TenancyCard"
+import { EditTenancyButton, TenancyFacts } from "@/features/tenancy/TenancyCard"
 import {
   counterparty,
   dateLabel,
@@ -53,6 +53,14 @@ function StatusNote({ tenancy }: { tenancy: Tenancy }) {
     )
   }
   return null
+}
+
+/** The team's green tick on the tenancy (D-134); an edit takes it away until checked again (D-156). */
+function VerificationNote({ tenancy }: { tenancy: Tenancy }) {
+  if (tenancy.verificationStatus === "VERIFIED")
+    return <VerifiedBadge data-testid="tenancy-verified">Verified by {BRAND.name}</VerifiedBadge>
+  if (tenancy.status !== "ACTIVE" && tenancy.status !== "ENDED") return null
+  return <Badge data-testid="tenancy-not-verified">Not verified yet</Badge>
 }
 
 /** "Write a review" on the tenant's current or ended tenancy, while the D-39 window is open. */
@@ -187,8 +195,12 @@ export default function TenancyPage() {
             <LockIcon size={12} />
             Exact dates, deposit and flat number are private to the two of you.
           </p>
+          <VerificationNote tenancy={tenancy} />
           <StatusNote tenancy={tenancy} />
-          <ReviewCta tenancy={tenancy} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ReviewCta tenancy={tenancy} />
+            <EditTenancyButton tenancy={tenancy} size="default" />
+          </div>
           <TenancyActions tenancy={tenancy} />
         </section>
 

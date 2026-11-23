@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import {
   adminKeys,
   decideQueueItem,
+  fetchEditHistory,
   fetchQueue,
   type QueueAction,
   type QueueItem,
@@ -32,6 +33,57 @@ const REFRESH_MS = 30_000
 
 type Mode = { action: Exclude<QueueAction, "APPROVE"> } | null
 type DecisionBody = { code: string; note?: string; noteFallback?: string }
+
+const HISTORY_TYPES = ["TENANCY", "PROPERTY", "REVIEW"] as const
+type HistoryType = (typeof HISTORY_TYPES)[number]
+
+/**
+ * What the owner changed on this item, field by field (D-156), for admins only: shown on a card
+ * flagged `EDITED`, loaded when opened.
+ */
+function EditHistory({ type, id, now }: { type: HistoryType; id: string; now: number }) {
+  const [open, setOpen] = useState(false)
+  const history = useQuery({
+    queryKey: adminKeys.editHistory(type, id),
+    queryFn: ({ signal }) => fetchEditHistory(type, id, signal),
+    enabled: open,
+  })
+  return (
+    <div className="mt-3">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-expanded={open}
+        data-testid="edit-history-toggle"
+        onClick={() => setOpen(!open)}
+      >
+        {open ? "Hide edit history" : "Edit history"}
+      </Button>
+      {open && history.isPending && <p className="text-sm text-ink-500">Loading…</p>}
+      {open && history.isError && (
+        <p className="text-sm text-danger-600">{errorMessage(history.error)}</p>
+      )}
+      {open && history.data && (
+        <ul className="mt-2 space-y-1.5 text-sm text-ink-700" data-testid="edit-history">
+          {history.data.map((row, i) => (
+            <li key={`${row.editRef}-${i}`} className="break-words">
+              <span className="font-medium text-ink-900">{row.field}</span>{" "}
+              {row.change === "DELETED"
+                ? `deleted (${row.before ?? ""})`
+                : `${row.before ?? "empty"} → ${row.after ?? "empty"}`}
+              <span className="text-xs text-ink-500">
+                {" "}
+                · {row.editorName}, {ago(row.at, now)}
+                {row.wasVerified && " · was verified"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 /**
  * One card (D-136): the facts to decide on, and the answer bar at the bottom where a thumb reaches.
@@ -83,6 +135,10 @@ function QueueCard({
             ))}
           </ul>
         )}
+        {item.flags.includes("EDITED") &&
+          (HISTORY_TYPES as readonly string[]).includes(item.type) && (
+            <EditHistory type={item.type as HistoryType} id={item.id} now={now} />
+          )}
       </div>
 
       {mode ? (

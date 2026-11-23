@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
 import AddHomePage from "@/pages/AddHomePage"
+import EditHomePage from "@/pages/EditHomePage"
+import EditTenancyPage from "@/pages/EditTenancyPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
 import LegalPage from "@/pages/LegalPage"
@@ -45,8 +47,10 @@ export const routes = [
           { path: "/settings", element: <SettingsPage /> },
           { path: "/me/tenancies", element: <MyTenanciesPage /> },
           { path: "/homes/new", element: <AddHomePage /> },
+          { path: "/homes/:id/edit", element: <EditHomePage /> },
           { path: "/tenancies/new", element: <TenancyRequestPage /> },
           { path: "/tenancies/:id/review", element: <WriteReviewPage /> },
+          { path: "/tenancies/:id/edit", element: <EditTenancyPage /> },
           { path: "/tenancies/:id", element: <TenancyPage /> },
           { path: "/tenancy-invite", element: <TenancyInvitePage /> },
           { path: "/me/*", element: <NotFoundPage /> },

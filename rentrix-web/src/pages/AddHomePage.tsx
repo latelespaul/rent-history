@@ -25,18 +25,12 @@ import {
   type HomeDraft,
   type HomeErrors,
 } from "@/features/home/addHome"
+import { HomeSizeChips } from "@/features/home/HomeSizeChips"
 import { NextSteps } from "@/features/home/NextSteps"
 import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
 import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
-import {
-  HOME_SIZES,
-  placeLine,
-  propertyTitle,
-  rupees,
-  typeLabel,
-  unitLine,
-} from "@/features/property/labels"
+import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today } from "@/features/tenancy/labels"
 import { useRefreshTenancyData } from "@/features/tenancy/useTenancies"
@@ -633,52 +627,16 @@ export default function AddHomePage() {
                   ))}
                 </select>
               </Field>
-              <fieldset
-                id="ah-home-size"
-                tabIndex={-1}
-                className="space-y-2"
-                data-testid="ah-home-size"
-              >
-                <legend className="text-sm font-medium text-ink-900">Home size {optional}</legend>
-                <div className="flex flex-wrap gap-2">
-                  {HOME_SIZES.map((s) => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      aria-pressed={draft.homeSize === s.value}
-                      onClick={() => set("homeSize", draft.homeSize === s.value ? "" : s.value)}
-                      className={
-                        draft.homeSize === s.value
-                          ? "h-9 rounded-full border border-teal-600 bg-teal-50 px-3.5 text-sm font-semibold text-teal-800"
-                          : "h-9 rounded-full border border-line-strong bg-surface px-3.5 text-sm text-ink-700 hover:border-teal-600"
-                      }
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-                {draft.homeSize === "OTHER" && (
-                  <Field
-                    id="ah-size-other"
-                    label="Size in your words"
-                    error={error("homeSizeOther")}
-                  >
-                    <Input
-                      id="ah-size-other"
-                      value={draft.homeSizeOther}
-                      maxLength={40}
-                      placeholder="e.g. 2.5 BHK"
-                      onChange={(e) => set("homeSizeOther", e.target.value)}
-                      className="h-11"
-                    />
-                  </Field>
-                )}
-                {(error("homeSize") ?? error("bedrooms")) && (
-                  <p className="text-xs text-danger-600" role="alert">
-                    {error("homeSize") ?? error("bedrooms")}
-                  </p>
-                )}
-              </fieldset>
+              <HomeSizeChips
+                idPrefix="ah"
+                legend={<>Home size {optional}</>}
+                value={draft.homeSize}
+                other={draft.homeSizeOther}
+                onChange={(size) => set("homeSize", size)}
+                onOtherChange={(text) => set("homeSizeOther", text)}
+                otherError={error("homeSizeOther")}
+                error={error("homeSize") ?? error("bedrooms")}
+              />
               {matches && matches.length > 0 && (
                 <Matches
                   matches={matches}

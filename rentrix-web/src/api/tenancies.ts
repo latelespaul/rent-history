@@ -6,6 +6,7 @@ import type {
   TenancyInput,
   TenancyParty,
   TenancyStatus,
+  TenancyUpdate,
 } from "@/types/api"
 import { api } from "./client"
 
@@ -51,6 +52,16 @@ export function fetchTenancy(id: string, signal?: AbortSignal): Promise<Tenancy>
 /** `POST /tenancies` (idempotent): a landlord invite, or a tenant's request to the landlord. */
 export function createTenancy(body: TenancyInput, idempotencyKey: string): Promise<Tenancy> {
   return api.post<Tenancy>("/tenancies", body, { idempotencyKey })
+}
+
+/** `PATCH /tenancies/{id}`: the party who added it corrects its period, rent or deposit (D-156). */
+export function updateTenancy(id: string, body: TenancyUpdate): Promise<Tenancy> {
+  return api.patch<Tenancy>(path(id), body)
+}
+
+/** `DELETE /tenancies/{id}`: the party who added it removes it (D-156). */
+export function deleteTenancy(id: string): Promise<void> {
+  return api.delete<void>(path(id))
 }
 
 /** `POST /tenancies/{id}/confirm`: the counterparty, approval-gated (D-35). */
@@ -99,4 +110,14 @@ export function confirmRentRecord(id: string): Promise<RentRecord> {
 /** `POST /rent-records/{id}/dispute`. */
 export function disputeRentRecord(id: string): Promise<RentRecord> {
   return api.post<RentRecord>(`/rent-records/${encodeURIComponent(id)}/dispute`)
+}
+
+/** `PATCH /rent-records/{id}`: the party who added it corrects it (D-156). */
+export function updateRentRecord(id: string, body: RentRecordInput): Promise<RentRecord> {
+  return api.patch<RentRecord>(`/rent-records/${encodeURIComponent(id)}`, body)
+}
+
+/** `DELETE /rent-records/{id}`: the party who added it removes it (D-156). */
+export function deleteRentRecord(id: string): Promise<void> {
+  return api.delete<void>(`/rent-records/${encodeURIComponent(id)}`)
 }
