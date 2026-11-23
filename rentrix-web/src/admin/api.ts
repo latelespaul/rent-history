@@ -26,6 +26,7 @@ export const adminKeys = {
   devUsers: ["admin", "dev-users"] as const,
   smsRelay: ["admin", "sms-relay"] as const,
   queue: ["admin", "queue"] as const,
+  editHistory: (type: string, id: string) => ["admin", "edit-history", type, id] as const,
 }
 
 /** `GET /auth/config`: the Google client id and whether dev login exists. */
@@ -154,4 +155,27 @@ export function decideQueueItem(
     return adminApi.post<QueueDecided>(path, { code, note: note ?? noteFallback ?? code })
   }
   return adminApi.post<QueueDecided>(path, { code, note })
+}
+
+/** One field an owner changed on their own entry (D-156); `editRef` groups the rows of one save. */
+export interface EditHistoryRow {
+  editRef: string
+  at: string
+  editorId: string
+  editorName: string
+  change: "EDITED" | "DELETED"
+  field: string
+  before: string | null
+  after: string | null
+  /** The item had the green tick then; the change took it away. */
+  wasVerified: boolean
+}
+
+/** `GET /admin/edit-history?type=&id=`: what the owner changed on one item, newest first. */
+export function fetchEditHistory(
+  type: "TENANCY" | "PROPERTY" | "REVIEW",
+  id: string,
+  signal?: AbortSignal,
+): Promise<EditHistoryRow[]> {
+  return adminApi.get<EditHistoryRow[]>("/admin/edit-history", { query: { type, id }, signal })
 }

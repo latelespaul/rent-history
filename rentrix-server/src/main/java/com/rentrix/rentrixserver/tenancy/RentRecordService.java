@@ -2,6 +2,8 @@ package com.rentrix.rentrixserver.tenancy;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.property.FieldVisibility;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
@@ -10,6 +12,7 @@ import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateRentRecordRequest;
 import com.rentrix.rentrixserver.tenancy.dto.RentHistory;
 import com.rentrix.rentrixserver.tenancy.dto.RentRecordView;
+import com.rentrix.rentrixserver.tenancy.dto.UpdateRentRecordRequest;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
@@ -27,12 +30,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
  * Rent records (§5.5, D-25) and the public rent history (D-26). Either party adds a rent change to a confirmed
  * tenancy; it is {@code PROPOSED} until the other party confirms or disputes it. Adding, confirming and disputing
- * need an approved account for the acting side (D-91); an admin may confirm or dispute without it.
+ * need an approved account for the acting side (D-91); an admin may confirm or dispute without it. The party who added
+ * a record may change or delete it (D-156); that takes the tenancy's green tick away until the team checks it again.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,6 +51,7 @@ public class RentRecordService {
 	private final PropertyRepository properties;
 	private final ApprovalGuard approvals;
 	private final TenancyNotifier notifier;
+	private final EditHistory history;
 
 	/** {@code GET /tenancies/{id}/rent-records}: every record, any state, for parties and admins. */
 	public List<RentRecordView> list(UUID tenancyId, AuthenticatedUser caller) {
@@ -74,13 +80,7 @@ public class RentRecordService {
 		}
 		approvals.require(me, TenancyService.roleOf(side));
 		LocalDate month = request.effectiveFrom().withDayOfMonth(1);
-		LocalDate first = tenancy.getStartDate().withDayOfMonth(1);
-		LocalDate last = tenancy.getEndDate() != null ? tenancy.getEndDate()
-			: tenancyService.today().withDayOfMonth(1).plusMonths(1);
-		if (month.isBefore(first) || month.isAfter(last)) {
-			throw ApiException.validation(List.of(new ApiProblem.FieldError("effectiveFrom", "outside_tenancy",
-				"Pick a month from " + YearMonth.from(first) + " to " + YearMonth.from(last) + ".")));
-		}
+		requireMonth(tenancy, month);
 		if (rentRecords.existsByTenancyIdAndEffectiveFromAndStatusIn(tenancy.getId(), month, LIVE)) {
 			throw ApiException.conflict("rent_record_exists", "There is already a rent record for " + YearMonth.from(month)
 				+ ".");
@@ -95,6 +95,96 @@ public class RentRecordService {
 		RentRecord saved = rentRecords.saveAndFlush(record);
 		notifier.rentRecordToConfirm(saved, side == TenancyParty.LANDLORD ? tenancy.getTenant() : tenancy.getLandlord());
 		return view(saved, me);
+	}
+
+	/**
+	 * {@code PATCH /rent-records/{id}}: the party who added a rent change corrects its month or amounts (D-156), with
+	 * the same month rules as on add. A record the other side had confirmed waits for them again ({@code PROPOSED}).
+	 */
+	@Transactional
+	public RentRecordView update(UUID recordId, UpdateRentRecordRequest request, AuthenticatedUser caller) {
+		User me = tenancyService.currentUser(caller);
+		RentRecord record = own(recordId, me, caller);
+		Tenancy tenancy = record.getTenancy();
+		approvals.require(me, TenancyService.roleOf(TenancyService.sideOf(tenancy, me)));
+		LocalDate month = request.effectiveFrom().withDayOfMonth(1);
+		requireMonth(tenancy, month);
+		boolean taken = rentRecords.findByTenancyIdOrderByEffectiveFromAsc(tenancy.getId()).stream()
+			.anyMatch(r -> r != record && LIVE.contains(r.getStatus()) && r.getEffectiveFrom().equals(month));
+		if (taken) {
+			throw ApiException.conflict("rent_record_exists", "There is already a rent record for " + YearMonth.from(month)
+				+ ".");
+		}
+		String label = "rent from " + YearMonth.from(record.getEffectiveFrom());
+		EditHistory.Changes changes = new EditHistory.Changes()
+			.field(label + ": month", YearMonth.from(record.getEffectiveFrom()), YearMonth.from(month))
+			.field(label + ": monthlyRentInr", record.getMonthlyRentInr(), request.monthlyRentInr())
+			.field(label + ": maintenanceInr", record.getMaintenanceInr(), request.maintenanceInr());
+		if (changes.isEmpty()) {
+			return view(record, me);
+		}
+		record.setEffectiveFrom(month);
+		record.setMonthlyRentInr(request.monthlyRentInr());
+		record.setMaintenanceInr(request.maintenanceInr());
+		if (record.getStatus() == RentRecordStatus.CONFIRMED) {
+			record.setStatus(RentRecordStatus.PROPOSED);
+		}
+		boolean wasVerified = TenancyService.unverify(tenancy);
+		history.edited(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, changes);
+		return view(rentRecords.saveAndFlush(record), me);
+	}
+
+	/** {@code DELETE /rent-records/{id}}: the party who added a rent change removes it (D-156). */
+	@Transactional
+	public void delete(UUID recordId, AuthenticatedUser caller) {
+		User me = tenancyService.currentUser(caller);
+		RentRecord record = own(recordId, me, caller);
+		Tenancy tenancy = record.getTenancy();
+		boolean wasVerified = TenancyService.unverify(tenancy);
+		history.deleted(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified,
+			"rent from " + YearMonth.from(record.getEffectiveFrom()), "rent " + record.getMonthlyRentInr()
+				+ (record.getMaintenanceInr() == null ? "" : ", maintenance " + record.getMaintenanceInr()));
+		rentRecords.delete(record);
+	}
+
+	/**
+	 * A rent change the caller added, on a current or ended tenancy, and not the starting rent: that one is the
+	 * tenancy's own rent and is changed on the tenancy ({@code PATCH /tenancies/{id}}).
+	 */
+	private RentRecord own(UUID recordId, User me, AuthenticatedUser caller) {
+		RentRecord record = rentRecords.findByPublicId(recordId)
+			.filter(r -> TenancyService.sideOf(r.getTenancy(), me) != null || caller.hasRole(Role.ADMIN))
+			.orElseThrow(() -> ApiException.notFound("Rent record"));
+		if (!record.getAddedBy().getId().equals(me.getId())) {
+			throw new ApiException(HttpStatus.FORBIDDEN, "not_creator",
+				"Only the person who added this rent record can change or delete it.");
+		}
+		if (!TenancyService.CONFIRMED.contains(record.getTenancy().getStatus())) {
+			throw ApiException.conflict("tenancy_not_confirmed", "This tenancy is " + record.getTenancy().getStatus() + ".");
+		}
+		if (starting(record)) {
+			throw ApiException.rule("starting_rent",
+				"This is the rent you moved in with. Change it on the tenancy instead.");
+		}
+		return record;
+	}
+
+	/** The tenancy's first rent record, made from its starting rent; a tenancy without a starting rent has none. */
+	static boolean starting(RentRecord record) {
+		Tenancy tenancy = record.getTenancy();
+		return tenancy.getInitialRentInr() != null
+			&& record.getEffectiveFrom().equals(tenancy.getStartDate().withDayOfMonth(1))
+			&& Objects.equals(tenancy.getInitialRentInr(), record.getMonthlyRentInr());
+	}
+
+	private void requireMonth(Tenancy tenancy, LocalDate month) {
+		LocalDate first = tenancy.getStartDate().withDayOfMonth(1);
+		LocalDate last = tenancy.getEndDate() != null ? tenancy.getEndDate()
+			: tenancyService.today().withDayOfMonth(1).plusMonths(1);
+		if (month.isBefore(first) || month.isAfter(last)) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("effectiveFrom", "outside_tenancy",
+				"Pick a month from " + YearMonth.from(first) + " to " + YearMonth.from(last) + ".")));
+		}
 	}
 
 	/** {@code POST /rent-records/{id}/confirm}: the other party (or an admin) agrees; it joins the rent history. */
@@ -216,9 +306,10 @@ public class RentRecordService {
 		boolean addedByMe = record.getAddedBy().getId().equals(me.getId());
 		boolean canRespond = side != null && !addedByMe && record.getStatus() == RentRecordStatus.PROPOSED
 			&& TenancyService.CONFIRMED.contains(tenancy.getStatus());
+		boolean canEdit = addedByMe && TenancyService.CONFIRMED.contains(tenancy.getStatus()) && !starting(record);
 		return new RentRecordView(record.getPublicId(), record.getEffectiveFrom(), record.getMonthlyRentInr(),
 			record.getMaintenanceInr(), record.getStatus(), TenancyService.party(record.getAddedBy()), addedByMe,
-			canRespond, record.getCreatedAt());
+			canRespond, canEdit, record.getCreatedAt());
 	}
 
 }

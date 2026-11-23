@@ -3,6 +3,8 @@ import { isApiError } from "@/api/errors"
 import { Button } from "@/components/ui/button"
 import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
+import { AskTeam } from "@/features/edit/AskTeam"
+import { isBlocked, type ChangeTarget } from "@/features/edit/blocked"
 import { monthLabel } from "@/features/property/labels"
 import { isGateError, usePhoneStepHref } from "./gate"
 
@@ -13,13 +15,17 @@ import { isGateError, usePhoneStepHref } from "./gate"
 export function ActionError({
   error,
   startDate,
+  changeTarget,
 }: {
   error: unknown
   /** The start date ("2024-03-01" or "2024-03") the user asked for, to word an overlap right. */
   startDate?: string
+  /** The caller's own item: a rule protecting others' records then offers "Ask our team" (D-156). */
+  changeTarget?: ChangeTarget
 }) {
   const phoneStep = usePhoneStepHref()
   if (!error) return null
+  if (changeTarget && isBlocked(error)) return <AskTeam error={error} target={changeTarget} />
   if (isGateError(error)) {
     return (
       <Notice tone="warn" icon="shield-check">

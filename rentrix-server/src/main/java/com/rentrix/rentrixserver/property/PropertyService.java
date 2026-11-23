@@ -6,6 +6,8 @@ import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.persistence.TimestampedEntity;
 import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.home.dto.UpdateHomeRequest;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
@@ -44,6 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -115,7 +118,7 @@ public class PropertyService {
 		RatingSummary landlordRating = RatingSummary.of(aggregate(RatingSubjectType.LANDLORD, owner.getId()));
 		boolean landlordVerified = greenTicks.has(owner, Role.LANDLORD);
 		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating,
-			landlordVerified, true, true));
+			landlordVerified, true, true, createdBy(p, owner.getPublicId())));
 	}
 	
 	/**
@@ -378,6 +381,121 @@ public class PropertyService {
 		properties.save(property);
 	}
 	
+	/**
+	 * Whether the user added this home (D-156): the tenant who added it through "Add your home", or the owner of a home
+	 * no tenant added. Only they may change or delete it.
+	 */
+	public static boolean createdBy(Property property, UUID userId) {
+		User creator = property.getAddedBy() != null ? property.getAddedBy() : property.getLandlord();
+		return !UnclaimedLandlord.is(creator) && creator.getPublicId().equals(userId);
+	}
+	
+	/**
+	 * Applies {@code PATCH /me/homes/{id}} to a home its creator is changing (D-156) and returns the changed fields; the
+	 * caller checks the creator and the posting gate, resets the green tick and keeps the history. The add-home rules
+	 * hold: the PIN code fits the city (a hard error, D-84) and may leave its area (only a warning there); a standalone
+	 * apartment is named by its building; size "Other" needs its words. With {@code addressLocked} (other people have
+	 * records on the home) only the size may change.
+	 */
+	@Transactional
+	public EditHistory.Changes editHome(Property property, UpdateHomeRequest request, User me, boolean addressLocked) {
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		if (request.homeSize() == HomeSize.OTHER && blankToNull(request.homeSizeOther()) == null) {
+			errors.add(new ApiProblem.FieldError("homeSizeOther", "required", "Type the size, e.g. 2.5 BHK."));
+		}
+		LocationInput place = request.location();
+		boolean inSociety = place != null ? place.societyId() != null || place.newSociety() != null
+			: property.getSociety() != null;
+		if (property.getPropertyType() == PropertyType.APARTMENT && !inSociety
+			&& blankToNull(request.buildingName()) == null) {
+			errors.add(new ApiProblem.FieldError("buildingName", "required", "Enter the building name."));
+		}
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		List<String> before = address(property);
+		String sizeBefore = sizeOf(property);
+		String city = property.getCity().getCode();
+		String pincode = request.pincode().trim();
+		Placement placement = null;
+		if (!property.getCity().isLive()) {
+			// A home in a pending city (D-143) is placed by its locality only until the city has areas.
+			cityService.requirePincode(city, pincode);
+			if (place != null) {
+				throw ApiException.validation(List.of(new ApiProblem.FieldError("location", "not_allowed",
+					"A new city has no areas yet.")));
+			}
+		} else if (place != null || property.getArea() != null) {
+			placement = locations.resolve(city, pincode, place != null ? place : currentPlace(property), me, true);
+		} else {
+			requireLocation(city, pincode);
+		}
+		List<String> after = placement == null
+			? Arrays.asList(before.get(0), before.get(1), before.get(2), before.get(3), null, null, null, null)
+			: placeNames(placement);
+		after.set(4, blankToNull(request.buildingName()));
+		after.set(5, blankToNull(request.street()));
+		after.set(6, blankToNull(request.unitLabel()));
+		after.set(7, pincode);
+		List<String> locked = new ArrayList<>();
+		EditHistory.Changes changes = new EditHistory.Changes();
+		for (int i = 0; i < ADDRESS_FIELDS.size(); i++) {
+			changes.field(ADDRESS_FIELDS.get(i), before.get(i), after.get(i));
+			if (!Objects.equals(before.get(i), after.get(i))) {
+				locked.add(ADDRESS_FIELDS.get(i));
+			}
+		}
+		// Checked before anything changes on the row.
+		if (addressLocked && !locked.isEmpty()) {
+			throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "location_locked",
+				"Other people have tenancies on this home, so its address cannot change; ask our team to correct it.",
+				locked.stream().map(field -> new ApiProblem.FieldError(field, "locked",
+					"Other people's records are on this home.")).toList());
+		}
+		if (placement != null) {
+			place(property, placement);
+		}
+		property.setPincode(pincode);
+		property.setBuildingName(blankToNull(request.buildingName()));
+		property.setStreet(blankToNull(request.street()));
+		property.setUnitLabel(blankToNull(request.unitLabel()));
+		if (request.homeSize() != null || property.getHomeSize() != null) {
+			property.setHomeSize(request.homeSize());
+			property.setHomeSizeOther(request.homeSize() == HomeSize.OTHER ? blankToNull(request.homeSizeOther()) : null);
+			if (request.homeSize() != null && request.homeSize().bedrooms() != null) {
+				property.setBedrooms(request.homeSize().bedrooms());
+			}
+		}
+		changes.field("homeSize", sizeBefore, sizeOf(property));
+		return changes;
+	}
+	
+	/** The address fields an owner may change, in the order of {@link #address}. */
+	private static final List<String> ADDRESS_FIELDS = List.of("area", "society", "tower", "wing", "buildingName",
+		"street", "unitLabel", "pincode");
+	
+	private static List<String> address(Property p) {
+		return Arrays.asList(p.getArea() == null ? p.getLocality() : p.getArea().getName(),
+			p.getSociety() == null ? null : p.getSociety().getName(), p.getTower() == null ? null : p.getTower().getName(),
+			p.getWing() == null ? null : p.getWing().getName(), p.getBuildingName(), p.getStreet(), p.getUnitLabel(),
+			p.getPincode());
+	}
+	
+	/** The place part of {@link #address} for a new placement; the other four are filled in by the caller. */
+	private static List<String> placeNames(Placement placement) {
+		return Arrays.asList(placement.area().getName(),
+			placement.society() == null ? null : placement.society().getName(),
+			placement.tower() == null ? null : placement.tower().getName(),
+			placement.wing() == null ? null : placement.wing().getName(), null, null, null, null);
+	}
+	
+	private static String sizeOf(Property p) {
+		if (p.getHomeSize() == null) {
+			return null;
+		}
+		return p.getHomeSize() == HomeSize.OTHER ? "OTHER: " + p.getHomeSizeOther() : p.getHomeSize().name();
+	}
+	
 	// -------------------------------------------------------------- helpers
 	
 	private void archive(Property property) {
@@ -505,7 +623,7 @@ public class PropertyService {
 		boolean landlordVerified = !UnclaimedLandlord.is(property.getLandlord())
 			&& greenTicks.has(property.getLandlord(), Role.LANDLORD);
 		PropertyDetail base = detail(property, rating, landlordRating, landlordVerified, caller != null,
-			isOwner(property, caller) || isAdmin(caller));
+			isOwner(property, caller) || isAdmin(caller), caller != null && createdBy(property, caller.publicId()));
 		// The owner contact a tenant entered stays private to them and admins (D-140).
 		boolean adder = caller != null && property.getAddedBy() != null
 			&& property.getAddedBy().getPublicId().equals(caller.publicId());
@@ -517,7 +635,7 @@ public class PropertyService {
 	 * ({@code landlord.id}) only for signed-in callers (D-55).
 	 */
 	private static PropertyDetail detail(Property p, RatingSummary rating, RatingSummary landlordRating,
-		boolean landlordVerified, boolean signedIn, boolean privileged) {
+		boolean landlordVerified, boolean signedIn, boolean privileged, boolean editable) {
 		User landlord = p.getLandlord();
 		// An unclaimed home (D-139) has no landlord profile to link to or rate.
 		LandlordSummary owner = UnclaimedLandlord.is(landlord)
@@ -532,7 +650,7 @@ public class PropertyService {
 			p.getFurnishing(), p.getParking(),
 			p.getDescription(), p.getStatus(), p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
 			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()), p.getAddedBy() != null,
-			VerificationState.of(p.getVerificationStatus()), null);
+			VerificationState.of(p.getVerificationStatus()), null, editable);
 	}
 	
 	private static PropertyCard card(Property p, RatingAggregate rating) {

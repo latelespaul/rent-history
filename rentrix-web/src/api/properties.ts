@@ -127,3 +127,25 @@ export function submitProperty(id: string): Promise<PropertyDetail> {
 export function deleteProperty(id: string): Promise<void> {
   return api.delete(`/properties/${encodeURIComponent(id)}`)
 }
+
+/**
+ * `PATCH /reviews/{id}`: the author changes ratings and text at any time (D-156). The whole set
+ * replaces the old values, so send the sub-ratings the form does not change as they were.
+ */
+export function updateReview(
+  id: string,
+  body: {
+    ratingOverall: number
+    ratingA?: number
+    ratingB?: number
+    ratingC?: number
+    body: string
+  },
+): Promise<PropertyReview> {
+  return api.patch<PropertyReview>(`/reviews/${encodeURIComponent(id)}`, body)
+}
+
+/** `DELETE /reviews/{id}`: the author withdraws their review, at any time (D-41). */
+export function deleteReview(id: string): Promise<void> {
+  return api.delete<void>(`/reviews/${encodeURIComponent(id)}`)
+}

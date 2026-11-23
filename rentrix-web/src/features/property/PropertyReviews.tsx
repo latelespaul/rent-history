@@ -1,15 +1,21 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { respondToReview } from "@/api/properties"
+import { deleteReview, respondToReview, updateReview } from "@/api/properties"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { StarIcon } from "@/components/ui/icons.gen"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { PencilIcon, StarIcon, TrashIcon } from "@/components/ui/icons.gen"
 import { Label } from "@/components/ui/label"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  needsWarning,
+  VERIFIED_DELETE_WARNING,
+  VERIFIED_EDIT_WARNING,
+} from "@/features/edit/verified"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
-import { monthLabel, reviewCount } from "./labels"
+import { dayLabel, monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { PersonTick } from "./PersonTick"
 import { SignInPrompt } from "./SignInPrompt"
@@ -71,6 +77,132 @@ function RespondForm({ reviewId, propertyId }: { reviewId: string; propertyId: s
   )
 }
 
+/**
+ * The author's own buttons (D-156): edit and delete at any time. A verified review warns first
+ * that its tick goes.
+ */
+function MyReviewActions({ review }: { review: PropertyReview }) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [rating, setRating] = useState(review.ratingOverall ?? 5)
+  const [text, setText] = useState(review.body ?? "")
+  const [confirm, setConfirm] = useState<null | "save" | "delete">(null)
+  const verified = needsWarning(review.verification)
+  const done = () => {
+    setConfirm(null)
+    setEditing(false)
+    void queryClient.invalidateQueries({ queryKey: ["properties"] })
+    void queryClient.invalidateQueries({ queryKey: ["tenancies"] })
+  }
+  const save = useMutation({
+    mutationFn: () =>
+      updateReview(review.id, {
+        ratingOverall: rating,
+        ratingA: review.ratingA,
+        ratingB: review.ratingB,
+        ratingC: review.ratingC,
+        body: text.trim(),
+      }),
+    onSuccess: done,
+    onError: () => setConfirm(null),
+  })
+  const remove = useMutation({
+    mutationFn: () => deleteReview(review.id),
+    onSuccess: done,
+    onError: () => setConfirm(null),
+  })
+  if (!review.actions?.edit && !review.actions?.withdraw) return null
+  const fieldId = `review-edit-${review.id}`
+  return (
+    <div className="space-y-2">
+      {editing ? (
+        <form
+          className="space-y-2 rounded-lg border border-line p-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (verified) setConfirm("save")
+            else save.mutate()
+          }}
+        >
+          <Label htmlFor={`${fieldId}-rating`}>Your rating</Label>
+          <select
+            id={`${fieldId}-rating`}
+            value={rating}
+            onChange={(e) => setRating(Number(e.target.value))}
+            className="h-10 rounded-md border border-line-strong bg-surface px-3 text-sm"
+          >
+            {[5, 4, 3, 2, 1].map((n) => (
+              <option key={n} value={n}>
+                {n} ★
+              </option>
+            ))}
+          </select>
+          <Label htmlFor={fieldId}>Your review</Label>
+          <Textarea
+            id={fieldId}
+            value={text}
+            maxLength={2000}
+            onChange={(e) => setText(e.target.value)}
+          />
+          {save.isError && <ActionError error={save.error} />}
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" disabled={save.isPending || !text.trim()}>
+              Save
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {review.actions?.edit && (
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <PencilIcon />
+              Edit my review
+            </Button>
+          )}
+          {review.actions?.withdraw && (
+            <Button
+              size="sm"
+              variant="destructive"
+              data-testid="review-delete"
+              disabled={remove.isPending}
+              onClick={() => setConfirm("delete")}
+            >
+              <TrashIcon />
+              Delete my review
+            </Button>
+          )}
+        </div>
+      )}
+      {remove.isError && <ActionError error={remove.error} />}
+      <ConfirmDialog
+        open={confirm === "save"}
+        onOpenChange={(open) => !open && setConfirm(null)}
+        title="Save and remove the tick?"
+        confirmLabel="Save"
+        busy={save.isPending}
+        onConfirm={() => save.mutate()}
+      >
+        <p>{VERIFIED_EDIT_WARNING}</p>
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={confirm === "delete"}
+        onOpenChange={(open) => !open && setConfirm(null)}
+        title="Delete your review?"
+        confirmLabel="Delete review"
+        danger
+        busy={remove.isPending}
+        onConfirm={() => remove.mutate()}
+      >
+        {verified && <p>{VERIFIED_DELETE_WARNING}</p>}
+        <p>It leaves the home&apos;s page and its rating. This cannot be undone.</p>
+      </ConfirmDialog>
+    </div>
+  )
+}
+
 function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
   return (
@@ -97,8 +229,12 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
       ) : review.textHidden ? (
         <p className="text-sm text-ink-500 italic">The text is hidden while a report is checked.</p>
       ) : null}
-      {review.publishedAt && (
-        <p className="text-xs text-ink-500">Published {monthLabel(review.publishedAt)}</p>
+      {(review.publishedAt || review.editedAt) && (
+        <p className="text-xs text-ink-500" data-testid="review-dates">
+          {review.publishedAt && `Published ${monthLabel(review.publishedAt)}`}
+          {review.publishedAt && review.editedAt && " · "}
+          {review.editedAt && `edited ${dayLabel(review.editedAt)}`}
+        </p>
       )}
       {review.response && (
         <div className="mt-2 rounded-lg border-l-2 border-line bg-sunk/40 px-3 py-2">
@@ -111,6 +247,7 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
       {review.actions?.respond && !review.response && (
         <RespondForm reviewId={review.id} propertyId={propertyId} />
       )}
+      <MyReviewActions review={review} />
     </li>
   )
 }

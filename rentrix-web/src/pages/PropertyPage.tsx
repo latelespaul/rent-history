@@ -160,6 +160,36 @@ function MyNextSteps({ propertyId }: { propertyId: string }) {
   )
 }
 
+/**
+ * "Edit home" for the person who added it, and "Edit my tenancy" for the tenant who added their
+ * tenancy here (D-156): free until the team verifies them.
+ */
+function MyEdits({ property }: { property: PropertyDetail }) {
+  const mine = useMyTenancies("TENANT")
+  const tenancy = mine.data?.items.find((t) => t.property.id === property.id && t.actions.edit)
+  if (!property.editable && !tenancy) return null
+  return (
+    <>
+      {property.editable && (
+        <Button asChild variant="outline" size="sm" data-testid="home-edit">
+          <Link to={`/homes/${property.id}/edit`}>
+            <PencilIcon />
+            Edit home
+          </Link>
+        </Button>
+      )}
+      {tenancy && (
+        <Button asChild variant="outline" size="sm" data-testid="home-edit-tenancy">
+          <Link to={`/tenancies/${tenancy.id}/edit`}>
+            <PencilIcon />
+            Edit my tenancy
+          </Link>
+        </Button>
+      )}
+    </>
+  )
+}
+
 function PropertyActions({ property }: { property: PropertyDetail }) {
   const { state } = useAuth()
   const user = state.user
@@ -185,13 +215,16 @@ function PropertyActions({ property }: { property: PropertyDetail }) {
       </div>
     )
   }
-  if (property.status !== "PUBLISHED") return null
+  if (property.status !== "PUBLISHED") return <MyEdits property={property} />
   return (
-    <Button asChild variant="outline" size="sm" data-testid="i-rent-this-home">
-      <Link to={`/homes/new?property=${property.id}`}>
-        <TenancyIcon />I rent or rented this home
-      </Link>
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <MyEdits property={property} />
+      <Button asChild variant="outline" size="sm" data-testid="i-rent-this-home">
+        <Link to={`/homes/new?property=${property.id}`}>
+          <TenancyIcon />I rent or rented this home
+        </Link>
+      </Button>
+    </div>
   )
 }
 

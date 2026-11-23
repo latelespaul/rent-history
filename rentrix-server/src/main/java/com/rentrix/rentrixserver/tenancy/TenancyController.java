@@ -12,12 +12,16 @@ import com.rentrix.rentrixserver.tenancy.dto.EndTenancyRequest;
 import com.rentrix.rentrixserver.tenancy.dto.RentHistory;
 import com.rentrix.rentrixserver.tenancy.dto.RentRecordView;
 import com.rentrix.rentrixserver.tenancy.dto.TenancyView;
+import com.rentrix.rentrixserver.tenancy.dto.UpdateRentRecordRequest;
+import com.rentrix.rentrixserver.tenancy.dto.UpdateTenancyRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,6 +61,20 @@ public class TenancyController {
 	@GetMapping("/tenancies/{id}")
 	public TenancyView get(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
 		return tenancies.get(id, caller);
+	}
+	
+	/** The party who added it corrects the period, rent or deposit (D-156). */
+	@PatchMapping("/tenancies/{id}")
+	public TenancyView update(@PathVariable UUID id, @Valid @RequestBody UpdateTenancyRequest request,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		return tenancies.update(id, request, caller);
+	}
+	
+	/** The party who added it removes it (D-156). */
+	@DeleteMapping("/tenancies/{id}")
+	public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
+		tenancies.delete(id, caller);
+		return ResponseEntity.noContent().build();
 	}
 	
 	@PostMapping("/tenancies/{id}/confirm")
@@ -108,6 +126,21 @@ public class TenancyController {
 		@Valid @RequestBody CreateRentRecordRequest request, @AuthenticationPrincipal AuthenticatedUser caller) {
 		RentRecordView created = rentRecords.add(id, request, caller);
 		return ResponseEntity.created(URI.create("/api/v1/tenancies/" + id + "/rent-records")).body(created);
+	}
+	
+	/** The party who added the record corrects it (D-156). */
+	@PatchMapping("/rent-records/{id}")
+	public RentRecordView updateRentRecord(@PathVariable UUID id, @Valid @RequestBody UpdateRentRecordRequest request,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		return rentRecords.update(id, request, caller);
+	}
+	
+	/** The party who added the record removes it (D-156). */
+	@DeleteMapping("/rent-records/{id}")
+	public ResponseEntity<Void> deleteRentRecord(@PathVariable UUID id,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
+		rentRecords.delete(id, caller);
+		return ResponseEntity.noContent().build();
 	}
 	
 	@PostMapping("/rent-records/{id}/confirm")

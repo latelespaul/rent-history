@@ -2,6 +2,8 @@ package com.rentrix.rentrixserver.review;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.identity.Badges;
 import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.property.Property;
@@ -81,6 +83,7 @@ public class ReviewService {
 		TenancyParty.LANDLORD, EnumSet.of(ReviewDirection.LANDLORD_TO_TENANT));
 
 	private static final List<TenancyStatus> CONFIRMED = List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED);
+	private static final Set<ReviewStatus> EDITABLE = EnumSet.of(ReviewStatus.AWAITING_REVEAL, ReviewStatus.PUBLISHED);
 	private static final String FORMER_USER = "Former member";
 
 	private final ReviewRepository reviews;
@@ -96,6 +99,7 @@ public class ReviewService {
 	private final ProfileAccess access;
 	private final RatingRecomputer recomputer;
 	private final ReviewNotifier notifier;
+	private final EditHistory history;
 	private final Clock clock;
 
 	// --------------------------------------------------------------- writes
@@ -179,30 +183,30 @@ public class ReviewService {
 	}
 
 	/**
-	 * {@code PATCH /reviews/{id}}: the author of a review still {@code AWAITING_REVEAL}, inside the edit window or with
-	 * the one post-end update (D-40, D-41). A published review is frozen.
+	 * {@code PATCH /reviews/{id}}: the author corrects their review at any time while it is awaiting reveal or published
+	 * (D-40, D-41, changed by D-156). The edit takes the team's tick away, so the review is back in the admin queue,
+	 * and the ratings are recomputed.
 	 */
 	@Transactional
 	public ReviewView update(UUID reviewId, UpdateReviewRequest request, AuthenticatedUser caller) {
 		User me = currentUser(caller);
 		Review review = writable(reviewId, me, caller);
 		requireAuthor(review, me);
-		if (review.getStatus() == ReviewStatus.PUBLISHED) {
-			throw ApiException.rule("edit_window_closed", "A review is frozen once it is published.");
-		}
-		if (review.getStatus() != ReviewStatus.AWAITING_REVEAL) {
+		if (!EDITABLE.contains(review.getStatus())) {
 			throw ApiException.conflict("invalid_transition", "A " + review.getStatus() + " review cannot be edited.");
 		}
 		approvals.require(me, authorRole(review));
 		Instant now = now();
-		boolean inWindow = !now.isAfter(review.getEditUntil());
-		boolean postEndUpdate = !inWindow && postEndUpdateAllowed(review);
-		if (!inWindow && !postEndUpdate) {
-			throw ApiException.rule("edit_window_closed", review.isPostEndUpdateUsed()
-				? "You already used the one update after the tenancy ended."
-				: "Reviews can be edited for 7 days after they are written.");
-		}
 		String body = ReviewContentRules.review(request.body(), review.getProperty().getUnitLabel());
+		EditHistory.Changes changes = new EditHistory.Changes()
+			.field("ratingOverall", review.getRatingOverall(), request.ratingOverall())
+			.field("ratingA", review.getRatingA(), request.ratingA())
+			.field("ratingB", review.getRatingB(), request.ratingB())
+			.field("ratingC", review.getRatingC(), request.ratingC())
+			.field("body", review.getBody(), body);
+		if (changes.isEmpty()) {
+			return view(review, me, caller.hasRole(Role.ADMIN));
+		}
 
 		ReviewRevision previous = new ReviewRevision();
 		previous.setReview(review);
@@ -220,11 +224,11 @@ public class ReviewService {
 		review.setRatingC(request.ratingC());
 		review.setBody(body);
 		review.setLastEditedAt(now);
-		if (postEndUpdate) {
-			review.setPostEndUpdateUsed(true);
-			review.setEditUntil(now.plus(EDIT_WINDOW));
-		}
+		// D-134, D-156: an edit of the text or ratings takes the team's decision away; the review is back in the queue.
+		boolean wasVerified = unverify(review);
+		history.edited(me, EditTarget.REVIEW, review.getId(), review.getPublicId(), wasVerified, changes);
 		reviews.saveAndFlush(review);
+		recomputer.reviewChanged(review);
 		return view(review, me, caller.hasRole(Role.ADMIN));
 	}
 
@@ -235,10 +239,25 @@ public class ReviewService {
 		Review review = writable(reviewId, me, caller);
 		requireAuthor(review, me);
 		Instant now = now();
+		boolean wasVerified = VerificationState.of(review.getVerificationStatus()) == VerificationState.VERIFIED;
 		review.setStatus(ReviewStatus.WITHDRAWN);
 		review.setDeletedAt(now);
 		reviews.saveAndFlush(review);
 		recomputer.reviewChanged(review);
+		history.deleted(me, EditTarget.REVIEW, review.getId(), review.getPublicId(), wasVerified, "review",
+			review.getRatingOverall() + " ★");
+	}
+
+	/** A ticked or rejected review reads {@code UNVERIFIED} again (D-134); returns whether it had the tick. */
+	private static boolean unverify(Review review) {
+		VerificationState state = VerificationState.of(review.getVerificationStatus());
+		if (state != VerificationState.UNVERIFIED) {
+			review.setVerificationStatus(VerificationState.UNVERIFIED);
+			review.setVerificationDecidedBy(null);
+			review.setVerificationDecidedAt(null);
+			review.setVerificationReason(null);
+		}
+		return state == VerificationState.VERIFIED;
 	}
 
 	/** {@code POST /reviews/{id}/response}: the one public reply of the subject or the home's landlord (§5.7). */
@@ -442,16 +461,9 @@ public class ReviewService {
 			.orElseThrow(() -> ApiException.notFound("Property"));
 	}
 
-	/** D-40: written while the tenancy was current, the tenancy has ended, and the one update unused. */
-	private boolean postEndUpdateAllowed(Review review) {
-		Tenancy tenancy = review.getTenancy();
-		return !review.isPostEndUpdateUsed() && tenancy.getStatus() == TenancyStatus.ENDED
-			&& tenancy.getEndedAt() != null && review.getSubmittedAt().isBefore(tenancy.getEndedAt());
-	}
-
-	/** D-41: only an unpublished review is editable, so neither side can react to a revealed review. */
-	private boolean canEdit(Review review) {
-		return review.getStatus() == ReviewStatus.AWAITING_REVEAL && (!now().isAfter(review.getEditUntil()) || postEndUpdateAllowed(review));
+	/** D-41, changed by D-156: the author may edit a review that awaits reveal or is published. */
+	private static boolean canEdit(Review review) {
+		return EDITABLE.contains(review.getStatus());
 	}
 
 	/** D-45: email verified, and a first review needs an account at least 7 days old. */

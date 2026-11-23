@@ -210,6 +210,22 @@ export interface PropertyDetail {
   verification?: VerificationState
   /** The owner as the adding tenant named them; only for that tenant and admins (D-140). */
   ownerContact?: OwnerContact
+  /** The caller added this home and may change or delete it (D-156). */
+  editable?: boolean
+}
+
+/**
+ * `PATCH /me/homes/{id}` (D-156): the corrected address and size; the whole set replaces the old
+ * values. Without `location` the home keeps its place.
+ */
+export interface HomeUpdate {
+  buildingName?: string
+  street?: string
+  unitLabel?: string
+  pincode: string
+  homeSize?: HomeSize
+  homeSizeOther?: string
+  location?: LocationInput
 }
 
 /** The owner's details a tenant typed when adding a home (D-139); private (D-140). */
@@ -385,6 +401,10 @@ export interface TenancyActions {
   cancel: boolean
   end: boolean
   addRentRecord: boolean
+  /** The caller added this tenancy and may change it (D-156). */
+  edit?: boolean
+  /** The caller added it and may delete it (the other side has not confirmed it). */
+  delete?: boolean
 }
 
 /** `GET /tenancies/{id}` and the `/me/tenancies` items (§12.2). Dates and deposit are private. */
@@ -424,6 +444,30 @@ export interface Tenancy {
   actions: TenancyActions
   /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
   reviewed?: boolean
+  /** The team's green tick on the tenancy (D-134, D-147). */
+  verificationStatus?: VerificationState
+  /** Set only when an edit gave the caller a new role ("I own it" makes a tenant a landlord). */
+  accessToken?: string
+}
+
+/**
+ * `PATCH /tenancies/{id}` (D-156): `endDate` null while it is current, `initialRentInr` null = not
+ * shared. `relation` "OWN" on a tenant's own record of a home they added makes the home theirs and
+ * removes the tenancy.
+ */
+export interface TenancyUpdate {
+  startDate: string
+  endDate: string | null
+  initialRentInr: number | null
+  depositInr: number | null
+  relation?: "RENT" | "OWN"
+}
+
+/** `POST /me/change-requests` (D-156): the creator asks the team to change their own item. */
+export interface ChangeRequestInput {
+  targetType: "TENANCY" | "PROPERTY" | "REVIEW"
+  targetId: string
+  note: string
 }
 
 /** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */
@@ -448,6 +492,8 @@ export interface RentRecord {
   addedBy: PartyRef
   addedByMe: boolean
   canRespond: boolean
+  /** The caller added it and may change or delete it (D-156); never the starting rent. */
+  canEdit?: boolean
   createdAt: string
 }
 

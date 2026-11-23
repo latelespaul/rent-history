@@ -22,6 +22,7 @@ export const TYPE_LABEL: Record<QueueType, string> = {
 }
 
 const REASON_LABEL: Record<string, string> = {
+  EDITED: "Edited by owner",
   CANNOT_CONFIRM: "Can't confirm",
   DETAILS_WRONG: "Details look wrong",
   DUPLICATE: "Duplicate",

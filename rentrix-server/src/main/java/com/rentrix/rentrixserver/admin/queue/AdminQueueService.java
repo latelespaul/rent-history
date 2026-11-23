@@ -7,6 +7,8 @@ import com.rentrix.rentrixserver.admin.ModerationTargetType;
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.edit.EditRecordRepository;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.identity.IdentityMethod;
 import com.rentrix.rentrixserver.identity.IdentityRejectCode;
 import com.rentrix.rentrixserver.identity.IdentityService;
@@ -18,6 +20,7 @@ import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.report.Report;
+import com.rentrix.rentrixserver.report.ReportReason;
 import com.rentrix.rentrixserver.report.ReportStatus;
 import com.rentrix.rentrixserver.report.ReportTargetType;
 import com.rentrix.rentrixserver.review.Review;
@@ -97,6 +100,7 @@ public class AdminQueueService {
 	private final IdentityService identity;
 	private final RatingRecomputer ratings;
 	private final AuditLog audit;
+	private final EditRecordRepository edits;
 	private final Clock clock;
 
 	/** One decision's result: the item and where it stands now. */
@@ -209,7 +213,7 @@ public class AdminQueueService {
 			case CITY -> city != null ? List.of() : list("select c from City c where c.live = false"
 				+ " order by c.createdAt desc", City.class, null, q -> q).stream().map(this::cityCard).toList();
 			case REPORT -> city != null ? List.of() : list("select r from Report r where r.status = :open"
-				+ " order by r.createdAt desc", Report.class, null, q -> q.setParameter("open", ReportStatus.OPEN))
+				+ " order by r.updatedAt desc", Report.class, null, q -> q.setParameter("open", ReportStatus.OPEN))
 				.stream().map(this::reportCard).toList();
 		};
 	}
@@ -267,7 +271,8 @@ public class AdminQueueService {
 			details.add("Owner " + p.getLandlord().getDisplayName());
 		}
 		return new QueueItem(QueueType.PROPERTY, p.getPublicId().toString(), homeLabel(p), cityName(p.getCity()),
-			details, p.isDemo() ? List.of("DEMO") : List.of(), cityCode(p.getCity()), p.getCreatedAt(),
+			details, edited(EditTarget.PROPERTY, p.getPublicId(), p.isDemo() ? List.of("DEMO") : List.of()),
+			cityCode(p.getCity()), p.getCreatedAt(),
 			VerificationState.of(p.getVerificationStatus()), "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
 	}
@@ -280,7 +285,8 @@ public class AdminQueueService {
 			+ " · " + (t.getInitialRentInr() == null ? "Rent not shared" : "Rent " + rupees(t.getInitialRentInr()) + " / month"));
 		details.add(t.getConfirmedAt() != null ? "Confirmed by both" : "Not confirmed by the other side");
 		return new QueueItem(QueueType.TENANCY, t.getPublicId().toString(), homeLabel(p),
-			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details, List.of(), cityCode(p.getCity()),
+			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details,
+			edited(EditTarget.TENANCY, t.getPublicId(), List.of()), cityCode(p.getCity()),
 			t.getCreatedAt(), VerificationState.of(t.getVerificationStatus()), "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
 	}
@@ -299,9 +305,23 @@ public class AdminQueueService {
 		}
 		return new QueueItem(QueueType.REVIEW, r.getPublicId().toString(), about,
 			cityName(p.getCity()) + (r.getStatus() == ReviewStatus.AWAITING_REVEAL ? " · waiting to be revealed" : ""),
-			details, List.of(), cityCode(p.getCity()), r.getCreatedAt(), VerificationState.of(r.getVerificationStatus()),
+			details, edited(EditTarget.REVIEW, r.getPublicId(), List.of()), cityCode(p.getCity()), r.getCreatedAt(),
+			VerificationState.of(r.getVerificationStatus()),
 			r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT ? null : "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT, QueueAction.HIDE), REVIEW_REASONS);
+	}
+
+	/**
+	 * {@code flags} plus {@code EDITED} when the owner changed the item (D-156): the console then offers its edit
+	 * history ({@code GET /admin/edit-history}).
+	 */
+	private List<String> edited(EditTarget type, UUID id, List<String> flags) {
+		if (!edits.existsByTargetTypeAndTargetRef(type, id.toString())) {
+			return flags;
+		}
+		List<String> all = new ArrayList<>(flags);
+		all.add("EDITED");
+		return all;
 	}
 
 	private QueueItem cityCard(City c) {
@@ -312,14 +332,19 @@ public class AdminQueueService {
 			c.getCreatedAt(), VerificationState.UNVERIFIED, null, List.of(QueueAction.APPROVE), List.of());
 	}
 
+	/** A report on a review may hide it; a creator's change request (D-156) is only dismissed once handled. */
+	private static boolean hideable(Report r) {
+		return r.getTargetType() == ReportTargetType.REVIEW && r.getReason() != ReportReason.CHANGE_REQUEST;
+	}
+
 	private QueueItem reportCard(Report r) {
 		List<String> details = new ArrayList<>();
 		details.add("Reported by " + name(r.getReporter()));
 		if (StringUtils.hasText(r.getDetails())) {
 			details.add(snippet(r.getDetails()));
 		}
-		List<QueueAction> actions = r.getTargetType() == ReportTargetType.REVIEW
-			? List.of(QueueAction.APPROVE, QueueAction.HIDE) : List.of(QueueAction.APPROVE);
+		List<QueueAction> actions = hideable(r) ? List.of(QueueAction.APPROVE, QueueAction.HIDE)
+			: List.of(QueueAction.APPROVE);
 		return new QueueItem(QueueType.REPORT, r.getPublicId().toString(), label(r.getReason().name()),
 			"About a " + label(r.getTargetType().name()).toLowerCase(Locale.ROOT), details, List.of(), null,
 			r.getCreatedAt(), VerificationState.UNVERIFIED, null, actions, HIDE_REASONS);
@@ -476,7 +501,7 @@ public class AdminQueueService {
 					report.getTargetId(), report.getPublicId().toString(), note);
 			}
 			case HIDE -> {
-				if (report.getTargetType() != ReportTargetType.REVIEW) {
+				if (!hideable(report)) {
 					throw notAllowed(QueueType.REPORT, action);
 				}
 				Review r = em.find(Review.class, report.getTargetId());

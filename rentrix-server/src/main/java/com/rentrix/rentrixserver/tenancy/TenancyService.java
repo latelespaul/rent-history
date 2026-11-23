@@ -3,13 +3,21 @@ package com.rentrix.rentrixserver.tenancy;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.edit.EditTarget;
+import com.rentrix.rentrixserver.home.HomeRelation;
+import com.rentrix.rentrixserver.property.FieldVisibility;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
+import com.rentrix.rentrixserver.rating.RatingRecomputer;
+import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.review.ReviewRepository;
+import com.rentrix.rentrixserver.review.ReviewStatus;
+import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateTenancyRequest;
 import com.rentrix.rentrixserver.tenancy.dto.EndTenancyRequest;
@@ -17,11 +25,13 @@ import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
 import com.rentrix.rentrixserver.tenancy.dto.TenancyActions;
 import com.rentrix.rentrixserver.tenancy.dto.TenancyPropertyRef;
 import com.rentrix.rentrixserver.tenancy.dto.TenancyView;
+import com.rentrix.rentrixserver.tenancy.dto.UpdateTenancyRequest;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -77,6 +87,8 @@ public class TenancyService {
 		EnumSet.of(TenancyStatus.PENDING_CONFIRMATION, TenancyStatus.ACTIVE, TenancyStatus.ENDED);
 	/** Confirmed by both parties (D-34). */
 	public static final List<TenancyStatus> CONFIRMED = List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED);
+	/** States in which the party who added a tenancy may still change or delete it (D-156). */
+	static final Set<TenancyStatus> EDITABLE = HOLDS_DATES;
 
 	private static final LocalDate OPEN_END = LocalDate.of(9999, 12, 31);
 
@@ -88,6 +100,9 @@ public class TenancyService {
 	private final ApprovalGuard approvals;
 	private final TenancyNotifier notifier;
 	private final ReviewRepository reviews;
+	private final RatingRecomputer ratings;
+	private final EditHistory history;
+	private final AccessTokenService tokens;
 	private final Clock clock;
 
 	// ---------------------------------------------------------------- reads
@@ -385,6 +400,256 @@ public class TenancyService {
 		return view(saved, me, caller);
 	}
 
+	/**
+	 * {@code PATCH /tenancies/{id}}: the party who added the tenancy corrects its period, rent or deposit (D-156). The
+	 * same date, rent and overlap rules as on create apply; rent records must still fit the new period, and the first
+	 * one (the starting rent) follows the new start month and rent. An edit of a tenancy with the team's tick (or a
+	 * rejection) puts it back to {@code UNVERIFIED}, so it returns to the admin queue (D-134); every changed field is
+	 * kept in the edit history for admins.
+	 */
+	@Transactional
+	public TenancyView update(UUID publicId, UpdateTenancyRequest request, AuthenticatedUser caller) {
+		User me = currentUser(caller);
+		Tenancy tenancy = writable(publicId, me, caller);
+		TenancyParty side = requireCreator(tenancy, me);
+		boolean ownRecord = tenancy.getInitiatedBy() == TenancyParty.TENANT && !mutual(tenancy);
+		HomeRelation relation = side == TenancyParty.TENANT ? HomeRelation.RENT : HomeRelation.OWN;
+		if (request.relation() != null && request.relation() != relation) {
+			return switchToOwn(tenancy, side, ownRecord, me, caller);
+		}
+		requireDates(request.startDate(), request.endDate());
+		if (request.initialRentInr() == null && !ownRecord) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("initialRentInr", "required",
+				"Enter the monthly rent.")));
+		}
+		approvals.require(me, roleOf(side));
+
+		List<RentRecord> records = rentRecords.findByTenancyIdOrderByEffectiveFromAsc(tenancy.getId());
+		RentRecord first = records.stream()
+			.filter(r -> r.getStatus() != RentRecordStatus.DISPUTED && RentRecordService.starting(r))
+			.findFirst().orElse(null);
+		requireRecordsFit(records, first, request.startDate(), request.endDate(), request.initialRentInr() != null);
+
+		EditHistory.Changes changes = new EditHistory.Changes()
+			.field("startDate", tenancy.getStartDate(), request.startDate())
+			.field("endDate", tenancy.getEndDate(), request.endDate())
+			.field("initialRentInr", tenancy.getInitialRentInr(), request.initialRentInr())
+			.field("depositInr", tenancy.getDepositInr(), request.depositInr());
+		if (changes.isEmpty()) {
+			return view(tenancy, me, caller);
+		}
+		tenancy.setStartDate(request.startDate());
+		tenancy.setEndDate(request.endDate());
+		tenancy.setInitialRentInr(request.initialRentInr());
+		tenancy.setDepositInr(request.depositInr());
+		if (tenancy.getTenant() != null) {
+			requireNoOverlap(tenancy, HOLDS_DATES);
+		}
+		requireHomeFree(tenancy.getProperty(), tenancy.getId(), tenancy.getStartDate(), tenancy.getEndDate(), me);
+		if (CONFIRMED.contains(tenancy.getStatus())) {
+			boolean ended = tenancy.getEndDate() != null;
+			tenancy.setStatus(ended ? TenancyStatus.ENDED : TenancyStatus.ACTIVE);
+			tenancy.setEndedAt(ended ? Optional.ofNullable(tenancy.getEndedAt()).orElse(now()) : null);
+			syncFirstRecord(tenancy, first, me);
+		}
+		boolean wasVerified = unverify(tenancy);
+		history.edited(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, changes);
+		log.info("Tenancy {} edited by its creator {}", tenancy.getPublicId(), me.getPublicId());
+		return view(tenancies.saveAndFlush(tenancy), me, caller);
+	}
+
+	/**
+	 * "I own it" instead of "I rent it" (D-156): on a tenant's own record of a home they added, whose owner is not on the
+	 * platform, the home becomes the caller's (as if they had added it as its owner) and the tenancy is cancelled like a
+	 * delete. Both lose the team's tick and go back to the admin queue. Any other role change needs the team.
+	 */
+	private TenancyView switchToOwn(Tenancy tenancy, TenancyParty side, boolean ownRecord, User me,
+		AuthenticatedUser caller) {
+		if (side == TenancyParty.LANDLORD) {
+			throw ApiException.rule("role_change_not_allowed",
+				"Switching this home from owning to renting needs our team. Ask our team to change this.");
+		}
+		Property property = tenancy.getProperty();
+		boolean addedByMe = property.getAddedBy() != null && property.getAddedBy().getId().equals(me.getId());
+		if (!ownRecord || !addedByMe || !UnclaimedLandlord.is(property.getLandlord()) || othersOnHome(property, me)) {
+			throw ApiException.rule("role_change_not_allowed",
+				"Only a home you added yourself, with nobody else's records on it, can switch from renting to owning. "
+					+ "Ask our team to change this.");
+		}
+		approvals.require(me, Role.LANDLORD);
+		boolean newRole = me.getRoles().add(Role.LANDLORD);
+		boolean homeWasVerified = VerificationState.of(property.getVerificationStatus()) == VerificationState.VERIFIED;
+		property.setLandlord(me);
+		property.setAddedBy(null);
+		property.setUnitLabelVisibility(FieldVisibility.MASKED);
+		property.setVerificationStatus(VerificationState.UNVERIFIED);
+		properties.saveAndFlush(property);
+		EditHistory.Changes role = new EditHistory.Changes().field("relation", HomeRelation.RENT, HomeRelation.OWN);
+		history.edited(me, EditTarget.PROPERTY, property.getId(), property.getPublicId(), homeWasVerified, role);
+		boolean wasVerified = unverify(tenancy);
+		history.edited(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, role);
+		remove(tenancy, me);
+		if (newRole) {
+			users.saveAndFlush(me);
+		}
+		log.info("Tenancy {} switched to owning its home by {}", tenancy.getPublicId(), me.getPublicId());
+		TenancyView view = view(tenancy, me, caller);
+		return newRole ? view.withAccessToken(tokens.issue(me.getPublicId(), me.getRoles())) : view;
+	}
+
+	/**
+	 * {@code DELETE /tenancies/{id}}: the party who added the tenancy removes it (D-156). It becomes {@code CANCELLED},
+	 * so it leaves the rent history and the admin queue, and the creator's own reviews on it are withdrawn. Refused
+	 * once the other side confirmed it or wrote a review on it, since that would remove their record too.
+	 */
+	@Transactional
+	public void delete(UUID publicId, AuthenticatedUser caller) {
+		User me = currentUser(caller);
+		Tenancy tenancy = writable(publicId, me, caller);
+		requireCreator(tenancy, me);
+		remove(tenancy, me);
+	}
+
+	/**
+	 * Removes every tenancy the caller added on a home they are deleting (D-156); called by the home delete, which
+	 * has already checked that nobody else has records there.
+	 */
+	@Transactional
+	public void deleteOwnOnHome(Property property, User me) {
+		for (Tenancy tenancy : tenancies.findByPropertyIdAndStatusIn(property.getId(), List.copyOf(EDITABLE))) {
+			if (sideOf(tenancy, me) == tenancy.getInitiatedBy()) {
+				remove(tenancy, me);
+			}
+		}
+	}
+
+	/**
+	 * Whether anyone other than {@code me} has a standing tenancy on the home (as tenant, invitee or real landlord):
+	 * then the home's address is theirs too and its creator cannot move or delete it (D-156).
+	 */
+	public boolean othersOnHome(Property property, User me) {
+		return tenancies.findByPropertyIdAndStatusIn(property.getId(), List.copyOf(HOLDS_DATES)).stream()
+			.anyMatch(t -> (t.getTenant() == null ? t.getInviteEmail() != null : !t.getTenant().getId().equals(me.getId()))
+				|| !t.getLandlord().getId().equals(me.getId()) && !UnclaimedLandlord.is(t.getLandlord()));
+	}
+
+	private void remove(Tenancy tenancy, User me) {
+		if (tenancy.getConfirmedAt() != null) {
+			throw ApiException.conflict("confirmed_by_other_side",
+				"The other side confirmed this tenancy, so it cannot be deleted. Edit it, or ask our team to remove it.");
+		}
+		List<Review> written = reviews.findByTenancyId(tenancy.getId()).stream()
+			.filter(r -> r.getDeletedAt() == null && r.getStatus() != ReviewStatus.WITHDRAWN)
+			.toList();
+		if (written.stream().anyMatch(r -> !r.getAuthor().getId().equals(me.getId()))) {
+			throw ApiException.conflict("tenancy_has_reviews",
+				"The other side reviewed this tenancy, so it cannot be deleted. Edit it, or ask our team to remove it.");
+		}
+		Instant now = now();
+		for (Review review : written) {
+			review.setStatus(ReviewStatus.WITHDRAWN);
+			review.setDeletedAt(now);
+			reviews.saveAndFlush(review);
+			ratings.reviewChanged(review);
+		}
+		boolean wasVerified = VerificationState.of(tenancy.getVerificationStatus()) == VerificationState.VERIFIED;
+		tenancy.setStatus(TenancyStatus.CANCELLED);
+		closeInvites(tenancy);
+		tenancies.saveAndFlush(tenancy);
+		history.deleted(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, "tenancy",
+			tenancy.getStartDate() + " to " + (tenancy.getEndDate() == null ? "now" : tenancy.getEndDate())
+				+ (tenancy.getInitialRentInr() == null ? "" : ", rent " + tenancy.getInitialRentInr()));
+		log.info("Tenancy {} deleted by its creator {}", tenancy.getPublicId(), me.getPublicId());
+	}
+
+	/**
+	 * An owner's change takes the team's decision away (D-134, D-156): a ticked or rejected tenancy reads
+	 * {@code UNVERIFIED} again and is back in the admin queue. Returns whether it had the tick.
+	 */
+	public static boolean unverify(Tenancy tenancy) {
+		VerificationState state = VerificationState.of(tenancy.getVerificationStatus());
+		if (state != VerificationState.UNVERIFIED) {
+			tenancy.setVerificationStatus(VerificationState.UNVERIFIED);
+			tenancy.setVerificationDecidedBy(null);
+			tenancy.setVerificationDecidedAt(null);
+			tenancy.setVerificationReason(null);
+		}
+		return state == VerificationState.VERIFIED;
+	}
+
+	/** Only the party who added the tenancy changes or deletes it (D-156), and only while it stands. */
+	TenancyParty requireCreator(Tenancy tenancy, User me) {
+		TenancyParty side = sideOf(tenancy, me);
+		if (side == null || side != tenancy.getInitiatedBy()) {
+			throw new ApiException(HttpStatus.FORBIDDEN, "not_creator",
+				"Only the person who added this tenancy can change or delete it.");
+		}
+		if (!EDITABLE.contains(tenancy.getStatus())) {
+			throw ApiException.conflict("invalid_transition",
+				"A " + tenancy.getStatus() + " tenancy cannot be changed.");
+		}
+		return side;
+	}
+
+	/**
+	 * Every rent record other than the starting one must stay inside the new period, one per month: none may start
+	 * before the new start month, nor in it while the tenancy has a starting rent ({@code startingRent}).
+	 */
+	private void requireRecordsFit(List<RentRecord> records, RentRecord first, LocalDate start, LocalDate end,
+		boolean startingRent) {
+		LocalDate startMonth = start.withDayOfMonth(1);
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		for (RentRecord record : records) {
+			if (record == first || record.getStatus() == RentRecordStatus.DISPUTED) {
+				continue;
+			}
+			LocalDate month = record.getEffectiveFrom();
+			if (month.isBefore(startMonth) || startingRent && month.equals(startMonth)) {
+				errors.add(new ApiProblem.FieldError("startDate", "after_rent_record",
+					"A rent change starts in " + YearMonth.from(month) + "; move in before that month or edit that record."));
+				break;
+			}
+		}
+		if (end != null) {
+			records.stream()
+				.filter(r -> r != first && r.getStatus() != RentRecordStatus.DISPUTED)
+				.map(RentRecord::getEffectiveFrom)
+				.max(Comparator.naturalOrder())
+				.filter(end::isBefore)
+				.ifPresent(last -> errors.add(new ApiProblem.FieldError("endDate", "before_rent_record",
+					"A rent record starts on " + last + ", after this end date.")));
+		}
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+	}
+
+	/** The starting rent record follows the tenancy's start month and rent; a rent left out has none (D-142). */
+	private void syncFirstRecord(Tenancy tenancy, RentRecord first, User me) {
+		Long rent = tenancy.getInitialRentInr();
+		if (rent == null) {
+			if (first != null) {
+				history.deleted(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(),
+					VerificationState.of(tenancy.getVerificationStatus()) == VerificationState.VERIFIED,
+					"rent from " + YearMonth.from(first.getEffectiveFrom()), "rent " + first.getMonthlyRentInr());
+				rentRecords.delete(first);
+			}
+			return;
+		}
+		if (first == null) {
+			first = new RentRecord();
+			first.setTenancy(tenancy);
+			first.setAddedBy(me);
+			first.setStatus(RentRecordStatus.PROPOSED);
+		} else if (first.getStatus() == RentRecordStatus.CONFIRMED && first.getMonthlyRentInr() != rent) {
+			// The other side confirmed another amount; the new one waits for them again (D-25).
+			first.setStatus(RentRecordStatus.PROPOSED);
+		}
+		first.setEffectiveFrom(tenancy.getStartDate().withDayOfMonth(1));
+		first.setMonthlyRentInr(rent);
+		rentRecords.save(first);
+	}
+
 	/** Pending requests past their 14-day window become {@code EXPIRED} (§6); run by {@link TenancyExpiryJob}. */
 	@Transactional
 	public int expirePending() {
@@ -441,7 +706,7 @@ public class TenancyService {
 		return side == TenancyParty.LANDLORD ? Role.LANDLORD : Role.TENANT;
 	}
 
-	static User initiator(Tenancy tenancy) {
+	public static User initiator(Tenancy tenancy) {
 		return tenancy.getInitiatedBy() == TenancyParty.LANDLORD ? tenancy.getLandlord() : tenancy.getTenant();
 	}
 
@@ -585,12 +850,15 @@ public class TenancyService {
 		boolean admin = caller.hasRole(Role.ADMIN);
 		boolean pending = t.getStatus() == TenancyStatus.PENDING_CONFIRMATION;
 		boolean counterparty = side != null && side != t.getInitiatedBy();
+		boolean creator = side != null && side == t.getInitiatedBy() && EDITABLE.contains(t.getStatus());
 		TenancyActions actions = side == null && !admin ? TenancyActions.NONE : new TenancyActions(
 			pending && counterparty,
 			pending && counterparty,
 			pending && side == t.getInitiatedBy(),
 			t.getStatus() == TenancyStatus.ACTIVE,
-			side != null && CONFIRMED.contains(t.getStatus()));
+			side != null && CONFIRMED.contains(t.getStatus()),
+			creator,
+			creator && t.getConfirmedAt() == null);
 		boolean tenantHidden = side == TenancyParty.LANDLORD && !admin && t.getInitiatedBy() == TenancyParty.LANDLORD
 			&& !CONFIRMED.contains(t.getStatus());
 		Property p = t.getProperty();
@@ -631,7 +899,9 @@ public class TenancyService {
 			t.getConfirmedAt(),
 			t.getEndedAt(),
 			actions,
-			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()));
+			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()),
+			VerificationState.of(t.getVerificationStatus()),
+			null);
 	}
 
 	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */
