@@ -113,13 +113,14 @@ describe("PropertyPage", () => {
     })
     renderPage()
 
-    expect(await screen.findByText("Verified landlord")).toBeTruthy()
+    // The rating card renders twice: once for small screens, once in the wide-screen aside.
+    expect(await screen.findAllByText("Verified landlord")).toHaveLength(2)
     cleanup()
 
     api.property = detail()
     renderPage()
 
-    expect(await screen.findByText("Landlord not verified yet")).toBeTruthy()
+    expect(await screen.findAllByText("Landlord not verified yet")).toHaveLength(2)
     expect(screen.queryByText("Verified landlord")).toBeNull()
   })
 
