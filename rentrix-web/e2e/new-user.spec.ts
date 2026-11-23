@@ -241,7 +241,7 @@ test("a tenant who skips both steps still sees both prompts on My tenancies and 
 }) => {
   const tag = Date.now().toString(36)
   const society = `E2E Skip Society ${tag}`
-  await signUpTenant(page, `8${Date.now().toString().slice(-9)}`)
+  await signUpTenant(page, testPhone())
   const done = await addHome(page, society, `S-${tag}`, "+919800054321")
   await done.getByTestId("add-home-skip").click()
 
