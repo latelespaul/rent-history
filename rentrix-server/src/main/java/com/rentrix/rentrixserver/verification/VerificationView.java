@@ -25,11 +25,13 @@ public record VerificationView(
 ) {
 	
 	/**
-	 * The stepper's steps (D-120): profile and phone are required to request verification; the extra ID (PAN or
-	 * Aadhaar), LinkedIn and the rental details are optional.
+	 * The stepper's steps (D-120, D-139): the profile and any one verified method ({@code method}: phone, masked
+	 * Aadhaar or LinkedIn; {@code PENDING} while only an admin-checked one waits) are required to request
+	 * verification. {@code phone}, {@code identity} (PAN or Aadhaar) and {@code linkedin} show each method on its own;
+	 * the rental details are optional.
 	 */
-	public record Steps(StepStatus profile, StepStatus phone, StepStatus identity, StepStatus linkedin,
-		StepStatus rentalAgreement) {
+	public record Steps(StepStatus profile, StepStatus phone, StepStatus method, StepStatus identity,
+		StepStatus linkedin, StepStatus rentalAgreement) {
 	}
 	
 	@JsonInclude(JsonInclude.Include.NON_NULL)

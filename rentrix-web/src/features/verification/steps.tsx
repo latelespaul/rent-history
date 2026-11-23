@@ -47,6 +47,36 @@ function phoneMethod(identity: IdentityView | undefined) {
   return verified ?? method(identity, "PHONE_OTP")
 }
 
+/**
+ * The posting method other than the phone that is verified (D-139): masked Aadhaar or LinkedIn,
+ * else null.
+ */
+function otherPostingMethod(identity: IdentityView | undefined): string | null {
+  if (method(identity, "AADHAAR")?.status === "VERIFIED") return "Aadhaar"
+  if (method(identity, "LINKEDIN")?.status === "VERIFIED") return "LinkedIn"
+  return null
+}
+
+/** Pick any one (D-139): the phone form is on this step; Aadhaar and LinkedIn on the next one. */
+function AnyOneNotice({ identity }: { identity: IdentityView | undefined }) {
+  const withNext = useWithNext()
+  const other = otherPostingMethod(identity)
+  if (other) {
+    return (
+      <Notice tone="teal" icon="shield-check">
+        <b>{other} verified.</b> That is all you need to post. A phone is an optional extra.
+      </Notice>
+    )
+  }
+  return (
+    <p className="text-sm text-ink-700">
+      Pick any one: phone, Aadhaar or LinkedIn. Verify your phone here, or{" "}
+      <Link to={withNext("/verify/id")}>use Aadhaar or LinkedIn</Link> instead. The others are
+      optional extra badges.
+    </p>
+  )
+}
+
 /** "+91 98765 43210", "9876543210" → "+919876543210"; other input is sent as typed for the API to judge. */
 function toE164(input: string): string {
   const digits = input.replace(/[\s()-]/g, "")
@@ -159,7 +189,8 @@ function clock(seconds: number): string {
 }
 
 /**
- * Step 2 · Phone, required (D-117, mockup `verify-v4-phone.html`): "Verify with Truecaller" first
+ * Step 2 · Verify (any one), required (D-139, mockup `verify-v4-phone.html`): any one of phone,
+ * masked Aadhaar or LinkedIn lets the user post; this step holds the phone. "Verify with Truecaller" first
  * (Android with a Truecaller key on the API), else or after it an SMS code. With `?next=` the user
  * goes straight back to what they were doing (D-119).
  */
@@ -214,9 +245,10 @@ export function PhoneStep({
   if (sms && !sms.available && !verified && !truecaller) {
     return (
       <StepFrame step="phone" entries={entries}>
-        <Notice tone="warn">
-          <b>Phone verification is not available yet.</b> You can keep reading; we will let you
-          know. Posting stays off until then.
+        <AnyOneNotice identity={identity} />
+        <Notice tone="warn" className="mt-4">
+          <b>Phone verification is not available yet.</b> Use{" "}
+          <Link to={withNext("/verify/id")}>Aadhaar or LinkedIn</Link> instead, or come back later.
         </Notice>
         <StepActions back="/verify/profile" />
       </StepFrame>
@@ -249,6 +281,7 @@ export function PhoneStep({
   return (
     <StepFrame step="phone" entries={entries}>
       <div className="space-y-6">
+        <AnyOneNotice identity={identity} />
         {truecaller && <TruecallerCard onVerified={truecallerVerified} />}
         {truecaller && sms && !sms.available && (
           <Notice tone="warn">SMS codes are not available yet. Use Truecaller for now.</Notice>
@@ -303,8 +336,7 @@ export function PhoneStep({
                 )}
               </div>
               <p className="text-xs text-ink-500">
-                Every tenant and landlord verifies a phone number. Indian mobile numbers only.
-                Private: never shown on your profile.
+                Indian mobile numbers only. Private: never shown on your profile.
               </p>
               {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
             </form>
@@ -385,8 +417,10 @@ function ComingSoonCard({ title, text }: { title: string; text: string }) {
 }
 
 /**
- * Step 3 · ID, optional (D-120, D-122, mockup `verify-v4-id.html`): PAN and masked Aadhaar wait for
- * the document upload (PLAN B12); LinkedIn works now (D-93).
+ * Step 3 · Aadhaar, LinkedIn, PAN (D-120, D-122, D-139, mockup `verify-v4-id.html`): masked Aadhaar
+ * or LinkedIn, once checked, is the one method that lets the user post when they skip the phone;
+ * otherwise they are optional extra badges. PAN and masked Aadhaar wait for the document upload
+ * (PLAN B12); LinkedIn works now (D-93).
  */
 export function IdStep({
   entries,
@@ -412,15 +446,19 @@ export function IdStep({
 
   return (
     <StepFrame step="id" entries={entries}>
-      {phone?.status === "VERIFIED" ? (
+      {phone?.status === "VERIFIED" || otherPostingMethod(identity) ? (
         <Notice tone="teal" icon="shield-check">
-          <b>Phone verified · {phone.masked}.</b> That is all you need to post. An ID below is
-          optional and adds a badge to your profile.
+          <b>
+            {phone?.status === "VERIFIED"
+              ? `Phone verified · ${phone.masked}.`
+              : `${otherPostingMethod(identity)} verified.`}
+          </b>{" "}
+          That is all you need to post. The others below are optional extra badges.
         </Notice>
       ) : (
-        <Notice tone="warn">
-          Verify your phone first: <Link to={withNext("/verify/phone")}>step 2</Link>. An ID does
-          not replace it.
+        <Notice tone="info">
+          Any one is enough to post: Aadhaar or LinkedIn below once our team checks it, or{" "}
+          <Link to={withNext("/verify/phone")}>your phone</Link> at once.
         </Notice>
       )}
       <div className="mt-4 grid gap-3 nav:grid-cols-3">
@@ -540,12 +578,12 @@ export function RentalStep({ entries }: { entries: VerificationEntry[] }) {
 
 const MISSING_STEP: Record<string, { label: string; path: string }> = {
   profile: { label: "Profile: your name and home city", path: "/verify/profile" },
-  phone: { label: "Phone: verify your mobile number", path: "/verify/phone" },
+  method: { label: "Verify with any one: phone, Aadhaar or LinkedIn", path: "/verify/phone" },
 }
 
 /**
- * Submit · "Request verification" (D-133): optional, because posting is already open with a
- * verified phone (D-132). Sends every held role still in `DRAFT` or `REJECTED`.
+ * Submit · "Request verification" (D-133): optional, because posting is already open with any one
+ * verified method (D-132, D-139). Sends every held role still in `DRAFT` or `REJECTED`.
  */
 export function SubmitStep({
   entries,
@@ -587,15 +625,20 @@ export function SubmitStep({
         Request verification
       </h1>
       <p className="mt-1.5 text-ink-500">
-        Optional. You can already post with a verified phone. An admin review gives your profile the
-        green tick &ldquo;Verified&rdquo;, usually within 48 hours.
+        Optional. You can already post with any one verified method. Our team checks your ID and
+        gives your profile the green tick &ldquo;Verified by {BRAND.name}&rdquo;, usually within 48
+        hours.
       </p>
       <ul className="mt-4 space-y-2 text-sm">
         <li>
           <b>Profile</b> · {steps?.profile === "DONE" ? "done" : "missing"}
         </li>
         <li>
-          <b>Phone</b> · {phone?.status === "VERIFIED" ? `${phone.masked} · verified` : "missing"}
+          <b>Verified method</b> ·{" "}
+          {phone?.status === "VERIFIED"
+            ? `phone ${phone.masked}`
+            : (otherPostingMethod(identity) ??
+              (steps?.method === "PENDING" ? "waiting for a check" : "missing"))}
         </li>
         <li>
           <b>ID (optional)</b> ·{" "}

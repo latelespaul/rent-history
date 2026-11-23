@@ -61,13 +61,14 @@ public class ApiException extends RuntimeException {
 	}
 
 	/**
-	 * 403 {@code id_verification_required} (D-117, D-132): posting needs a verified phone, and the caller has none
-	 * (never verified, or revoked by a phone change). The body names it in {@code missing: ["phone"]}; verifying a
-	 * phone lifts it at once, with no admin step.
+	 * 403 {@code id_verification_required} (D-132, D-139): posting needs any one verified method (phone, masked Aadhaar
+	 * or LinkedIn), and the caller has none (never verified, or the only one revoked by a phone change). The body names
+	 * it in {@code missing: ["method"]}; a verified phone lifts it at once, with no admin step.
 	 */
 	public static ApiException idVerificationRequired() {
 		return new ApiException(HttpStatus.FORBIDDEN, "id_verification_required",
-			"Verify your phone number to continue.", List.of(), HttpHeaders.EMPTY, Map.of(), List.of("phone"));
+			"Verify with any one: phone, Aadhaar or LinkedIn to continue.", List.of(), HttpHeaders.EMPTY, Map.of(),
+			List.of("method"));
 	}
 
 	/** 422 {@code verification_incomplete}: submit with steps still missing, listed in {@code missing} (D-105). */

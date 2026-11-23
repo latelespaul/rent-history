@@ -167,6 +167,7 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$[0].id").doesNotExist())
 			.andExpect(jsonPath("$[0].steps.profile").value("DONE"))
 			.andExpect(jsonPath("$[0].steps.phone").value("MISSING"))
+			.andExpect(jsonPath("$[0].steps.method").value("MISSING"))
 			.andExpect(jsonPath("$[0].steps.identity").value("SKIPPED"))
 			.andExpect(jsonPath("$[0].steps.linkedin").value("SKIPPED"))
 			.andExpect(jsonPath("$[0].steps.rentalAgreement").value("SKIPPED"))
@@ -176,6 +177,7 @@ class VerificationApiTest {
 		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(jsonPath("$[0].steps.phone").value("DONE"))
+			.andExpect(jsonPath("$[0].steps.method").value("DONE"))
 			.andExpect(jsonPath("$[0].steps.identity").value("PENDING"));
 		mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(user)))
 			.andExpect(jsonPath("$.verification.TENANT").value("DRAFT"))
@@ -183,15 +185,15 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void submitWithoutAVerifiedPhoneIsRefusedWithTheMissingSteps() throws Exception {
+	void submitWithoutAVerifiedMethodIsRefusedWithTheMissingSteps() throws Exception {
 		User user = applicant("No phone", Role.TENANT);
-		// A pending PAN is optional extra ID: it does not replace the phone (D-117).
+		// A pending PAN is optional extra ID: PAN is not a posting method (D-139).
 		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		submit(user, "TENANT")
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("verification_incomplete"))
 			.andExpect(jsonPath("$.missing.length()").value(1))
-			.andExpect(jsonPath("$.missing[0]").value("phone"));
+			.andExpect(jsonPath("$.missing[0]").value("method"));
 
 		User noProfile = data.user("No profile", Role.LANDLORD);
 		check(noProfile, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
@@ -305,7 +307,7 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void approveWithoutAVerifiedPhoneIsRefusedAndKeepsNothing() throws Exception {
+	void approveWithoutAVerifiedMethodIsRefusedAndKeepsNothing() throws Exception {
 		User user = applicant("Phone gone", Role.TENANT);
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		IdentityVerification pan = check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
@@ -315,8 +317,8 @@ class VerificationApiTest {
 		User admin = admin();
 		decide(admin, id, "approve", "{}")
 			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("phone_not_verified"));
-		// Verifying the pending PAN inside the call does not replace the phone (D-117): nothing is kept.
+			.andExpect(jsonPath("$.code").value("no_verified_method"));
+		// Verifying the pending PAN inside the call does not count: PAN is not a posting method (D-139), nothing is kept.
 		decide(admin, id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId()
 			+ "\", \"result\": \"VERIFIED\"}]}")
 			.andExpect(status().isUnprocessableContent());
@@ -372,12 +374,12 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void guardNeedsOnlyAVerifiedPhoneWhateverTheApplication() throws Exception {
+	void guardNeedsOnlyAVerifiedMethodWhateverTheApplication() throws Exception {
 		User user = applicant("Gated", Role.TENANT);
 		gatedWrite(user, Role.TENANT)
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("phone"))
+			.andExpect(jsonPath("$.missing[0]").value("method"))
 			.andExpect(jsonPath("$.approval").doesNotExist());
 		// Open by default (D-132): with a verified phone a DRAFT, PENDING or REJECTED application may post.
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
@@ -389,7 +391,34 @@ class VerificationApiTest {
 	}
 
 	@Test
-	void guardDeniesOnceThePhoneIsRevokedAndANewPhoneLiftsIt() throws Exception {
+	void anyOneVerifiedMethodOpensTheGateAndPanAloneDoesNot() throws Exception {
+		User aadhaar = applicant("Aadhaar only", Role.TENANT);
+		check(aadhaar, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
+		gatedWrite(aadhaar, Role.TENANT).andExpect(status().isOk());
+		
+		User linkedin = applicant("LinkedIn only", Role.LANDLORD);
+		check(linkedin, IdentityMethod.LINKEDIN, IdentityStatus.PENDING);
+		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(linkedin)))
+			.andExpect(jsonPath("$[0].steps.phone").value("MISSING"))
+			.andExpect(jsonPath("$[0].steps.method").value("PENDING"));
+		gatedWrite(linkedin, Role.LANDLORD).andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.missing[0]").value("method"));
+		checks.findByUserAndMethod(linkedin, IdentityMethod.LINKEDIN).ifPresent(checks::delete);
+		check(linkedin, IdentityMethod.LINKEDIN, IdentityStatus.VERIFIED);
+		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(linkedin)))
+			.andExpect(jsonPath("$[0].steps.method").value("DONE"));
+		gatedWrite(linkedin, Role.LANDLORD).andExpect(status().isOk());
+		UUID id = submitted(linkedin, Role.LANDLORD);
+		decide(admin(), id, "approve", "{}").andExpect(status().isOk());
+		
+		User pan = applicant("PAN only", Role.TENANT);
+		check(pan, IdentityMethod.PAN, IdentityStatus.VERIFIED);
+		gatedWrite(pan, Role.TENANT).andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("id_verification_required"));
+	}
+	
+	@Test
+	void guardDeniesOnceTheOnlyMethodIsRevokedAndANewPhoneLiftsIt() throws Exception {
 		User user = applicant("Phone changed", Role.LANDLORD);
 		check(user, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		UUID id = submitted(user, Role.LANDLORD);
@@ -405,13 +434,18 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.code").value("id_verification_required"));
 		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.APPROVED);
 
-		// A verified Aadhaar is an extra badge only: it does not replace the phone (D-117).
-		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
+		// A verified PAN is an extra badge only: PAN is not a posting method (D-139).
+		check(user, IdentityMethod.PAN, IdentityStatus.VERIFIED);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isForbidden());
 		// Verifying a phone again lifts it without a new approval.
 		IdentityVerification phone = checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP).orElseThrow();
 		phone.setStatus(IdentityStatus.VERIFIED);
 		checks.save(phone);
+		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
+		// With a verified Aadhaar too, losing the phone again leaves posting open (any one method, D-139).
+		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
+		new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+			identity.phoneChanged(users.findById(user.getId()).orElseThrow()));
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
 	}
 

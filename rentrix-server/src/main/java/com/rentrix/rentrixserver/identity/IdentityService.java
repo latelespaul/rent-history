@@ -26,12 +26,11 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 /**
- * Identity checks per user (§5.15, D-99 – D-106, D-117). The two rules the gate and the badge use live here: a user
- * may post when their phone is {@code VERIFIED} by SMS code or Truecaller ({@link #isPhoneVerified}, D-117, D-132),
- * and is
- * <b>ID verified</b> (the public badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED}
- * ({@link #isIdVerified}, D-100). LinkedIn is a bonus badge and never counts. The same rules hold for tenants and
- * landlords.
+ * Identity checks per user (§5.15, D-99 – D-106, D-117, D-139). The two rules the gate and the badge use live here: a
+ * user may post when any one posting method is {@code VERIFIED}: the phone (SMS code or Truecaller), masked Aadhaar or
+ * LinkedIn ({@link #hasPostingMethod}, D-139, which replaces phone-only D-117), and is <b>ID verified</b> (the public
+ * badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED} ({@link #isIdVerified}, D-100). The methods the user
+ * did not need to post stay optional extra badges. The same rules hold for tenants and landlords.
  */
 @Slf4j
 @Service
@@ -47,6 +46,13 @@ public class IdentityService {
 	/** The methods that verify the account's phone (D-117): an SMS code or Truecaller. Either one counts. */
 	public static final Set<IdentityMethod> PHONE_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
 		IdentityMethod.TRUECALLER);
+	
+	/**
+	 * The methods that let a user post (D-139, captain 2026-11-22): any one of phone (SMS code or Truecaller), masked
+	 * Aadhaar or LinkedIn, {@code VERIFIED}. PAN is not one of them; it only gives the "ID verified" badge.
+	 */
+	public static final Set<IdentityMethod> POSTING_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
+		IdentityMethod.TRUECALLER, IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN);
 	
 	/** The ID methods an admin decides from an upload, also inside an application decision (D-102, D-103, D-105). */
 	public static final Set<IdentityMethod> ADMIN_CHECKED_ID_METHODS =
@@ -73,7 +79,21 @@ public class IdentityService {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
 	}
 	
-	/** The posting rule (D-117, D-132): the phone is verified by SMS code or Truecaller and not revoked. */
+	/** The posting rule (D-139): any one of {@link #POSTING_METHODS} is verified and not revoked. */
+	@Transactional(readOnly = true)
+	public boolean hasPostingMethod(User user) {
+		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, POSTING_METHODS,
+			IdentityStatus.VERIFIED);
+	}
+	
+	/** A posting method waits for an admin check (masked Aadhaar or LinkedIn added, none verified yet). */
+	@Transactional(readOnly = true)
+	public boolean hasPendingPostingMethod(User user) {
+		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, POSTING_METHODS,
+			IdentityStatus.PENDING);
+	}
+	
+	/** The phone step (D-117, D-120): the phone is verified by SMS code or Truecaller and not revoked. */
 	@Transactional(readOnly = true)
 	public boolean isPhoneVerified(User user) {
 		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, PHONE_METHODS,

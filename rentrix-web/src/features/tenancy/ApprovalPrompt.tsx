@@ -16,13 +16,13 @@ export function ActionError({ error }: { error: unknown }) {
   if (isGateError(error)) {
     return (
       <Notice tone="warn" icon="shield-check">
-        <p className="font-semibold">Verify your phone to post</p>
+        <p className="font-semibold">Verify to post</p>
         <p className="mt-1">
-          It takes a minute: we send a 6-digit code by SMS. What you typed here is kept, and you
-          come straight back. Viewing stays open to everyone.
+          Any one is enough: phone, Aadhaar or LinkedIn. A phone code takes a minute. What you typed
+          here is kept, and you come straight back. Viewing stays open to everyone.
         </p>
         <Button asChild size="sm" variant="outline" className="mt-2">
-          <Link to={phoneStep}>Verify your phone number</Link>
+          <Link to={phoneStep}>Verify now</Link>
         </Button>
       </Notice>
     )

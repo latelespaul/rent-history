@@ -117,8 +117,8 @@ public class VerificationService implements VerificationStatuses {
 		if (steps.profile() == StepStatus.MISSING) {
 			missing.add("profile");
 		}
-		if (steps.phone() == StepStatus.MISSING) {
-			missing.add("phone");
+		if (steps.method() != StepStatus.DONE) {
+			missing.add("method");
 		}
 		if (!missing.isEmpty()) {
 			throw ApiException.verificationIncomplete(missing);
@@ -186,6 +186,9 @@ public class VerificationService implements VerificationStatuses {
 		StepStatus profile = user.getDisplayName() != null && !user.getDisplayName().isBlank()
 			&& user.getHomeCity() != null ? StepStatus.DONE : StepStatus.MISSING;
 		StepStatus phone = identity.isPhoneVerified(user) ? StepStatus.DONE : StepStatus.MISSING;
+		// The posting rule (D-139): any one of phone, masked Aadhaar or LinkedIn verified.
+		StepStatus method = identity.hasPostingMethod(user) ? StepStatus.DONE
+			: identity.hasPendingPostingMethod(user) ? StepStatus.PENDING : StepStatus.MISSING;
 		// The optional extra ID (D-120): PAN or masked Aadhaar; skipped when the user has added neither.
 		StepStatus id = identity.isIdVerified(user) ? StepStatus.DONE
 			: identity.hasPendingIdMethod(user) ? StepStatus.PENDING
@@ -199,13 +202,13 @@ public class VerificationService implements VerificationStatuses {
 				case REVOKED -> StepStatus.SKIPPED;
 			})
 			.orElse(StepStatus.SKIPPED);
-		return new Steps(profile, phone, id, linkedin);
+		return new Steps(profile, phone, method, id, linkedin);
 	}
 	
 	private static VerificationView view(User user, Role role, Optional<VerificationApplication> found, Steps steps) {
 		// Rental details are an optional step for both roles (D-120); the agreement upload comes with PLAN B18.
-		VerificationView.Steps roleSteps = new VerificationView.Steps(steps.profile(), steps.phone(), steps.identity(),
-			steps.linkedin(), StepStatus.SKIPPED);
+		VerificationView.Steps roleSteps = new VerificationView.Steps(steps.profile(), steps.phone(), steps.method(),
+			steps.identity(), steps.linkedin(), StepStatus.SKIPPED);
 		if (found.isEmpty()) {
 			return new VerificationView(null, role, VerificationStatus.DRAFT, 1, roleSteps, null, null);
 		}
@@ -240,7 +243,8 @@ public class VerificationService implements VerificationStatuses {
 		return role;
 	}
 	
-	private record Steps(StepStatus profile, StepStatus phone, StepStatus identity, StepStatus linkedin) {
+	private record Steps(StepStatus profile, StepStatus phone, StepStatus method, StepStatus identity,
+		StepStatus linkedin) {
 	}
 	
 }

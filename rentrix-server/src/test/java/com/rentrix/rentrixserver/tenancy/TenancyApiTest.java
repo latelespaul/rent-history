@@ -250,7 +250,7 @@ class TenancyApiTest {
 		create(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("phone"))
+			.andExpect(jsonPath("$.missing[0]").value("method"))
 			.andExpect(jsonPath("$.approval").doesNotExist());
 		assertThat(tenancies.findByTenantIdAndStatusIn(tenant.getId(), java.util.List.of(TenancyStatus.values())))
 			.isEmpty();
@@ -273,7 +273,7 @@ class TenancyApiTest {
 		act(landlord, id, "confirm")
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("phone"));
+			.andExpect(jsonPath("$.missing[0]").value("method"));
 		act(landlord, id, "decline", "{\"reason\": \"Never rented to this person.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("DECLINED"))

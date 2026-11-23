@@ -11,7 +11,7 @@ import java.util.Map;
  * {@code code} is the stable machine code clients switch on and {@code title} is derived from it; {@code traceId} matches the
  * {@code X-Request-Id} response header and the log lines of the request. {@code approval} ({@code {role, status}})
  * is no longer set since open by default replaced the approval gate (D-132). {@code missing} lists the steps still to
- * do on {@code 422 verification_incomplete} (D-105) and {@code ["phone"]} on {@code 403 id_verification_required}
+ * do on {@code 422 verification_incomplete} (D-105) and {@code ["method"]} on {@code 403 id_verification_required}
  * (D-117). {@code conflict} is set only on {@code 409 tenancy_overlap}: the period of the tenancy already on the home
  * ({@code from}, {@code to} months; no {@code to} while it is current) and, for that home's landlord only, its
  * {@code tenancyId}.

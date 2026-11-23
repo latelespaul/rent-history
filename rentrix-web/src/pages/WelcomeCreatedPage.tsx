@@ -106,8 +106,9 @@ export default function WelcomeCreatedPage() {
           </div>
 
           <Notice tone="teal" className="mt-6">
-            <b>Next: verify your phone number.</b> It takes a minute: we send a 6-digit code by SMS.
-            Then you can post right away. Adding an ID and your rental details is optional.
+            <b>Next: verify with any one: phone, Aadhaar or LinkedIn.</b> A phone code takes a
+            minute, then you can post right away. The others and your rental details are optional
+            extra badges.
           </Notice>
           <Button asChild size="lg" className="mt-5 w-full">
             <Link
@@ -115,7 +116,7 @@ export default function WelcomeCreatedPage() {
               data-testid="welcome-verify"
             >
               <MessageIcon />
-              Verify your phone number
+              Verify to post
             </Link>
           </Button>
           <Button asChild variant="outline" className="mt-2 w-full">

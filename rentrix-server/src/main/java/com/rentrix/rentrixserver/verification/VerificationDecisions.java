@@ -67,9 +67,9 @@ public class VerificationDecisions {
 			verification.event(application, VerificationEventType.IDENTITY_CHECKED, admin,
 				check.getMethod().name() + ":" + check.getStatus().name(), blankToNull(result.note()), now);
 		}
-		if (!identity.isPhoneVerified(owner)) {
-			throw ApiException.rule("phone_not_verified",
-				"The applicant's phone number is not verified, so the application cannot be approved yet.");
+		if (!identity.hasPostingMethod(owner)) {
+			throw ApiException.rule("no_verified_method",
+				"The applicant has no verified phone, Aadhaar or LinkedIn yet, so the application cannot be approved.");
 		}
 		String cleanNote = blankToNull(note);
 		application.setStatus(VerificationStatus.APPROVED);

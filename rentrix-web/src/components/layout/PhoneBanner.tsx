@@ -3,8 +3,8 @@ import { ClockIcon } from "@/components/ui/icons.gen"
 import { Container } from "./Container"
 
 /**
- * "Verify your phone to post" (D-120, D-132): on every page while the signed-in user has no
- * verified phone, except inside the stepper and the welcome screens. The link brings the user back
+ * "Verify to post" (D-120, D-132, D-139): on every page while the signed-in user has no verified
+ * method (phone, masked Aadhaar or LinkedIn), except inside the stepper and the welcome screens. The link brings the user back
  * here afterwards (`?next=`, D-119).
  */
 export function PhoneBanner() {
@@ -22,10 +22,10 @@ export function PhoneBanner() {
       <Container className="flex items-start gap-2 py-2.5 text-sm">
         <ClockIcon size={18} className="mt-0.5 shrink-0" />
         <p>
-          <b>Verify your phone to post.</b> What you post shows at once as &ldquo;Not verified
-          yet&rdquo; until an admin reviews it.{" "}
+          <b>Verify to post: any one of phone, Aadhaar or LinkedIn.</b> What you post shows at once
+          as &ldquo;Not verified yet&rdquo; until our team checks it.{" "}
           <Link to={`/verify/phone?next=${next}`} className="font-semibold text-inherit underline">
-            Verify your phone
+            Verify now
           </Link>
         </p>
       </Container>
