@@ -26,6 +26,11 @@ public class PropertyTestSupport {
 		return "Bearer " + tokens.issue(user.getPublicId(), user.getRoles());
 	}
 	
+	/** An admin console session (§13.3); send it with {@code AdminConsole.adminHost()}. */
+	public String adminBearer(User user) {
+		return "Bearer " + tokens.issueAdmin(user.getPublicId());
+	}
+	
 	/** A city row only this test sees (call inside a rolled-back test transaction). */
 	public void city(String code, String name, boolean live) {
 		jdbc.update("insert into cities (code, name, aliases, state, live, pincode_prefixes, created_at, updated_at) "

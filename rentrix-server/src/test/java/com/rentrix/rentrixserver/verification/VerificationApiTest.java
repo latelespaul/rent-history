@@ -39,6 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
+import static com.rentrix.rentrixserver.support.AdminConsole.adminBearer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -137,8 +139,8 @@ class VerificationApiTest {
 	}
 
 	private ResultActions decide(User admin, UUID application, String decision, String body) throws Exception {
-		return mvc.perform(post("/admin/applications/" + application + "/" + decision)
-			.header(HttpHeaders.AUTHORIZATION, bearer(admin))
+		return mvc.perform(post("/admin/applications/" + application + "/" + decision).with(adminHost())
+			.header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin))
 			.contentType(MediaType.APPLICATION_JSON)
 			.content(body));
 	}
@@ -525,12 +527,13 @@ class VerificationApiTest {
 		decide(other, id, "approve", "{}").andExpect(status().isForbidden());
 		decide(user, id, "approve", "{}").andExpect(status().isForbidden());
 
-		// A token that still says ADMIN after the role was removed in the database is refused too (D-19).
+		// An admin console token that outlives the role in the database is refused too (D-19).
 		User former = admin();
-		String staleToken = bearer(former);
+		String staleToken = adminBearer(tokens, former);
 		former.getRoles().clear();
 		users.save(former);
-		mvc.perform(post("/admin/applications/" + id + "/approve").header(HttpHeaders.AUTHORIZATION, staleToken)
+		mvc.perform(post("/admin/applications/" + id + "/approve").with(adminHost())
+				.header(HttpHeaders.AUTHORIZATION, staleToken)
 				.contentType(MediaType.APPLICATION_JSON).content("{}"))
 			.andExpect(status().isForbidden());
 		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.PENDING);

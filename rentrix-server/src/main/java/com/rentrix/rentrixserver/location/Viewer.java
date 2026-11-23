@@ -20,8 +20,9 @@ record Viewer(UUID publicId, boolean admin) {
 		return caller == null ? ANONYMOUS : new Viewer(caller.publicId(), caller.hasRole(Role.ADMIN));
 	}
 	
+	/** A writer on the main site, which never has admin powers (D-19): their proposals are always {@code PENDING}. */
 	static Viewer of(User user) {
-		return new Viewer(user.getPublicId(), user.getRoles().contains(Role.ADMIN));
+		return new Viewer(user.getPublicId(), false);
 	}
 	
 	boolean isProposer(User createdBy) {

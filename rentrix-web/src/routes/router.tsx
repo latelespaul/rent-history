@@ -2,7 +2,6 @@ import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
 import AddHomePage from "@/pages/AddHomePage"
-import ComingSoonPage from "@/pages/ComingSoonPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
 import LegalPage from "@/pages/LegalPage"
@@ -61,10 +60,6 @@ export const routes = [
           { path: "/me/properties/new", element: <PropertyFormPage /> },
           { path: "/me/properties/:id/edit", element: <PropertyFormPage /> },
         ],
-      },
-      {
-        element: <RequireAuth role="ADMIN" />,
-        children: [{ path: "/admin/*", element: <ComingSoonPage title="Admin console" /> }],
       },
       { path: "*", element: <NotFoundPage /> },
     ],

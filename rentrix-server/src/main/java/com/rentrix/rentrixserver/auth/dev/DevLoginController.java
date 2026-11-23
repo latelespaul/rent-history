@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.auth.AuthService;
 import com.rentrix.rentrixserver.auth.SessionResponses;
 import com.rentrix.rentrixserver.auth.SignInRateLimiter;
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserStatus;
@@ -35,7 +36,8 @@ import java.util.UUID;
  * or {@code test} profile is active <em>and</em> {@code DEV_LOGIN_ENABLED=true}; elsewhere the routes are
  * {@code 404}, and {@code StartupGuard} refuses to start any other profile with the flag on.
  * {@code POST /auth/dev-login/new} signs in as a brand-new user with no role yet, so the first sign-in (role pick,
- * account created, verification stepper) can be clicked through without Google too.
+ * account created, verification stepper) can be clicked through without Google too. Seed admins are not offered here:
+ * they sign in on the admin host ({@link AdminDevLoginController}, D-19).
  */
 @RestController
 @RequestMapping("/auth")
@@ -56,7 +58,8 @@ public class DevLoginController {
 	@GetMapping("/dev-users")
 	@Transactional(readOnly = true)
 	public List<UserView> devUsers() {
-		return users.findByDemoTrueAndStatusOrderByDisplayNameAsc(UserStatus.ACTIVE).stream().map(userViews::of).toList();
+		return users.findByDemoTrueAndStatusOrderByDisplayNameAsc(UserStatus.ACTIVE).stream()
+			.filter(u -> !u.hasRole(Role.ADMIN)).map(userViews::of).toList();
 	}
 	
 	@PostMapping("/dev-login")
@@ -65,6 +68,7 @@ public class DevLoginController {
 		rateLimiter.check(request);
 		User user = users.findByPublicId(body.userId())
 			.filter(User::isDemo)
+			.filter(u -> !u.hasRole(Role.ADMIN))
 			.orElseThrow(() -> ApiException.notFound("Demo user"));
 		return sessions.signedIn(request, auth.startSession(user));
 	}

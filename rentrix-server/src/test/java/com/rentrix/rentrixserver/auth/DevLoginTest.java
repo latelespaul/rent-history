@@ -30,10 +30,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Dev login with {@code DEV_LOGIN_ENABLED=true} on the test profile (D-77), and {@code ADMIN_EMAILS} applied to
- * the token roles (D-78).
+ * Dev login with {@code DEV_LOGIN_ENABLED=true} on the test profile (D-77). The admin console's dev login is in
+ * {@link AdminConsoleAuthTest}, which shares this context.
  */
-@SpringBootTest(properties = {"app.dev-login.enabled=true", "app.auth.admin-emails=demo-admin@example.test"})
+@SpringBootTest(properties = {"app.dev-login.enabled=true", "app.admin-console.emails=console-admin@example.test,listed-demo@example.test"})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class DevLoginTest {
@@ -130,17 +130,13 @@ class DevLoginTest {
 	}
 	
 	@Test
-	void adminEmailsGrantAdminInTheTokenWithoutAUserRolesRow() throws Exception {
-		User admin = users.findByEmail("demo-admin@example.test").orElseGet(() -> {
-			User user = demo("Demo Admin");
-			user.setEmail("demo-admin@example.test");
-			return users.save(user);
-		});
-		JsonNode body = json.readTree(devLogin(admin.getPublicId()).getContentAsString());
-		assertThat(tokens.verify(body.get("accessToken").asString()).roles()).containsExactly(Role.ADMIN);
-		assertThat(body.at("/user/roles/0").asString()).isEqualTo("ADMIN");
-		assertThat(users.findByPublicId(admin.getPublicId()).orElseThrow().getRoles()).isEmpty();
-		// Not onboarded, but the admin console stays reachable (here: no such route, so 404 not 403).
+	void aListedConsoleEmailGetsNoAdminOnTheMainSite() throws Exception {
+		User listed = demo("Demo Console " + UUID.randomUUID(), Role.TENANT);
+		listed.setEmail("listed-demo@example.test");
+		users.save(listed);
+		JsonNode body = json.readTree(devLogin(listed.getPublicId()).getContentAsString());
+		assertThat(tokens.verify(body.get("accessToken").asString()).roles()).containsExactly(Role.TENANT);
+		assertThat(body.at("/user/roles").toString()).doesNotContain("ADMIN");
 		mvc.perform(get("/admin/anything").header(HttpHeaders.AUTHORIZATION, "Bearer " + body.get("accessToken").asString()))
 			.andExpect(status().isNotFound());
 	}

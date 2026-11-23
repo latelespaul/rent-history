@@ -36,6 +36,8 @@ export interface ApiClientOptions {
   fetch?: typeof fetch
   /** Runs when a refresh is refused (401/403), i.e. the user must sign in again. */
   onSessionExpired?: () => void
+  /** The cookie-based refresh endpoint; the admin console uses `/auth/admin/refresh`. */
+  refreshPath?: string
 }
 
 const REFRESH_PATH = "/auth/refresh"
@@ -79,6 +81,7 @@ async function readBody<T>(response: Response): Promise<T> {
 export function createApiClient(options: ApiClientOptions) {
   const doFetch = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args))
   const base = () => (typeof options.baseUrl === "function" ? options.baseUrl() : options.baseUrl)
+  const refreshPath = options.refreshPath ?? REFRESH_PATH
   let accessToken: string | null = null
   let refreshInFlight: Promise<boolean> | null = null
 
@@ -115,7 +118,7 @@ export function createApiClient(options: ApiClientOptions) {
   async function doRefresh(retry = true): Promise<boolean> {
     let response: Response
     try {
-      response = await send("POST", REFRESH_PATH, {})
+      response = await send("POST", refreshPath, {})
     } catch {
       // Offline during refresh: keep the old token, the caller sees the original 401.
       return retry ? retryRefresh() : false

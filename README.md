@@ -40,7 +40,7 @@ Google sign-in needs only an OAuth **client ID** (no client secret). Never commi
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and select or create a project (for example "rentrix-dev").
 2. APIs & Services → OAuth consent screen: user type **External**, app name "Doorway Living (dev)", a support email, scopes `openid`, `email` and `profile` only. While the app is in "Testing", add your own Google account as a test user.
 3. APIs & Services → Credentials → **Create credentials → OAuth client ID** → application type **Web application**.
-4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (Google Identity Services needs both for local dev). For production add the web origins `https://doorwayliving.in` and `https://www.doorwayliving.in`. No redirect URIs are needed.
+4. Authorized JavaScript origins: `http://localhost:5173` and `http://localhost` (Google Identity Services needs both for local dev). For production add the web origins `https://doorwayliving.in` and `https://www.doorwayliving.in`. For the admin console add `https://admin.doorwayliving.in` (and `http://admin.localhost:5173` locally). No redirect URIs are needed.
 5. Copy the client ID (`…apps.googleusercontent.com`). Do **not** download or commit the JSON file.
 6. Give it to the API only, from your shell or an untracked `.env` file (`.env` is git-ignored):
 
@@ -65,9 +65,18 @@ CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
 
 Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Proto` / `-Host` / `-Port` only from `TRUSTED_PROXIES` (default: loopback and private ranges), so a web served from the API's own origin needs no CORS entry. Set `TRUSTED_PROXIES` to the proxy's IP when it is neither. See SYSTEM_DESIGN §17.
 
-### Admins
+### Admin console
 
-`ADMIN` is never self-service. Set `ADMIN_EMAILS` to a comma list of verified Google emails; those users get `ADMIN` on their next sign-in or refresh, and lose it when their email is removed from the list.
+The admin console has its own host and its own session (SYSTEM_DESIGN §13.3); the main site never shows, grants or uses the admin role. On the API set:
+
+```sh
+ADMIN_HOSTS=admin.doorwayliving.in                # host names of the console; empty = no console
+ADMIN_CONSOLE_EMAILS=someone@example.com          # verified Google emails that may sign in there
+```
+
+Only requests to an `ADMIN_HOSTS` host may call `/admin/**` or sign in at `/auth/admin/google`. In `prod` this list is the only way in: a `user_roles` `ADMIN` row grants nothing there; it counts only under the `dev` (and `test`) profile, for the seed's Demo Admin. A listed email loses the console at its next refresh once removed from the list. `ADMIN_EMAILS` is no longer read.
+
+Locally the `dev` profile already sets `ADMIN_HOSTS=admin.localhost`: run `npm run dev` and open `http://admin.localhost:5173`, where the dev login offers the seed's Demo Admin. The first page is the OTP relay (`/sms-relay`).
 
 ## Locations: areas and societies
 

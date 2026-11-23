@@ -38,7 +38,9 @@ of its own and nothing to commit:
   yet, to try the first sign-in.
 - A first sign-in goes to `/welcome` to pick tenant, landlord or both (+ optional home city), which posts
   `/me/onboarding` and swaps in the fresh token. `/settings` edits the profile, adds the other role and
-  signs out. `/search`, `/settings`, `/me/*` and `/welcome` need a session (`/` is the logged-out landing; a signed-in visitor goes on to `/search`); `/admin/*` needs `ADMIN`.
+  signs out. `/search`, `/settings`, `/me/*` and `/welcome` need a session (`/` is the logged-out landing; a signed-in visitor goes on to `/search`). The main site has no admin routes: on a host starting with
+  `admin.` (locally `http://admin.localhost:5173`) the same build renders the admin console instead
+  (`src/admin`, root README "Admin console").
 - Hosting: pages that show the Google button must be served with
   `Cross-Origin-Opener-Policy: same-origin-allow-popups` (set in `vite.config.ts`, `docker/nginx.conf`
   and `vercel.json`). A Content Security Policy, if you add one, must allow `https://accounts.google.com/gsi/`

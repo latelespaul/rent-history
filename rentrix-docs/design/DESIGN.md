@@ -114,7 +114,7 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
    ├─ Reports queue ─▶ dismiss / hide / void / suspend (D-51)
    └─ [Cities] add city (created inactive) ─▶ activate ─▶ appears in every picker at once (D-83)
 ```
-- Admins are assigned by `ADMIN_EMAILS` or by another admin, never self-service (D-19). The dev seed admin signs in through dev login.
+- Admins are assigned by `ADMIN_CONSOLE_EMAILS` or by another admin, never self-service (D-19). The admin console has its own host (`admin.doorwayliving.in`, SYSTEM_DESIGN §13.3); the main site never shows an admin link, badge or route. The dev seed admin signs in through the admin host's dev login.
 - Every decision writes an audit row: who, when, what, why (D-87). An admin cannot decide their own records (D-88).
 
 ### 2.7 Verification (tenant and landlord)

@@ -35,16 +35,8 @@ export const NEW_USER = makeUser({
   verification: {},
 })
 
+/** The main site's picker: the API never lists the seed admin here (SYSTEM_DESIGN §13.3). */
 export const DEV_USERS: CurrentUser[] = [
-  makeUser({
-    id: "a1",
-    displayName: "Demo Admin",
-    email: "demo-admin@example.test",
-    roles: ["ADMIN"],
-    homeCity: null,
-    demo: true,
-    verification: {},
-  }),
   makeUser({
     id: "l1",
     displayName: "Demo Landlord BLR-1",

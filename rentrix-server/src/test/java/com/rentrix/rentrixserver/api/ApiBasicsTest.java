@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
@@ -93,9 +94,13 @@ class ApiBasicsTest {
 			.andExpect(jsonPath("$.code").value("forbidden"));
 		mvc.perform(get("/test-only/landlord-only").header(HttpHeaders.AUTHORIZATION, bearer(Role.LANDLORD)))
 			.andExpect(status().isOk());
-		mvc.perform(get("/admin/anything").header(HttpHeaders.AUTHORIZATION, bearer(Role.LANDLORD)))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("forbidden"));
+		// The admin console is on its own host (§13.3): not found on the main site, and an admin role
+		// claimed by a main-site token counts for nothing there.
+		mvc.perform(get("/admin/anything").header(HttpHeaders.AUTHORIZATION, bearer(Role.ADMIN)))
+			.andExpect(status().isNotFound());
+		mvc.perform(get("/admin/anything").with(adminHost()).header(HttpHeaders.AUTHORIZATION, bearer(Role.LANDLORD)))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.code").value("token_invalid"));
 	}
 	
 	@Test

@@ -6,7 +6,7 @@ import { useAuth } from "./authContext"
 import { loginPath } from "./paths"
 
 interface Props {
-  /** Only users holding this role may open the routes (e.g. `ADMIN` for /admin). */
+  /** Only users holding this role may open the routes (e.g. `LANDLORD`). */
   role?: Role
   /** The role-pick page itself: open to users who have not picked a role yet. */
   allowOnboarding?: boolean
@@ -26,7 +26,7 @@ export function AuthPending() {
 
 /**
  * Guards a group of routes. Anonymous visitors go to `/login?next=…`; users who still have to
- * pick a role go to `/welcome` (D-73; admins keep /admin, as the API's onboarding gate allows);
+ * pick a role go to `/welcome` (D-73);
  * a missing `role` renders "No access" instead of the page. The API enforces all of this too;
  * the guard only keeps the UI honest.
  */
@@ -39,8 +39,7 @@ export function RequireAuth({ role, allowOnboarding = false }: Props) {
   if (state.status === "anonymous") return <Navigate to={loginPath(here)} replace />
 
   const { user } = state
-  const isAdminRoute = role === "ADMIN" && user.roles.includes("ADMIN")
-  if (user.needsOnboarding && !allowOnboarding && !isAdminRoute) {
+  if (user.needsOnboarding && !allowOnboarding) {
     return <Navigate to={`/welcome?next=${encodeURIComponent(here)}`} replace />
   }
   if (role && !user.roles.includes(role)) {

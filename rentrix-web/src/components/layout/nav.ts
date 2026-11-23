@@ -25,14 +25,6 @@ export function navFor(viewer: ShellViewer | null): NavItem[] {
   const search: NavItem = { to: "/search", label: "Search", icon: "search" }
   // Anonymous, or signed in but no role picked yet (D-73): only the public pages.
   if (!viewer || viewer.roles.length === 0) return [search]
-  if (viewer.roles.includes("ADMIN")) {
-    return [
-      { to: "/admin", label: "Dashboard", icon: "chart", end: true },
-      { to: "/admin/approvals", label: "Approvals", icon: "shield-check" },
-      { to: "/admin/records/users", label: "Records", icon: "users" },
-      { to: "/admin/cities", label: "Cities", icon: "city" },
-    ]
-  }
   if (viewer.roles.includes("LANDLORD")) {
     return [
       search,
@@ -52,8 +44,10 @@ export function initials(name: string): string {
   return (letters.slice(0, 2).join("") || "?").toUpperCase()
 }
 
-/** The side a viewer's avatar is coloured for: admin ink, landlord clay, tenant indigo. */
-export function viewerTone(viewer: ShellViewer): "admin" | "landlord" | "tenant" {
-  if (viewer.roles.includes("ADMIN")) return "admin"
+/**
+ * The side a viewer's avatar is coloured for: landlord clay, tenant indigo. The main site never
+ * shows an admin (the admin console has its own host, SYSTEM_DESIGN §13.3).
+ */
+export function viewerTone(viewer: ShellViewer): "landlord" | "tenant" {
   return viewer.roles.includes("LANDLORD") ? "landlord" : "tenant"
 }

@@ -29,10 +29,13 @@ export default defineConfig({
     // GIS needs the sign-in popup to keep its opener (D-76); prod hosts send the same header.
     headers: { "Cross-Origin-Opener-Policy": "same-origin-allow-popups" },
     // Dev only: same-origin /api keeps the refresh cookie first-party (SYSTEM_DESIGN.md §13).
+    // xfwd sends X-Forwarded-Host, so the API (which trusts loopback proxies) sees the page's host:
+    // http://admin.localhost:5173 is the admin console (ADMIN_HOSTS, §13.3).
     proxy: {
       "/api": {
         target: process.env.API_PROXY_TARGET ?? "http://localhost:8080",
         changeOrigin: true,
+        xfwd: true,
       },
     },
   },

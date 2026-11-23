@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
+import static com.rentrix.rentrixserver.support.AdminConsole.adminBearer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 	"app.identity.hash-key=admin-relay-test-hash-key-that-is-long-enough-0123",
 	"app.sms.backend=admin-relay",
 	"app.preview-mode=true",
+	"app.admin-console.hosts=admin.localhost",
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("prod")
@@ -69,10 +72,13 @@ class AdminRelaySmsTest {
 			.andReturn().getResponse().getContentAsString();
 		assertThat(started).doesNotContain("\"code\"");
 		
-		mvc.perform(get("/admin/sms-relay").header(HttpHeaders.AUTHORIZATION, bearer(user)))
-			.andExpect(status().isForbidden());
-		JsonNode relayed = json.readTree(mvc.perform(get("/admin/sms-relay")
-				.header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+		// Only an admin console session on the admin host reads the codes (§13.3).
+		mvc.perform(get("/admin/sms-relay").with(adminHost()).header(HttpHeaders.AUTHORIZATION, bearer(user)))
+			.andExpect(status().isUnauthorized());
+		mvc.perform(get("/admin/sms-relay").header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)))
+			.andExpect(status().isNotFound());
+		JsonNode relayed = json.readTree(mvc.perform(get("/admin/sms-relay").with(adminHost())
+				.header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.length()").value(1))
 			.andExpect(jsonPath("$[0].userId").value(user.getPublicId().toString()))

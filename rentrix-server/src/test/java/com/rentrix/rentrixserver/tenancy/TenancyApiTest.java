@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
@@ -203,9 +204,11 @@ class TenancyApiTest {
 		act(stranger, id, "decline").andExpect(status().isNotFound());
 		mvc.perform(get("/tenancies/" + id)).andExpect(status().isUnauthorized());
 		User admin = data.user("Ada Admin", Role.ADMIN, Role.TENANT);
-		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(admin)))
+		mvc.perform(get("/tenancies/" + id).with(adminHost()).header("Authorization", support.adminBearer(admin)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.myRole").doesNotExist());
+		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(admin)))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -577,7 +580,8 @@ class TenancyApiTest {
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.tenant.id").value(tenant.getPublicId().toString()));
 		User admin = data.user("Audit Admin", Role.ADMIN, Role.TENANT);
-		mvc.perform(get("/tenancies/" + JsonPath.read(absent, "$.id")).header("Authorization", support.bearer(admin)))
+		mvc.perform(get("/tenancies/" + JsonPath.read(absent, "$.id")).with(adminHost())
+				.header("Authorization", support.adminBearer(admin)))
 			.andExpect(jsonPath("$.inviteEmail").value(unknown));
 	}
 

@@ -259,11 +259,11 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(router.state.location.pathname).toBe("/search")
   })
 
-  it("sends an admin to the admin console", () => {
+  it("never sends anyone to an admin console on the main site", () => {
     h.state = { status: "signedIn", user: makeUser({ roles: ["ADMIN"] }) } as AuthState
     const router = renderHome()
 
-    expect(router.state.location.pathname).toBe("/admin")
+    expect(router.state.location.pathname).toBe("/search")
   })
 
   it("drops the sign-out flag once signed out, so Back after a new sign-in goes into the app", async () => {
