@@ -8,6 +8,7 @@ uploads the HTML report, screenshots and traces as the `playwright-report` artif
 
 ```sh
 export JWT_SECRET=e2e-only-jwt-secret-not-for-production-0123456789
+export DOCUMENT_ENCRYPTION_KEY=e2e-only-document-key-not-for-production-0123456789
 docker compose -p rentrix-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait
 cd rentrix-web
 npx playwright install chromium   # once

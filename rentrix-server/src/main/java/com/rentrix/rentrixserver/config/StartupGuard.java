@@ -30,7 +30,10 @@ import java.util.Set;
  *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one);</li>
  *   <li>{@code TRUECALLER_FAKE=true} (any access token verifies any number) is refused outside dev and test;</li>
  *   <li>{@code TELEGRAM_GATEWAY_FAKE=true} (codes are not sent, only logged or relayed) is refused outside dev and
- *   test, and a set {@code TELEGRAM_GATEWAY_TOKEN} needs an {@code ID_HASH_KEY} to hash the codes.</li>
+ *   test, and a set {@code TELEGRAM_GATEWAY_TOKEN} needs an {@code ID_HASH_KEY} to hash the codes;</li>
+ *   <li>{@code DOCUMENT_ENCRYPTION_KEY} (private documents at rest, D-131) is at least 32 bytes when set, and required
+ *   outside dev and test (dev and test ship a built-in one); {@code AGREEMENT_EXTRACTOR} is {@code manual}, the only
+ *   extractor built (D-127).</li>
  * </ul>
  * <p>No {@code SMS_BACKEND} outside dev and test starts with one warning: phone OTP is unavailable
  * ({@code 503 phone_otp_unavailable}, D-101), so a deployment without an SMS provider keeps starting.
@@ -53,6 +56,7 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 	static final int MIN_JWT_SECRET_BYTES = 32;
 	static final int MIN_ID_HASH_KEY_BYTES = 32;
 	static final Set<String> SMS_BACKENDS = Set.of("log", "http", "admin-relay");
+	static final int MIN_DOCUMENT_KEY_BYTES = 32;
 	
 	@Override
 	public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
@@ -78,6 +82,17 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		if (hasHashKey && hashKey.getBytes(StandardCharsets.UTF_8).length < MIN_ID_HASH_KEY_BYTES) {
 			throw new IllegalStateException("Refusing to start: ID_HASH_KEY must be at least " + MIN_ID_HASH_KEY_BYTES
 				+ " bytes.");
+		}
+		String documentKey = env.getProperty("app.documents.encryption-key", "");
+		boolean hasDocumentKey = StringUtils.hasText(documentKey);
+		if (hasDocumentKey && documentKey.getBytes(StandardCharsets.UTF_8).length < MIN_DOCUMENT_KEY_BYTES) {
+			throw new IllegalStateException("Refusing to start: DOCUMENT_ENCRYPTION_KEY must be at least "
+				+ MIN_DOCUMENT_KEY_BYTES + " bytes.");
+		}
+		String extractor = env.getProperty("app.agreements.extractor", "manual").trim().toLowerCase(Locale.ROOT);
+		if (!extractor.equals("manual")) {
+			throw new IllegalStateException("Refusing to start: AGREEMENT_EXTRACTOR must be 'manual', the only rental "
+				+ "agreement extractor built.");
 		}
 		String sms = env.getProperty("app.sms.backend", "").trim().toLowerCase(Locale.ROOT);
 		if (!sms.isEmpty() && !SMS_BACKENDS.contains(sms)) {
@@ -140,6 +155,11 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		if (!StringUtils.hasText(dbUrl)) {
 			throw new IllegalStateException("Refusing to start: DB_URL is required in the '" + profile
 				+ "' profile (a jdbc:sqlite:, jdbc:mysql: or jdbc:postgresql: URL).");
+		}
+		if (!hasDocumentKey) {
+			throw new IllegalStateException("Refusing to start: DOCUMENT_ENCRYPTION_KEY (at least " + MIN_DOCUMENT_KEY_BYTES
+				+ " bytes, e.g. openssl rand -base64 48) is required in the '" + profile + "' profile to store rental "
+				+ "agreements encrypted.");
 		}
 		if (dbUrl.startsWith("jdbc:sqlite:")) {
 			LOG.warn("DB_URL is SQLite ({}) in the '{}' profile: the data lives inside the container at that path "

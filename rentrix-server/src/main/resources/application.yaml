@@ -59,6 +59,13 @@ spring:
   jackson:
     time-zone: UTC
 
+  # Uploads (rental agreements, D-131): the API refuses a file over 10 MB itself with a clear
+  # message; these limits only stop a far larger request before it is read.
+  servlet:
+    multipart:
+      max-file-size: 11MB
+      max-request-size: 12MB
+
 # --- Ops (health, readiness) ---------------------------------------------------
 management:
   endpoints:
@@ -154,6 +161,21 @@ app:
     # Telegram option; with one, Telegram is the default phone method and SMS the fallback.
     token: ${TELEGRAM_GATEWAY_TOKEN:}
     fake: ${TELEGRAM_GATEWAY_FAKE:false}    # dev/test only: FakeTelegramGateway, no Telegram call
+  storage:
+    # Private documents on the API's disk (D-66, STORAGE_BACKEND=local, the only backend until PLAN
+    # B9): files under <dir>/private, never served as static files. Put it on a persistent disk.
+    local-dir: ${STORAGE_LOCAL_DIR:./data/media}
+  documents:
+    # AES-256-GCM key for private documents at rest (rental agreements, D-131), and for their 5-minute
+    # signed download links. Secret: env only, never committed or logged, >= 32 bytes. Required
+    # outside dev/test: the API refuses to start without it.
+    encryption-key: ${DOCUMENT_ENCRYPTION_KEY:}
+  agreements:
+    # D-127: "manual" (the uploader types the fields) is the only extractor; no OCR or LLM is built.
+    extractor: ${AGREEMENT_EXTRACTOR:manual}
+    # D-131: days after the later of the team's decision and the other party's confirmation before
+    # the file is deleted (90 days after upload while no other party has confirmed it).
+    file-retention-days: ${AGREEMENT_FILE_RETENTION_DAYS:30}
   sms:
     # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
     # phone_otp_unavailable) and the API still starts. "http" needs SMS_HTTP_URL and

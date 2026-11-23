@@ -31,7 +31,31 @@ class StartupGuardTest {
 			.withProperty("app.jwt.secret", GOOD_SECRET)
 			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix")
 			.withProperty("app.cors.allowed-origins", "https://rentrix.in")
-			.withProperty("app.auth.google.client-id", "123-prod.apps.googleusercontent.com");
+			.withProperty("app.auth.google.client-id", "123-prod.apps.googleusercontent.com")
+			.withProperty("app.documents.encryption-key", "a-production-document-key-long-enough-0123456789");
+	}
+	
+	@Test
+	void prodRefusesWithoutADocumentEncryptionKeyAndNeverNamesItsValue() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.documents.encryption-key", "")))
+			.hasMessageContaining("DOCUMENT_ENCRYPTION_KEY");
+		String shortKey = "short-document-key";
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.documents.encryption-key", shortKey)))
+			.hasMessageContaining("DOCUMENT_ENCRYPTION_KEY")
+			.satisfies(e -> assertThat(e.getMessage()).doesNotContain(shortKey));
+		// dev and test ship a built-in key, but a short one set by hand is still refused.
+		assertThatCode(() -> StartupGuard.check(env("dev").withProperty("app.jwt.secret", GOOD_SECRET)))
+			.doesNotThrowAnyException();
+		assertThatThrownBy(() -> StartupGuard.check(env("dev").withProperty("app.jwt.secret", GOOD_SECRET)
+			.withProperty("app.documents.encryption-key", shortKey))).hasMessageContaining("DOCUMENT_ENCRYPTION_KEY");
+	}
+	
+	@Test
+	void onlyTheManualAgreementExtractorIsAccepted() {
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.agreements.extractor", "manual")))
+			.doesNotThrowAnyException();
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.agreements.extractor", "vision")))
+			.hasMessageContaining("AGREEMENT_EXTRACTOR");
 	}
 	
 	@Test
@@ -81,7 +105,8 @@ class StartupGuardTest {
 		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.cors.allowed-origins", " , ")))
 			.doesNotThrowAnyException();
 		MockEnvironment unset = env("prod").withProperty("app.jwt.secret", GOOD_SECRET)
-			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix");
+			.withProperty("spring.datasource.url", "jdbc:postgresql://db/rentrix")
+			.withProperty("app.documents.encryption-key", "a-production-document-key-long-enough-0123456789");
 		assertThatCode(() -> StartupGuard.check(unset)).doesNotThrowAnyException();
 	}
 	

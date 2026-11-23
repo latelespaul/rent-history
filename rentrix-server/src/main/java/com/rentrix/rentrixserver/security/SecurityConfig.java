@@ -48,6 +48,8 @@ public class SecurityConfig {
 		"/cities", "/stats", "/properties", "/properties/*", "/properties/*/rating",
 		"/areas", "/areas/*", "/societies", "/societies/*", "/societies/*/towers",
 		"/auth/config", "/auth/dev-users", "/auth/admin/dev-users",
+		// a private document through its 5-minute signed link: the signature is the permission (D-30, D-131)
+		"/documents/*",
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
 	};

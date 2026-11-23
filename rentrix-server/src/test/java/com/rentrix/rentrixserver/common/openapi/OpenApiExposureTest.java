@@ -49,6 +49,7 @@ class OpenApiExposureTest {
 				"--server.address=127.0.0.1",
 				"--spring.datasource.url=jdbc:sqlite:target/test-data/prod-" + UUID.randomUUID() + ".db",
 				"--app.jwt.secret=a-production-secret-that-is-long-enough-0123456789",
+				"--app.documents.encryption-key=a-production-document-key-long-enough-0123456789",
 				"--app.cors.allowed-origins=https://rentrix.example",
 				"--app.scheduling.enabled=false",
 				"--logging.level.root=WARN")) {
