@@ -98,7 +98,10 @@ const where = (router: ReturnType<typeof renderApp>) =>
 
 /** What the API answers once the code is confirmed. */
 function phoneConfirmed() {
-  h.verification = h.verification.map((e) => ({ ...e, steps: { ...e.steps, phone: "DONE", method: "DONE" } }))
+  h.verification = h.verification.map((e) => ({
+    ...e,
+    steps: { ...e.steps, phone: "DONE", method: "DONE" },
+  }))
   h.identity = identity("VERIFIED")
   return h.identity
 }
