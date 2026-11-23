@@ -15,10 +15,13 @@ class TimeOrderedIdsTest {
 		TimeOrderedIds ids = new TimeOrderedIds(7);
 		Set<Long> seen = new HashSet<>();
 		long previousMillis = 0;
+		long previousId = 0;
 		for (int i = 0; i < 50_000; i++) {
 			long id = ids.nextId();
 			assertThat(id).isPositive();
 			assertThat(seen.add(id)).isTrue();
+			assertThat(id).isGreaterThan(previousId); // newest-first sorts by id
+			previousId = id;
 			long millis = id >>> (TimeOrderedIds.NODE_BITS + TimeOrderedIds.SEQUENCE_BITS);
 			assertThat(millis).isGreaterThanOrEqualTo(previousMillis);
 			previousMillis = millis;

@@ -28,7 +28,6 @@ public final class TimeOrderedIds {
 	
 	private final long node;
 	private long lastMillis = -1;
-	private long sequenceStart;
 	private long sequence;
 	
 	TimeOrderedIds(long node) {
@@ -52,22 +51,16 @@ public final class TimeOrderedIds {
 	
 	synchronized long nextId() {
 		long now = Math.max(System.currentTimeMillis(), lastMillis); // never step back with the clock
-		if (now != lastMillis) {
-			lastMillis = now;
-			sequenceStart = RANDOM.nextInt((int) SEQUENCE_MASK + 1);
-			sequence = sequenceStart;
+		if (now == lastMillis && sequence < SEQUENCE_MASK) {
+			sequence++;
 		} else {
-			sequence = (sequence + 1) & SEQUENCE_MASK;
-			if (sequence == sequenceStart) {
-				// 4096 ids used in this millisecond: wait for the next one
-				while (now <= lastMillis) {
-					Thread.onSpinWait();
-					now = System.currentTimeMillis();
-				}
-				lastMillis = now;
-				sequenceStart = RANDOM.nextInt((int) SEQUENCE_MASK + 1);
-				sequence = sequenceStart;
+			// a new millisecond, or this one's sequence is used up: wait for the next one
+			while (now <= lastMillis) {
+				Thread.onSpinWait();
+				now = System.currentTimeMillis();
 			}
+			lastMillis = now;
+			sequence = RANDOM.nextInt((int) (SEQUENCE_MASK + 1) / 2);
 		}
 		return ((lastMillis - EPOCH_MILLIS) << (NODE_BITS + SEQUENCE_BITS)) | (node << SEQUENCE_BITS) | sequence;
 	}
