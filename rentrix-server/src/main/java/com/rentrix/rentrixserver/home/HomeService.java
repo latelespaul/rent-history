@@ -4,9 +4,13 @@ import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.city.CityService;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.common.persistence.TimestampedEntity;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.home.dto.AddHomeRequest;
 import com.rentrix.rentrixserver.home.dto.AddHomeResult;
 import com.rentrix.rentrixserver.home.dto.AddressCheck;
+import com.rentrix.rentrixserver.home.dto.UpdateHomeRequest;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.property.Property;
@@ -15,6 +19,7 @@ import com.rentrix.rentrixserver.property.PropertyService;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
+import com.rentrix.rentrixserver.property.dto.PropertyDetail;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.TenancyService;
@@ -24,7 +29,9 @@ import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +46,7 @@ import java.util.UUID;
  * contact as the tenant gave it. Open by default (D-132): everything shows at once without the green tick, and the
  * only gate is the verified phone. A tenant who adds a home they own gets the {@code LANDLORD} role (D-16).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HomeService {
@@ -52,6 +60,7 @@ public class HomeService {
 	private final AccessTokenService tokens;
 	private final CityService cityService;
 	private final LocationService locations;
+	private final EditHistory history;
 	
 	/**
 	 * Step 1's PIN code against the city (a hard error: its prefixes, D-84) and against the picked area (only a
@@ -115,6 +124,69 @@ public class HomeService {
 			: null;
 		return new AddHomeResult(propertyService.detailOf(property, acting), tenancy,
 			newRole ? tokens.issue(me.getPublicId(), me.getRoles()) : null);
+	}
+	
+	/**
+	 * {@code PATCH /me/homes/{id}}: the person who added a home corrects its address or size (D-156), with the add-home
+	 * checks. A change of a home with the team's tick (or a rejection) puts it back to {@code UNVERIFIED}, so it
+	 * returns to the admin queue; every changed field is kept in the edit history for admins. Once other people have
+	 * tenancies on the home its address is theirs too: only the size may change then.
+	 */
+	@Transactional
+	public PropertyDetail update(UUID publicId, UpdateHomeRequest request, AuthenticatedUser caller) {
+		User me = currentUser(caller);
+		Property property = created(publicId, me);
+		approvals.require(me, property.getAddedBy() != null ? Role.TENANT : Role.LANDLORD);
+		EditHistory.Changes changes = propertyService.editHome(property, request, me,
+			tenancies.othersOnHome(property, me));
+		if (!changes.isEmpty()) {
+			VerificationState state = VerificationState.of(property.getVerificationStatus());
+			property.setVerificationStatus(VerificationState.UNVERIFIED);
+			history.edited(me, EditTarget.PROPERTY, property.getId(), property.getPublicId(),
+				state == VerificationState.VERIFIED, changes);
+			log.info("Home {} edited by its creator {}", property.getPublicId(), me.getPublicId());
+		}
+		return propertyService.detailOf(properties.saveAndFlush(property), caller);
+	}
+	
+	/**
+	 * {@code DELETE /me/homes/{id}}: the person who added a home removes it with their own tenancies and reviews on it
+	 * (D-156). Refused while other people have tenancies there ({@code 409 home_in_use}).
+	 */
+	@Transactional
+	public void delete(UUID publicId, AuthenticatedUser caller) {
+		User me = currentUser(caller);
+		Property property = created(publicId, me);
+		if (tenancies.othersOnHome(property, me)) {
+			throw ApiException.conflict("home_in_use",
+				"Other people have tenancies on this home, so it cannot be deleted. Ask our team to remove it.");
+		}
+		tenancies.deleteOwnOnHome(property, me);
+		boolean wasVerified = VerificationState.of(property.getVerificationStatus()) == VerificationState.VERIFIED;
+		property.setDeletedAt(TimestampedEntity.now());
+		properties.saveAndFlush(property);
+		history.deleted(me, EditTarget.PROPERTY, property.getId(), property.getPublicId(), wasVerified, "home",
+			property.getBuildingName() == null ? property.getLocality()
+				: property.getBuildingName() + ", " + property.getLocality());
+		log.info("Home {} deleted by its creator {}", property.getPublicId(), me.getPublicId());
+	}
+	
+	/** A home the caller added (D-156): 404 when it does not exist, 403 when it is someone else's. */
+	private Property created(UUID publicId, User me) {
+		Property property = properties.findByPublicIdAndDeletedAtIsNull(publicId)
+			.filter(p -> p.getStatus().isPublic() || PropertyService.createdBy(p, me.getPublicId()))
+			.orElseThrow(() -> ApiException.notFound("Property"));
+		if (!PropertyService.createdBy(property, me.getPublicId())) {
+			throw new ApiException(HttpStatus.FORBIDDEN, "not_creator",
+				"Only the person who added this home can change or delete it.");
+		}
+		return property;
+	}
+	
+	private User currentUser(AuthenticatedUser caller) {
+		return users.findByPublicId(caller.publicId())
+			.filter(user -> user.getDeletedAt() == null)
+			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthenticated", "Sign in to continue."));
 	}
 	
 	private static CreatePropertyRequest withCity(CreatePropertyRequest r, String city) {

@@ -7,6 +7,8 @@ import com.rentrix.rentrixserver.admin.ModerationTargetType;
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
+import com.rentrix.rentrixserver.edit.EditRecordRepository;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.identity.IdentityMethod;
 import com.rentrix.rentrixserver.identity.IdentityRejectCode;
 import com.rentrix.rentrixserver.identity.IdentityService;
@@ -97,6 +99,7 @@ public class AdminQueueService {
 	private final IdentityService identity;
 	private final RatingRecomputer ratings;
 	private final AuditLog audit;
+	private final EditRecordRepository edits;
 	private final Clock clock;
 
 	/** One decision's result: the item and where it stands now. */
@@ -267,7 +270,8 @@ public class AdminQueueService {
 			details.add("Owner " + p.getLandlord().getDisplayName());
 		}
 		return new QueueItem(QueueType.PROPERTY, p.getPublicId().toString(), homeLabel(p), cityName(p.getCity()),
-			details, p.isDemo() ? List.of("DEMO") : List.of(), cityCode(p.getCity()), p.getCreatedAt(),
+			details, edited(EditTarget.PROPERTY, p.getPublicId(), p.isDemo() ? List.of("DEMO") : List.of()),
+			cityCode(p.getCity()), p.getCreatedAt(),
 			VerificationState.of(p.getVerificationStatus()), "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
 	}
@@ -280,7 +284,8 @@ public class AdminQueueService {
 			+ " · " + (t.getInitialRentInr() == null ? "Rent not shared" : "Rent " + rupees(t.getInitialRentInr()) + " / month"));
 		details.add(t.getConfirmedAt() != null ? "Confirmed by both" : "Not confirmed by the other side");
 		return new QueueItem(QueueType.TENANCY, t.getPublicId().toString(), homeLabel(p),
-			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details, List.of(), cityCode(p.getCity()),
+			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details,
+			edited(EditTarget.TENANCY, t.getPublicId(), List.of()), cityCode(p.getCity()),
 			t.getCreatedAt(), VerificationState.of(t.getVerificationStatus()), "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
 	}
@@ -299,9 +304,23 @@ public class AdminQueueService {
 		}
 		return new QueueItem(QueueType.REVIEW, r.getPublicId().toString(), about,
 			cityName(p.getCity()) + (r.getStatus() == ReviewStatus.AWAITING_REVEAL ? " · waiting to be revealed" : ""),
-			details, List.of(), cityCode(p.getCity()), r.getCreatedAt(), VerificationState.of(r.getVerificationStatus()),
+			details, edited(EditTarget.REVIEW, r.getPublicId(), List.of()), cityCode(p.getCity()), r.getCreatedAt(),
+			VerificationState.of(r.getVerificationStatus()),
 			r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT ? null : "/p/" + p.getPublicId(),
 			List.of(QueueAction.APPROVE, QueueAction.REJECT, QueueAction.HIDE), REVIEW_REASONS);
+	}
+
+	/**
+	 * {@code flags} plus {@code EDITED} when the owner changed the item (D-156): the console then offers its edit
+	 * history ({@code GET /admin/edit-history}).
+	 */
+	private List<String> edited(EditTarget type, UUID id, List<String> flags) {
+		if (!edits.existsByTargetTypeAndTargetRef(type, id.toString())) {
+			return flags;
+		}
+		List<String> all = new ArrayList<>(flags);
+		all.add("EDITED");
+		return all;
 	}
 
 	private QueueItem cityCard(City c) {

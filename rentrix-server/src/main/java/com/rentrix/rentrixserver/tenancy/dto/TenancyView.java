@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.tenancy.dto;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
+import com.rentrix.rentrixserver.verification.VerificationState;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,6 +17,8 @@ import java.util.UUID;
  * {@code currentRentInr} is the latest confirmed rent in effect today and {@code currentRentFrom} the date it applies
  * from (the start date when the rent never changed); both are null until the tenancy is confirmed.
  * {@code expiresAt} is set while confirmation is pending.
+ * {@code verificationStatus} is the team's green tick on the tenancy (D-134, D-147); an edit by its creator takes it
+ * away until the team checks it again (D-156).
  */
 public record TenancyView(
 	UUID id,
@@ -45,6 +48,7 @@ public record TenancyView(
 	 * True once the caller, as the tenant, wrote a review on this tenancy (always false for the landlord side). "Add your home" keeps a "Rate and review" step visible
 	 * until then (captain 2026-11-23 14:53).
 	 */
-	boolean reviewed
+	boolean reviewed,
+	VerificationState verificationStatus
 ) {
 }

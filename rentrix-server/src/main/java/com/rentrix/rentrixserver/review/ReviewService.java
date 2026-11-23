@@ -2,6 +2,8 @@ package com.rentrix.rentrixserver.review;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.web.PageResponse;
+import com.rentrix.rentrixserver.edit.EditHistory;
+import com.rentrix.rentrixserver.edit.EditTarget;
 import com.rentrix.rentrixserver.identity.Badges;
 import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.property.Property;
@@ -96,6 +98,7 @@ public class ReviewService {
 	private final ProfileAccess access;
 	private final RatingRecomputer recomputer;
 	private final ReviewNotifier notifier;
+	private final EditHistory history;
 	private final Clock clock;
 
 	// --------------------------------------------------------------- writes
@@ -203,6 +206,15 @@ public class ReviewService {
 				: "Reviews can be edited for 7 days after they are written.");
 		}
 		String body = ReviewContentRules.review(request.body(), review.getProperty().getUnitLabel());
+		EditHistory.Changes changes = new EditHistory.Changes()
+			.field("ratingOverall", review.getRatingOverall(), request.ratingOverall())
+			.field("ratingA", review.getRatingA(), request.ratingA())
+			.field("ratingB", review.getRatingB(), request.ratingB())
+			.field("ratingC", review.getRatingC(), request.ratingC())
+			.field("body", review.getBody(), body);
+		if (changes.isEmpty()) {
+			return view(review, me, caller.hasRole(Role.ADMIN));
+		}
 
 		ReviewRevision previous = new ReviewRevision();
 		previous.setReview(review);
@@ -224,7 +236,11 @@ public class ReviewService {
 			review.setPostEndUpdateUsed(true);
 			review.setEditUntil(now.plus(EDIT_WINDOW));
 		}
+		// D-134, D-156: an edit of the text or ratings takes the team's decision away; the review is back in the queue.
+		boolean wasVerified = unverify(review);
+		history.edited(me, EditTarget.REVIEW, review.getId(), review.getPublicId(), wasVerified, changes);
 		reviews.saveAndFlush(review);
+		recomputer.reviewChanged(review);
 		return view(review, me, caller.hasRole(Role.ADMIN));
 	}
 
@@ -235,10 +251,25 @@ public class ReviewService {
 		Review review = writable(reviewId, me, caller);
 		requireAuthor(review, me);
 		Instant now = now();
+		boolean wasVerified = VerificationState.of(review.getVerificationStatus()) == VerificationState.VERIFIED;
 		review.setStatus(ReviewStatus.WITHDRAWN);
 		review.setDeletedAt(now);
 		reviews.saveAndFlush(review);
 		recomputer.reviewChanged(review);
+		history.deleted(me, EditTarget.REVIEW, review.getId(), review.getPublicId(), wasVerified, "review",
+			review.getRatingOverall() + " ★");
+	}
+
+	/** A ticked or rejected review reads {@code UNVERIFIED} again (D-134); returns whether it had the tick. */
+	private static boolean unverify(Review review) {
+		VerificationState state = VerificationState.of(review.getVerificationStatus());
+		if (state != VerificationState.UNVERIFIED) {
+			review.setVerificationStatus(VerificationState.UNVERIFIED);
+			review.setVerificationDecidedBy(null);
+			review.setVerificationDecidedAt(null);
+			review.setVerificationReason(null);
+		}
+		return state == VerificationState.VERIFIED;
 	}
 
 	/** {@code POST /reviews/{id}/response}: the one public reply of the subject or the home's landlord (§5.7). */
