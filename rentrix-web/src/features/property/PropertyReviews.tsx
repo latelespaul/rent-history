@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { respondToReview } from "@/api/properties"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StarIcon } from "@/components/ui/icons.gen"
 import { Label } from "@/components/ui/label"
@@ -10,6 +11,7 @@ import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
 import { monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
+import { PersonTick } from "./PersonTick"
 import { SignInPrompt } from "./SignInPrompt"
 import { ReviewTick } from "./ReviewTick"
 import { usePropertyReviews } from "./useProperties"
@@ -75,6 +77,9 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
     <li className="space-y-1.5 py-4 first:pt-0" data-testid="property-review">
       <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
         <span className="font-semibold text-ink-900">{review.author?.shortName ?? "Tenant"}</span>
+        {review.author && <PersonTick verified={review.author.verified} role="tenant" />}
+        {review.author?.badges?.idVerified && <Badge>ID verified</Badge>}
+        {review.author?.badges?.linkedinVerified && <Badge>LinkedIn verified</Badge>}
         {review.period && (
           <span className="text-ink-500">
             · stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}

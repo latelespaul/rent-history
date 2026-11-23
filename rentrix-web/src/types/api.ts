@@ -159,6 +159,8 @@ export interface LandlordSummary {
   id?: string
   shortName: string
   rating: RatingSummary
+  /** The landlord's green tick (D-134); false for an unclaimed home's owner. */
+  verified?: boolean
 }
 
 export type PropertyStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED"
@@ -457,6 +459,8 @@ export interface PropertyReview {
     id?: string
     shortName: string
     badges?: { idVerified: boolean; linkedinVerified: boolean }
+    /** The author's green tick for the role they wrote as (D-134). */
+    verified?: boolean
   }
   /** The reviewed home; no unit label (D-57). */
   property?: { id: string; buildingName: string; locality: string; city: CityRef }

@@ -198,12 +198,28 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.missing[0]").value("method"));
 
 		User noProfile = data.user("No profile", Role.LANDLORD);
+		noProfile.setDisplayName(" ");
+		users.save(noProfile);
 		check(noProfile, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
 		submit(noProfile, "landlord")
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.missing[0]").value("profile"))
 			.andExpect(jsonPath("$.missing.length()").value(1));
 		assertThat(applications.findByUser(user)).isEmpty();
+	}
+	
+	@Test
+	void theHomeCityIsOptionalForTheProfileStep() throws Exception {
+		// The welcome screen calls the home city optional, so the profile step needs only a name.
+		User noCity = data.user("No city", Role.TENANT);
+		noCity.setEmailVerifiedAt(Instant.parse("2026-11-01T10:00:00Z"));
+		users.save(noCity);
+		check(noCity, IdentityMethod.PHONE_OTP, IdentityStatus.VERIFIED);
+		mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(noCity)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].steps.profile").value("DONE"));
+		submit(noCity, "tenant").andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PENDING"));
 	}
 
 	@Test

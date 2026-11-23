@@ -60,6 +60,29 @@ describe("PropertyReviews", () => {
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
   })
 
+  it("shows each reviewer's green tick and public ID badges, or that they are not verified yet", async () => {
+    const [first, second] = RECORDED_REVIEWS
+    api.reviews = [
+      {
+        ...first,
+        author: {
+          shortName: "Demo B.",
+          verified: true,
+          badges: { idVerified: true, linkedinVerified: false },
+        },
+      },
+      { ...second, author: { shortName: "Demo C.", verified: false } },
+    ]
+    renderReviews()
+
+    const [verified, unverified] = await screen.findAllByRole("listitem")
+    expect(within(verified).getByText("Verified tenant")).toBeTruthy()
+    expect(within(verified).getByText("ID verified")).toBeTruthy()
+    expect(within(verified).queryByText("LinkedIn verified")).toBeNull()
+    expect(within(unverified).getByText("Tenant not verified yet")).toBeTruthy()
+    expect(within(unverified).queryByText("Verified tenant")).toBeNull()
+  })
+
   it("hides Respond when the API does not offer it", async () => {
     api.reviews = RECORDED_REVIEWS.map((r) => ({
       ...r,

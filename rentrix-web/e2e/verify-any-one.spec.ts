@@ -36,3 +36,25 @@ test("a new user is asked to verify with any one method and can pick LinkedIn in
   await page.goto("/me/tenancies")
   await expect(page.getByRole("region", { name: "Verification" })).toContainText("Verify to post")
 })
+
+test("at 390 px the ID step's option cards stay inside the step card", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await freshLogin(page)
+  await pickRole(page, "I rent a home")
+  await page.goto("/verify/id")
+  await expect(page.getByRole("heading", { name: /aadhaar, linkedin, pan/i })).toBeVisible()
+
+  // Each option card's right edge must sit inside its grid, and the page must not scroll sideways.
+  const overflow = await page.getByText("PAN card", { exact: true }).evaluate((title) => {
+    const grid = title.closest(".grid")
+    if (!grid) return ["no grid"]
+    const limit = grid.getBoundingClientRect().right + 0.5
+    const cards = Array.from(grid.children).filter(
+      (card) => card.getBoundingClientRect().right > limit,
+    )
+    const root = document.scrollingElement
+    const sideways = root && root.scrollWidth > window.innerWidth ? ["page scrolls sideways"] : []
+    return [...cards.map((card) => card.textContent?.slice(0, 20) ?? "card"), ...sideways]
+  })
+  expect(overflow).toEqual([])
+})

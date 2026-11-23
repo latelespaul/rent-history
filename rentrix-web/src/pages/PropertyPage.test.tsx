@@ -107,6 +107,23 @@ describe("PropertyPage", () => {
     expect(screen.queryByText(/Sign in to read/)).toBeNull()
   })
 
+  it("shows the landlord's green tick on the landlord card, or that they are not verified yet", async () => {
+    api.property = detail({
+      landlord: { shortName: "Demo L.", rating: { reviewCount: 2, average: null }, verified: true },
+    })
+    renderPage()
+
+    // The rating card renders twice: once for small screens, once in the wide-screen aside.
+    expect(await screen.findAllByText("Verified landlord")).toHaveLength(2)
+    cleanup()
+
+    api.property = detail()
+    renderPage()
+
+    expect(await screen.findAllByText("Landlord not verified yet")).toHaveLength(2)
+    expect(screen.queryByText("Verified landlord")).toBeNull()
+  })
+
   it("keeps a tenant's one-sided rent row out of the confirmed history's change", async () => {
     api.user = TENANT
     api.rent = [

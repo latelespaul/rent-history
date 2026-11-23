@@ -30,6 +30,7 @@ import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.verification.GreenTicks;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -68,6 +69,7 @@ public class PropertyService {
 	private final CityService cityService;
 	private final LocationService locations;
 	private final JdbcTemplate jdbc;
+	private final GreenTicks greenTicks;
 	
 	// ---------------------------------------------------------------- reads
 	
@@ -110,7 +112,9 @@ public class PropertyService {
 		List<Long> ids = page.getContent().stream().map(Property::getId).toList();
 		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
 		RatingSummary landlordRating = RatingSummary.of(aggregate(RatingSubjectType.LANDLORD, owner.getId()));
-		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating, true, true));
+		boolean landlordVerified = greenTicks.has(owner, Role.LANDLORD);
+		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating,
+			landlordVerified, true, true));
 	}
 	
 	/**
@@ -480,7 +484,9 @@ public class PropertyService {
 		RatingSummary rating = RatingSummary.of(aggregate(RatingSubjectType.PROPERTY, property.getId()));
 		RatingSummary landlordRating = UnclaimedLandlord.is(property.getLandlord()) ? null : RatingSummary.of(
 			aggregate(RatingSubjectType.LANDLORD, property.getLandlord().getId()));
-		PropertyDetail base = detail(property, rating, landlordRating, caller != null,
+		boolean landlordVerified = !UnclaimedLandlord.is(property.getLandlord())
+			&& greenTicks.has(property.getLandlord(), Role.LANDLORD);
+		PropertyDetail base = detail(property, rating, landlordRating, landlordVerified, caller != null,
 			isOwner(property, caller) || isAdmin(caller));
 		// The owner contact a tenant entered stays private to them and admins (D-140).
 		boolean adder = caller != null && property.getAddedBy() != null
@@ -493,13 +499,13 @@ public class PropertyService {
 	 * ({@code landlord.id}) only for signed-in callers (D-55).
 	 */
 	private static PropertyDetail detail(Property p, RatingSummary rating, RatingSummary landlordRating,
-		boolean signedIn, boolean privileged) {
+		boolean landlordVerified, boolean signedIn, boolean privileged) {
 		User landlord = p.getLandlord();
 		// An unclaimed home (D-139) has no landlord profile to link to or rate.
 		LandlordSummary owner = UnclaimedLandlord.is(landlord)
-			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null)
+			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null, false)
 			: new LandlordSummary(signedIn ? landlord.getPublicId() : null,
-				PublicNames.shortName(landlord.getDisplayName()), landlordRating);
+				PublicNames.shortName(landlord.getDisplayName()), landlordRating, landlordVerified);
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPincode(),
 			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
