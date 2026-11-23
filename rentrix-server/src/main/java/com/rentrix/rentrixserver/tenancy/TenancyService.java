@@ -9,6 +9,7 @@ import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
+import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateTenancyRequest;
 import com.rentrix.rentrixserver.tenancy.dto.EndTenancyRequest;
@@ -86,6 +87,7 @@ public class TenancyService {
 	private final UserRepository users;
 	private final ApprovalGuard approvals;
 	private final TenancyNotifier notifier;
+	private final ReviewRepository reviews;
 	private final Clock clock;
 
 	// ---------------------------------------------------------------- reads
@@ -628,7 +630,8 @@ public class TenancyService {
 			pending ? t.getCreatedAt().plus(CONFIRM_WINDOW) : null,
 			t.getConfirmedAt(),
 			t.getEndedAt(),
-			actions);
+			actions,
+			side != null && me != null && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()));
 	}
 
 	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */

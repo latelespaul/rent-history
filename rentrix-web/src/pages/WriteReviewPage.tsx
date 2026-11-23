@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useParams } from "react-router-dom"
 import { writeReview } from "@/api/homes"
 import { isApiError } from "@/api/errors"
+import { tenancyKeys } from "@/api/tenancies"
 import { Container } from "@/components/layout/Container"
 import { Button } from "@/components/ui/button"
 import { CheckIcon, StarIcon } from "@/components/ui/icons.gen"
@@ -103,7 +104,11 @@ export default function WriteReviewPage() {
         body: body.trim(),
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["properties"] })
+      // Tenancies too: their "Rate and review" next step is now done.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["properties"] }),
+        queryClient.invalidateQueries({ queryKey: tenancyKeys.all }),
+      ])
       window.scrollTo?.({ top: 0 })
     },
   })

@@ -20,7 +20,10 @@ import {
   unitLine,
 } from "@/features/property/labels"
 import { LocationPendingBadge } from "@/features/property/LocationPendingBadge"
+import { useMyTenancies } from "@/features/tenancy/useTenancies"
 import { PersonTick } from "@/features/property/PersonTick"
+import { NextSteps } from "@/features/home/NextSteps"
+import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
 import { PropertyReviews } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
@@ -138,6 +141,25 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
  * tenant who rents or rented it records their tenancy through "Add your home", at once and without
  * waiting for the owner (D-142).
  */
+/** The viewer's own optional steps on this home, until done (captain 2026-11-23 14:53). */
+function MyNextSteps({ propertyId }: { propertyId: string }) {
+  const mine = useMyTenancies("TENANT")
+  const tenancy = mine.data?.items.find((t) => t.property.id === propertyId && stepsLeft(t) > 0)
+  if (!tenancy) return null
+  return (
+    <section
+      aria-labelledby="my-steps-heading"
+      data-testid="home-next-steps"
+      className="space-y-2 rounded-xl border border-line bg-sunk p-4"
+    >
+      <h2 id="my-steps-heading" className="font-semibold text-ink-900">
+        Your tenancy here · {stepsLeftLabel(stepsLeft(tenancy))}
+      </h2>
+      <NextSteps tenancy={tenancy} />
+    </section>
+  )
+}
+
 function PropertyActions({ property }: { property: PropertyDetail }) {
   const { state } = useAuth()
   const user = state.user
@@ -241,6 +263,7 @@ export default function PropertyPage() {
           </p>
         )}
         <PropertyActions property={property} />
+        {signedIn && <MyNextSteps propertyId={property.id} />}
       </div>
 
       <Gallery />

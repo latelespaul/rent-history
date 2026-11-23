@@ -46,6 +46,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	/** D-45: whether the author ever submitted a review (the first one needs a 7-day-old account). */
 	boolean existsByAuthorId(Long authorId);
 	
+	/** Whether this author reviewed anything on this tenancy (the "next steps" after adding a home). */
+	boolean existsByTenancyIdAndAuthorId(Long tenancyId, Long authorId);
+	
 	/** D-45 volume guard: reviews an author submitted since a moment, oldest first. */
 	List<Review> findByAuthorIdAndSubmittedAtAfterOrderBySubmittedAtAsc(Long authorId, Instant since);
 
