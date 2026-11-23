@@ -19,13 +19,20 @@ public record PropertySearchCriteria(
 	Long areaId,
 	Long societyId,
 	Long towerId,
-	Boolean standalone
+	Boolean standalone,
+	/** {@code GET /properties?homeSize=} (captain 2026-11-23 17:18). */
+	HomeSize homeSize
 ) {
+	
+	public PropertySearchCriteria(String cityCode, String localityPrefix, PropertyType type, Integer bedrooms,
+		BigDecimal minRating, String text, Long areaId, Long societyId, Long towerId, Boolean standalone) {
+		this(cityCode, localityPrefix, type, bedrooms, minRating, text, areaId, societyId, towerId, standalone, null);
+	}
 	
 	/** Filters without location hierarchy ids. */
 	public PropertySearchCriteria(String cityCode, String localityPrefix, PropertyType type, Integer bedrooms,
 		BigDecimal minRating, String text) {
-		this(cityCode, localityPrefix, type, bedrooms, minRating, text, null, null, null, null);
+		this(cityCode, localityPrefix, type, bedrooms, minRating, text, null, null, null, null, null);
 	}
 	
 }

@@ -1,12 +1,12 @@
 import { Icon, type IconName } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
-import type { PropertyCard } from "@/types/api"
-import { bedroomsLabel, furnishingLabel, sqftLabel, typeLabel } from "./labels"
+import type { HomeSize, PropertyCard } from "@/types/api"
+import { bedroomsLabel, furnishingLabel, homeSizeLabel, sqftLabel, typeLabel } from "./labels"
 
 type Facts = Pick<
   PropertyCard,
   "propertyType" | "bedrooms" | "bathrooms" | "areaSqft" | "furnishing" | "parking"
->
+> & { homeSize?: HomeSize; homeSizeOther?: string }
 
 /** The fact row of a card or page: only facts the API sent, each with its icon (DESIGN.md §5). */
 export function PropertyFacts({
@@ -22,7 +22,11 @@ export function PropertyFacts({
   const baths = property.bathrooms
   const facts: Array<[IconName, string | null]> = [
     ["building", typeLabel(property.propertyType)],
-    ["bed", bedroomsLabel(property.bedrooms)],
+    // The home size (1 RK, 2 BHK, "2.5 BHK"…) says more than a bare bedroom count.
+    [
+      "bed",
+      homeSizeLabel(property.homeSize, property.homeSizeOther) ?? bedroomsLabel(property.bedrooms),
+    ],
     ["bath", detailed && baths ? `${baths} ${baths === 1 ? "bathroom" : "bathrooms"}` : null],
     ["area", sqftLabel(property.areaSqft)],
     ["sofa", furnishingLabel(property.furnishing)],

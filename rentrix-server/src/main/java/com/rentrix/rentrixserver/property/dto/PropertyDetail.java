@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.property.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rentrix.rentrixserver.property.Furnishing;
+import com.rentrix.rentrixserver.property.HomeSize;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.verification.VerificationState;
@@ -30,6 +31,9 @@ public record PropertyDetail(
 	boolean unitLabelPublic,
 	PropertyType propertyType,
 	Integer bedrooms,
+	/** 1 RK, 1-4 BHK, 5+ BHK, studio or other (captain 2026-11-23 17:18). */
+	@JsonInclude(JsonInclude.Include.NON_NULL) HomeSize homeSize,
+	@JsonInclude(JsonInclude.Include.NON_NULL) String homeSizeOther,
 	Integer bathrooms,
 	Integer areaSqft,
 	Furnishing furnishing,
@@ -50,7 +54,7 @@ public record PropertyDetail(
 	/** This page with the owner contact a tenant entered (D-140), for that tenant and admins only. */
 	public PropertyDetail withOwnerContact(OwnerContact contact) {
 		return new PropertyDetail(id, city, locality, buildingName, street, pincode, unitLabel, unitLabelPublic, propertyType, bedrooms,
-			bathrooms, areaSqft, furnishing, parking, description, status, demo, rating, landlord, createdAt, updatedAt,
+			homeSize, homeSizeOther, bathrooms, areaSqft, furnishing, parking, description, status, demo, rating, landlord, createdAt, updatedAt,
 			location, addedByTenant, verification, contact);
 	}
 	

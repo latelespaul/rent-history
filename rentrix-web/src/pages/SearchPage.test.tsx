@@ -82,13 +82,13 @@ describe("SearchPage", () => {
     await user.selectOptions(screen.getByLabelText("Sort"), "newest")
 
     expect(router.state.location.search).toBe(
-      "?city=BLR&type=VILLA&bedrooms=3&minRating=4&sort=newest",
+      "?city=BLR&type=VILLA&homeSize=BHK3&minRating=4&sort=newest",
     )
     await vi.waitFor(() =>
       expect(resultCalls().at(-1)).toMatchObject({
         city: "BLR",
         type: "VILLA",
-        bedrooms: 3,
+        homeSize: "BHK3",
         minRating: 4,
         sort: "newest",
       }),

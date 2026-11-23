@@ -148,6 +148,69 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
   )
 }
 
+/**
+ * Type the society or apartment name (captain 2026-11-23 17:18): matching societies of the area to
+ * pick, and when none matches, the typed name as a new one, tagged "Pending review" for the team.
+ */
+function SocietyFinder({
+  options,
+  onPick,
+  onNew,
+}: {
+  options: Array<{ id: string; name: string; status: LocationStatus }>
+  onPick: (option: { id: string; name: string; status: LocationStatus }) => void
+  onNew: (name: string) => void
+}) {
+  const [typed, setTyped] = useState("")
+  const key = typed.trim().toLowerCase()
+  const matches = key ? options.filter((o) => o.name.toLowerCase().includes(key)).slice(0, 6) : []
+  const exact = options.some((o) => o.name.trim().toLowerCase() === key)
+  return (
+    <div className="space-y-1.5">
+      <Input
+        id="pf-society-find"
+        aria-label="Type the society or apartment name"
+        placeholder="Type the society or apartment name"
+        value={typed}
+        maxLength={160}
+        onChange={(e) => setTyped(e.target.value)}
+        className="h-10"
+      />
+      {key.length > 0 && (
+        <ul className="space-y-1" aria-label="Societies" data-testid="pf-society-matches">
+          {matches.map((o) => (
+            <li key={o.id}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => onPick(o)}>
+                {o.name}
+                {o.status === "PENDING" ? " (pending review)" : ""}
+              </Button>
+            </li>
+          ))}
+          {matches.length === 0 && (
+            <li className="text-sm text-ink-500">
+              No society in this area matches “{typed.trim()}”.
+            </li>
+          )}
+          {key.length >= 2 && !exact && (
+            <li>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                data-testid="pf-society-add-typed"
+                onClick={() => onNew(typed.trim())}
+              >
+                <PlusIcon />
+                Add “{typed.trim()}” (pending review)
+              </Button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 /** A select of existing rows plus "Add …", with the proposal's name field under it. */
 function LevelSelect({
   id,
@@ -280,6 +343,21 @@ export function LocationPickers(props: Props) {
             )
           }
         >
+          {society.kind === "none" && !disabled && (
+            <SocietyFinder
+              options={societies.data ?? []}
+              onPick={(o) => onChange(setLevel(value, "society", picked(o)))}
+              onNew={(name) =>
+                onChange(
+                  setLevel(value, "society", {
+                    kind: "new",
+                    name,
+                    extra: { societyKind: "APARTMENT_COMPLEX" },
+                  }),
+                )
+              }
+            />
+          )}
           {society.kind === "new" && (
             <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
               <Input

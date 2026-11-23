@@ -155,7 +155,7 @@ public class PropertyService {
 	private static PropertySearchCriteria copy(PropertySearchCriteria c, Long areaId, Long societyId, Long towerId,
 		Boolean standalone) {
 		return new PropertySearchCriteria(c.cityCode(), c.localityPrefix(), c.type(), c.bedrooms(), c.minRating(),
-			c.text(), areaId, societyId, towerId, standalone);
+			c.text(), areaId, societyId, towerId, standalone, c.homeSize());
 	}
 	
 	private static ApiException locationMismatch(String field, String detail) {
@@ -269,7 +269,11 @@ public class PropertyService {
 		property.setUnitLabel(blankToNull(request.unitLabel()));
 		property.setPincode(pincode);
 		property.setPropertyType(request.propertyType());
-		property.setBedrooms(request.bedrooms());
+		property.setHomeSize(request.homeSize() != null ? request.homeSize()
+			: HomeSize.fromBedrooms(request.propertyType(), request.bedrooms()));
+		property.setHomeSizeOther(request.homeSize() == HomeSize.OTHER ? blankToNull(request.homeSizeOther()) : null);
+		property.setBedrooms(request.bedrooms() != null || request.homeSize() == null ? request.bedrooms()
+			: request.homeSize().bedrooms());
 		property.setBathrooms(request.bathrooms());
 		property.setAreaSqft(request.areaSqft());
 		property.setFurnishing(request.furnishing());
@@ -302,6 +306,9 @@ public class PropertyService {
 		}
 		if (request.bedrooms() != null) {
 			property.setBedrooms(request.bedrooms());
+			if (property.getHomeSize() != HomeSize.OTHER) {
+				property.setHomeSize(HomeSize.fromBedrooms(property.getPropertyType(), request.bedrooms()));
+			}
 		}
 		if (request.bathrooms() != null) {
 			property.setBathrooms(request.bathrooms());
@@ -513,7 +520,8 @@ public class PropertyService {
 			p.getStreet(), p.getPincode(),
 			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
 			p.getUnitLabelVisibility() == FieldVisibility.OPEN,
-			p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(), p.getParking(),
+			p.getPropertyType(), p.getBedrooms(), p.getHomeSize(), p.getHomeSizeOther(), p.getBathrooms(), p.getAreaSqft(),
+			p.getFurnishing(), p.getParking(),
 			p.getDescription(), p.getStatus(), p.isDemo(), rating, owner, p.getCreatedAt(), p.getUpdatedAt(),
 			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()), p.getAddedBy() != null,
 			VerificationState.of(p.getVerificationStatus()), null);

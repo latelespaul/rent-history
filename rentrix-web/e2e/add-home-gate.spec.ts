@@ -179,7 +179,12 @@ async function fillAddress(page: Page, s: Scenario, pincode: string) {
   }
   await page.getByLabel("Flat / house no.").fill(flat(s))
   await page.getByLabel("PIN code").fill(pincode)
-  if (s.bedrooms) await page.locator("#ah-bedrooms").fill(s.bedrooms)
+  // The home size chips (captain 2026-11-23 17:18) replaced the bare bedrooms box.
+  if (s.bedrooms)
+    await page
+      .getByTestId("ah-home-size")
+      .getByRole("button", { name: `${s.bedrooms} BHK`, exact: true })
+      .click()
 }
 
 async function nextFromAddress(page: Page, click = true) {
@@ -261,7 +266,12 @@ async function addHome(page: Page, testInfo: TestInfo, s: Scenario) {
       await step(page, n)
     }
     await expect(page.getByLabel("Flat / house no.")).toHaveValue(flat(s))
-    await expect(page.locator("#ah-bedrooms")).toHaveValue(s.bedrooms ?? "")
+    if (s.bedrooms)
+      await expect(
+        page
+          .getByTestId("ah-home-size")
+          .getByRole("button", { name: `${s.bedrooms} BHK`, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true")
     if (s.society) await expect(page.getByLabel("New society name")).toHaveValue(s.society)
     await nextFromAddress(page)
     await page.getByTestId("ah-next").click()

@@ -59,7 +59,7 @@ public class PropertyController {
 	private final PropertyService service;
 	
 	/**
-	 * {@code GET /properties?city=&area=&society=&tower=&standalone=&locality=&type=&bedrooms=&minRating=&q=&page=
+	 * {@code GET /properties?city=&area=&society=&tower=&standalone=&homeSize=&locality=&type=&bedrooms=&minRating=&q=&page=
 	 * &size=&sort=}: published homes.
 	 * {@code city} is a live city code (else {@code 422 city_not_live}); without it every live city is searched.
 	 * {@code locality} is a prefix, {@code q} matches locality, building or street, {@code minRating} (1–5)
@@ -80,6 +80,7 @@ public class PropertyController {
 		@RequestParam(required = false) UUID society,
 		@RequestParam(required = false) UUID tower,
 		@RequestParam(required = false) Boolean standalone,
+		@RequestParam(required = false) String homeSize,
 		@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size,
 		@RequestParam(required = false) String sort) {
@@ -91,6 +92,7 @@ public class PropertyController {
 			errors.add(new ApiProblem.FieldError("bedrooms", "range",
 				"Must be between 0 and " + PropertyLimits.MAX_ROOMS + "."));
 		}
+		HomeSize sizeFilter = homeSize(homeSize, errors);
 		if (minRating != null && (minRating.compareTo(MIN_RATING) < 0 || minRating.compareTo(MAX_RATING) > 0)) {
 			errors.add(new ApiProblem.FieldError("minRating", "range", "Must be between 1 and 5."));
 		}
@@ -105,7 +107,7 @@ public class PropertyController {
 		Pageable pageable = PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
 		return service.search(new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating,
-			textKey), new PropertyService.LocationFilter(area, society, tower, standalone), caller, pageable);
+			textKey, null, null, null, null, sizeFilter), new PropertyService.LocationFilter(area, society, tower, standalone), caller, pageable);
 	}
 	
 	@GetMapping("/properties/{id}")
@@ -167,6 +169,19 @@ public class PropertyController {
 		} catch (IllegalArgumentException e) {
 			errors.add(new ApiProblem.FieldError("type", "not_allowed",
 				"Use one of " + List.of(PropertyType.values()) + "."));
+			return null;
+		}
+	}
+	
+	private static HomeSize homeSize(String value, List<ApiProblem.FieldError> errors) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		try {
+			return HomeSize.valueOf(value.trim().toUpperCase(Locale.ROOT));
+		} catch (IllegalArgumentException e) {
+			errors.add(new ApiProblem.FieldError("homeSize", "not_allowed",
+				"Use one of " + List.of(HomeSize.values()) + "."));
 			return null;
 		}
 	}

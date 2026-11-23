@@ -29,7 +29,14 @@ import { NextSteps } from "@/features/home/NextSteps"
 import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
 import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
-import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
+import {
+  HOME_SIZES,
+  placeLine,
+  propertyTitle,
+  rupees,
+  typeLabel,
+  unitLine,
+} from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today } from "@/features/tenancy/labels"
 import { useRefreshTenancyData } from "@/features/tenancy/useTenancies"
@@ -84,7 +91,9 @@ const FIELD_IDS: Record<string, string> = {
   unitLabel: "ah-unit",
   pincode: "ah-pincode",
   propertyType: "ah-type",
-  bedrooms: "ah-bedrooms",
+  bedrooms: "ah-home-size",
+  homeSize: "ah-home-size",
+  homeSizeOther: "ah-size-other",
   relation: "ah-relation-rent",
   startDate: "ah-start",
   endDate: "ah-end",
@@ -100,6 +109,7 @@ const ERRORS_OF: Partial<Record<keyof HomeDraft, string[]>> = {
   location: ["area", "society", "tower", "wing"],
   propertyType: ["propertyType", "buildingName"],
   stillLiving: ["endDate"],
+  homeSize: ["homeSize", "homeSizeOther", "bedrooms"],
 }
 
 /** "Is it this one?" (D-139): homes that match the PIN code, society and flat number. */
@@ -609,32 +619,66 @@ export default function AddHomePage() {
                   </Button>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <Field id="ah-type" label="Type" error={error("propertyType")}>
-                  <select
-                    id="ah-type"
-                    className={selectClass}
-                    value={draft.propertyType}
-                    onChange={(e) => set("propertyType", e.target.value as PropertyType)}
+              <Field id="ah-type" label="Type" error={error("propertyType")}>
+                <select
+                  id="ah-type"
+                  className={selectClass}
+                  value={draft.propertyType}
+                  onChange={(e) => set("propertyType", e.target.value as PropertyType)}
+                >
+                  {TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {typeLabel(t)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <fieldset
+                id="ah-home-size"
+                tabIndex={-1}
+                className="space-y-2"
+                data-testid="ah-home-size"
+              >
+                <legend className="text-sm font-medium text-ink-900">Home size {optional}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {HOME_SIZES.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      aria-pressed={draft.homeSize === s.value}
+                      onClick={() => set("homeSize", draft.homeSize === s.value ? "" : s.value)}
+                      className={
+                        draft.homeSize === s.value
+                          ? "h-9 rounded-full border border-teal-600 bg-teal-50 px-3.5 text-sm font-semibold text-teal-800"
+                          : "h-9 rounded-full border border-line-strong bg-surface px-3.5 text-sm text-ink-700 hover:border-teal-600"
+                      }
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                {draft.homeSize === "OTHER" && (
+                  <Field
+                    id="ah-size-other"
+                    label="Size in your words"
+                    error={error("homeSizeOther")}
                   >
-                    {TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {typeLabel(t)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field id="ah-bedrooms" label={<>Bedrooms {optional}</>} error={error("bedrooms")}>
-                  <Input
-                    id="ah-bedrooms"
-                    inputMode="numeric"
-                    maxLength={2}
-                    value={draft.bedrooms}
-                    onChange={(e) => set("bedrooms", e.target.value)}
-                    className="h-11"
-                  />
-                </Field>
-              </div>
+                    <Input
+                      id="ah-size-other"
+                      value={draft.homeSizeOther}
+                      maxLength={40}
+                      placeholder="e.g. 2.5 BHK"
+                      onChange={(e) => set("homeSizeOther", e.target.value)}
+                      className="h-11"
+                    />
+                  </Field>
+                )}
+                {(error("homeSize") ?? error("bedrooms")) && (
+                  <p className="text-xs text-danger-600" role="alert">
+                    {error("homeSize") ?? error("bedrooms")}
+                  </p>
+                )}
+              </fieldset>
               {matches && matches.length > 0 && (
                 <Matches
                   matches={matches}

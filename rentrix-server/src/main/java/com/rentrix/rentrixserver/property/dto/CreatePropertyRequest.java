@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.property.dto;
 
 import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.property.Furnishing;
+import com.rentrix.rentrixserver.property.HomeSize;
 import com.rentrix.rentrixserver.property.PropertyType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -30,6 +31,18 @@ public record CreatePropertyRequest(
 	Furnishing furnishing,
 	Boolean parking,
 	@Size(max = 2000) String description,
-	LocationInput location
+	LocationInput location,
+	/** Optional (captain 2026-11-23 17:18); it fills {@code bedrooms} when that is not given. */
+	HomeSize homeSize,
+	/** The size in words, only with {@code homeSize} {@code OTHER}. */
+	@Size(max = 40) String homeSizeOther
 ) {
+	
+	/** A request without a home size (the landlord form, older callers). */
+	public CreatePropertyRequest(String city, String locality, String buildingName, String street, String unitLabel,
+		String pincode, PropertyType propertyType, Integer bedrooms, Integer bathrooms, Integer areaSqft,
+		Furnishing furnishing, Boolean parking, String description, LocationInput location) {
+		this(city, locality, buildingName, street, unitLabel, pincode, propertyType, bedrooms, bathrooms, areaSqft,
+			furnishing, parking, description, location, null, null);
+	}
 }

@@ -1,7 +1,7 @@
 import type { PropertySearch } from "@/api/properties"
 import { cn } from "@/lib/utils"
+import { HOME_SIZES } from "./labels"
 import {
-  BEDROOM_OPTIONS,
   RATING_OPTIONS,
   TYPE_OPTIONS,
   activeFilterCount,
@@ -41,7 +41,7 @@ function Chip({
 }
 
 /**
- * The filter panel (mockup `search.html`): type, bedrooms and minimum rating, each written to the
+ * The filter panel (mockup `search.html`): type, home size and minimum rating, each written to the
  * URL by the page. Area and society filters arrive with B15/B16 (D-112).
  */
 export function SearchFilters({ search, onChange, className }: Props) {
@@ -64,6 +64,7 @@ export function SearchFilters({ search, onChange, className }: Props) {
                 locality: undefined,
                 q: undefined,
                 type: undefined,
+                homeSize: undefined,
                 bedrooms: undefined,
                 minRating: undefined,
               })
@@ -93,17 +94,21 @@ export function SearchFilters({ search, onChange, className }: Props) {
       </fieldset>
 
       <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-semibold text-ink-900">Bedrooms</legend>
+        <legend className="mb-2 text-sm font-semibold text-ink-900">Home size</legend>
         <div className="flex flex-wrap gap-2">
           <Chip
-            pressed={search.bedrooms === undefined}
-            onClick={() => onChange({ bedrooms: undefined })}
+            pressed={search.homeSize === undefined && search.bedrooms === undefined}
+            onClick={() => onChange({ homeSize: undefined, bedrooms: undefined })}
           >
             Any
           </Chip>
-          {BEDROOM_OPTIONS.map((n) => (
-            <Chip key={n} pressed={search.bedrooms === n} onClick={() => onChange({ bedrooms: n })}>
-              {n} BHK
+          {HOME_SIZES.filter((s) => s.value !== "OTHER").map((s) => (
+            <Chip
+              key={s.value}
+              pressed={search.homeSize === s.value}
+              onClick={() => onChange({ homeSize: s.value, bedrooms: undefined })}
+            >
+              {s.label}
             </Chip>
           ))}
         </div>
