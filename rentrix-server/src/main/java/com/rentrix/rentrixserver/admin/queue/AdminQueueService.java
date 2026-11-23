@@ -213,7 +213,7 @@ public class AdminQueueService {
 			case CITY -> city != null ? List.of() : list("select c from City c where c.live = false"
 				+ " order by c.createdAt desc", City.class, null, q -> q).stream().map(this::cityCard).toList();
 			case REPORT -> city != null ? List.of() : list("select r from Report r where r.status = :open"
-				+ " order by r.createdAt desc", Report.class, null, q -> q.setParameter("open", ReportStatus.OPEN))
+				+ " order by r.updatedAt desc", Report.class, null, q -> q.setParameter("open", ReportStatus.OPEN))
 				.stream().map(this::reportCard).toList();
 		};
 	}

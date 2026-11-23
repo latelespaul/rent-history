@@ -491,7 +491,26 @@ class OwnEditApiTest {
 			.andExpect(jsonPath("$.id").value(first));
 		mvc.perform(get("/admin/queue").with(adminHost()).header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin))
 				.param("type", "REPORT"))
+			.andExpect(jsonPath("$.items[0].id").value(first))
 			.andExpect(jsonPath("$.items[?(@.id == '%s')].details[1]".formatted(first)).value("Asking again."));
+	}
+
+	@Test
+	void aRepeatNoteOverTheLimitKeepsTheNewestNoteWhole() throws Exception {
+		User tenant = tenant("Long Note Tenant");
+		String tenancy = addHome(tenant, "N-140", TODAY.minusMonths(3)).at("/tenancy/id").asString();
+		String body = """
+			{"targetType": "TENANCY", "targetId": "%s", "note": "%s"}""";
+		String first = json.readTree(mvc.perform(post("/me/change-requests")
+				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(tenancy, "a".repeat(999) + "Z")))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+		mvc.perform(post("/me/change-requests").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content(body.formatted(tenancy, "Also fix the deposit.")))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(first));
+		String details = jdbc.queryForObject("select details from reports where public_id = ?", String.class, first);
+		assertThat(details).hasSize(1000).startsWith("…").endsWith("aZ\n\nAlso fix the deposit.");
 	}
 
 	@Test

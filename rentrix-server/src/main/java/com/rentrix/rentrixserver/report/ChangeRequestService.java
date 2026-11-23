@@ -38,6 +38,19 @@ public class ChangeRequestService {
 	/** {@code reports.details} holds at most this many characters. */
 	private static final int MAX_DETAILS = 1000;
 	
+	/** The open request's notes with the new one last; the oldest text goes first when it would not fit. */
+	static String appended(String details, String note) {
+		if (details == null) {
+			return note;
+		}
+		String joined = details + "\n\n" + note;
+		if (joined.length() <= MAX_DETAILS) {
+			return joined;
+		}
+		int room = MAX_DETAILS - note.length() - 3;
+		return room <= 0 ? note : "…" + details.substring(details.length() - room) + "\n\n" + note;
+	}
+	
 	@Transactional
 	public UUID create(ChangeRequest request, AuthenticatedUser caller) {
 		User me = users.findByPublicId(caller.publicId())
@@ -80,8 +93,7 @@ public class ChangeRequestService {
 			report.setReason(ReportReason.CHANGE_REQUEST);
 			report.setDetails(note);
 		} else if (report.getStatus() == ReportStatus.OPEN) {
-			String details = report.getDetails() == null ? note : report.getDetails() + "\n\n" + note;
-			report.setDetails(details.length() > MAX_DETAILS ? details.substring(0, MAX_DETAILS) : details);
+			report.setDetails(appended(report.getDetails(), note));
 		} else {
 			report.setStatus(ReportStatus.OPEN);
 			report.setReason(ReportReason.CHANGE_REQUEST);
