@@ -98,7 +98,7 @@ const where = (router: ReturnType<typeof renderApp>) =>
 
 /** What the API answers once the code is confirmed. */
 function phoneConfirmed() {
-  h.verification = h.verification.map((e) => ({ ...e, steps: { ...e.steps, phone: "DONE" } }))
+  h.verification = h.verification.map((e) => ({ ...e, steps: { ...e.steps, phone: "DONE", method: "DONE" } }))
   h.identity = identity("VERIFIED")
   return h.identity
 }
@@ -283,7 +283,7 @@ describe("verification stepper", () => {
   })
 
   it("lists the missing steps when Request verification is refused", async () => {
-    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.verification = [entry({ steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     vi.mocked(verification.requestVerification).mockRejectedValueOnce(
       new ApiError({
@@ -306,7 +306,7 @@ describe("verification stepper", () => {
   })
 
   it("shows Waiting for review after the request, and that posting is already open", async () => {
-    h.verification = [entry({ status: "PENDING", steps: { phone: "DONE" } })]
+    h.verification = [entry({ status: "PENDING", steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     renderApp("/verify")
 
@@ -331,7 +331,7 @@ describe("phone banner and menu dot (D-121, D-132)", () => {
   })
 
   it("lets a phone-verified DRAFT user reach a write page without the banner", async () => {
-    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.verification = [entry({ steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     const router = renderApp("/tenancies/new?property=p1")
 

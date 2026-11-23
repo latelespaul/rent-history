@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { entry } from "@/test/verification"
 import { doneSteps, nextStep, progressOf } from "./progress"
 
-const phoneDone = { phone: "DONE" } as const
+const phoneDone = { phone: "DONE", method: "DONE" } as const
 
 describe("account-menu progress row (D-121)", () => {
   it("asks for any one verified method first, whatever the application status", () => {

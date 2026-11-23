@@ -22,7 +22,7 @@ export function doneSteps(entry: VerificationEntry): Record<StepKey, boolean> {
   const { steps } = entry
   return {
     profile: counts(steps.profile, false),
-    phone: counts(steps.method ?? steps.phone, false),
+    phone: counts(steps.method, false),
     id: counts(steps.identity, true) || counts(steps.linkedin, true),
     rental: counts(steps.rentalAgreement, false),
   }
@@ -40,7 +40,7 @@ export function nextStep(entry: VerificationEntry): (typeof STEPS)[number] | nul
 
 /** Whether the user may post (D-144): any one of phone, masked Aadhaar or LinkedIn is verified. */
 export function canPost(entries: VerificationEntry[]): boolean {
-  return entries.some((entry) => (entry.steps.method ?? entry.steps.phone) === "DONE")
+  return entries.some((entry) => entry.steps.method === "DONE")
 }
 
 export type ProgressKind = "phone" | "rejected" | "draft" | "pending"
