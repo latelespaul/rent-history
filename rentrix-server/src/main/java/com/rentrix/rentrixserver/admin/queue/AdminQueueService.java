@@ -4,6 +4,9 @@ import com.rentrix.rentrixserver.admin.AdminConsoleMembers;
 import com.rentrix.rentrixserver.admin.AuditLog;
 import com.rentrix.rentrixserver.admin.ModerationActionType;
 import com.rentrix.rentrixserver.admin.ModerationTargetType;
+import com.rentrix.rentrixserver.agreement.AgreementService;
+import com.rentrix.rentrixserver.agreement.AgreementStatus;
+import com.rentrix.rentrixserver.agreement.RentalAgreement;
 import com.rentrix.rentrixserver.city.City;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
@@ -25,6 +28,7 @@ import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewResponse;
 import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
+import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
@@ -65,7 +69,9 @@ import java.util.stream.Stream;
  * checks through {@link IdentityService#decideByAdmin}, and homes, tenancies and reviews set their
  * {@code verification_status} (V7) with one audit row each (D-87). A review's tick change recomputes its ratings in
  * the same transaction (D-135). Every decision re-checks admin membership in the database (D-19) and refuses an
- * admin who is a party to the item ({@code 403 admin_conflict}, D-88).
+ * admin who is a party to the item ({@code 403 admin_conflict}, D-88). A tenancy card carries its rental agreement
+ * (D-151): the typed fields, the flags and {@code agreementId} to open the file; deciding the tenancy decides that
+ * agreement too and starts its file's retention clock (D-131).
  */
 @Slf4j
 @Service
@@ -97,6 +103,7 @@ public class AdminQueueService {
 	private final IdentityService identity;
 	private final RatingRecomputer ratings;
 	private final AuditLog audit;
+	private final AgreementService agreements;
 	private final Clock clock;
 
 	/** One decision's result: the item and where it stands now. */
@@ -200,9 +207,9 @@ public class AdminQueueService {
 			case PROPERTY -> list("select p from Property p where " + PROPERTY_WAITING + cityClause("p.city", city)
 				+ " order by p.createdAt desc", Property.class, city, this::propertyParams)
 				.stream().map(this::propertyCard).toList();
-			case TENANCY -> list("select t from Tenancy t where " + TENANCY_WAITING
+			case TENANCY -> tenancyCards(list("select t from Tenancy t where " + TENANCY_WAITING
 				+ cityClause("t.property.city", city) + " order by t.createdAt desc", Tenancy.class, city,
-				this::tenancyParams).stream().map(this::tenancyCard).toList();
+				this::tenancyParams));
 			case REVIEW -> list("select r from Review r where " + REVIEW_WAITING
 				+ cityClause("r.tenancy.property.city", city) + " order by r.createdAt desc", Review.class, city,
 				this::reviewParams).stream().map(this::reviewCard).toList();
@@ -231,7 +238,7 @@ public class AdminQueueService {
 		return new QueueItem(QueueType.USER, application.getPublicId().toString(), user.getDisplayName(),
 			roleLabel(application) + " · revision " + application.getRevision(), details, flags(application.getFlags()),
 			cityCode(user.getHomeCity()), application.getSubmittedAt(), VerificationState.UNVERIFIED, null,
-			List.of(QueueAction.APPROVE, QueueAction.REJECT), codes(VerificationDecisionCode.values()));
+			List.of(QueueAction.APPROVE, QueueAction.REJECT), codes(VerificationDecisionCode.values()), null);
 	}
 
 	private QueueItem identityCard(IdentityVerification check) {
@@ -255,7 +262,7 @@ public class AdminQueueService {
 		return new QueueItem(QueueType.IDENTITY, check.getPublicId().toString(), user.getDisplayName(),
 			methodLabel(check.getMethod()) + " check", details.stream().filter(Objects::nonNull).toList(), List.of(),
 			cityCode(user.getHomeCity()), check.getCreatedAt(), VerificationState.UNVERIFIED, null,
-			List.of(QueueAction.APPROVE, QueueAction.REJECT), rejectCodes);
+			List.of(QueueAction.APPROVE, QueueAction.REJECT), rejectCodes, null);
 	}
 
 	private QueueItem propertyCard(Property p) {
@@ -269,20 +276,50 @@ public class AdminQueueService {
 		return new QueueItem(QueueType.PROPERTY, p.getPublicId().toString(), homeLabel(p), cityName(p.getCity()),
 			details, p.isDemo() ? List.of("DEMO") : List.of(), cityCode(p.getCity()), p.getCreatedAt(),
 			VerificationState.of(p.getVerificationStatus()), "/p/" + p.getPublicId(),
-			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
+			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT, null);
 	}
 
-	private QueueItem tenancyCard(Tenancy t) {
+	private List<QueueItem> tenancyCards(List<Tenancy> list) {
+		Map<Long, RentalAgreement> live = agreements.liveByTenancy(list);
+		return list.stream().map(t -> tenancyCard(t, live.get(t.getId()))).toList();
+	}
+
+	/** A tenancy card with its rental agreement (D-151): the typed fields (masked), its state and its flags. */
+	private QueueItem tenancyCard(Tenancy t, RentalAgreement agreement) {
 		Property p = t.getProperty();
 		List<String> details = new ArrayList<>();
 		details.add("Tenant " + name(t.getTenant()) + " · Owner " + name(t.getLandlord()));
 		details.add("From " + t.getStartDate() + (t.getEndDate() == null ? "" : " to " + t.getEndDate())
 			+ " · " + (t.getInitialRentInr() == null ? "Rent not shared" : "Rent " + rupees(t.getInitialRentInr()) + " / month"));
 		details.add(t.getConfirmedAt() != null ? "Confirmed by both" : "Not confirmed by the other side");
+		details.addAll(agreementLines(agreement));
+		List<String> flags = agreement == null ? List.of()
+			: agreement.flagSet().stream().map(Enum::name).toList();
 		return new QueueItem(QueueType.TENANCY, t.getPublicId().toString(), homeLabel(p),
-			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details, List.of(), cityCode(p.getCity()),
+			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details, flags, cityCode(p.getCity()),
 			t.getCreatedAt(), VerificationState.of(t.getVerificationStatus()), "/p/" + p.getPublicId(),
-			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT);
+			List.of(QueueAction.APPROVE, QueueAction.REJECT), ITEM_REJECT,
+			agreement == null ? null : agreement.getPublicId());
+	}
+
+	/** What the uploader typed from the agreement, to compare with the tenancy and the file (D-127). */
+	private static List<String> agreementLines(RentalAgreement a) {
+		if (a == null) {
+			return List.of("No rental agreement uploaded");
+		}
+		String by = a.getUploaderSide() == TenancyParty.LANDLORD ? "the owner" : "the tenant";
+		if (a.getStatus() == AgreementStatus.DRAFT) {
+			return List.of("Rental agreement uploaded by " + by + ", details not confirmed yet");
+		}
+		List<String> lines = new ArrayList<>();
+		lines.add("Rental agreement uploaded by " + by + (a.fileAvailable() ? "" : " · file deleted"));
+		lines.add("Agreement: owner " + a.getLandlordName() + " · tenant " + a.getTenantName());
+		lines.add("Agreement: from " + a.getStartDate() + (a.getEndDate() == null ? "" : " to " + a.getEndDate())
+			+ " · Rent " + (a.getMonthlyRentInr() == null ? "?" : rupees(a.getMonthlyRentInr())) + " / month"
+			+ (a.getDepositInr() == null ? "" : " · Deposit " + rupees(a.getDepositInr())));
+		lines.add(a.getAnchorNumber() == null ? "Agreement: no stamp or registration number"
+			: "Agreement: stamp / registration no. " + a.getAnchorNumber());
+		return lines;
 	}
 
 	private QueueItem reviewCard(Review r) {
@@ -301,7 +338,7 @@ public class AdminQueueService {
 			cityName(p.getCity()) + (r.getStatus() == ReviewStatus.AWAITING_REVEAL ? " · waiting to be revealed" : ""),
 			details, List.of(), cityCode(p.getCity()), r.getCreatedAt(), VerificationState.of(r.getVerificationStatus()),
 			r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT ? null : "/p/" + p.getPublicId(),
-			List.of(QueueAction.APPROVE, QueueAction.REJECT, QueueAction.HIDE), REVIEW_REASONS);
+			List.of(QueueAction.APPROVE, QueueAction.REJECT, QueueAction.HIDE), REVIEW_REASONS, null);
 	}
 
 	private QueueItem cityCard(City c) {
@@ -309,7 +346,7 @@ public class AdminQueueService {
 			Long.class).setParameter("city", c).getSingleResult();
 		return new QueueItem(QueueType.CITY, c.getCode(), c.getName(), c.getState(),
 			List.of(homes + (homes == 1 ? " home" : " homes") + " waiting for this city"), List.of(), c.getCode(),
-			c.getCreatedAt(), VerificationState.UNVERIFIED, null, List.of(QueueAction.APPROVE), List.of());
+			c.getCreatedAt(), VerificationState.UNVERIFIED, null, List.of(QueueAction.APPROVE), List.of(), null);
 	}
 
 	private QueueItem reportCard(Report r) {
@@ -322,7 +359,7 @@ public class AdminQueueService {
 			? List.of(QueueAction.APPROVE, QueueAction.HIDE) : List.of(QueueAction.APPROVE);
 		return new QueueItem(QueueType.REPORT, r.getPublicId().toString(), label(r.getReason().name()),
 			"About a " + label(r.getTargetType().name()).toLowerCase(Locale.ROOT), details, List.of(), null,
-			r.getCreatedAt(), VerificationState.UNVERIFIED, null, actions, HIDE_REASONS);
+			r.getCreatedAt(), VerificationState.UNVERIFIED, null, actions, HIDE_REASONS, null);
 	}
 
 	// ---------------------------------------------------------------- deciding
@@ -397,6 +434,7 @@ public class AdminQueueService {
 		t.setVerificationDecidedBy(admin);
 		t.setVerificationDecidedAt(now());
 		t.setVerificationReason(reason);
+		agreements.tenancyDecided(t);
 		audit.record(admin, state == VerificationState.VERIFIED ? ModerationActionType.VERIFY_ITEM
 			: ModerationActionType.REJECT_ITEM, ModerationTargetType.TENANCY, t.getId(), id, reason);
 		log.info("Queue: tenancy {} {} by admin {}", id, state, admin.getPublicId());

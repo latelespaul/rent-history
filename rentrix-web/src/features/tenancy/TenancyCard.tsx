@@ -1,10 +1,19 @@
 import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { BuildingIcon, CalendarIcon, KeyIcon, LockIcon, RupeeIcon } from "@/components/ui/icons.gen"
+import {
+  BuildingIcon,
+  CalendarIcon,
+  KeyIcon,
+  LockIcon,
+  RupeeIcon,
+  ShieldCheckIcon,
+} from "@/components/ui/icons.gen"
 import { rupees } from "@/features/property/labels"
+import { BRAND } from "@/lib/brand"
 import type { Tenancy } from "@/types/api"
 import { counterparty, dateLabel, rentLine, TENANCY_STATUS, tenancyHome } from "./labels"
+import { NextSteps } from "./NextSteps"
 import { TenancyActions } from "./TenancyActions"
 
 /**
@@ -35,7 +44,10 @@ export function TenancyFacts({ tenancy }: { tenancy: Tenancy }) {
   )
 }
 
-/** One tenancy in a list (`/me/tenancies`, landlord dashboard), with the actions allowed now. */
+/**
+ * One tenancy in a list (`/me/tenancies`, landlord dashboard), with the actions allowed now and
+ * the optional next steps (rental agreement, review) until they are done.
+ */
 export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
   const status = TENANCY_STATUS[tenancy.status]
   return (
@@ -53,6 +65,12 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
             <Badge variant={tenancy.myRole === "LANDLORD" ? "landlord" : "tenant"}>
               {tenancy.myRole === "LANDLORD" ? "You are the landlord" : "You are the tenant"}
             </Badge>
+            {tenancy.verificationStatus === "VERIFIED" && (
+              <Badge variant="verified" data-testid="tenancy-verified">
+                <ShieldCheckIcon />
+                Verified by {BRAND.name}
+              </Badge>
+            )}
           </div>
           <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-500">
             {tenancy.property.locality}, {tenancy.property.city.name}
@@ -73,6 +91,7 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
         </Button>
       </div>
       <TenancyActions tenancy={tenancy} compact />
+      <NextSteps tenancy={tenancy} />
     </article>
   )
 }

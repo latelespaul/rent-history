@@ -35,6 +35,8 @@ const REASON_LABEL: Record<string, string> = {
   NO_VERIFIED_ID: "No verified ID",
   DOCUMENT_MISSING: "Document missing",
   DUPLICATE_ACCOUNT: "Duplicate account",
+  AADHAAR_MASKED_ON_INTAKE: "Aadhaar typed, masked",
+  AGREEMENT_REUSED: "Agreement used on another tenancy",
 }
 
 /** Plain words for a reason code; unknown codes are shown as "Some code". */

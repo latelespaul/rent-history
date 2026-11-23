@@ -424,6 +424,78 @@ export interface Tenancy {
   actions: TenancyActions
   /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
   reviewed?: boolean
+  /** The team's green tick on the tenancy (D-134, D-147); "Not verified yet" until then. */
+  verificationStatus: VerificationState
+  /** Why the team did not verify it, shown to its parties after a rejection. */
+  verificationReason: string | null
+  /** The live rental agreement (D-123), null until one is uploaded. */
+  agreement: AgreementSummary | null
+}
+
+export type AgreementStatus = "DRAFT" | "SUBMITTED" | "DECIDED" | "REPLACED"
+
+/** The tenancy's live rental agreement as its parties see it on the tenancy (§5.20). */
+export interface AgreementSummary {
+  id: string
+  status: AgreementStatus
+  uploadedByMe: boolean
+  fileAvailable: boolean
+  uploadedAt: string
+}
+
+/** The key fields of a rental agreement as the uploader typed them (manual extractor, D-127). */
+export interface AgreementFields {
+  landlordName: string
+  tenantName: string
+  addressText?: string | null
+  pincode?: string | null
+  monthlyRentInr: number
+  depositInr?: number | null
+  startDate: string
+  endDate?: string | null
+  /** Stamp or registration number; empty when the agreement has none. */
+  anchorNumber?: string | null
+  anchorDate?: string | null
+}
+
+/** `GET /me/agreements/{id}`, `/tenancies/{id}/agreement`: parties only, fields masked (D-131). */
+export interface RentalAgreement {
+  id: string
+  tenancyId: string | null
+  status: AgreementStatus
+  tier: "UNVERIFIED" | "MATCHED" | "VERIFIED"
+  uploaderSide: TenancyParty
+  uploadedByMe: boolean
+  anchorKind: "MH_LEAVE_LICENCE" | "KA_ESTAMP" | "OTHER_STAMP" | "NONE"
+  fields: AgreementFields
+  /** An Aadhaar-like number was typed and masked to its last 4 digits. */
+  aadhaarMasked: boolean
+  contentType: string
+  sizeBytes: number
+  sha256: string
+  fileAvailable: boolean
+  uploadedAt: string
+  confirmedAt: string | null
+  decidedAt: string | null
+  fileDeletesAfter: string | null
+  fileDeletedAt: string | null
+  tenancyVerification: VerificationState
+  decisionReason: string | null
+}
+
+/** `GET /me/agreements/{id}/url`: a 5-minute link to the file. */
+export interface SignedUrl {
+  url: string
+  expiresAt: string
+}
+
+export type ReviewDirection = "TENANT_TO_PROPERTY" | "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT"
+
+/** `GET /me/review-tasks`: a review the caller can write now (open window, not written yet). */
+export interface ReviewTask {
+  tenancyId: string
+  direction: ReviewDirection
+  closesOn?: string
 }
 
 /** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */

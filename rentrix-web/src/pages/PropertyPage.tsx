@@ -8,6 +8,7 @@ import {
   ChevronRightIcon,
   LockIcon,
   MapPinIcon,
+  ShieldCheckIcon,
   SofaIcon,
 } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
@@ -20,16 +21,16 @@ import {
   unitLine,
 } from "@/features/property/labels"
 import { LocationPendingBadge } from "@/features/property/LocationPendingBadge"
-import { useMyTenancies } from "@/features/tenancy/useTenancies"
 import { PersonTick } from "@/features/property/PersonTick"
-import { NextSteps } from "@/features/home/NextSteps"
-import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
 import { PropertyReviews } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
 import { RentHistory } from "@/features/property/RentHistory"
 import { useProperty, useSignedIn } from "@/features/property/useProperties"
 import { useAuth } from "@/features/auth/authContext"
+import { NextSteps } from "@/features/tenancy/NextSteps"
+import { TenancyFacts } from "@/features/tenancy/TenancyCard"
+import { useMyTenancies } from "@/features/tenancy/useTenancies"
 import { PencilIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import type { PropertyDetail } from "@/types/api"
 import { BRAND } from "@/lib/brand"
@@ -141,25 +142,6 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
  * tenant who rents or rented it records their tenancy through "Add your home", at once and without
  * waiting for the owner (D-142).
  */
-/** The viewer's own optional steps on this home, until done (captain 2026-11-23 14:53). */
-function MyNextSteps({ propertyId }: { propertyId: string }) {
-  const mine = useMyTenancies("TENANT")
-  const tenancy = mine.data?.items.find((t) => t.property.id === propertyId && stepsLeft(t) > 0)
-  if (!tenancy) return null
-  return (
-    <section
-      aria-labelledby="my-steps-heading"
-      data-testid="home-next-steps"
-      className="space-y-2 rounded-xl border border-line bg-sunk p-4"
-    >
-      <h2 id="my-steps-heading" className="font-semibold text-ink-900">
-        Your tenancy here · {stepsLeftLabel(stepsLeft(tenancy))}
-      </h2>
-      <NextSteps tenancy={tenancy} />
-    </section>
-  )
-}
-
 function PropertyActions({ property }: { property: PropertyDetail }) {
   const { state } = useAuth()
   const user = state.user
@@ -192,6 +174,53 @@ function PropertyActions({ property }: { property: PropertyDetail }) {
         <TenancyIcon />I rent or rented this home
       </Link>
     </Button>
+  )
+}
+
+/**
+ * The viewer's own tenancies on this home, with their next steps (captain 2026-11-23 14:53): the
+ * rental agreement ("Agreement uploaded · awaiting team check", the green tick) and the review,
+ * prompted until done. Private: only the viewer sees it.
+ */
+function YourTenancyHere({ propertyId }: { propertyId: string }) {
+  const { signedIn } = useSignedIn()
+  const mine = useMyTenancies()
+  if (!signedIn) return null
+  const here = (mine.data?.items ?? []).filter(
+    (t) => t.property.id === propertyId && (t.status === "ACTIVE" || t.status === "ENDED"),
+  )
+  if (here.length === 0) return null
+  return (
+    <section
+      aria-label="Your tenancy here"
+      data-testid="your-tenancy-here"
+      className="space-y-3 rounded-xl border border-line bg-surface p-5 shadow-sm"
+    >
+      {here.map((t) => (
+        <div key={t.id} className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold text-ink-900">Your tenancy here</h2>
+            {t.verificationStatus === "VERIFIED" ? (
+              <Badge variant="verified" data-testid="tenancy-verified">
+                <ShieldCheckIcon />
+                Verified by {BRAND.name}
+              </Badge>
+            ) : (
+              <Badge data-testid="tenancy-unverified">Not verified yet</Badge>
+            )}
+          </div>
+          <TenancyFacts tenancy={t} />
+          <p className="inline-flex items-center gap-1.5 text-xs text-ink-500">
+            <LockIcon size={12} />
+            Only you see this box.{" "}
+            <Link to={`/tenancies/${t.id}`} className="text-ink-700">
+              Open the tenancy
+            </Link>
+          </p>
+          <NextSteps tenancy={t} />
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -263,8 +292,9 @@ export default function PropertyPage() {
           </p>
         )}
         <PropertyActions property={property} />
-        {signedIn && <MyNextSteps propertyId={property.id} />}
       </div>
+
+      <YourTenancyHere propertyId={property.id} />
 
       <Gallery />
 

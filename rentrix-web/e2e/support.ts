@@ -69,6 +69,54 @@ export function daysAgo(days: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/**
+ * An API session as the seed's Demo Admin on the admin host, separate from the page's own sign-in
+ * (its own cookie jar). Admin calls work only on the admin host (SYSTEM_DESIGN §13.3): on a deployed
+ * stack they go to `ADMIN_BASE_URL`; on the local stack they carry `X-Forwarded-Host: admin.<host>`,
+ * which the API honours from loopback and Docker peers only. Paths are relative to the API base,
+ * e.g. `/admin/agreements`.
+ */
+export async function adminApi(page: Page) {
+  const apiBase = await apiBaseUrl(page)
+  const adminBase = process.env.ADMIN_BASE_URL
+  const apiHost = new URL(apiBase).hostname
+  if (!adminBase && !isLocalHost(apiHost)) {
+    throw new Error(
+      `ADMIN_BASE_URL is not set and the API host ${apiHost} is not local: set ADMIN_BASE_URL to ` +
+        "the admin host that serves /api/v1 (e.g. https://admin.<dev host>)",
+    )
+  }
+  const adminBaseApi = adminBase ? new URL("/api/v1", adminBase).href.replace(/\/+$/, "") : apiBase
+  const api = await request.newContext(
+    adminBase ? {} : { extraHTTPHeaders: { "X-Forwarded-Host": `admin.${apiHost}` } },
+  )
+  const users = (await (await api.get(`${adminBaseApi}/auth/admin/dev-users`)).json()) as Array<{
+    id: string
+    displayName: string
+  }>
+  const admin = users.find((u) => u.displayName === "Demo Admin")
+  expect(admin, "the demo seed has its admin").toBeTruthy()
+  const session = (await (
+    await api.post(`${adminBaseApi}/auth/admin/dev-login`, { data: { userId: admin!.id } })
+  ).json()) as { accessToken: string }
+  const headers = { Authorization: `Bearer ${session.accessToken}` }
+  return {
+    get: (path: string) => api.get(`${adminBaseApi}${path}`, { headers }),
+    post: (path: string, data?: unknown) => api.post(`${adminBaseApi}${path}`, { headers, data }),
+    dispose: () => api.dispose(),
+  }
+}
+
+/**
+ * A per-step screenshot for the release gate (390 px, captain 2026-11-23 11:36): written to
+ * `$E2E_SHOTS/<name>.png` when `E2E_SHOTS` is set and the page is the 390 px phone, else skipped.
+ */
+export async function shot(page: Page, name: string) {
+  const dir = process.env.E2E_SHOTS
+  if (!dir || (page.viewportSize()?.width ?? 0) > 400) return
+  await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true })
+}
+
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -120,38 +168,13 @@ export async function verifyPhone(page: Page, digits: string) {
   await page.getByRole("button", { name: /send code/i }).click()
   // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
   await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
-  const apiBase = await apiBaseUrl(page)
-  // A deployed stack has a real admin host: `ADMIN_BASE_URL` names it, and the admin calls go
-  // there. The local e2e stack has none, so they carry the admin host header the API trusts from
-  // loopback and Docker-bridge peers only.
-  const adminBase = process.env.ADMIN_BASE_URL
-  const apiHost = new URL(apiBase).hostname
-  if (!adminBase && !isLocalHost(apiHost)) {
-    throw new Error(
-      `ADMIN_BASE_URL is not set and the API host ${apiHost} is not local: set ADMIN_BASE_URL to ` +
-        "the admin host that serves /api/v1 (e.g. https://admin.<dev host>)",
-    )
-  }
-  const adminApi = adminBase ? new URL("/api/v1", adminBase).href.replace(/\/+$/, "") : apiBase
-  const api = await request.newContext(
-    adminBase ? {} : { extraHTTPHeaders: { "X-Forwarded-Host": `admin.${apiHost}` } },
-  )
-  const users = (await (await api.get(`${adminApi}/auth/admin/dev-users`)).json()) as Array<{
-    id: string
-    displayName: string
+  const admin = await adminApi(page)
+  const relayed = (await (await admin.get("/admin/sms-relay")).json()) as Array<{
+    phone: string
+    code: string
   }>
-  const admin = users.find((u) => u.displayName === "Demo Admin")
-  expect(admin, "the demo seed has its admin").toBeTruthy()
-  const session = (await (
-    await api.post(`${adminApi}/auth/admin/dev-login`, { data: { userId: admin!.id } })
-  ).json()) as { accessToken: string }
-  const relayed = (await (
-    await api.get(`${adminApi}/admin/sms-relay`, {
-      headers: { Authorization: `Bearer ${session.accessToken}` },
-    })
-  ).json()) as Array<{ phone: string; code: string }>
   const code = relayed.find((c) => c.phone.endsWith(digits))?.code
-  await api.dispose()
+  await admin.dispose()
   expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
   await page.getByLabel(/enter the 6-digit code/i).fill(code!)
   await page.getByRole("button", { name: /verify and continue/i }).click()
