@@ -41,9 +41,9 @@ export default function DeleteAccountPage() {
   const remove = useMutation({
     mutationFn: () => deleteAccount(confirm.trim()),
     onSuccess: () => {
-      // Leave first, or the guard would send the signed-out user to /login.
-      navigate("/", { replace: true, state: { signedOut: true } })
-      void signOut()
+      // The landing ends the local session once it is on screen (the API already ended the
+      // server one); signing out here would let this page's guard send the user to /login.
+      navigate("/", { replace: true, state: { signedOut: true, accountDeleted: true } })
       toast.success("Your account is deleted.", { duration: 6000 })
     },
   })

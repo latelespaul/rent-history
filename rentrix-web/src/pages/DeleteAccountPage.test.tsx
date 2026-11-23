@@ -81,8 +81,8 @@ describe("DeleteAccountPage", { timeout: 30_000 }, () => {
     await userEvent.click(submit)
     expect(await screen.findByText("Landing")).toBeTruthy()
     expect(vi.mocked(deleteAccount)).toHaveBeenCalledWith("DELETE")
-    expect(api.signOut).toHaveBeenCalled()
     expect(router.state.location.pathname).toBe("/")
+    expect(router.state.location.state).toEqual({ signedOut: true, accountDeleted: true })
   })
 
   it("asks for a fresh sign-in when the API wants one", async () => {

@@ -264,10 +264,17 @@ const FAQ = [
  * A signed-in visitor goes into the app.
  */
 export default function HomePage() {
-  const { state } = useAuth()
+  const { state, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const signingOut = (location.state as { signedOut?: boolean } | null)?.signedOut === true
+  const leaving = location.state as { signedOut?: boolean; accountDeleted?: boolean } | null
+  const signingOut = leaving?.signedOut === true
+  const accountDeleted = leaving?.accountDeleted === true
+  // After a deletion (D-58) the local session ends here, once the landing is on screen: ending it on
+  // the guarded delete page would let its guard send the user to /login while the route changes.
+  useEffect(() => {
+    if (accountDeleted && state.status === "signedIn") void signOut()
+  }, [accountDeleted, state.status, signOut])
   useEffect(() => {
     if (signingOut && state.status === "anonymous") navigate("/", { replace: true })
   }, [signingOut, state.status, navigate])
