@@ -46,6 +46,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DevLoginController {
 	
+	/** {@code google_sub} prefix of the users {@code POST /dev-login/new} creates. */
+	static final String NEW_USER_SUB = "dev-new-";
+	
 	private final UserRepository users;
 	private final UserViews userViews;
 	private final AuthService auth;
@@ -66,8 +69,9 @@ public class DevLoginController {
 	@Transactional
 	public ResponseEntity<AuthResponse> devLogin(@Valid @RequestBody DevLoginRequest body, HttpServletRequest request) {
 		rateLimiter.check(request);
+		// A demo seed user, or one that dev-login/new made, so a fresh account can sign out and back in (e2e).
 		User user = users.findByPublicId(body.userId())
-			.filter(User::isDemo)
+			.filter(u -> u.isDemo() || u.getGoogleSub() != null && u.getGoogleSub().startsWith(NEW_USER_SUB))
 			.filter(u -> !u.hasRole(Role.ADMIN))
 			.orElseThrow(() -> ApiException.notFound("Demo user"));
 		return sessions.signedIn(request, auth.startSession(user));
@@ -80,7 +84,7 @@ public class DevLoginController {
 		rateLimiter.check(request);
 		String tag = UUID.randomUUID().toString().substring(0, 8);
 		User user = new User();
-		user.setGoogleSub("dev-new-" + tag);
+		user.setGoogleSub(NEW_USER_SUB + tag);
 		user.setEmail("new-user-" + tag + "@example.test");
 		user.setEmailVerifiedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 		user.setDisplayName("New User");
