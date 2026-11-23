@@ -9,6 +9,7 @@ export function entry(
   const steps: Steps = {
     profile: "DONE",
     phone: "MISSING",
+    method: "MISSING",
     identity: "SKIPPED",
     linkedin: "SKIPPED",
     rentalAgreement: "SKIPPED",

@@ -513,6 +513,11 @@ export interface VerificationEntry {
   steps: {
     profile: StepStatus
     phone: StepStatus
+    /**
+     * Any one posting method (D-144): phone, masked Aadhaar or LinkedIn. `DONE` when one is
+     * verified, `PENDING` while only an admin-checked one waits, else `MISSING`.
+     */
+    method: StepStatus
     identity: StepStatus
     linkedin: StepStatus
     rentalAgreement: StepStatus

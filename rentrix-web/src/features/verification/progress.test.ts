@@ -2,16 +2,25 @@ import { describe, expect, it } from "vitest"
 import { entry } from "@/test/verification"
 import { doneSteps, nextStep, progressOf } from "./progress"
 
-const phoneDone = { phone: "DONE" } as const
+const phoneDone = { phone: "DONE", method: "DONE" } as const
 
 describe("account-menu progress row (D-121)", () => {
-  it("asks for the phone first, whatever the application status", () => {
+  it("asks for any one verified method first, whatever the application status", () => {
     expect(progressOf([entry({ status: "PENDING" })])).toMatchObject({
       kind: "phone",
-      label: "Verify your phone to post",
+      label: "Verify to post",
       to: "/verify/phone",
+      hint: "Any one: phone, Aadhaar or LinkedIn",
     })
     expect(progressOf([entry({ status: "APPROVED" })])?.kind).toBe("phone")
+    // A LinkedIn still waiting for a check does not open posting yet.
+    expect(progressOf([entry({ steps: { method: "PENDING" } })])?.kind).toBe("phone")
+  })
+
+  it("counts LinkedIn or Aadhaar as the one method, without a phone (D-144)", () => {
+    const linkedinOnly = entry({ steps: { phone: "MISSING", method: "DONE", linkedin: "DONE" } })
+    expect(progressOf([linkedinOnly])).toMatchObject({ kind: "draft" })
+    expect(doneSteps(linkedinOnly).phone).toBe(true)
   })
 
   it("counts the steps of a draft: profile, phone and rental when done; ID when done or pending", () => {
@@ -19,7 +28,7 @@ describe("account-menu progress row (D-121)", () => {
       kind: "draft",
       label: "Get verified: 2 of 4 steps",
       to: "/verify/id",
-      hint: "Next: ID (optional)",
+      hint: "Next: Aadhaar, LinkedIn, PAN (optional)",
     })
     const linkedinPending = entry({ steps: { ...phoneDone, linkedin: "PENDING" } })
     expect(progressOf([linkedinPending])?.label).toBe("Get verified: 3 of 4 steps")

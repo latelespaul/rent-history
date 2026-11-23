@@ -52,8 +52,9 @@ public class VerificationDecisions {
 	private final Clock clock;
 	
 	/**
-	 * Applies the identity results first (each audited), then needs the applicant's {@code VERIFIED}
-	 * phone ({@code 422 phone_not_verified}, D-117); on that refusal nothing is kept, the identity results included.
+	 * Applies the identity results first (each audited), then needs any one {@code VERIFIED} posting method of the
+	 * applicant: phone, masked Aadhaar or LinkedIn ({@code 422 no_verified_method}, D-144); on that refusal nothing is
+	 * kept, the identity results included.
 	 */
 	@Transactional
 	public AdminApplicationView approve(UUID adminId, UUID applicationId, String note, List<IdentityResult> results) {
@@ -67,9 +68,9 @@ public class VerificationDecisions {
 			verification.event(application, VerificationEventType.IDENTITY_CHECKED, admin,
 				check.getMethod().name() + ":" + check.getStatus().name(), blankToNull(result.note()), now);
 		}
-		if (!identity.isPhoneVerified(owner)) {
-			throw ApiException.rule("phone_not_verified",
-				"The applicant's phone number is not verified, so the application cannot be approved yet.");
+		if (!identity.hasPostingMethod(owner)) {
+			throw ApiException.rule("no_verified_method",
+				"The applicant has no verified phone, Aadhaar or LinkedIn yet, so the application cannot be approved.");
 		}
 		String cleanNote = blankToNull(note);
 		application.setStatus(VerificationStatus.APPROVED);

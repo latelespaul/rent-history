@@ -98,7 +98,10 @@ const where = (router: ReturnType<typeof renderApp>) =>
 
 /** What the API answers once the code is confirmed. */
 function phoneConfirmed() {
-  h.verification = h.verification.map((e) => ({ ...e, steps: { ...e.steps, phone: "DONE" } }))
+  h.verification = h.verification.map((e) => ({
+    ...e,
+    steps: { ...e.steps, phone: "DONE", method: "DONE" },
+  }))
   h.identity = identity("VERIFIED")
   return h.identity
 }
@@ -121,7 +124,9 @@ describe("verification stepper", () => {
   it("resumes at the first open step", async () => {
     const router = renderApp("/verify")
 
-    expect(await screen.findByRole("heading", { name: /step 2 of 4 · phone/i })).toBeTruthy()
+    expect(
+      await screen.findByRole("heading", { name: /step 2 of 4 · verify \(any one\)/i }),
+    ).toBeTruthy()
     expect(where(router)).toBe("/verify/phone")
   })
 
@@ -151,10 +156,37 @@ describe("verification stepper", () => {
     await user.click(screen.getByRole("button", { name: /verify and continue/i }))
 
     expect(verification.confirmPhoneCheck).toHaveBeenLastCalledWith("c1", "482913")
-    expect(await screen.findByRole("heading", { name: /step 3 of 4 · id/i })).toBeTruthy()
+    expect(
+      await screen.findByRole("heading", { name: /step 3 of 4 · aadhaar, linkedin, pan/i }),
+    ).toBeTruthy()
     expect(where(router)).toBe("/verify/id")
     expect(screen.getByText(/phone verified · \+91 xxxxxx3210/i)).toBeTruthy()
     expect(screen.getAllByText("Coming soon")).toHaveLength(2)
+  })
+
+  it("offers any one method and counts a verified LinkedIn without a phone (D-144)", async () => {
+    renderApp("/verify/phone")
+    expect(await screen.findByText(/pick any one: phone, aadhaar or linkedin/i)).toBeTruthy()
+    cleanup()
+
+    h.identity = {
+      ...identity(),
+      linkedinVerified: true,
+      methods: identity().methods.map((m) =>
+        m.method === "LINKEDIN"
+          ? { ...m, status: "VERIFIED", masked: "https://www.linkedin.com/in/test" }
+          : m,
+      ),
+    }
+    h.verification = h.verification.map((e) => ({
+      ...e,
+      steps: { ...e.steps, method: "DONE", linkedin: "DONE" },
+    }))
+    renderApp("/verify/phone")
+    expect(await screen.findByText(/linkedin verified\./i)).toBeTruthy()
+    expect(
+      screen.getByText(/that is all you need to post\. a phone is an optional extra/i),
+    ).toBeTruthy()
   })
 
   it("says the team will message the code when the API relays it by hand", async () => {
@@ -206,7 +238,9 @@ describe("verification stepper", () => {
     expect(truecaller.openDeepLink).toHaveBeenCalledWith(
       "truecallersdk://truesdk/web_verify?type=btmsheet&requestNonce=r1",
     )
-    expect(await screen.findByRole("heading", { name: /step 3 of 4 · id/i })).toBeTruthy()
+    expect(
+      await screen.findByRole("heading", { name: /step 3 of 4 · aadhaar, linkedin, pan/i }),
+    ).toBeTruthy()
     expect(where(router)).toBe("/verify/id")
     expect(verification.fetchTruecallerRequest).toHaveBeenCalledWith("r1")
   })
@@ -252,7 +286,7 @@ describe("verification stepper", () => {
   })
 
   it("lists the missing steps when Request verification is refused", async () => {
-    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.verification = [entry({ steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     vi.mocked(verification.requestVerification).mockRejectedValueOnce(
       new ApiError({
@@ -275,7 +309,7 @@ describe("verification stepper", () => {
   })
 
   it("shows Waiting for review after the request, and that posting is already open", async () => {
-    h.verification = [entry({ status: "PENDING", steps: { phone: "DONE" } })]
+    h.verification = [entry({ status: "PENDING", steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     renderApp("/verify")
 
@@ -292,15 +326,15 @@ describe("phone banner and menu dot (D-121, D-132)", () => {
     renderApp("/settings")
 
     const banner = await screen.findByRole("region", { name: "Verification" })
-    expect(banner.textContent).toContain("Verify your phone to post.")
-    expect(
-      within(banner).getByRole("link", { name: "Verify your phone" }).getAttribute("href"),
-    ).toBe("/verify/phone?next=%2Fsettings")
+    expect(banner.textContent).toContain("Verify to post: any one of phone, Aadhaar or LinkedIn.")
+    expect(within(banner).getByRole("link", { name: "Verify now" }).getAttribute("href")).toBe(
+      "/verify/phone?next=%2Fsettings",
+    )
     expect(screen.getByTestId("progress-dot")).toBeTruthy()
   })
 
   it("lets a phone-verified DRAFT user reach a write page without the banner", async () => {
-    h.verification = [entry({ steps: { phone: "DONE" } })]
+    h.verification = [entry({ steps: { phone: "DONE", method: "DONE" } })]
     h.identity = identity("VERIFIED")
     const router = renderApp("/tenancies/new?property=p1")
 

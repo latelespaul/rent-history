@@ -242,7 +242,7 @@ class ReviewApiTest {
 		write(pending, own, ReviewDirection.TENANT_TO_PROPERTY, 4, GOOD)
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("phone"));
+			.andExpect(jsonPath("$.missing[0]").value("method"));
 
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews")
 				.header("Authorization", support.bearer(pending)))

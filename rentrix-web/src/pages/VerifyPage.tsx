@@ -6,7 +6,7 @@ import { AlertIcon, ClockIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { ErrorState, EmptyState } from "@/components/ui/states"
 import { BRAND } from "@/lib/brand"
-import { nextStep, phoneVerified } from "@/features/verification/progress"
+import { canPost, nextStep } from "@/features/verification/progress"
 import { roleWords, useNext, useWithNext } from "@/features/verification/next"
 import {
   IdStep,
@@ -105,7 +105,7 @@ function VerifyHome({ entries }: { entries: VerificationEntry[] }) {
           <RoleStatus key={entry.role} entry={entry} />
         ))}
       </div>
-      {phoneVerified(entries) && (
+      {canPost(entries) && (
         <Notice tone="teal" className="mt-4">
           <b>Now:</b> record or confirm a tenancy, add rent, write reviews. They show as &ldquo;Not
           verified yet&rdquo; until the review. <b>After review:</b> your profile gets the green
