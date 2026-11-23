@@ -81,8 +81,7 @@ async function addHome(page: Page, society: string, flat: string, ownerPhone: st
   await page.getByTestId("ah-relation-rent").click()
   await shot(page, "05-add-home-role")
   await page.getByTestId("ah-next").click()
-  // Just moved in: the review is open at once (open by default, D-39 changed by D-132).
-  await page.getByLabel("Moved in").fill(daysAgo(5))
+  await page.getByLabel("Moved in").fill(daysAgo(90))
   await page.getByLabel(/monthly rent/i).fill("24000")
   await shot(page, "06-add-home-tenancy")
   await page.getByTestId("ah-next").click()
@@ -145,7 +144,7 @@ test("a new tenant adds their home, uploads the agreement, reviews it and gets t
     await page.getByLabel(/address of the home/i).fill(`${flat}, ${society}, Koramangala`)
     await page.getByLabel(/pin code/i).fill("560034")
     await page.getByLabel(/monthly rent/i).fill("24000")
-    await page.getByLabel("Start date").fill(daysAgo(5))
+    await page.getByLabel("Start date").fill(daysAgo(90))
     await page.getByLabel(/stamp or registration number/i).fill("IN-KA12345678901234A")
     await shot(page, "10-agreement-details")
     await page.getByTestId("agreement-upload").click()

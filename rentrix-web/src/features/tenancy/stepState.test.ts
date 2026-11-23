@@ -52,12 +52,17 @@ describe("the two optional next steps", () => {
 
   it("offers the review while its window is open and nothing is written", () => {
     const task = [{ tenancyId: "t1", direction: "TENANT_TO_PROPERTY" as const }]
-    expect(reviewStep(base, task)).toEqual({ state: "todo" })
-    expect(reviewStep(base, [])).toEqual({ state: "done" })
-    expect(reviewStep(base, undefined)).toEqual({ state: "none" })
-    // Open by default: a tenant who moved in today can review at once.
-    expect(reviewStep({ ...base, startDate: "2026-11-23" }, task)).toEqual({ state: "todo" })
-    expect(reviewStep({ ...base, myRole: "LANDLORD" }, task)).toEqual({ state: "none" })
+    expect(reviewStep(base, task, "2026-11-23")).toEqual({ state: "todo" })
+    expect(reviewStep(base, [], "2026-11-23")).toEqual({ state: "done" })
+    expect(reviewStep(base, undefined, "2026-11-23")).toEqual({ state: "none" })
+    // D-39: the review opens 60 days after moving in.
+    expect(reviewStep({ ...base, startDate: "2026-11-01" }, task, "2026-11-23")).toEqual({
+      state: "later",
+      opens: "2026-12-31",
+    })
+    expect(reviewStep({ ...base, myRole: "LANDLORD" }, task, "2026-11-23")).toEqual({
+      state: "none",
+    })
   })
 
   it("counts what is left", () => {
@@ -65,6 +70,11 @@ describe("the two optional next steps", () => {
     expect(stepsLeft({ state: "awaiting", byMe: true }, { state: "todo" })).toBe(1)
     expect(stepsLeft({ state: "verified" }, { state: "done" })).toBe(0)
     expect(stepsLeft({ state: "todo" }, { state: "none" })).toBe(1)
+    // A review that opens later is not a step the caller can act on yet.
+    expect(stepsLeft({ state: "todo" }, { state: "later", opens: "2026-12-31" })).toBe(1)
+    expect(
+      stepsLeft({ state: "awaiting", byMe: true }, { state: "later", opens: "2026-12-31" }),
+    ).toBe(0)
     expect(stepsLeftLabel(2)).toBe("2 optional steps left")
     expect(stepsLeftLabel(1)).toBe("1 optional step left")
     expect(stepsLeftLabel(0)).toBe("All optional steps done")

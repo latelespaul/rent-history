@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -124,6 +125,11 @@ public class ReviewService {
 		}
 		approvals.require(me, roleOf(side));
 		requireAccount(me);
+		LocalDate today = today();
+		if (today.isBefore(ReviewWindow.opensOn(tenancy))) {
+			throw ApiException.rule("review_window_not_open",
+				"Reviews for this tenancy open on " + ReviewWindow.opensOn(tenancy) + ".");
+		}
 		Optional<Review> existing = reviews.findByTenancyIdAndDirection(tenancy.getId(), direction);
 		if (existing.isPresent()) {
 			throw ApiException.conflict("review_exists", existing.get().getStatus() == ReviewStatus.WITHDRAWN
@@ -363,12 +369,13 @@ public class ReviewService {
 	/** {@code GET /me/review-tasks}: reviews the caller can write now, the oldest tenancy first. */
 	public List<ReviewTask> tasks(AuthenticatedUser caller) {
 		User me = currentUser(caller);
+		LocalDate today = today();
 		List<Tenancy> mine = new ArrayList<>(tenancies.findByLandlordIdAndStatusIn(me.getId(), CONFIRMED));
 		mine.addAll(tenancies.findByTenantIdAndStatusIn(me.getId(), CONFIRMED));
 		List<ReviewTask> tasks = new ArrayList<>();
 		for (Tenancy tenancy : mine) {
 			TenancyParty side = sideOf(tenancy, me);
-			if (side == null) {
+			if (side == null || !ReviewWindow.isOpen(tenancy, today)) {
 				continue;
 			}
 			Map<ReviewDirection, Review> written = reviews.findByTenancyId(tenancy.getId()).stream()
@@ -528,6 +535,10 @@ public class ReviewService {
 
 	private static ApiException unauthenticated() {
 		return new ApiException(HttpStatus.UNAUTHORIZED, "unauthenticated", "Sign in to continue.");
+	}
+
+	private LocalDate today() {
+		return LocalDate.now(clock);
 	}
 
 	private Instant now() {

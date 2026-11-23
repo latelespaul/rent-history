@@ -1,15 +1,26 @@
 import type { TenancyStatus } from "@/types/api"
 
-/**
- * The server's D-39 window, changed by the open-by-default model (D-132) and the open model
- * (firstmate 2026-11-23): open from the moment the tenancy is current, current tenants too, and
- * never closed, so a home left years ago can still be reviewed.
- */
-export type ReviewWindow = { state: "open" } | { state: "none" }
+/** The server's D-39 window: it opens 60 days after moving in (or at moving out) and never closes. */
+export const OPENS_AFTER_DAYS = 60
 
-/** Whether a tenancy can be reviewed, as `ReviewWindow.confirmed` decides. */
-export function reviewWindow(tenancy: { status: TenancyStatus }): ReviewWindow {
-  return tenancy.status === "ACTIVE" || tenancy.status === "ENDED"
-    ? { state: "open" }
-    : { state: "none" }
+export type ReviewWindow =
+  { state: "open" } | { state: "not_yet"; opens: string } | { state: "none" }
+
+function plusDays(date: string, days: number): string {
+  const d = new Date(`${date.slice(0, 10)}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Whether a tenancy can be reviewed on `today` (`YYYY-MM-DD`), as `ReviewWindow.isOpen` decides. */
+export function reviewWindow(
+  tenancy: { status: TenancyStatus; startDate: string; endDate?: string | null },
+  today: string,
+): ReviewWindow {
+  if (tenancy.status !== "ACTIVE" && tenancy.status !== "ENDED") return { state: "none" }
+  const end = tenancy.status === "ENDED" && tenancy.endDate ? tenancy.endDate.slice(0, 10) : null
+  const afterSixty = plusDays(tenancy.startDate, OPENS_AFTER_DAYS)
+  const opens = end && end < afterSixty ? end : afterSixty
+  if (today < opens) return { state: "not_yet", opens }
+  return { state: "open" }
 }

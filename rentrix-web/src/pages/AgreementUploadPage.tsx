@@ -30,7 +30,7 @@ import {
   type AgreementErrors,
   type AgreementForm,
 } from "@/features/tenancy/agreementForm"
-import { dateLabel, tenancyHome } from "@/features/tenancy/labels"
+import { dateLabel, tenancyHome, today } from "@/features/tenancy/labels"
 import { rejectionText, reviewHref, reviewStep } from "@/features/tenancy/stepState"
 import { useRefreshTenancyData, useReviewTasks, useTenancy } from "@/features/tenancy/useTenancies"
 import { BRAND } from "@/lib/brand"
@@ -186,7 +186,7 @@ function Check({
 /** After the confirm: "Agreement uploaded · awaiting team check", then the review if it is next. */
 function Done({ tenancy, goReview }: { tenancy: Tenancy; goReview: boolean }) {
   const tasks = useReviewTasks(tenancy.myRole === "TENANT")
-  const review = reviewStep(tenancy, tasks.data)
+  const review = reviewStep(tenancy, tasks.data, today())
   return (
     <section
       data-testid="agreement-done"

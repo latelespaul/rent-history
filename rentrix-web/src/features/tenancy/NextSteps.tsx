@@ -11,6 +11,7 @@ import {
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 import type { Tenancy } from "@/types/api"
+import { dateLabel, today } from "./labels"
 import {
   agreementHref,
   agreementStep,
@@ -110,6 +111,12 @@ function ReviewRow({ tenancy, step }: { tenancy: Tenancy; step: ReviewStep }) {
           You reviewed this home
         </Badge>
       )}
+      {step.state === "later" && (
+        <p className="text-sm text-ink-700" data-testid="review-status">
+          You can rate and review this home from {dateLabel(step.opens)}: reviews open 60 days after
+          you move in, or when you move out.
+        </p>
+      )}
     </li>
   )
 }
@@ -136,7 +143,7 @@ export function NextSteps({
   const tasks = useReviewTasks(open && tenancy.myRole === "TENANT")
   if (!open || tenancy.myRole === null) return null
   const agreement = agreementStep(tenancy)
-  const review = reviewStep(tenancy, tasks.data)
+  const review = reviewStep(tenancy, tasks.data, today())
   const left = stepsLeft(agreement, review)
   return (
     <section
