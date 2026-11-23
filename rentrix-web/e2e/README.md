@@ -20,6 +20,16 @@ Without Docker, start the API (`SPRING_PROFILES_ACTIVE=dev SEED_DEMO=true` on an
 and `npm run dev`, then `E2E_BASE_URL=http://localhost:5173 npm run e2e`. `E2E_SLOW=4` stretches
 every wait on a busy machine.
 
+Against a deployed stack (DEV), also set:
+
+- `ADMIN_BASE_URL`: the admin host that serves `/api/v1` (e.g. `https://admin.<dev host>`). The
+  phone-verify helper reads relayed SMS codes there. Without it the helper sends
+  `X-Forwarded-Host: admin.<api host>`, and only to a local API host (`localhost`, `*.localhost`,
+  `127.0.0.1`, `::1` or a Docker service name); for any other host it fails. This differs from
+  `E2E_ADMIN_BASE_URL`, the admin web origin that `admin-host.spec.ts` opens.
+- `E2E_NEW_USERS_LOG`: a file path. Each run appends the email of every fresh account it creates
+  (`POST /auth/dev-login/new`), one per line, so the test users can be cleaned up afterwards.
+
 ## Rules
 
 - The specs change data (tenancies, new accounts), so they need a freshly seeded database and run

@@ -100,11 +100,16 @@ export async function verifyPhone(page: Page, digits: string) {
   // there. The local e2e stack has none, so they carry the admin host header the API trusts from
   // loopback and Docker-bridge peers only.
   const adminBase = process.env.ADMIN_BASE_URL
+  const apiHost = new URL(apiBase).hostname
+  if (!adminBase && !isLocalHost(apiHost)) {
+    throw new Error(
+      `ADMIN_BASE_URL is not set and the API host ${apiHost} is not local: set ADMIN_BASE_URL to ` +
+        "the admin host that serves /api/v1 (e.g. https://admin.<dev host>)",
+    )
+  }
   const adminApi = adminBase ? new URL("/api/v1", adminBase).href.replace(/\/+$/, "") : apiBase
   const api = await request.newContext(
-    adminBase
-      ? {}
-      : { extraHTTPHeaders: { "X-Forwarded-Host": `admin.${new URL(apiBase).hostname}` } },
+    adminBase ? {} : { extraHTTPHeaders: { "X-Forwarded-Host": `admin.${apiHost}` } },
   )
   const users = (await (await api.get(`${adminApi}/auth/admin/dev-users`)).json()) as Array<{
     id: string
@@ -125,4 +130,15 @@ export async function verifyPhone(page: Page, digits: string) {
   expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
   await page.getByLabel(/enter the 6-digit code/i).fill(code!)
   await page.getByRole("button", { name: /verify and continue/i }).click()
+}
+
+/** Loopback names and single-label Docker service names (the compose and CI stacks). */
+function isLocalHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    !hostname.includes(".")
+  )
 }
