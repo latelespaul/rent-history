@@ -28,6 +28,7 @@ import com.rentrix.rentrixserver.review.RatingAggregateRepository;
 import com.rentrix.rentrixserver.review.RatingSubjectType;
 import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.review.ReviewContentRules;
+import com.rentrix.rentrixserver.review.ReviewCriterion;
 import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.review.ReviewResponseRepository;
@@ -288,6 +289,17 @@ class DemoSeederTest {
 			assertThat(written).hasSize(70).allSatisfy(r ->
 				assertThat(ReviewContentRules.review(r.getBody(), r.getProperty().getUnitLabel())).isEqualTo(r.getBody()));
 			assertThat(written.stream().map(Review::getRatingOverall).distinct()).containsExactlyInAnyOrder(1, 2, 3, 4, 5);
+			// D-157: the tenant's reviews are form reviews with every parameter rated; the landlord's keep D-29
+			assertThat(written).allSatisfy(r -> {
+				if (r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT) {
+					assertThat(r.getCriteria()).isEmpty();
+				} else {
+					assertThat(r.getCriteria().keySet())
+						.containsExactlyInAnyOrderElementsOf(ReviewCriterion.of(r.getDirection()));
+					assertThat(r.getCriteria().values()).allMatch(v -> v >= 1 && v <= 5);
+					assertThat(r.getWouldRecommend()).isEqualTo(r.getRatingOverall() >= 4);
+				}
+			});
 			for (Property home : homes) {
 				assertThat(written.stream().filter(r -> r.getProperty().getId().equals(home.getId()))
 					.filter(r -> r.getStatus() == ReviewStatus.PUBLISHED).map(Review::getDirection).distinct())

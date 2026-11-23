@@ -39,4 +39,17 @@ public class ReviewRevision extends BaseEntity {
 	@Column(name = "body", nullable = false, length = 2000)
 	private String body;
 	
+	/** D-157: the parameter ratings as {@code WATER_SUPPLY=4,NOISE=2}; null when there were none. */
+	@Column(name = "criteria", length = 500)
+	private String criteria;
+	
+	@Column(name = "would_recommend")
+	private Boolean wouldRecommend;
+	
+	@Column(name = "pros", length = 1000)
+	private String pros;
+	
+	@Column(name = "cons", length = 1000)
+	private String cons;
+	
 }

@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.user.profile;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.identity.IdentityService;
+import com.rentrix.rentrixserver.rating.RatingBreakdowns;
 import com.rentrix.rentrixserver.rating.RatingDetail;
 import com.rentrix.rentrixserver.review.RatingAggregateId;
 import com.rentrix.rentrixserver.review.RatingAggregateRepository;
@@ -40,6 +41,7 @@ public class UserProfileService {
 	private final IdentityService identity;
 	private final ProfileAccess access;
 	private final ReviewService reviews;
+	private final RatingBreakdowns breakdowns;
 	
 	public UserProfileView get(UUID userId, AuthenticatedUser caller) {
 		User me = currentUser(caller);
@@ -55,7 +57,7 @@ public class UserProfileService {
 			PublicNames.of(person),
 			YearMonth.from(person.getCreatedAt().atZone(ZoneOffset.UTC)),
 			identity.badges(person),
-			landlord ? rating(RatingSubjectType.LANDLORD, person) : null,
+			landlord ? breakdowns.forLandlord(rating(RatingSubjectType.LANDLORD, person), person.getId()) : null,
 			landlord ? access.listedHomes(person) : null,
 			tenant ? rating(RatingSubjectType.TENANT, person) : null);
 	}

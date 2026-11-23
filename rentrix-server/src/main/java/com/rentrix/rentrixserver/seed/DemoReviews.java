@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.seed;
 
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.review.Review;
+import com.rentrix.rentrixserver.review.ReviewCriterion;
 import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.review.ReviewResponse;
@@ -26,6 +27,9 @@ import java.util.Map;
  * current one) and published together, as the double-blind reveal would (D-46). Exception: on the current tenancy
  * of the {@code waiting} home only the landlord has written, two days ago, so that review awaits reveal and the
  * tenant has review tasks. The landlord of the first home answers its newest property review.
+ * <p>The tenant's reviews are written with the review form (D-157): a rating for every parameter of the home or the
+ * landlord, near the overall rating, and "would you recommend" yes from 4 stars, so every home and landlord page
+ * shows per-parameter averages (D-158). The landlord's reviews of tenants keep the D-29 sub-ratings.
  */
 final class DemoReviews {
 
@@ -133,9 +137,19 @@ final class DemoReviews {
 		});
 		review.setProperty(tenancy.getProperty());
 		review.setRatingOverall(rating);
-		review.setRatingA(rating);
-		review.setRatingB(Math.max(1, rating - index % 2));
-		review.setRatingC(index % 3 == 0 ? null : Math.min(5, rating + index % 2));
+		if (direction == ReviewDirection.LANDLORD_TO_TENANT) {
+			review.setRatingA(rating);
+			review.setRatingB(Math.max(1, rating - index % 2));
+			review.setRatingC(index % 3 == 0 ? null : Math.min(5, rating + index % 2));
+		} else {
+			List<ReviewCriterion> criteria = ReviewCriterion.of(direction);
+			for (int i = 0; i < criteria.size(); i++) {
+				// One star either side of the overall rating, varied per parameter and review.
+				int spread = (index + i) % 3 - 1;
+				review.getCriteria().put(criteria.get(i), Math.max(1, Math.min(5, rating + spread)));
+			}
+			review.setWouldRecommend(rating >= 4);
+		}
 		review.setBody(texts.get(index % texts.size()));
 		review.setSubmittedAt(submittedAt);
 		review.setEditUntil(submittedAt.plus(ReviewService.EDIT_WINDOW));

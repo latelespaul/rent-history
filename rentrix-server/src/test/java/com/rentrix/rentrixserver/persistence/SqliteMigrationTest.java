@@ -128,4 +128,13 @@ class SqliteMigrationTest {
 			"ix_reviews_property", "ix_rating_aggregates_rank", "ix_tenancies_pair");
 	}
 	
+	@Test
+	void reviewParameterRatingsReferenceTheirReview() {
+		// V16 (D-157): one row per rated parameter, keyed by review and parameter
+		assertThat(jdbc.queryForList("select \"table\" from pragma_foreign_key_list('review_criterion_ratings')",
+			String.class)).containsExactly("reviews");
+		assertThat(jdbc.queryForList("select name from pragma_table_info('review_criterion_ratings') where pk > 0"
+			+ " order by pk", String.class)).containsExactly("review_id", "criterion");
+	}
+	
 }
