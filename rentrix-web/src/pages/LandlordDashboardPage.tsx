@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { PencilIcon, PlusIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
-import { bedroomsLabel, propertyTitle, typeLabel } from "@/features/property/labels"
+import { propertyTitle, sizeLabel, typeLabel } from "@/features/property/labels"
 import { RatingLine } from "@/features/property/Rating"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { PROPERTY_STATUS, rentLine } from "@/features/tenancy/labels"
@@ -63,7 +63,7 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
             {[
               `${property.locality}, ${property.city.name}`,
               typeLabel(property.propertyType),
-              bedroomsLabel(property.bedrooms),
+              sizeLabel(property),
             ]
               .filter(Boolean)
               .join(" · ")}

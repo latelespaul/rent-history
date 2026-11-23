@@ -47,6 +47,20 @@ export function homeSizeLabel(
   return HOME_SIZES.find((s) => s.value === size)?.label ?? null
 }
 
+/**
+ * The size fact of a home: its home size (1 RK, 2 BHK, "2.5 BHK"…), else its bedroom count; null
+ * when unknown or when it only repeats the type ("Studio").
+ */
+export function sizeLabel(home: {
+  propertyType: PropertyType
+  bedrooms: number | null
+  homeSize?: HomeSize
+  homeSizeOther?: string
+}): string | null {
+  const size = homeSizeLabel(home.homeSize, home.homeSizeOther) ?? bedroomsLabel(home.bedrooms)
+  return size === typeLabel(home.propertyType) ? null : size
+}
+
 /** "2 BHK" for flats and houses; "Studio" has no bedroom count of its own. */
 export function bedroomsLabel(bedrooms: number | null | undefined): string | null {
   if (bedrooms === null || bedrooms === undefined) return null

@@ -1,6 +1,8 @@
 package com.rentrix.rentrixserver.property.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rentrix.rentrixserver.property.Furnishing;
+import com.rentrix.rentrixserver.property.HomeSize;
 import com.rentrix.rentrixserver.property.PropertyType;
 
 import java.util.UUID;
@@ -14,6 +16,8 @@ public record PropertyCard(
 	String street,
 	PropertyType propertyType,
 	Integer bedrooms,
+	@JsonInclude(JsonInclude.Include.NON_NULL) HomeSize homeSize,
+	@JsonInclude(JsonInclude.Include.NON_NULL) String homeSizeOther,
 	Integer bathrooms,
 	Integer areaSqft,
 	Furnishing furnishing,

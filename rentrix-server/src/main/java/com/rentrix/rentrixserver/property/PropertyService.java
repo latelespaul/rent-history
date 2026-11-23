@@ -269,6 +269,10 @@ public class PropertyService {
 		property.setUnitLabel(blankToNull(request.unitLabel()));
 		property.setPincode(pincode);
 		property.setPropertyType(request.propertyType());
+		if (request.homeSize() == HomeSize.OTHER && blankToNull(request.homeSizeOther()) == null) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("homeSizeOther", "required",
+				"Type the size, e.g. 2.5 BHK.")));
+		}
 		property.setHomeSize(request.homeSize() != null ? request.homeSize()
 			: HomeSize.fromBedrooms(request.propertyType(), request.bedrooms()));
 		property.setHomeSizeOther(request.homeSize() == HomeSize.OTHER ? blankToNull(request.homeSizeOther()) : null);
@@ -529,7 +533,8 @@ public class PropertyService {
 	
 	private static PropertyCard card(Property p, RatingAggregate rating) {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
-			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(),
+			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getHomeSize(), p.getHomeSizeOther(), p.getBathrooms(),
+			p.getAreaSqft(), p.getFurnishing(),
 			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p));
 	}
 	

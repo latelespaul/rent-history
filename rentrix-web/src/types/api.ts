@@ -142,6 +142,10 @@ export interface PropertyCard {
   street: string | null
   propertyType: PropertyType
   bedrooms: number | null
+  /** Absent when not given. */
+  homeSize?: HomeSize
+  /** The size in the user's words, with `homeSize` `OTHER`. */
+  homeSizeOther?: string
   bathrooms: number | null
   areaSqft: number | null
   furnishing: Furnishing | null

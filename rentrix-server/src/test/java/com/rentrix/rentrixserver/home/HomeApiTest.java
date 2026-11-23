@@ -412,6 +412,20 @@ class HomeApiTest {
 			.andExpect(jsonPath("$.items[*].id").value(org.hamcrest.Matchers.hasItem(two.get("id").asString())))
 			.andExpect(jsonPath("$.items[*].id").value(org.hamcrest.Matchers.not(
 				org.hamcrest.Matchers.hasItem(rk.get("id").asString()))));
+		mvc.perform(get("/properties").param("city", CITY).param("size", "50"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSize".formatted(rk.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("RK1")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSize".formatted(other.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("OTHER")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSizeOther".formatted(other.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("2.5 BHK")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSizeOther".formatted(rk.get("id").asString()))
+				.value(org.hamcrest.Matchers.empty()));
+		add(tenant("Size Tenant Four"), rentBody(sized.formatted(CITY, "O4", "OTHER", ", \"homeSizeOther\": \"  \"",
+			area.getPublicId(), "Typed Society Four"), TODAY.minusMonths(4)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("homeSizeOther"));
 		mvc.perform(get("/properties").param("homeSize", "3BHK"))
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.errors[0].field").value("homeSize"));
