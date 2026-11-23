@@ -82,6 +82,18 @@ export async function apiBaseUrl(page: Page) {
 }
 
 /**
+ * The test phone numbers, +91 99999 0xxxx (`OTP_TEST_NUMBER_PREFIX`, firstmate 2026-11-23): their
+ * codes are held for the admin relay and never sent by SMS or Telegram. Every e2e run uses only
+ * these, so no run on a shared stack (DEV) pushes a code to anyone.
+ */
+const TEST_PHONE = /^999990\d{4}$/
+
+/** A random number in the test range, as the 10 digits the phone step takes. */
+export function testPhone(): string {
+  return `999990${String(Math.floor(Math.random() * 10_000)).padStart(4, "0")}`
+}
+
+/**
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
  * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
@@ -90,6 +102,10 @@ export async function apiBaseUrl(page: Page) {
  * carry `X-Forwarded-Host: admin.<host>`, which the API honours from loopback and Docker peers only.
  */
 export async function verifyPhone(page: Page, digits: string) {
+  expect(
+    TEST_PHONE.test(digits),
+    `e2e uses test numbers only (+91 99999 0xxxx), got …${digits.slice(-4)}`,
+  ).toBe(true)
   await expect(page).toHaveURL(/\/verify\/phone/)
   await page.getByLabel(/your mobile number/i).fill(digits)
   await page.getByRole("button", { name: /send code/i }).click()
@@ -125,7 +141,7 @@ export async function verifyPhone(page: Page, digits: string) {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
   ).json()) as Array<{ phone: string; code: string }>
-  const code = relayed.find((c) => c.phone.endsWith(digits.slice(-4)))?.code
+  const code = relayed.find((c) => c.phone.endsWith(digits))?.code
   await api.dispose()
   expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
   await page.getByLabel(/enter the 6-digit code/i).fill(code!)

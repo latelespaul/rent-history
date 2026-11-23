@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, recordNewUsers, verifyPhone } from "./support"
+import { apiBaseUrl, recordNewUsers, verifyPhone, testPhone } from "./support"
 
 /**
  * Release gate (captain 2026-11-23 13:26): the complete new-user chain at 390 px. Landing, sign
@@ -37,7 +37,7 @@ test.describe("new-user sign-up release gate (390 px)", () => {
     const name = `Gate Tenant ${tag.slice(-4).toUpperCase()}`
     const building = `Signup Towers ${tag}`
     const flat = `B-${tag.slice(-3)}`
-    const phone = `6${Date.now().toString().slice(-9)}`
+    const phone = testPhone()
     const review =
       "Good light, a fair owner and quick repairs. The society water supply was steady all year."
     let homeUrl = ""

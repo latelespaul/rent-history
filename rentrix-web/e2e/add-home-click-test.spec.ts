@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, verifyPhone } from "./support"
+import { daysAgo, freshLogin, verifyPhone, testPhone } from "./support"
 
 /**
  * The DEV click-test of "Add your home" (#53, 2026-11-23 05:25) and its ruling (open by default,
@@ -20,7 +20,7 @@ test("a new tenant adds a Hyderabad flat in Tower 4 · Wing B, tagged pending re
   const society = `E2E Lake View ${tag}`
   const flat = `12${Date.now().toString().slice(-2)}`
   // One phone per project: both projects run against the same database.
-  const phone = `${testInfo.project.name === "mobile" ? 8 : 9}${Date.now().toString().slice(-9)}`
+  const phone = testPhone()
   const shot = (name: string) =>
     page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true })
 
