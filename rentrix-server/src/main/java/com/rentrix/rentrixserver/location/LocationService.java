@@ -223,6 +223,17 @@ public class LocationService {
 	 */
 	@Transactional
 	public Placement resolve(String cityCode, String pincode, LocationInput input, User actor) {
+		return resolve(cityCode, pincode, input, actor, false);
+	}
+	
+	/**
+	 * {@link #resolve(String, String, LocationInput, User)}, where {@code pincodeMayLeaveArea} lets a picked area take
+	 * a PIN code it does not list: "Add your home" only warns about it (firstmate 2026-11-23 14:50), because PIN codes
+	 * cross area borders and the area PIN data is incomplete. The city's PIN prefixes still hold.
+	 */
+	@Transactional
+	public Placement resolve(String cityCode, String pincode, LocationInput input, User actor,
+		boolean pincodeMayLeaveArea) {
 		Objects.requireNonNull(actor, "actor");
 		Viewer viewer = Viewer.of(actor);
 		LocationInput in = input == null ? new LocationInput(null, null, null, null, null, null, null, null) : input;
@@ -247,10 +258,10 @@ public class LocationService {
 			optional(in.newSociety().street(), "newSociety.street", MAX_STREET, errors);
 		}
 		if (in.newTower() != null) {
-			name(in.newTower().name(), "newTower.name", MAX_TOWER_NAME, errors);
+			label(in.newTower().name(), "newTower.name", errors);
 		}
 		if (in.newWing() != null) {
-			name(in.newWing().name(), "newWing.name", MAX_TOWER_NAME, errors);
+			label(in.newWing().name(), "newWing.name", errors);
 		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
@@ -278,8 +289,9 @@ public class LocationService {
 		} else {
 			String areaPincode = in.newArea().pincode().trim();
 			requireAreaPincode(cityCode, areaPincode);
-			area = pendingTwin(areas.findByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name())),
-				Area::getStatus, "An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
+			area = pendingTwin("newArea.name",
+				areas.findByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name())), Area::getStatus,
+				"An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
 			if (area == null) {
 				area = new Area();
 				area.setCity(city);
@@ -288,7 +300,7 @@ public class LocationService {
 			}
 			area.addPincode(areaPincode);
 		}
-		if (!area.pincodeList().contains(pincode)) {
+		if (!pincodeMayLeaveArea && !area.pincodeList().contains(pincode)) {
 			throw reads(viewer, area)
 				? new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
 					"PIN code " + pincode + " is not in " + area.getName() + ".",
@@ -307,7 +319,8 @@ public class LocationService {
 			}
 		} else if (in.newSociety() != null) {
 			if (area.getId() != null) {
-				society = pendingTwin(societies.findByAreaAndNameKey(area, LocationNames.key(in.newSociety().name())),
+				society = pendingTwin("newSociety.name",
+					societies.findByAreaAndNameKey(area, LocationNames.key(in.newSociety().name())),
 					Society::getStatus,
 					"A society with this name already exists in " + area.getName() + "; pick it instead.");
 			}
@@ -331,7 +344,8 @@ public class LocationService {
 			}
 		} else if (in.newTower() != null) {
 			if (society.getId() != null) {
-				tower = pendingTwin(towers.findBySocietyAndNameKey(society, LocationNames.key(in.newTower().name())),
+				tower = pendingTwin("newTower.name",
+					towers.findBySocietyAndNameKey(society, LocationNames.key(in.newTower().name())),
 					SocietyTower::getStatus,
 					"A tower with this name already exists in " + society.getName() + "; pick it instead.");
 			}
@@ -354,7 +368,8 @@ public class LocationService {
 			}
 		} else if (in.newWing() != null) {
 			if (tower.getId() != null) {
-				wing = pendingTwin(wings.findByTowerAndNameKey(tower, LocationNames.key(in.newWing().name())),
+				wing = pendingTwin("newWing.name",
+					wings.findByTowerAndNameKey(tower, LocationNames.key(in.newWing().name())),
 					SocietyWing::getStatus,
 					"A wing with this name already exists in " + tower.getName() + "; pick it instead.");
 			}
@@ -364,21 +379,26 @@ public class LocationService {
 			}
 		}
 		
+		String saving = null;
 		try {
 			if (in.newArea() != null) {
+				saving = "newArea.name";
 				areas.saveAndFlush(area);
 			}
 			if (society != null && society.getId() == null) {
+				saving = "newSociety.name";
 				societies.saveAndFlush(society);
 			}
 			if (tower != null && tower.getId() == null) {
+				saving = "newTower.name";
 				towers.saveAndFlush(tower);
 			} else if (wing != null && wing.getId() == null) {
+				saving = "newWing.name";
 				wings.saveAndFlush(wing);
 			}
 		} catch (DataIntegrityViolationException e) {
 			// a concurrent proposal with the same name won the unique (parent, name_key) key
-			throw exists("A place with this name was just added; pick it instead.");
+			throw exists(saving, "A place with this name was just added; pick it instead.");
 		}
 		return new Placement(area, society, tower, wing);
 	}
@@ -542,12 +562,13 @@ public class LocationService {
 	 * (its {@code created_by} unchanged); an {@code ACTIVE} or {@code HIDDEN} one is a {@code 409 location_exists}.
 	 * Null when the name is new.
 	 */
-	private static <T> T pendingTwin(Optional<T> existing, Function<T, LocationStatus> status, String detail) {
+	private static <T> T pendingTwin(String fieldName, Optional<T> existing, Function<T, LocationStatus> status,
+		String detail) {
 		if (existing.isEmpty()) {
 			return null;
 		}
 		if (status.apply(existing.get()) != LocationStatus.PENDING) {
-			throw exists(detail);
+			throw exists(fieldName, detail);
 		}
 		return existing.get();
 	}
@@ -575,6 +596,19 @@ public class LocationService {
 		}
 	}
 	
+	/**
+	 * A tower or wing name: 1 to {@value #MAX_TOWER_NAME} characters with at least one letter or digit, so the
+	 * usual one-letter "A" / "B" wing and "Tower 1" both pass (captain 2026-11-23, #53 click-test).
+	 */
+	private static void label(String value, String fieldName, List<ApiProblem.FieldError> errors) {
+		String cleaned = LocationNames.clean(value);
+		if (cleaned == null || cleaned.isEmpty() || cleaned.length() > MAX_TOWER_NAME
+			|| cleaned.codePoints().noneMatch(Character::isLetterOrDigit)) {
+			errors.add(field(LOCATION + fieldName, "size",
+				"Must be 1 to " + MAX_TOWER_NAME + " characters, with a letter or a digit."));
+		}
+	}
+	
 	private static void optional(String value, String fieldName, int max, List<ApiProblem.FieldError> errors) {
 		String cleaned = LocationNames.clean(value);
 		if (cleaned != null && cleaned.length() > max) {
@@ -595,8 +629,9 @@ public class LocationService {
 			List.of(field(LOCATION + fieldName, "mismatch", detail)));
 	}
 	
-	private static ApiException exists(String detail) {
-		return ApiException.conflict("location_exists", detail);
+	private static ApiException exists(String fieldName, String detail) {
+		return new ApiException(HttpStatus.CONFLICT, "location_exists", detail,
+			List.of(field(LOCATION + fieldName, "exists", detail)));
 	}
 	
 	private static String blankToNull(String value) {

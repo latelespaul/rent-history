@@ -52,8 +52,9 @@ public class Tenancy extends PublicEntity {
 	@Column(name = "end_date")
 	private LocalDate endDate;
 	
-	@Column(name = "initial_rent_inr", nullable = false)
-	private long initialRentInr;
+	/** Null when the tenant chose not to share the rent ("Add your home", captain 2026-11-23). */
+	@Column(name = "initial_rent_inr")
+	private Long initialRentInr;
 	
 	@Column(name = "deposit_inr")
 	private Long depositInr;

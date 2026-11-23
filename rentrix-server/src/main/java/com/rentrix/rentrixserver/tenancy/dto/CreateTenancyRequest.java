@@ -19,7 +19,8 @@ public record CreateTenancyRequest(
 	@Email @Size(max = 320) String counterpartyEmail,
 	@NotNull LocalDate startDate,
 	LocalDate endDate,
-	@NotNull @Min(1) @Max(TenancyLimits.MAX_RENT_INR) Long initialRentInr,
+	/** Required, except on a tenant's own "Add your home" record, where it may be left out (not shared). */
+	@Min(1) @Max(TenancyLimits.MAX_RENT_INR) Long initialRentInr,
 	@Min(0) @Max(TenancyLimits.MAX_DEPOSIT_INR) Long depositInr
 ) {
 }

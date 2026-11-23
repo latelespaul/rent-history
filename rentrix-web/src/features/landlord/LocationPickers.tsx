@@ -31,6 +31,19 @@ interface Props {
   disabled?: boolean
   /** A field error from the API, e.g. on `location.areaId`. */
   error?: string
+  /** Errors on the society, tower and wing levels, from the form's checks or the API. */
+  levelErrors?: Partial<Record<"society" | "tower" | "wing", string>>
+  /** The line under the area; the landlord form's default says its listing is checked first. */
+  hint?: string
+}
+
+function LevelError({ id, error }: { id: string; error?: string }) {
+  if (!error) return null
+  return (
+    <p className="text-xs text-danger-600" data-testid={`${id}-error`} role="alert">
+      {error}
+    </p>
+  )
 }
 
 function AreaPicker({ city, value, onChange, disabled }: Props) {
@@ -93,6 +106,7 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
                       id: a.id,
                       name: a.name,
                       status: a.status,
+                      pincodes: a.pincodes,
                     }),
                   )
                 }
@@ -105,7 +119,7 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
               </Button>
             </li>
           ))}
-          {areas.isSuccess && areas.data.length === 0 && (
+          {typed.length > 0 && areas.isSuccess && areas.data.length === 0 && (
             <li className="text-sm text-ink-500">No area matches “{typed}”.</li>
           )}
           {/* Only once the search answered: a tap before that would propose an area that exists. */}
@@ -203,7 +217,15 @@ function LevelSelect({
  * change at one level clears the levels under it.
  */
 export function LocationPickers(props: Props) {
-  const { city, value, onChange, disabled, error } = props
+  const {
+    city,
+    value,
+    onChange,
+    disabled,
+    error,
+    levelErrors = {},
+    hint = "Pick the area. If it is missing, suggest it: an admin checks new names with your listing before it goes public.",
+  } = props
   const { viewer } = useSignedIn()
   const { area, society, tower, wing } = value
 
@@ -228,9 +250,12 @@ export function LocationPickers(props: Props) {
       <div className="space-y-1.5">
         <Label htmlFor="pf-area">Area</Label>
         <AreaPicker {...props} />
-        <p id="pf-area-hint" className="text-xs text-ink-500">
-          {error ??
-            "Pick the area. If it is missing, suggest it: an admin checks new names before they show publicly."}
+        <p
+          id="pf-area-hint"
+          className={`text-xs ${error ? "text-danger-600" : "text-ink-500"}`}
+          data-testid={error ? "pf-area-error" : undefined}
+        >
+          {error ?? hint}
         </p>
       </div>
 
@@ -266,6 +291,7 @@ export function LocationPickers(props: Props) {
                   onChange({ ...value, society: { ...society, name: e.target.value } })
                 }
                 className="h-10"
+                aria-invalid={Boolean(levelErrors.society)}
               />
               <select
                 aria-label="New society kind"
@@ -283,6 +309,7 @@ export function LocationPickers(props: Props) {
               </select>
             </div>
           )}
+          <LevelError id="pf-society" error={levelErrors.society} />
         </LevelSelect>
       )}
 
@@ -307,11 +334,12 @@ export function LocationPickers(props: Props) {
             <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
               <Input
                 aria-label="New tower name"
-                placeholder="Tower 2, Block C…"
+                placeholder="4, Tower 2, Block C…"
                 value={tower.name}
                 maxLength={60}
                 onChange={(e) => onChange({ ...value, tower: { ...tower, name: e.target.value } })}
                 className="h-10"
+                aria-invalid={Boolean(levelErrors.tower)}
               />
               <select
                 aria-label="New tower kind"
@@ -329,6 +357,7 @@ export function LocationPickers(props: Props) {
               </select>
             </div>
           )}
+          <LevelError id="pf-tower" error={levelErrors.tower} />
         </LevelSelect>
       )}
 
@@ -348,13 +377,15 @@ export function LocationPickers(props: Props) {
           {wing.kind === "new" && (
             <Input
               aria-label="New wing name"
-              placeholder="Wing A"
+              placeholder="A, B, Wing A…"
               value={wing.name}
               maxLength={60}
               onChange={(e) => onChange({ ...value, wing: { ...wing, name: e.target.value } })}
               className="h-10"
+              aria-invalid={Boolean(levelErrors.wing)}
             />
           )}
+          <LevelError id="pf-wing" error={levelErrors.wing} />
         </LevelSelect>
       )}
     </fieldset>

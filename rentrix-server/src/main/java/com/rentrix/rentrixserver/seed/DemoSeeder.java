@@ -196,11 +196,12 @@ public class DemoSeeder implements ApplicationRunner {
 		seed();
 	}
 	
-	/** Seeds an empty database; returns false (and changes nothing) when any user, property or area exists. */
+	/** Seeds an empty database; returns false (and changes nothing) when any user, property or demo area exists. */
 	public boolean seed() {
 		Boolean seeded = tx.execute(status -> {
-			// The unclaimed-homes account (D-139) is created at startup and does not count as data.
-			if (users.countByEmailNot(UnclaimedLandlord.EMAIL) > 0 || properties.count() > 0 || areas.count() > 0) {
+			// The unclaimed-homes account (D-139) is created at startup and the launch-city areas (V11) by Flyway;
+			// neither counts as data.
+			if (users.countByEmailNot(UnclaimedLandlord.EMAIL) > 0 || properties.count() > 0 || areas.existsByDemoTrue()) {
 				log.info("Demo seed skipped: the database is not empty.");
 				return false;
 			}
@@ -387,7 +388,7 @@ public class DemoSeeder implements ApplicationRunner {
 		pending.setTenant(tenant("PNQ", 3));
 		pending.setStartDate(LocalDate.of(2021, 6, 1));
 		pending.setEndDate(LocalDate.of(2022, 5, 31));
-		pending.setInitialRentInr(21_000);
+		pending.setInitialRentInr(21_000L);
 		pending.setDepositInr(63_000L);
 		pending.setInitiatedBy(TenancyParty.TENANT);
 		pending.setStatus(TenancyStatus.PENDING_CONFIRMATION);

@@ -277,7 +277,7 @@ public class AdminQueueService {
 		List<String> details = new ArrayList<>();
 		details.add("Tenant " + name(t.getTenant()) + " · Owner " + name(t.getLandlord()));
 		details.add("From " + t.getStartDate() + (t.getEndDate() == null ? "" : " to " + t.getEndDate())
-			+ " · Rent " + rupees(t.getInitialRentInr()) + " / month");
+			+ " · " + (t.getInitialRentInr() == null ? "Rent not shared" : "Rent " + rupees(t.getInitialRentInr()) + " / month"));
 		details.add(t.getConfirmedAt() != null ? "Confirmed by both" : "Not confirmed by the other side");
 		return new QueueItem(QueueType.TENANCY, t.getPublicId().toString(), homeLabel(p),
 			cityName(p.getCity()) + " · " + statusLabel(t.getStatus()), details, List.of(), cityCode(p.getCity()),

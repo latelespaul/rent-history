@@ -3,6 +3,7 @@ import { DemoBadge } from "@/components/ui/badge"
 import { BuildingIcon, MapPinIcon } from "@/components/ui/icons.gen"
 import type { PropertyCard } from "@/types/api"
 import { placeLine, propertyTitle } from "./labels"
+import { LocationPendingBadge } from "./LocationPendingBadge"
 import { PropertyFacts } from "./PropertyFacts"
 import { RatingLine } from "./Rating"
 
@@ -30,9 +31,10 @@ export function PropertyResult({ property }: { property: PropertyCard }) {
           </h3>
           <RatingLine rating={property.rating} />
         </div>
-        <p className="inline-flex items-center gap-1.5 text-sm text-ink-700">
+        <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-700">
           <MapPinIcon size={16} className="text-ink-500" />
           {placeLine(property)}
+          {property.locationPending && <LocationPendingBadge className="relative z-10" />}
         </p>
         <PropertyFacts property={property} />
         <p className="mt-auto border-t border-line pt-2.5 text-sm text-ink-700">

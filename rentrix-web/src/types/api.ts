@@ -149,6 +149,8 @@ export interface PropertyCard {
   demo: boolean
   rating: RatingSummary
   landlordName: string
+  /** The area, society, tower or wing is a new name the team has not reviewed yet; shown tagged. */
+  locationPending?: boolean
 }
 
 /**
@@ -391,7 +393,8 @@ export interface Tenancy {
   inviteEmail: string | null
   startDate: string
   endDate: string | null
-  initialRentInr: number
+  /** Null when the tenant did not share the rent ("Add your home"); shown "Rent not shared". */
+  initialRentInr: number | null
   currentRentInr: number | null
   /** The date the current rent applies from; null until the tenancy is confirmed. */
   currentRentFrom: string | null

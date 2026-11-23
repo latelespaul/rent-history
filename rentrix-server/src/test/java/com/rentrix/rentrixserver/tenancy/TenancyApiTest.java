@@ -480,7 +480,7 @@ class TenancyApiTest {
 		old.setLandlord(landlord);
 		old.setTenant(tenant);
 		old.setStartDate(TODAY.minusMonths(3));
-		old.setInitialRentInr(20_000);
+		old.setInitialRentInr(20_000L);
 		old.setInitiatedBy(TenancyParty.TENANT);
 		old.setCreatedAt(Instant.now().minus(15, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MILLIS));
 		tenancies.saveAndFlush(old);

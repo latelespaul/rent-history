@@ -43,6 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import static com.rentrix.rentrixserver.support.AdminConsole.adminBearer;
 import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -216,6 +217,18 @@ class AdminQueueTest {
 		mvc.perform(patch("/admin/cities/BLR").with(adminHost()).header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"live\":false}"))
 			.andExpect(status().isUnprocessableContent()).andExpect(jsonPath("$.code").value("action_not_allowed"));
+	}
+
+	@Test
+	void aTenancyWithoutRentIsListedAsRentNotShared() throws Exception {
+		Tenancy tenancy = tenancy(data.approved("Queue Landlord", Role.LANDLORD),
+			data.approved("Queue Tenant", Role.TENANT));
+		tenancy.setInitialRentInr(null);
+		tenancies.save(tenancy);
+
+		queue(admin(), "?type=TENANCY&city=BLR").andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '" + tenancy.getPublicId() + "')].details[*]",
+				hasItem(endsWith("Rent not shared"))));
 	}
 
 	@Test

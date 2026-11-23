@@ -142,6 +142,11 @@ public class TenancyService {
 		// one-sided and without the green tick (D-132).
 		boolean oneSided = !asLandlord && (selfRecorded || UnclaimedLandlord.is(property.getLandlord()));
 		requireDates(request.startDate(), request.endDate());
+		// The rent may stay unshared only on a tenant's own one-sided record; the other side confirms a real number.
+		if (request.initialRentInr() == null && !oneSided) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("initialRentInr", "required",
+				"Enter the monthly rent.")));
+		}
 		String inviteEmail = null;
 		if (asLandlord) {
 			requireRole(me, Role.LANDLORD);
@@ -265,13 +270,15 @@ public class TenancyService {
 			tenancy.setEndedAt(now);
 		}
 		Tenancy saved = tenancies.saveAndFlush(tenancy);
-		RentRecord first = new RentRecord();
-		first.setTenancy(saved);
-		first.setEffectiveFrom(saved.getStartDate().withDayOfMonth(1));
-		first.setMonthlyRentInr(saved.getInitialRentInr());
-		first.setAddedBy(initiator(saved));
-		first.setStatus(RentRecordStatus.CONFIRMED);
-		rentRecords.save(first);
+		if (saved.getInitialRentInr() != null) {
+			RentRecord first = new RentRecord();
+			first.setTenancy(saved);
+			first.setEffectiveFrom(saved.getStartDate().withDayOfMonth(1));
+			first.setMonthlyRentInr(saved.getInitialRentInr());
+			first.setAddedBy(initiator(saved));
+			first.setStatus(RentRecordStatus.CONFIRMED);
+			rentRecords.save(first);
+		}
 		notifier.confirmed(saved, initiator(saved));
 		return view(saved, me, caller);
 	}
@@ -288,13 +295,16 @@ public class TenancyService {
 			tenancy.setEndedAt(now);
 		}
 		Tenancy saved = tenancies.saveAndFlush(tenancy);
-		RentRecord first = new RentRecord();
-		first.setTenancy(saved);
-		first.setEffectiveFrom(saved.getStartDate().withDayOfMonth(1));
-		first.setMonthlyRentInr(saved.getInitialRentInr());
-		first.setAddedBy(me);
-		first.setStatus(RentRecordStatus.PROPOSED);
-		rentRecords.save(first);
+		// A rent the tenant did not share has no record: the home's rent history simply has no entry for it.
+		if (saved.getInitialRentInr() != null) {
+			RentRecord first = new RentRecord();
+			first.setTenancy(saved);
+			first.setEffectiveFrom(saved.getStartDate().withDayOfMonth(1));
+			first.setMonthlyRentInr(saved.getInitialRentInr());
+			first.setAddedBy(me);
+			first.setStatus(RentRecordStatus.PROPOSED);
+			rentRecords.save(first);
+		}
 		notifier.recordedByTenant(saved, saved.getLandlord());
 		return view(saved, me, caller);
 	}
@@ -591,7 +601,7 @@ public class TenancyService {
 			: Optional.empty();
 		Long currentRent = confirmed ? inEffect.map(RentRecord::getMonthlyRentInr).orElse(t.getInitialRentInr()) : null;
 		// Rent records start on the first of a month; the rent never applies before the tenancy starts.
-		LocalDate currentRentFrom = confirmed
+		LocalDate currentRentFrom = currentRent != null
 			? inEffect.map(RentRecord::getEffectiveFrom).filter(from -> from.isAfter(t.getStartDate()))
 			.orElse(t.getStartDate())
 			: null;

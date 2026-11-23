@@ -17,6 +17,8 @@ export interface PickedLevel {
   id: string
   name: string
   status: LocationStatus
+  /** An area's PIN codes, for the PIN autofill in "Add your home". */
+  pincodes?: string[]
 }
 
 /** A proposal typed in the form; saved `PENDING` and shown "Pending review" (D-109). */

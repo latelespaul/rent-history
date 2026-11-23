@@ -308,8 +308,95 @@ class HomeApiTest {
 		add(tenant, """
 			{"home": %s, "relation": "RENT"}""".formatted(newHome("Flat 2")))
 			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.errors[0].field").value("startDate"))
-			.andExpect(jsonPath("$.errors[1].field").value("monthlyRentInr"));
+			.andExpect(jsonPath("$.errors.length()").value(1))
+			.andExpect(jsonPath("$.errors[0].field").value("startDate"));
+	}
+
+	/** Captain 2026-11-23 09:55: every optional field may stay blank, the rent too ("Rent not shared"). */
+	@Test
+	void aHomeSavesWithTheOwnerNameOnlyAndNoRent() throws Exception {
+		User tenant = tenant("No Rent Tenant");
+		JsonNode result = added(tenant, """
+			{"home": %s, "relation": "RENT", "startDate": "%s", "owner": {"name": "Ravi Owner", "email": "", "phone": " "}}"""
+			.formatted(newHome("Flat 9"), TODAY.minusMonths(3)));
+		JsonNode rent = result.at("/tenancy/initialRentInr");
+		assertThat(rent.isNull() || rent.isMissingNode()).isTrue();
+		assertThat(result.at("/property/ownerContact/name").asString()).isEqualTo("Ravi Owner");
+		assertThat(result.at("/property/ownerContact/email").isMissingNode()).isTrue();
+		String id = result.at("/property/id").asString();
+		mvc.perform(get("/properties/" + id + "/rent-history").header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.rows").isEmpty());
+	}
+
+	/** #53 click-test bugs 1 and 2: a one-letter wing or tower saves, and the new names show at once, tagged pending. */
+	@Test
+	void oneLetterTowerAndWingSaveAndShowAtOnceTaggedPending() throws Exception {
+		User tenant = tenant("Wing Tenant");
+		String home = """
+			{"city": "%s", "pincode": "300201", "unitLabel": "1204", "propertyType": "APARTMENT",
+			 "location": {"areaId": "%s", "newSociety": {"name": "Aparna Lake View", "kind": "APARTMENT_COMPLEX"},
+			 "newTower": {"name": "4", "kind": "TOWER"}, "newWing": {"name": "B"}}}""".formatted(CITY,
+			area.getPublicId());
+		JsonNode property = added(tenant, rentBody(home, TODAY.minusMonths(8))).get("property");
+		assertThat(property.at("/location/tower/name").asString()).isEqualTo("4");
+		assertThat(property.at("/location/wing/name").asString()).isEqualTo("B");
+		assertThat(property.at("/location/wing/status").asString()).isEqualTo("PENDING");
+
+		// Open by default (R2 / R8): anonymous search lists it at once, with the pending tag.
+		mvc.perform(get("/properties").param("city", CITY))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].locationPending".formatted(property.get("id").asString()))
+				.value(true));
+
+		add(tenant, rentBody("""
+			{"city": "%s", "pincode": "300201", "unitLabel": "1205", "propertyType": "APARTMENT",
+			 "location": {"areaId": "%s", "societyId": "%s", "towerId": "%s", "newWing": {"name": "-"}}}"""
+			.formatted(CITY, area.getPublicId(), society.getPublicId(), tower.getPublicId()), TODAY.minusMonths(8)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("location.newWing.name"));
+	}
+
+	/** Captain 2026-11-23 11:35: a standalone apartment needs its building name; a house does not. */
+	@Test
+	void aStandaloneApartmentNeedsItsBuildingName() throws Exception {
+		User tenant = tenant("Standalone Tenant");
+		String standalone = """
+			{"city": "%s", "pincode": "300201", "unitLabel": "C202", "propertyType": "%s"%s,
+			 "location": {"areaId": "%s"}}""";
+		add(tenant, rentBody(standalone.formatted(CITY, "APARTMENT", "", area.getPublicId()), TODAY.minusMonths(4)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("home.buildingName"));
+		JsonNode flat = added(tenant, rentBody(standalone.formatted(CITY, "APARTMENT", ", \"buildingName\": \"Sai Residency\"",
+			area.getPublicId()), TODAY.minusMonths(4))).get("property");
+		assertThat(flat.get("buildingName").asString()).isEqualTo("Sai Residency");
+		User other = tenant("House Tenant");
+		added(other, rentBody(standalone.formatted(CITY, "INDEPENDENT_HOUSE", "", area.getPublicId()).replace("C202", "12"),
+			TODAY.minusMonths(4)));
+	}
+
+	/** Firstmate 2026-11-23 14:50: PIN vs city blocks at step 1; PIN vs area only warns, and the home saves. */
+	@Test
+	void stepOneChecksThePinAgainstTheCityAndOnlyWarnsAboutTheArea() throws Exception {
+		User tenant = tenant("Pin Tenant");
+		mvc.perform(get("/me/homes/address-check").param("city", "BLR").param("pincode", "400001")
+				.header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pincodeError").value("This pincode is not in Bangalore."))
+			.andExpect(jsonPath("$.pincodeWarning").doesNotExist());
+		mvc.perform(get("/me/homes/address-check").param("city", CITY).param("pincode", "300299")
+				.param("area", area.getPublicId().toString()).header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pincodeError").doesNotExist())
+			.andExpect(jsonPath("$.pincodeWarning").value("300299 is usually not in Home Area; check the PIN."))
+			.andExpect(jsonPath("$.areaPincodes[0]").value("300201"));
+		mvc.perform(get("/me/homes/address-check").param("city", CITY).param("pincode", "300202")
+				.param("area", area.getPublicId().toString()).header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.pincodeWarning").doesNotExist());
+		// The user kept the PIN: the home saves on its area.
+		JsonNode kept = added(tenant, rentBody(newHome("Flat 77").replace("\"300201\"", "\"300299\""),
+			TODAY.minusMonths(2))).get("property");
+		assertThat(kept.get("pincode").asString()).isEqualTo("300299");
 	}
 
 }

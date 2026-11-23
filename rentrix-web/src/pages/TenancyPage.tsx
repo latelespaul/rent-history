@@ -13,6 +13,7 @@ import { TenancyFacts } from "@/features/tenancy/TenancyCard"
 import {
   counterparty,
   dateLabel,
+  monthlyRent,
   TENANCY_STATUS,
   tenancyHome,
   today,
@@ -171,7 +172,7 @@ export default function TenancyPage() {
             <div>
               <dt className="text-ink-500">Starting rent</dt>
               <dd className="num font-semibold text-ink-900">
-                {rupees(tenancy.initialRentInr)} / month
+                {monthlyRent(tenancy.initialRentInr)}
               </dd>
             </div>
             {tenancy.depositRefundedInr !== null && (

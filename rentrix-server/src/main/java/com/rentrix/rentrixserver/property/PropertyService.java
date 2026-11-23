@@ -10,6 +10,7 @@ import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
 import com.rentrix.rentrixserver.location.LocationService;
+import com.rentrix.rentrixserver.location.LocationStatus;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.property.dto.CityRef;
@@ -168,7 +169,7 @@ public class PropertyService {
 	@Transactional
 	public PropertyDetail create(CreatePropertyRequest request, AuthenticatedUser caller) {
 		User landlord = currentUser(caller);
-		Property property = build(request, landlord, landlord, false);
+		Property property = build(request, landlord, landlord, false, false);
 		property.setStatus(PropertyStatus.DRAFT);
 		Property saved = properties.saveAndFlush(property);
 		return detail(saved, caller);
@@ -181,7 +182,7 @@ public class PropertyService {
 	 */
 	@Transactional
 	public Property newHome(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
-		Property property = build(request, owner, proposer, pendingCity);
+		Property property = build(request, owner, proposer, pendingCity, true);
 		property.setStatus(PropertyStatus.PUBLISHED);
 		property.setUnitLabelVisibility(UnclaimedLandlord.is(owner) ? FieldVisibility.OPEN : FieldVisibility.MASKED);
 		return property;
@@ -239,9 +240,11 @@ public class PropertyService {
 	
 	/**
 	 * A new property from the request, owned by {@code owner}; {@code proposer} files any location proposals. A home
-	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only.
+	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only. A home added by its
+	 * tenant or owner ({@code addedHome}) may use a PIN code its area does not list (a warning in the form).
 	 */
-	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
+	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity,
+		boolean addedHome) {
 		String city = request.city().trim();
 		String pincode = request.pincode().trim();
 		if (pendingCity) {
@@ -257,7 +260,7 @@ public class PropertyService {
 		property.setLandlord(owner);
 		property.setCity(cities.getReferenceById(city));
 		if (request.location() != null) {
-			place(property, locations.resolve(city, pincode, request.location(), proposer));
+			place(property, locations.resolve(city, pincode, request.location(), proposer, addedHome));
 		} else {
 			property.setLocality(requireLocality(request.locality()));
 		}
@@ -519,7 +522,19 @@ public class PropertyService {
 	private static PropertyCard card(Property p, RatingAggregate rating) {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getBathrooms(), p.getAreaSqft(), p.getFurnishing(),
-			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()));
+			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p));
+	}
+	
+	/** True when any level of the home's place is a {@code PENDING} proposal (see {@link PropertyCard}). */
+	private static boolean locationPending(Property p) {
+		return pending(p.getArea() == null ? null : p.getArea().getStatus())
+			|| pending(p.getSociety() == null ? null : p.getSociety().getStatus())
+			|| pending(p.getTower() == null ? null : p.getTower().getStatus())
+			|| pending(p.getWing() == null ? null : p.getWing().getStatus());
+	}
+	
+	private static boolean pending(LocationStatus status) {
+		return status == LocationStatus.PENDING;
 	}
 	
 	private static String landlordName(User landlord) {

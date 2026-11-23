@@ -21,6 +21,20 @@ export function fetchHomeMatches(query: HomeMatchQuery, signal?: AbortSignal) {
   return api.get<PropertyCard[]>("/me/homes/matches", { query: { ...query }, signal })
 }
 
+/** `GET /me/homes/address-check`: step 1's PIN code vs the city (blocks) and the area (warns). */
+export interface AddressCheck {
+  pincodeError?: string
+  pincodeWarning?: string
+  areaPincodes?: string[]
+}
+
+export function checkAddress(
+  query: { city: string; pincode: string; area?: string },
+  signal?: AbortSignal,
+) {
+  return api.get<AddressCheck>("/me/homes/address-check", { query: { ...query }, signal })
+}
+
 /** `POST /me/homes`: the home, the caller's tenancy and rent, and the owner's contact (D-139). */
 export function addHome(body: AddHomeInput): Promise<AddHomeResult> {
   return api.post<AddHomeResult>("/me/homes", body)

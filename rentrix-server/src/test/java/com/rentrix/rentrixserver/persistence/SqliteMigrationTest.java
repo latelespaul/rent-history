@@ -67,6 +67,38 @@ class SqliteMigrationTest {
 	}
 	
 	@Test
+	void tenancyRentIsOptionalAfterTheRebuildAndItsKeysStillHold() {
+		// V12 (sqlite vendor file) rebuilt tenancies with initial_rent_inr nullable (captain 2026-11-23 09:55)
+		assertThat(jdbc.queryForObject("select \"notnull\" from pragma_table_info('tenancies') where name = 'initial_rent_inr'",
+			Integer.class)).isZero();
+		assertThat(jdbc.queryForList("select name from sqlite_master where type = 'index' and tbl_name = 'tenancies'"
+			+ " and name like 'ix_%'", String.class)).containsExactlyInAnyOrder("ix_tenancies_property_status",
+			"ix_tenancies_tenant_status", "ix_tenancies_landlord_status", "ix_tenancies_pair", "ix_tenancies_verification");
+		assertThat(jdbc.queryForList("select \"table\" from pragma_foreign_key_list('reviews')", String.class))
+			.contains("tenancies");
+		assertThat(jdbc.queryForList("pragma foreign_key_check", Object.class)).isEmpty();
+	}
+	
+	@Test
+	void launchCitiesHaveActiveAreasWhosePincodesMatchTheCity() {
+		// V11: 8 - 12 well-known localities in each city that went live in V8 (#53 click-test bug 3)
+		List<String> counts = jdbc.queryForList("select city_code || ':' || count(*) from areas"
+			+ " where is_demo = false and status = 'ACTIVE' and created_by is null"
+			+ " and city_code in ('DEL', 'GGN', 'HYD', 'MUM', 'NOI') group by city_code order by city_code", String.class);
+		assertThat(counts).containsExactly("DEL:12", "GGN:10", "HYD:11", "MUM:12", "NOI:10");
+		Integer unpinned = jdbc.queryForObject("select count(*) from areas a where a.id between 101 and 155"
+			+ " and not exists (select 1 from area_pincodes p where p.area_id = a.id)", Integer.class);
+		assertThat(unpinned).isZero();
+		List<String> offPrefix = jdbc.queryForList("select a.name || ' ' || p.pincode from areas a"
+			+ " join area_pincodes p on p.area_id = a.id join cities c on c.code = a.city_code"
+			+ " where a.id between 101 and 155 and not ((',' || c.pincode_prefixes || ',') like ('%,' || substr(p.pincode, 1, 2) || ',%')"
+			+ " or (',' || c.pincode_prefixes || ',') like ('%,' || substr(p.pincode, 1, 3) || ',%'))", String.class);
+		assertThat(offPrefix).isEmpty();
+		assertThat(jdbc.queryForList("select name from areas where city_code = 'HYD' and name_key = 'gachibowli'",
+			String.class)).containsExactly("Gachibowli");
+	}
+	
+	@Test
 	@Transactional
 	void locationHierarchyTablesIndexesAndForeignKeys() {
 		List<String> indexes = jdbc.queryForList("select name from sqlite_master where type = 'index'", String.class);
