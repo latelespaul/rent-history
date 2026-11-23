@@ -7,7 +7,6 @@ import com.rentrix.rentrixserver.auth.google.InvalidGoogleTokenException;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.user.User;
-import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserRoles;
 import com.rentrix.rentrixserver.user.UserStatus;
@@ -80,7 +79,7 @@ public class AuthService {
 	public Session signInAdminWithGoogle(String idToken) {
 		GoogleIdentity identity = verifiedGoogle(idToken);
 		String email = email(identity);
-		boolean dbAdmin = users.findByGoogleSub(identity.sub()).filter(u -> u.hasRole(Role.ADMIN)).isPresent();
+		boolean dbAdmin = users.findByGoogleSub(identity.sub()).filter(adminMembers::hasRoleRow).isPresent();
 		if (!dbAdmin && !adminMembers.isListed(email)) {
 			throw notAnAdmin();
 		}

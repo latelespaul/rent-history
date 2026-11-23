@@ -136,7 +136,7 @@ public class VerificationDecisions {
 		return application;
 	}
 	
-	/** The caller must be an admin console member now ({@code ADMIN_CONSOLE_EMAILS} or {@code user_roles}, D-19), not only in the token. */
+	/** The caller must be an admin console member now ({@code ADMIN_CONSOLE_EMAILS}, or {@code user_roles} under dev, D-19), not only in the token. */
 	private User admin(UUID adminId) {
 		return users.findByPublicId(adminId)
 			.filter(adminMembers::isMember)

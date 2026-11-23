@@ -74,7 +74,7 @@ ADMIN_HOSTS=admin.doorwayliving.in                # host names of the console; e
 ADMIN_CONSOLE_EMAILS=someone@example.com          # verified Google emails that may sign in there
 ```
 
-Only requests to an `ADMIN_HOSTS` host may call `/admin/**` or sign in at `/auth/admin/google`. A listed email loses the console at its next refresh once removed from the list. `ADMIN_EMAILS` is no longer read.
+Only requests to an `ADMIN_HOSTS` host may call `/admin/**` or sign in at `/auth/admin/google`. In `prod` this list is the only way in: a `user_roles` `ADMIN` row grants nothing there; it counts only under the `dev` (and `test`) profile, for the seed's Demo Admin. A listed email loses the console at its next refresh once removed from the list. `ADMIN_EMAILS` is no longer read.
 
 Locally the `dev` profile already sets `ADMIN_HOSTS=admin.localhost`: run `npm run dev` and open `http://admin.localhost:5173`, where the dev login offers the seed's Demo Admin. The first page is the OTP relay (`/sms-relay`).
 
