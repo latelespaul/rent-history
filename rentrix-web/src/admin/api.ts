@@ -25,6 +25,7 @@ export const adminKeys = {
   config: ["admin", "auth-config"] as const,
   devUsers: ["admin", "dev-users"] as const,
   smsRelay: ["admin", "sms-relay"] as const,
+  queue: ["admin", "queue"] as const,
 }
 
 /** `GET /auth/config`: the Google client id and whether dev login exists. */
@@ -71,4 +72,86 @@ export interface RelayedCode {
 /** `GET /admin/sms-relay`: the codes waiting to be passed on, newest first (`404` when off). */
 export function fetchSmsRelay(signal?: AbortSignal): Promise<RelayedCode[]> {
   return adminApi.get<RelayedCode[]>("/admin/sms-relay", { signal })
+}
+
+export type QueueType = "USER" | "IDENTITY" | "PROPERTY" | "TENANCY" | "REVIEW" | "CITY" | "REPORT"
+export type QueueAction = "APPROVE" | "REJECT" | "HIDE"
+
+/** One approvals-queue card (D-136). */
+export interface QueueItem {
+  type: QueueType
+  id: string
+  title: string
+  subtitle: string
+  details: string[]
+  flags: string[]
+  city: string | null
+  createdAt: string | null
+  verificationStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED"
+  link: string | null
+  actions: QueueAction[]
+  rejectCodes: string[]
+}
+
+export interface QueueView {
+  items: QueueItem[]
+  counts: Partial<Record<QueueType, number>>
+}
+
+export interface QueueDecided {
+  type: QueueType
+  id: string
+  outcome: string
+}
+
+/** `GET /admin/queue`: everything waiting for the green tick, newest first. */
+export function fetchQueue(
+  filter: { type?: QueueType | null; city?: string | null },
+  signal?: AbortSignal,
+): Promise<QueueView> {
+  return adminApi.get<QueueView>("/admin/queue", {
+    query: { type: filter.type ?? undefined, city: filter.city ?? undefined },
+    signal,
+  })
+}
+
+const ITEM_PATH: Partial<Record<QueueType, string>> = {
+  USER: "applications",
+  IDENTITY: "identity",
+  PROPERTY: "properties",
+  TENANCY: "tenancies",
+  REVIEW: "reviews",
+}
+
+/**
+ * One answer to a queue card, on the §12.2 route of its type: `/admin/{applications|identity|
+ * properties|tenancies|reviews}/{id}/{approve|verify|reject|hide}`, `PATCH /admin/cities/{code}`
+ * and `/admin/reports/{id}/resolve`. A reject or hide sends the reason code; the note is optional,
+ * except that a user's rejection always carries one (B11), so the reason's words go when it is empty.
+ */
+export function decideQueueItem(
+  item: Pick<QueueItem, "type" | "id">,
+  action: QueueAction,
+  body: { code?: string; note?: string; noteFallback?: string } = {},
+): Promise<QueueDecided> {
+  const id = encodeURIComponent(item.id)
+  const { code, note, noteFallback } = body
+  if (item.type === "CITY") {
+    return adminApi.patch<QueueDecided>(`/admin/cities/${id}`, { live: true })
+  }
+  if (item.type === "REPORT") {
+    return adminApi.post<QueueDecided>(`/admin/reports/${id}/resolve`, {
+      outcome: action === "HIDE" ? "HIDE" : "DISMISS",
+      code,
+      note,
+    })
+  }
+  const verb =
+    action === "APPROVE" ? (item.type === "IDENTITY" ? "verify" : "approve") : action.toLowerCase()
+  const path = `/admin/${ITEM_PATH[item.type]}/${id}/${verb}`
+  if (action === "APPROVE") return adminApi.post<QueueDecided>(path, { note })
+  if (item.type === "USER") {
+    return adminApi.post<QueueDecided>(path, { code, note: note ?? noteFallback ?? code })
+  }
+  return adminApi.post<QueueDecided>(path, { code, note })
 }

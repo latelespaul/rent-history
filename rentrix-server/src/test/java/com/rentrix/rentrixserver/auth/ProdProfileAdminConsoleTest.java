@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The real {@code prod} profile (D-19, D-148): {@code ADMIN_CONSOLE_EMAILS} is the only way into the admin console. A
+ * The real {@code prod} profile (D-19, D-155): {@code ADMIN_CONSOLE_EMAILS} is the only way into the admin console. A
  * {@code user_roles} ADMIN row alone opens neither an admin sign-in nor an admin decision.
  */
 @SpringBootTest(properties = {

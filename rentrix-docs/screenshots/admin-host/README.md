@@ -1,6 +1,6 @@
 # Admin console on its own host (W9 PR 1)
 
-SYSTEM_DESIGN §13.3, D-147, D-148. Taken 2026-11-23 at 390 × 844 (2×) in headless Chromium against
+SYSTEM_DESIGN §13.3, D-154, D-155. Taken 2026-11-23 at 390 × 844 (2×) in headless Chromium against
 local dev servers: the API in the `dev` profile with the demo seed and `SMS_BACKEND=admin-relay`, the
 web build served by `vite preview` on `localhost` and `admin.localhost`.
 

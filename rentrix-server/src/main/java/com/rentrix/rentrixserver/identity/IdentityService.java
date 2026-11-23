@@ -63,7 +63,8 @@ public class IdentityService {
 	
 	/** Reject codes an admin can give a PAN, Aadhaar or LinkedIn check (§5.15). */
 	static final Set<IdentityRejectCode> ADMIN_REJECT_CODES = EnumSet.of(IdentityRejectCode.ID_UNREADABLE,
-		IdentityRejectCode.ID_NAME_MISMATCH, IdentityRejectCode.AADHAAR_NOT_MASKED, IdentityRejectCode.OTHER);
+		IdentityRejectCode.ID_NAME_MISMATCH, IdentityRejectCode.AADHAAR_NOT_MASKED, IdentityRejectCode.LINKEDIN_MISMATCH,
+		IdentityRejectCode.OTHER);
 	
 	/** Admin-only flag: the user's verified phone is also verified on another active account (D-101). */
 	public static final String DUPLICATE_PHONE = "DUPLICATE_PHONE";
@@ -199,8 +200,8 @@ public class IdentityService {
 	}
 	
 	/**
-	 * An admin decides one {@code PENDING} PAN, Aadhaar or LinkedIn check of {@code owner} while deciding their application
-	 * (D-105), audited as {@code VERIFY_IDENTITY} / {@code REJECT_IDENTITY} (D-87) in the caller's transaction.
+	 * An admin decides one {@code PENDING} PAN, Aadhaar or LinkedIn check of {@code owner}, while deciding their application
+	 * (D-105) or on its own from the approvals queue (D-136), audited as {@code VERIFY_IDENTITY} / {@code REJECT_IDENTITY} (D-87) in the caller's transaction.
 	 * A reject needs a code. The ID file is deleted on the decision once files exist (PLAN B12, D-96).
 	 *
 	 * @param checkId the check's {@code public_id}; a check of another user is {@code 404}
@@ -214,7 +215,7 @@ public class IdentityService {
 			.orElseThrow(() -> ApiException.notFound("Identity check"));
 		if (!ADMIN_CHECKED_ID_METHODS.contains(row.getMethod())) {
 			throw ApiException.rule("identity_not_decidable",
-				"Only PAN, masked Aadhaar and LinkedIn checks are decided with an application.");
+				"Only PAN, masked Aadhaar and LinkedIn checks are decided by an admin.");
 		}
 		if (row.getStatus() != IdentityStatus.PENDING) {
 			throw ApiException.conflict("invalid_transition", "This identity check is not waiting for a decision.");
@@ -225,7 +226,7 @@ public class IdentityService {
 		}
 		if (result == IdentityStatus.REJECTED && (code == null || !ADMIN_REJECT_CODES.contains(code))) {
 			throw ApiException.validation(List.of(new ApiProblem.FieldError("identity.code", "invalid",
-				"Give a reason: ID_UNREADABLE, ID_NAME_MISMATCH, AADHAAR_NOT_MASKED or OTHER.")));
+				"Give a reason: ID_UNREADABLE, ID_NAME_MISMATCH, AADHAAR_NOT_MASKED, LINKEDIN_MISMATCH or OTHER.")));
 		}
 		row.resetDecision();
 		row.setStatus(result);

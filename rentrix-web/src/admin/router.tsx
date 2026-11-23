@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/ui/states"
 import { RouteError } from "@/routes/RouteError"
 import { AdminLoginPage } from "./AdminLoginPage"
 import { AdminShell } from "./AdminShell"
+import { ApprovalsPage } from "./ApprovalsPage"
 import { SmsRelayPage } from "./SmsRelayPage"
 
 /** The admin host's routes (SYSTEM_DESIGN §13.3); the main site's pages are not here. */
@@ -12,7 +13,9 @@ export const adminRoutes: RouteObject[] = [
     element: <AdminShell />,
     errorElement: <RouteError />,
     children: [
-      { path: "/", element: <Navigate to="/sms-relay" replace /> },
+      { path: "/", element: <Navigate to="/approvals" replace /> },
+      { path: "/approvals", element: <ApprovalsPage /> },
+      { path: "/reports", element: <ApprovalsPage reports /> },
       { path: "/sms-relay", element: <SmsRelayPage /> },
       {
         path: "*",
