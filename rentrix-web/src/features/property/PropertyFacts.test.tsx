@@ -37,7 +37,11 @@ describe("a card's size fact", () => {
   })
 
   it("does not repeat Studio for a studio", () => {
-    render(<PropertyFacts property={card({ propertyType: "STUDIO", homeSize: "STUDIO", bedrooms: 0 })} />)
+    render(
+      <PropertyFacts
+        property={card({ propertyType: "STUDIO", homeSize: "STUDIO", bedrooms: 0 })}
+      />,
+    )
     expect(shown()).toEqual(["Studio"])
   })
 })
