@@ -633,6 +633,7 @@ public class AdminQueueService {
 			case AADHAAR -> "Aadhaar";
 			case LINKEDIN -> "LinkedIn";
 			case PHONE_OTP, TRUECALLER -> "Phone";
+			case TELEGRAM -> "Phone (Telegram)";
 		};
 	}
 
