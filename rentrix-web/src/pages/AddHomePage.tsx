@@ -25,12 +25,13 @@ import {
   type HomeDraft,
   type HomeErrors,
 } from "@/features/home/addHome"
+import { NextSteps } from "@/features/home/NextSteps"
+import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
 import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
 import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
-import { dateLabel, today } from "@/features/tenancy/labels"
-import { reviewWindow } from "@/features/tenancy/reviewWindow"
+import { today } from "@/features/tenancy/labels"
 import { useRefreshTenancyData } from "@/features/tenancy/useTenancies"
 import { BRAND } from "@/lib/brand"
 import { useSessionDraft } from "@/lib/draft"
@@ -148,8 +149,7 @@ function Matches({
 /** The saved home, with the optional review as the next step (D-139, captain 21:38 / 22:22). */
 function Added({ result }: { result: AddHomeResult }) {
   const { property, tenancy } = result
-  const reviews = tenancy ? reviewWindow(tenancy, today()) : null
-  const canReview = reviews?.state === "open"
+  const left = tenancy ? stepsLeft(tenancy) : 0
   return (
     <section
       data-testid="add-home-done"
@@ -185,27 +185,28 @@ function Added({ result }: { result: AddHomeResult }) {
         It shows on the home&rsquo;s page now. The {BRAND.name} team verifies it later from your
         rental agreement.
       </p>
-      {tenancy && (
-        <div className="mt-5">
-          {canReview ? (
-            <Button asChild size="lg" className="w-full" data-testid="add-home-write-review">
-              <Link to={`/tenancies/${tenancy.id}/review`}>Write a review of this home</Link>
-            </Button>
-          ) : (
-            <Notice tone="info">
-              {reviews?.state === "not_yet"
-                ? `You can review this home from ${dateLabel(reviews.opens)}: reviews open 60 days after you move in, or when you move out.`
-                : "Reviews for this tenancy are closed: they close 180 days after you move out."}
-            </Notice>
-          )}
+      {tenancy && left > 0 && (
+        <div className="mt-5 space-y-3 text-left">
+          <h2
+            data-testid="add-home-steps-left"
+            className="text-center text-lg font-semibold text-ink-900"
+          >
+            Home added. {stepsLeftLabel(left)}
+          </h2>
+          <NextSteps tenancy={tenancy} />
         </div>
       )}
-      <Button asChild variant="outline" className="mt-2 w-full" data-testid="add-home-view">
+      {tenancy?.reviewed && left === 0 && (
+        <Notice tone="info" className="mt-5 text-left" data-testid="add-home-no-steps">
+          You&rsquo;ve reviewed this home.
+        </Notice>
+      )}
+      <Button asChild variant="outline" className="mt-4 w-full" data-testid="add-home-view">
         <Link to={`/p/${property.id}`}>See the home&rsquo;s page</Link>
       </Button>
-      {tenancy && canReview && (
-        <Button asChild variant="ghost" className="mt-1 w-full">
-          <Link to="/me/tenancies">Review it later</Link>
+      {left > 0 && (
+        <Button asChild variant="ghost" className="mt-1 w-full" data-testid="add-home-skip">
+          <Link to="/me/tenancies">Skip for now</Link>
         </Button>
       )}
     </section>

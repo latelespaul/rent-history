@@ -60,8 +60,7 @@ import java.util.stream.Collectors;
  * (D-39), with an approved verification for that side (D-91), an email-verified account at least 7 days old for
  * the first review and at most {@value #MAX_PER_DAY} reviews a day (D-45), and text that passes the D-43 rules.
  * <p>States (§7.2): a property review publishes at once (D-47); a person review waits in {@code AWAITING_REVEAL},
- * visible only to its author, until the counter-review of the same tenancy is submitted, 14 days pass or the window
- * closes; then both publish together (D-46, {@link ReviewRevealJob}). Until it publishes, the author may edit for 7
+ * visible only to its author, until the counter-review of the same tenancy is submitted or 14 days pass; then both publish together (D-46, {@link ReviewRevealJob}). Until it publishes, the author may edit for 7
  * days after submitting (D-41), and a review written during the tenancy may be updated once after it ends (D-40); a
  * published review is frozen. Withdrawal is final and never gated. The subject (or the home's landlord for a property
  * review) may post one response.
@@ -130,10 +129,6 @@ public class ReviewService {
 		if (today.isBefore(ReviewWindow.opensOn(tenancy))) {
 			throw ApiException.rule("review_window_not_open",
 				"Reviews for this tenancy open on " + ReviewWindow.opensOn(tenancy) + ".");
-		}
-		LocalDate closes = ReviewWindow.closesOn(tenancy);
-		if (closes != null && today.isAfter(closes)) {
-			throw ApiException.rule("review_window_closed", "Reviews for this tenancy closed on " + closes + ".");
 		}
 		Optional<Review> existing = reviews.findByTenancyIdAndDirection(tenancy.getId(), direction);
 		if (existing.isPresent()) {
@@ -286,15 +281,14 @@ public class ReviewService {
 	}
 
 	/**
-	 * Reveal job (D-46): person reviews hidden for 14 days, or whose review window closed, publish alone.
+	 * Reveal job (D-46): person reviews hidden for 14 days publish alone.
 	 *
 	 * @return the number of reviews published
 	 */
 	@Transactional
 	public int revealDue() {
 		Instant now = now();
-		List<UUID> due = reviews.findRevealDue(ReviewStatus.AWAITING_REVEAL, now.minus(REVEAL_AFTER),
-			today().minusDays(ReviewWindow.CLOSES_AFTER_DAYS));
+		List<UUID> due = reviews.findRevealDue(ReviewStatus.AWAITING_REVEAL, now.minus(REVEAL_AFTER));
 		int published = 0;
 		for (UUID id : due) {
 			Review review = reviews.lockByPublicId(id).orElse(null);
@@ -372,7 +366,7 @@ public class ReviewService {
 			? pending(r) : view(r, me, admin, replies.get(r.getId())));
 	}
 
-	/** {@code GET /me/review-tasks}: reviews the caller can write now, the soonest-closing first. */
+	/** {@code GET /me/review-tasks}: reviews the caller can write now, the oldest tenancy first. */
 	public List<ReviewTask> tasks(AuthenticatedUser caller) {
 		User me = currentUser(caller);
 		LocalDate today = today();
@@ -398,12 +392,11 @@ public class ReviewService {
 					case TENANT_TO_PROPERTY -> null;
 				};
 				tasks.add(new ReviewTask(tenancy.getPublicId(), direction, propertyRef(tenancy.getProperty()),
-					counterparty == null ? null : party(counterparty), period(tenancy), ReviewWindow.closesOn(tenancy),
+					counterparty == null ? null : party(counterparty), period(tenancy),
 					counter != null && counter.getStatus() == ReviewStatus.AWAITING_REVEAL));
 			}
 		}
-		tasks.sort(Comparator.comparing(ReviewTask::closesOn, Comparator.nullsLast(Comparator.naturalOrder()))
-			.thenComparing(t -> t.period().from()));
+		tasks.sort(Comparator.comparing(t -> t.period().from()));
 		return tasks;
 	}
 
@@ -449,13 +442,11 @@ public class ReviewService {
 			.orElseThrow(() -> ApiException.notFound("Property"));
 	}
 
-	/** D-40: written while the tenancy was current, the tenancy has ended, unused, and the window still open. */
+	/** D-40: written while the tenancy was current, the tenancy has ended, and the one update unused. */
 	private boolean postEndUpdateAllowed(Review review) {
 		Tenancy tenancy = review.getTenancy();
-		LocalDate closes = ReviewWindow.closesOn(tenancy);
 		return !review.isPostEndUpdateUsed() && tenancy.getStatus() == TenancyStatus.ENDED
-			&& tenancy.getEndedAt() != null && review.getSubmittedAt().isBefore(tenancy.getEndedAt())
-			&& closes != null && !today().isAfter(closes);
+			&& tenancy.getEndedAt() != null && review.getSubmittedAt().isBefore(tenancy.getEndedAt());
 	}
 
 	/** D-41: only an unpublished review is editable, so neither side can react to a revealed review. */

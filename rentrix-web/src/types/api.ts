@@ -409,6 +409,8 @@ export interface Tenancy {
   confirmedAt: string | null
   endedAt: string | null
   actions: TenancyActions
+  /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
+  reviewed?: boolean
 }
 
 /** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */

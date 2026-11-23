@@ -5,8 +5,15 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
+import { NextSteps } from "@/features/home/NextSteps"
+import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { TenancyCard } from "@/features/tenancy/TenancyCard"
-import { groupOf, TENANCY_GROUPS, type TenancyGroupKey } from "@/features/tenancy/labels"
+import {
+  groupOf,
+  TENANCY_GROUPS,
+  tenancyHome,
+  type TenancyGroupKey,
+} from "@/features/tenancy/labels"
 import { useMyTenancies } from "@/features/tenancy/useTenancies"
 import { cn } from "@/lib/utils"
 import type { TenancyParty } from "@/types/api"
@@ -32,6 +39,8 @@ export default function MyTenanciesPage() {
 
   const items = query.data?.items ?? []
   const needsAction = items.filter((t) => t.actions.confirm)
+  // Optional steps left on the tenant's own records stay visible until done (captain 2026-11-23 14:53).
+  const withSteps = items.filter((t) => stepsLeft(t) > 0)
   const shown = items.filter((t) => groupOf(t.status) === tab)
 
   return (
@@ -83,6 +92,28 @@ export default function MyTenanciesPage() {
           />
         ) : (
           <>
+            {withSteps.length > 0 && (
+              <section
+                aria-labelledby="next-steps-heading"
+                className="space-y-3"
+                data-testid="my-next-steps"
+              >
+                <h2 id="next-steps-heading" className="text-xl font-semibold">
+                  Next steps for your homes
+                </h2>
+                {withSteps.map((t) => (
+                  <div key={t.id} className="space-y-2 rounded-xl border border-line bg-sunk p-4">
+                    <p className="font-semibold text-ink-900">
+                      <Link to={`/p/${t.property.id}`}>{tenancyHome(t)}</Link>
+                      <span className="ml-2 text-sm font-normal text-ink-500">
+                        {stepsLeftLabel(stepsLeft(t))}
+                      </span>
+                    </p>
+                    <NextSteps tenancy={t} />
+                  </div>
+                ))}
+              </section>
+            )}
             {needsAction.length > 0 && (
               <section aria-labelledby="action-heading" className="space-y-3">
                 <h2 id="action-heading" className="text-xl font-semibold">

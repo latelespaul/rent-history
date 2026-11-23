@@ -166,11 +166,18 @@ describe("new-user journey", () => {
       monthlyRentInr: 18000,
       owner: { name: "Ravi", email: undefined, phone: undefined },
     })
+    // The flow goes on (captain 2026-11-23 14:53): the review counts; the agreement card is a
+    // placeholder until PR #62 and is not counted.
+    expect(within(done).getByTestId("add-home-steps-left").textContent).toMatch(
+      /home added\. 1 optional step left/i,
+    )
     expect(
       within(done)
-        .getByRole("link", { name: /write a review of this home/i })
+        .getByRole("link", { name: /write a review/i })
         .getAttribute("href"),
     ).toBe("/tenancies/t9/review")
+    expect(within(done).getByTestId("next-step-agreement").textContent).toMatch(/coming soon/i)
+    expect(within(done).getByTestId("add-home-skip").getAttribute("href")).toBe("/me/tenancies")
   })
 
   it("writes the review and shows it as submitted, not verified yet", async () => {

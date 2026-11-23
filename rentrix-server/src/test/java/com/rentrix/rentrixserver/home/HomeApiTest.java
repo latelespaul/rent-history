@@ -152,6 +152,8 @@ class HomeApiTest {
 
 		// The home can be reviewed at once (window D-39 permitting); the absent landlord cannot.
 		String tenancyId = tenancy.get("id").asString();
+		// "Rate and review" stays an open next step until the tenant writes one (captain 2026-11-23 14:53).
+		assertThat(tenancy.get("reviewed").asBoolean()).isFalse();
 		mvc.perform(post("/tenancies/" + tenancyId + "/reviews").header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"direction\": \"TENANT_TO_PROPERTY\", \"ratingOverall\": 4, \"body\": \"" + GOOD + "\"}"))
@@ -163,6 +165,9 @@ class HomeApiTest {
 				.content("{\"direction\": \"TENANT_TO_LANDLORD\", \"ratingOverall\": 4, \"body\": \"" + GOOD + "\"}"))
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("landlord_not_on_platform"));
+		mvc.perform(get("/tenancies/" + tenancyId).header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.reviewed").value(true));
 	}
 
 	@Test

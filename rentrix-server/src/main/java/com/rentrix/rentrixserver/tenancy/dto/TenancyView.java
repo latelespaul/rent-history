@@ -40,6 +40,11 @@ public record TenancyView(
 	Instant expiresAt,
 	Instant confirmedAt,
 	Instant endedAt,
-	TenancyActions actions
+	TenancyActions actions,
+	/**
+	 * True once the caller, as the tenant, wrote a review on this tenancy (always false for the landlord side). "Add your home" keeps a "Rate and review" step visible
+	 * until then (captain 2026-11-23 14:53).
+	 */
+	boolean reviewed
 ) {
 }
