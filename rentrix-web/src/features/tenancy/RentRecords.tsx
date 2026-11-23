@@ -111,7 +111,10 @@ function EditRecord({
         </div>
       </div>
       {save.isError && !fieldError("effectiveFrom") && !fieldError("monthlyRentInr") && (
-        <ActionError error={save.error} />
+        <ActionError
+          error={save.error}
+          changeTarget={{ targetType: "TENANCY", targetId: tenancy.id }}
+        />
       )}
       <div className="flex gap-2">
         <Button type="submit" size="sm" disabled={save.isPending || !rent.trim()}>
@@ -218,7 +221,12 @@ function RecordRow({
         </div>
       )}
       {respond.isError && <ActionError error={respond.error} />}
-      {remove.isError && <ActionError error={remove.error} />}
+      {remove.isError && (
+        <ActionError
+          error={remove.error}
+          changeTarget={{ targetType: "TENANCY", targetId: tenancy.id }}
+        />
+      )}
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}

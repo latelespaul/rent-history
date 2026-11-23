@@ -446,14 +446,28 @@ export interface Tenancy {
   reviewed?: boolean
   /** The team's green tick on the tenancy (D-134, D-147). */
   verificationStatus?: VerificationState
+  /** Set only when an edit gave the caller a new role ("I own it" makes a tenant a landlord). */
+  accessToken?: string
 }
 
-/** `PATCH /tenancies/{id}` (D-156): `endDate` null while it is current, `initialRentInr` null = not shared. */
+/**
+ * `PATCH /tenancies/{id}` (D-156): `endDate` null while it is current, `initialRentInr` null = not
+ * shared. `relation` "OWN" on a tenant's own record of a home they added makes the home theirs and
+ * removes the tenancy.
+ */
 export interface TenancyUpdate {
   startDate: string
   endDate: string | null
   initialRentInr: number | null
   depositInr: number | null
+  relation?: "RENT" | "OWN"
+}
+
+/** `POST /me/change-requests` (D-156): the creator asks the team to change their own item. */
+export interface ChangeRequestInput {
+  targetType: "TENANCY" | "PROPERTY" | "REVIEW"
+  targetId: string
+  note: string
 }
 
 /** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */

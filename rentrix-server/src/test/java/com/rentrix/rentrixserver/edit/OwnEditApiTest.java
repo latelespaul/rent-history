@@ -349,6 +349,120 @@ class OwnEditApiTest {
 	}
 
 	@Test
+	void aRecordAddedInTheStartMonthOfATenancyWithoutRentSurvivesItsEdit() throws Exception {
+		User tenant = tenant("No Rent Tenant");
+		LocalDate start = TODAY.minusMonths(5);
+		JsonNode added = json.readTree(mvc.perform(post("/me/homes").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"home": {"city": "%s", "pincode": "300301", "unitLabel": "H-808", "propertyType": "APARTMENT",
+					  "homeSize": "BHK2", "location": {"areaId": "%s", "societyId": "%s"}},
+					 "relation": "RENT", "startDate": "%s"}"""
+					.formatted(CITY, area.getPublicId(), society.getPublicId(), start)))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+		String id = added.at("/tenancy/id").asString();
+		mvc.perform(post("/tenancies/" + id + "/rent-records").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"effectiveFrom\": \"%s\", \"monthlyRentInr\": 27000}".formatted(start.withDayOfMonth(1))))
+			.andExpect(status().isCreated());
+
+		patchJson(tenant, "/tenancies/" + id, tenancyBody(start, null, null, 50000L))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.depositInr").value(50000));
+		mvc.perform(get("/tenancies/" + id + "/rent-records").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.length()").value(1))
+			.andExpect(jsonPath("$[0].monthlyRentInr").value(27000))
+			.andExpect(jsonPath("$[0].canEdit").value(true));
+		patchJson(tenant, "/tenancies/" + id, tenancyBody(start, null, 29000L, 50000L))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].code").value("after_rent_record"));
+	}
+
+	@Test
+	void switchingAnOwnRecordToOwningMakesTheHomeTheirsAndCancelsTheTenancy() throws Exception {
+		User tenant = tenant("Switch Tenant");
+		JsonNode added = addHome(tenant, "J-909", TODAY.minusMonths(6));
+		String id = added.at("/tenancy/id").asString();
+		String home = added.at("/property/id").asString();
+
+		JsonNode view = json.readTree(patchJson(tenant, "/tenancies/" + id, """
+				{"startDate": "%s", "endDate": null, "initialRentInr": 30000, "depositInr": 90000, "relation": "OWN"}"""
+				.formatted(TODAY.minusMonths(6)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("CANCELLED"))
+			.andReturn().getResponse().getContentAsString());
+		String token = view.get("accessToken").asString();
+		assertThat(token).isNotBlank();
+
+		Property row = propertyRows.findByPublicIdAndDeletedAtIsNull(UUID.fromString(home)).orElseThrow();
+		assertThat(row.getLandlord().getId()).isEqualTo(tenant.getId());
+		assertThat(row.getAddedBy()).isNull();
+		assertThat(row.getUnitLabelVisibility()).isEqualTo(com.rentrix.rentrixserver.property.FieldVisibility.MASKED);
+		assertThat(row.getVerificationStatus()).isEqualTo(VerificationState.UNVERIFIED);
+		mvc.perform(get("/properties/" + home).header("Authorization", "Bearer " + token))
+			.andExpect(jsonPath("$.editable").value(true));
+		User admin = admin();
+		assertThat(history(admin, "PROPERTY", home).findValuesAsString("field")).contains("relation");
+		assertThat(history(admin, "TENANCY", id).findValuesAsString("field")).contains("relation");
+	}
+
+	@Test
+	void aRoleSwitchOnSomeoneElsesHomeIsRefused() throws Exception {
+		User first = tenant("Home Adder");
+		JsonNode added = addHome(first, "K-110", TODAY.minusYears(2));
+		String home = added.at("/property/id").asString();
+		patchJson(first, "/tenancies/" + added.at("/tenancy/id").asString(),
+			tenancyBody(TODAY.minusYears(2), TODAY.minusMonths(8), 30000L, 90000L)).andExpect(status().isOk());
+		User second = tenant("Later Tenant");
+		String later = json.readTree(mvc.perform(post("/me/homes").header("Authorization", support.bearer(second))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"propertyId": "%s", "relation": "RENT", "startDate": "%s", "monthlyRentInr": 33000}"""
+					.formatted(home, TODAY.minusMonths(5))))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).at("/tenancy/id").asString();
+
+		patchJson(second, "/tenancies/" + later, """
+				{"startDate": "%s", "initialRentInr": 33000, "relation": "OWN"}""".formatted(TODAY.minusMonths(5)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("role_change_not_allowed"));
+		assertThat(tenancyRows.findByPublicId(UUID.fromString(later)).orElseThrow().getStatus().name())
+			.isEqualTo("ACTIVE");
+	}
+
+	@Test
+	void theCreatorAsksOurTeamToChangeABlockedItem() throws Exception {
+		User tenant = tenant("Request Tenant");
+		JsonNode added = addHome(tenant, "L-120", TODAY.minusMonths(3));
+		String home = added.at("/property/id").asString();
+		User stranger = tenant("Request Stranger");
+		String body = """
+			{"targetType": "PROPERTY", "targetId": "%s", "note": "Please fix the tower name."}""".formatted(home);
+
+		mvc.perform(post("/me/change-requests").header("Authorization", support.bearer(stranger))
+				.contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("not_creator"));
+		String request = json.readTree(mvc.perform(post("/me/change-requests")
+				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON).content(body))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+		mvc.perform(post("/me/change-requests").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"targetType": "TENANCY", "targetId": "%s", "note": ""}""".formatted(added.at("/tenancy/id").asString())))
+			.andExpect(status().isUnprocessableContent());
+
+		User admin = admin();
+		mvc.perform(get("/admin/queue").with(adminHost()).header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin))
+				.param("type", "REPORT"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].title".formatted(request)).value("Change request"))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].details[1]".formatted(request))
+				.value("Please fix the tower name."))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].actions[0]".formatted(request)).value("APPROVE"));
+		mvc.perform(post("/admin/reports/" + request + "/resolve").with(adminHost())
+				.header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"outcome\": \"DISMISS\"}"))
+			.andExpect(status().isOk());
+	}
+
+	@Test
 	void theHistoryNeverHoldsAFullIdNumber() {
 		assertThat(EditHistory.mask("my aadhaar 1234 5678 9012 and PAN ABCDE1234F"))
 			.isEqualTo("my aadhaar XXXX XXXX 9012 and PAN XXXXXXXXXX");

@@ -9,10 +9,13 @@ export interface TenancyDraft {
   endDate: string
   rent: string
   deposit: string
+  /** "I rent / rented it" or "I own it", as picked at add-home. */
+  relation: "RENT" | "OWN"
 }
 
 export function tenancyDraft(t: Tenancy): TenancyDraft {
   return {
+    relation: t.myRole === "LANDLORD" ? "OWN" : "RENT",
     startDate: t.startDate,
     stillLiving: !t.endDate,
     endDate: t.endDate ?? "",
@@ -28,7 +31,7 @@ export function rentOptional(t: Tenancy): boolean {
 
 /** The add-home tenancy step's checks (D-156 reuses them), plus the rent when it is required. */
 export function checkTenancyDraft(draft: TenancyDraft, t: Tenancy, today: string): HomeErrors {
-  const errors = checkStep("tenancy", { ...EMPTY_HOME, relation: "RENT", ...draft }, today)
+  const errors = checkStep("tenancy", { ...EMPTY_HOME, ...draft, relation: "RENT" }, today)
   if (!errors.rent && !rentOptional(t) && wholeNumber(draft.rent) === undefined)
     errors.rent = "Enter the monthly rent."
   return errors
@@ -40,7 +43,13 @@ export function toTenancyUpdate(draft: TenancyDraft): TenancyUpdate {
     endDate: draft.stillLiving || !draft.endDate ? null : draft.endDate,
     initialRentInr: wholeNumber(draft.rent) ?? null,
     depositInr: wholeNumber(draft.deposit) ?? null,
+    relation: draft.relation,
   }
+}
+
+/** Whether the draft switches the caller's role on the home (D-156): it then removes the tenancy. */
+export function switchesRole(draft: TenancyDraft, t: Tenancy): boolean {
+  return draft.relation !== tenancyDraft(t).relation
 }
 
 /** The API names the fields of `PATCH /tenancies/{id}`; the form shows them by its own keys. */

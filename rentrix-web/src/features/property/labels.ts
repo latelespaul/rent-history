@@ -117,6 +117,13 @@ export function monthLabel(value: string | null | undefined): string | null {
   return date.toLocaleDateString("en-IN", { month: "short", year: "numeric", timeZone: "UTC" })
 }
 
+/** "23 Nov 2026" from an ISO instant or date. */
+export function dayLabel(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+}
+
 /**
  * "Tower 4 · Wing B · Flat 1204": the home's place inside its society. A bare tower or wing name
  * ("4", "B") gets its word; one that already says it ("Tower 4", "Wing A", "Block C") is kept.

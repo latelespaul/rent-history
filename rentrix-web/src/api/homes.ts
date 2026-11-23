@@ -1,6 +1,7 @@
 import type {
   AddHomeInput,
   AddHomeResult,
+  ChangeRequestInput,
   HomeUpdate,
   PropertyCard,
   PropertyDetail,
@@ -55,4 +56,9 @@ export function updateHome(id: string, body: HomeUpdate): Promise<PropertyDetail
 /** `DELETE /me/homes/{id}`: the person who added the home removes it with their own records (D-156). */
 export function deleteHome(id: string): Promise<void> {
   return api.delete<void>(`/me/homes/${encodeURIComponent(id)}`)
+}
+
+/** `POST /me/change-requests` (D-156): "Ask our team to change this" when a rule blocks an edit. */
+export function createChangeRequest(body: ChangeRequestInput): Promise<{ id: string }> {
+  return api.post<{ id: string }>("/me/change-requests", body)
 }

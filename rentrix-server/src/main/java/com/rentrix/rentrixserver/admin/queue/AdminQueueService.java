@@ -20,6 +20,7 @@ import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.report.Report;
+import com.rentrix.rentrixserver.report.ReportReason;
 import com.rentrix.rentrixserver.report.ReportStatus;
 import com.rentrix.rentrixserver.report.ReportTargetType;
 import com.rentrix.rentrixserver.review.Review;
@@ -331,14 +332,19 @@ public class AdminQueueService {
 			c.getCreatedAt(), VerificationState.UNVERIFIED, null, List.of(QueueAction.APPROVE), List.of());
 	}
 
+	/** A report on a review may hide it; a creator's change request (D-156) is only dismissed once handled. */
+	private static boolean hideable(Report r) {
+		return r.getTargetType() == ReportTargetType.REVIEW && r.getReason() != ReportReason.CHANGE_REQUEST;
+	}
+
 	private QueueItem reportCard(Report r) {
 		List<String> details = new ArrayList<>();
 		details.add("Reported by " + name(r.getReporter()));
 		if (StringUtils.hasText(r.getDetails())) {
 			details.add(snippet(r.getDetails()));
 		}
-		List<QueueAction> actions = r.getTargetType() == ReportTargetType.REVIEW
-			? List.of(QueueAction.APPROVE, QueueAction.HIDE) : List.of(QueueAction.APPROVE);
+		List<QueueAction> actions = hideable(r) ? List.of(QueueAction.APPROVE, QueueAction.HIDE)
+			: List.of(QueueAction.APPROVE);
 		return new QueueItem(QueueType.REPORT, r.getPublicId().toString(), label(r.getReason().name()),
 			"About a " + label(r.getTargetType().name()).toLowerCase(Locale.ROOT), details, List.of(), null,
 			r.getCreatedAt(), VerificationState.UNVERIFIED, null, actions, HIDE_REASONS);
@@ -495,7 +501,7 @@ public class AdminQueueService {
 					report.getTargetId(), report.getPublicId().toString(), note);
 			}
 			case HIDE -> {
-				if (report.getTargetType() != ReportTargetType.REVIEW) {
+				if (!hideable(report)) {
 					throw notAllowed(QueueType.REPORT, action);
 				}
 				Review r = em.find(Review.class, report.getTargetId());

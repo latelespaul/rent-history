@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.tenancy.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
@@ -18,7 +19,8 @@ import java.util.UUID;
  * from (the start date when the rent never changed); both are null until the tenancy is confirmed.
  * {@code expiresAt} is set while confirmation is pending.
  * {@code verificationStatus} is the team's green tick on the tenancy (D-134, D-147); an edit by its creator takes it
- * away until the team checks it again (D-156).
+ * away until the team checks it again (D-156). {@code accessToken} is set only when an edit gave the caller a new role
+ * (a tenant who switches their record to "I own it" becomes a landlord too, D-16).
  */
 public record TenancyView(
 	UUID id,
@@ -49,6 +51,14 @@ public record TenancyView(
 	 * until then (captain 2026-11-23 14:53).
 	 */
 	boolean reviewed,
-	VerificationState verificationStatus
+	VerificationState verificationStatus,
+	@JsonInclude(JsonInclude.Include.NON_NULL) String accessToken
 ) {
+	
+	public TenancyView withAccessToken(String token) {
+		return new TenancyView(id, property, myRole, landlord, tenant, inviteEmail, startDate, endDate, initialRentInr,
+			currentRentInr, currentRentFrom, depositInr, depositRefundedInr, status, initiatedBy, declineReason,
+			evidenceLevel, createdAt, expiresAt, confirmedAt, endedAt, actions, reviewed, verificationStatus, token);
+	}
+	
 }

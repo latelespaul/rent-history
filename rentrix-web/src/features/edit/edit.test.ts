@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest"
 import { detail } from "@/test/properties"
 import type { Tenancy } from "@/types/api"
 import { checkHomeEdit, homeEditDraft, homeEditErrors, toHomeUpdate } from "./homeEdit"
-import { checkTenancyDraft, tenancyDraft, tenancyErrorKey, toTenancyUpdate } from "./tenancyEdit"
+import {
+  checkTenancyDraft,
+  switchesRole,
+  tenancyDraft,
+  tenancyErrorKey,
+  toTenancyUpdate,
+} from "./tenancyEdit"
 import { needsWarning, VERIFIED_EDIT_WARNING } from "./verified"
 
 const TODAY = "2026-11-23"
@@ -56,13 +62,17 @@ describe("edit a tenancy (D-156)", () => {
       endDate: "",
       rent: "",
       deposit: "50000",
+      relation: "RENT",
     })
     expect(toTenancyUpdate({ ...draft, rent: "26,000" })).toEqual({
       startDate: "2026-05-01",
       endDate: null,
       initialRentInr: 26000,
       depositInr: 50000,
+      relation: "RENT",
     })
+    expect(switchesRole(draft, own)).toBe(false)
+    expect(switchesRole({ ...draft, relation: "OWN" }, own)).toBe(true)
     expect(toTenancyUpdate({ ...draft, stillLiving: false, endDate: "2026-10-31" }).endDate).toBe(
       "2026-10-31",
     )

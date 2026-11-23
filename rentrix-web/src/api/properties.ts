@@ -128,10 +128,19 @@ export function deleteProperty(id: string): Promise<void> {
   return api.delete(`/properties/${encodeURIComponent(id)}`)
 }
 
-/** `PATCH /reviews/{id}`: the author changes ratings and text, while the review rules allow it (D-41, D-156). */
+/**
+ * `PATCH /reviews/{id}`: the author changes ratings and text at any time (D-156). The whole set
+ * replaces the old values, so send the sub-ratings the form does not change as they were.
+ */
 export function updateReview(
   id: string,
-  body: { ratingOverall: number; body: string },
+  body: {
+    ratingOverall: number
+    ratingA?: number
+    ratingB?: number
+    ratingC?: number
+    body: string
+  },
 ): Promise<PropertyReview> {
   return api.patch<PropertyReview>(`/reviews/${encodeURIComponent(id)}`, body)
 }

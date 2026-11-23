@@ -30,6 +30,7 @@ import { LocationPickers } from "@/features/landlord/LocationPickers"
 import type { LocationDraft } from "@/features/landlord/locationDraft"
 import { propertyTitle } from "@/features/property/labels"
 import { useProperty } from "@/features/property/useProperties"
+import { isBlocked } from "@/features/edit/blocked"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { useRefreshTenancyData } from "@/features/tenancy/useTenancies"
 import type { PropertyDetail } from "@/types/api"
@@ -71,6 +72,7 @@ function EditForm({ property }: { property: PropertyDetail }) {
   const [checking, setChecking] = useState(false)
   const [confirm, setConfirm] = useState<null | "save" | "delete">(null)
   const verified = needsWarning(property.verification)
+  const homeTarget = { targetType: "PROPERTY", targetId: property.id } as const
   const placed = Boolean(property.location)
 
   const set = <K extends keyof HomeEditDraft>(key: K, value: HomeEditDraft[K]) => {
@@ -246,10 +248,12 @@ function EditForm({ property }: { property: PropertyDetail }) {
         error={error("homeSize") ?? error("bedrooms")}
       />
       {error("form") && <Notice tone="warn">{error("form")}</Notice>}
-      {save.isError && !(isApiError(save.error) && save.error.fieldErrors.length > 0) && (
-        <ActionError error={save.error} />
-      )}
-      {remove.isError && <ActionError error={remove.error} />}
+      {save.isError &&
+        (isBlocked(save.error) ||
+          !(isApiError(save.error) && save.error.fieldErrors.length > 0)) && (
+          <ActionError error={save.error} changeTarget={homeTarget} />
+        )}
+      {remove.isError && <ActionError error={remove.error} changeTarget={homeTarget} />}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" size="lg" disabled={save.isPending || checking} data-testid="eh-save">
           Save changes

@@ -15,7 +15,7 @@ import {
 } from "@/features/edit/verified"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
-import { monthLabel, reviewCount } from "./labels"
+import { dayLabel, monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { PersonTick } from "./PersonTick"
 import { SignInPrompt } from "./SignInPrompt"
@@ -78,8 +78,8 @@ function RespondForm({ reviewId, propertyId }: { reviewId: string; propertyId: s
 }
 
 /**
- * The author's own buttons (D-156): edit while the review rules allow it (D-41; a published review
- * stays frozen) and delete at any time. A verified review warns first that its tick goes.
+ * The author's own buttons (D-156): edit and delete at any time. A verified review warns first
+ * that its tick goes.
  */
 function MyReviewActions({ review }: { review: PropertyReview }) {
   const queryClient = useQueryClient()
@@ -95,7 +95,14 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
     void queryClient.invalidateQueries({ queryKey: ["tenancies"] })
   }
   const save = useMutation({
-    mutationFn: () => updateReview(review.id, { ratingOverall: rating, body: text.trim() }),
+    mutationFn: () =>
+      updateReview(review.id, {
+        ratingOverall: rating,
+        ratingA: review.ratingA,
+        ratingB: review.ratingB,
+        ratingC: review.ratingC,
+        body: text.trim(),
+      }),
     onSuccess: done,
     onError: () => setConfirm(null),
   })
@@ -222,8 +229,12 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
       ) : review.textHidden ? (
         <p className="text-sm text-ink-500 italic">The text is hidden while a report is checked.</p>
       ) : null}
-      {review.publishedAt && (
-        <p className="text-xs text-ink-500">Published {monthLabel(review.publishedAt)}</p>
+      {(review.publishedAt || review.editedAt) && (
+        <p className="text-xs text-ink-500" data-testid="review-dates">
+          {review.publishedAt && `Published ${monthLabel(review.publishedAt)}`}
+          {review.publishedAt && review.editedAt && " · "}
+          {review.editedAt && `edited ${dayLabel(review.editedAt)}`}
+        </p>
       )}
       {review.response && (
         <div className="mt-2 rounded-lg border-l-2 border-line bg-sunk/40 px-3 py-2">

@@ -5,6 +5,8 @@ import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.edit.EditHistory;
 import com.rentrix.rentrixserver.edit.EditTarget;
+import com.rentrix.rentrixserver.home.HomeRelation;
+import com.rentrix.rentrixserver.property.FieldVisibility;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyStatus;
@@ -15,6 +17,7 @@ import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.review.ReviewStatus;
+import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.tenancy.dto.CreateTenancyRequest;
 import com.rentrix.rentrixserver.tenancy.dto.EndTenancyRequest;
@@ -99,6 +102,7 @@ public class TenancyService {
 	private final ReviewRepository reviews;
 	private final RatingRecomputer ratings;
 	private final EditHistory history;
+	private final AccessTokenService tokens;
 	private final Clock clock;
 
 	// ---------------------------------------------------------------- reads
@@ -408,19 +412,21 @@ public class TenancyService {
 		User me = currentUser(caller);
 		Tenancy tenancy = writable(publicId, me, caller);
 		TenancyParty side = requireCreator(tenancy, me);
-		requireDates(request.startDate(), request.endDate());
 		boolean ownRecord = tenancy.getInitiatedBy() == TenancyParty.TENANT && !mutual(tenancy);
+		HomeRelation relation = side == TenancyParty.TENANT ? HomeRelation.RENT : HomeRelation.OWN;
+		if (request.relation() != null && request.relation() != relation) {
+			return switchToOwn(tenancy, side, ownRecord, me, caller);
+		}
+		requireDates(request.startDate(), request.endDate());
 		if (request.initialRentInr() == null && !ownRecord) {
 			throw ApiException.validation(List.of(new ApiProblem.FieldError("initialRentInr", "required",
 				"Enter the monthly rent.")));
 		}
 		approvals.require(me, roleOf(side));
 
-		LocalDate oldStart = tenancy.getStartDate();
 		List<RentRecord> records = rentRecords.findByTenancyIdOrderByEffectiveFromAsc(tenancy.getId());
 		RentRecord first = records.stream()
-			.filter(r -> r.getStatus() != RentRecordStatus.DISPUTED
-				&& r.getEffectiveFrom().equals(oldStart.withDayOfMonth(1)))
+			.filter(r -> r.getStatus() != RentRecordStatus.DISPUTED && RentRecordService.starting(r))
 			.findFirst().orElse(null);
 		requireRecordsFit(records, first, request.startDate(), request.endDate(), request.initialRentInr() != null);
 
@@ -450,6 +456,45 @@ public class TenancyService {
 		history.edited(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, changes);
 		log.info("Tenancy {} edited by its creator {}", tenancy.getPublicId(), me.getPublicId());
 		return view(tenancies.saveAndFlush(tenancy), me, caller);
+	}
+
+	/**
+	 * "I own it" instead of "I rent it" (D-156): on a tenant's own record of a home they added, whose owner is not on the
+	 * platform, the home becomes the caller's (as if they had added it as its owner) and the tenancy is cancelled like a
+	 * delete. Both lose the team's tick and go back to the admin queue. Any other role change needs the team.
+	 */
+	private TenancyView switchToOwn(Tenancy tenancy, TenancyParty side, boolean ownRecord, User me,
+		AuthenticatedUser caller) {
+		if (side == TenancyParty.LANDLORD) {
+			throw ApiException.rule("role_change_not_allowed",
+				"Switching this home from owning to renting needs our team. Ask our team to change this.");
+		}
+		Property property = tenancy.getProperty();
+		boolean addedByMe = property.getAddedBy() != null && property.getAddedBy().getId().equals(me.getId());
+		if (!ownRecord || !addedByMe || !UnclaimedLandlord.is(property.getLandlord()) || othersOnHome(property, me)) {
+			throw ApiException.rule("role_change_not_allowed",
+				"Only a home you added yourself, with nobody else's records on it, can switch from renting to owning. "
+					+ "Ask our team to change this.");
+		}
+		approvals.require(me, Role.LANDLORD);
+		boolean newRole = me.getRoles().add(Role.LANDLORD);
+		boolean homeWasVerified = VerificationState.of(property.getVerificationStatus()) == VerificationState.VERIFIED;
+		property.setLandlord(me);
+		property.setAddedBy(null);
+		property.setUnitLabelVisibility(FieldVisibility.MASKED);
+		property.setVerificationStatus(VerificationState.UNVERIFIED);
+		properties.saveAndFlush(property);
+		EditHistory.Changes role = new EditHistory.Changes().field("relation", HomeRelation.RENT, HomeRelation.OWN);
+		history.edited(me, EditTarget.PROPERTY, property.getId(), property.getPublicId(), homeWasVerified, role);
+		boolean wasVerified = unverify(tenancy);
+		history.edited(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(), wasVerified, role);
+		remove(tenancy, me);
+		if (newRole) {
+			users.saveAndFlush(me);
+		}
+		log.info("Tenancy {} switched to owning its home by {}", tenancy.getPublicId(), me.getPublicId());
+		TenancyView view = view(tenancy, me, caller);
+		return newRole ? view.withAccessToken(tokens.issue(me.getPublicId(), me.getRoles())) : view;
 	}
 
 	/**
@@ -584,6 +629,9 @@ public class TenancyService {
 		Long rent = tenancy.getInitialRentInr();
 		if (rent == null) {
 			if (first != null) {
+				history.deleted(me, EditTarget.TENANCY, tenancy.getId(), tenancy.getPublicId(),
+					VerificationState.of(tenancy.getVerificationStatus()) == VerificationState.VERIFIED,
+					"rent from " + YearMonth.from(first.getEffectiveFrom()), "rent " + first.getMonthlyRentInr());
 				rentRecords.delete(first);
 			}
 			return;
@@ -658,7 +706,7 @@ public class TenancyService {
 		return side == TenancyParty.LANDLORD ? Role.LANDLORD : Role.TENANT;
 	}
 
-	static User initiator(Tenancy tenancy) {
+	public static User initiator(Tenancy tenancy) {
 		return tenancy.getInitiatedBy() == TenancyParty.LANDLORD ? tenancy.getLandlord() : tenancy.getTenant();
 	}
 
@@ -852,7 +900,8 @@ public class TenancyService {
 			t.getEndedAt(),
 			actions,
 			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()),
-			VerificationState.of(t.getVerificationStatus()));
+			VerificationState.of(t.getVerificationStatus()),
+			null);
 	}
 
 	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */

@@ -169,10 +169,11 @@ public class RentRecordService {
 		return record;
 	}
 
-	/** The tenancy's first rent record, made from its starting rent. */
-	private static boolean starting(RentRecord record) {
+	/** The tenancy's first rent record, made from its starting rent; a tenancy without a starting rent has none. */
+	static boolean starting(RentRecord record) {
 		Tenancy tenancy = record.getTenancy();
-		return record.getEffectiveFrom().equals(tenancy.getStartDate().withDayOfMonth(1))
+		return tenancy.getInitialRentInr() != null
+			&& record.getEffectiveFrom().equals(tenancy.getStartDate().withDayOfMonth(1))
 			&& Objects.equals(tenancy.getInitialRentInr(), record.getMonthlyRentInr());
 	}
 

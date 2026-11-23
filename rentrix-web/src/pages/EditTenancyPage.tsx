@@ -14,6 +14,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import {
   checkTenancyDraft,
   rentOptional,
+  switchesRole,
   tenancyDraft,
   tenancyErrorKey,
   toTenancyUpdate,
@@ -25,6 +26,7 @@ import {
   VERIFIED_EDIT_WARNING,
 } from "@/features/edit/verified"
 import type { HomeErrors } from "@/features/home/addHome"
+import { useAuth } from "@/features/auth/authContext"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { tenancyHome, today } from "@/features/tenancy/labels"
 import { useRefreshTenancyData, useTenancy } from "@/features/tenancy/useTenancies"
@@ -63,6 +65,9 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
   const [errors, setErrors] = useState<HomeErrors>({})
   const [confirm, setConfirm] = useState<null | "save" | "delete">(null)
   const verified = needsWarning(tenancy.verificationStatus)
+  const { acceptSession } = useAuth()
+  const switching = switchesRole(draft, tenancy)
+  const target = { targetType: "TENANCY", targetId: tenancy.id } as const
 
   const set = <K extends keyof TenancyDraft>(key: K, value: TenancyDraft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }))
@@ -73,8 +78,10 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
   const save = useMutation({
     mutationFn: () => updateTenancy(tenancy.id, toTenancyUpdate(draft)),
     onSuccess: async (saved) => {
+      if (saved.accessToken) await acceptSession({ accessToken: saved.accessToken })
       await refresh()
-      navigate(`/tenancies/${saved.id}`, { state: { saved: true } })
+      if (saved.status === "CANCELLED") navigate(`/p/${saved.property.id}`)
+      else navigate(`/tenancies/${saved.id}`, { state: { saved: true } })
     },
     onError: (error) => {
       setConfirm(null)
@@ -100,7 +107,7 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
       setErrors(found)
       return
     }
-    if (verified) setConfirm("save")
+    if (verified || switching) setConfirm("save")
     else save.mutate()
   }
 
@@ -113,6 +120,37 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
       ) : (
         <Notice tone="info">Not verified yet, so you can change or delete it freely.</Notice>
       )}
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-ink-900">Your role</legend>
+        <div className="flex flex-wrap gap-4">
+          {(
+            [
+              ["RENT", "I rent / rented it"],
+              ["OWN", "I own it"],
+            ] as const
+          ).map(([value, label]) => (
+            <label key={value} className="flex items-center gap-2 text-sm text-ink-900">
+              <input
+                type="radio"
+                name="et-relation"
+                value={value}
+                data-testid={`et-relation-${value}`}
+                checked={draft.relation === value}
+                onChange={() => set("relation", value)}
+                className="size-4 accent-teal-600"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        {switching && (
+          <Notice tone="warn" data-testid="et-relation-note">
+            {draft.relation === "OWN"
+              ? "The home becomes yours as its owner, and this tenancy is removed with your reviews on it. Our team checks the home again."
+              : "Switching from owning to renting needs our team; saving shows how to ask them."}
+          </Notice>
+        )}
+      </fieldset>
       <Field id="et-start" label="Moved in" error={errors.startDate}>
         <Input
           id="et-start"
@@ -170,9 +208,9 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
       </Field>
       {errors.form && <Notice tone="warn">{errors.form}</Notice>}
       {save.isError && !(isApiError(save.error) && save.error.fieldErrors.length > 0) && (
-        <ActionError error={save.error} startDate={draft.startDate} />
+        <ActionError error={save.error} startDate={draft.startDate} changeTarget={target} />
       )}
-      {remove.isError && <ActionError error={remove.error} />}
+      {remove.isError && <ActionError error={remove.error} changeTarget={target} />}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" size="lg" disabled={save.isPending} data-testid="et-save">
           Save changes
@@ -198,12 +236,15 @@ function EditForm({ tenancy }: { tenancy: Tenancy }) {
       <ConfirmDialog
         open={confirm === "save"}
         onOpenChange={(open) => !open && setConfirm(null)}
-        title="Save and remove the tick?"
+        title={switching ? "Change your role on this home?" : "Save and remove the tick?"}
         confirmLabel="Save changes"
         busy={save.isPending}
         onConfirm={() => save.mutate()}
       >
-        <p>{VERIFIED_EDIT_WARNING}</p>
+        {switching && draft.relation === "OWN" && (
+          <p>The home becomes yours as its owner, and this tenancy is removed.</p>
+        )}
+        {verified && <p>{VERIFIED_EDIT_WARNING}</p>}
         <p>It shows as &ldquo;Not verified yet&rdquo; meanwhile.</p>
       </ConfirmDialog>
       <ConfirmDialog

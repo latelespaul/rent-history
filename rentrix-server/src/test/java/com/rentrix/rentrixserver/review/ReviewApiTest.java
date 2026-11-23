@@ -12,6 +12,7 @@ import com.rentrix.rentrixserver.tenancy.TenancyRepository;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
+import com.rentrix.rentrixserver.verification.VerificationState;
 import com.rentrix.rentrixserver.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -352,7 +353,7 @@ class ReviewApiTest {
 	// --------------------------------------------------------- edit + reply
 
 	@Test
-	void editWindowAndTheOneUpdateAfterTheTenancyEnds() throws Exception {
+	void authorEditsAfterTheSevenDaysAndLosesTheTick() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
@@ -367,54 +368,51 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.editedAt").exists())
 			.andExpect(jsonPath("$.actions.edit").value(true));
 
+		// D-156: the 7-day window no longer limits the author; a verified review drops back to the queue
 		Review review = stored(id);
 		review.setEditUntil(Instant.now().minus(Duration.ofDays(1)));
 		review.setSubmittedAt(Instant.now().minus(Duration.ofDays(30)));
+		review.setVerificationStatus(VerificationState.VERIFIED);
 		reviews.saveAndFlush(review);
-		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
-				.contentType(MediaType.APPLICATION_JSON).content(edit))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
-
-		// D-40: once the tenancy ends, one update is allowed while still hidden, which reopens the 7-day window
-		tenancy.setStatus(TenancyStatus.ENDED);
-		tenancy.setEndDate(TODAY.minusDays(1));
-		tenancy.setEndedAt(Instant.now().minus(Duration.ofDays(1)));
-		tenancies.saveAndFlush(tenancy);
 		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON).content(edit.replace("\"ratingOverall\": 2", "\"ratingOverall\": 1")))
-			.andExpect(status().isOk());
-		assertThat(review.isPostEndUpdateUsed()).isTrue();
-		review.setEditUntil(Instant.now().minus(Duration.ofDays(1)));
-		reviews.saveAndFlush(review);
-		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
-				.contentType(MediaType.APPLICATION_JSON).content(edit))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.ratingOverall").value(1))
+			.andExpect(jsonPath("$.verification").value("UNVERIFIED"))
+			.andExpect(jsonPath("$.actions.edit").value(true));
+		assertThat(stored(id).getVerificationStatus()).isEqualTo(VerificationState.UNVERIFIED);
 		assertThat(jdbc.queryForObject("select count(*) from review_revisions where review_id = ?", Integer.class,
 			review.getId())).isEqualTo(2);
 	}
 
 	@Test
-	void publishedPropertyReviewIsFrozen() throws Exception {
+	void publishedPropertyReviewIsEditableAndRecomputesTheRating() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
 		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		Review review = stored(id);
+		review.setVerificationStatus(VerificationState.VERIFIED);
+		reviews.saveAndFlush(review);
 
 		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(tenant)))
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
-			.andExpect(jsonPath("$.actions.edit").value(false));
+			.andExpect(jsonPath("$.actions.edit").value(true));
 		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON).content("""
 					{"ratingOverall": 1, "body": "Water supply got worse over the year and the lift stopped working often."}"""))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
-		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getRatingSum()).isEqualTo(4);
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("PUBLISHED"))
+			.andExpect(jsonPath("$.editedAt").exists())
+			.andExpect(jsonPath("$.verification").value("UNVERIFIED"));
+		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getRatingSum()).isEqualTo(1);
+		assertThat(jdbc.queryForObject(
+			"select count(*) from edit_history where target_type = 'REVIEW' and target_ref = ? and was_verified",
+			Integer.class, id)).isPositive();
 	}
 
 	@Test
-	void personReviewIsEditableWhileHiddenAndFrozenOnceRevealed() throws Exception {
+	void personReviewStaysEditableOnceRevealed() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
@@ -428,31 +426,20 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.ratingOverall").value(3))
 			.andExpect(jsonPath("$.actions.edit").value(true));
 
-		String counter = written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, 2);
+		written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, 2);
 		assertThat(stored(id).getStatus()).isEqualTo(ReviewStatus.PUBLISHED);
 		mvc.perform(get("/reviews/" + id).header("Authorization", support.bearer(landlord)))
-			.andExpect(jsonPath("$.actions.edit").value(false));
+			.andExpect(jsonPath("$.actions.edit").value(true));
 		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
 				.contentType(MediaType.APPLICATION_JSON).content(edit.replace("\"ratingOverall\": 3", "\"ratingOverall\": 1")))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
-		mvc.perform(patch("/reviews/" + counter).header("Authorization", support.bearer(tenant))
-				.contentType(MediaType.APPLICATION_JSON).content(edit))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
-		assertThat(aggregate(RatingSubjectType.TENANT, tenant.getId()).getRatingSum()).isEqualTo(3);
+			.andExpect(status().isOk());
+		assertThat(aggregate(RatingSubjectType.TENANT, tenant.getId()).getRatingSum()).isEqualTo(1);
 
-		// the post-end update does not reopen a revealed review, and withdrawal stays open
-		tenancy.setStatus(TenancyStatus.ENDED);
-		tenancy.setEndDate(TODAY.minusDays(1));
-		tenancy.setEndedAt(Instant.now().minus(Duration.ofDays(1)));
-		tenancies.saveAndFlush(tenancy);
-		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
-				.contentType(MediaType.APPLICATION_JSON).content(edit))
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("edit_window_closed"));
 		mvc.perform(delete("/reviews/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(status().is2xxSuccessful());
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content(edit))
+			.andExpect(status().is4xxClientError());
 	}
 
 	@Test
