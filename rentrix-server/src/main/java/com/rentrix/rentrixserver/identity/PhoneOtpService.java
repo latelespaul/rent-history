@@ -174,8 +174,8 @@ public class PhoneOtpService {
 			challenges.consume(challenge.getId(), MAX_ATTEMPTS, now());
 			log.warn("Telegram phone code not sent for user {}: {}", userId, e.getMessage());
 			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "telegram_send_failed",
-				"We could not send the code to Telegram. Check that this number has Telegram, or get the code by "
-					+ "SMS instead.");
+				"We could not send the code to Telegram. Check that this number has Telegram, or "
+					+ (availability.available() ? "get the code by SMS instead." : "verify with Aadhaar or LinkedIn instead."));
 		}
 		challenges.setGatewayRequestId(challenge.getId(), requestId);
 		log.info("Telegram phone code challenge {} started for user {}", challenge.getPublicId(), userId);

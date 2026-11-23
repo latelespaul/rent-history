@@ -58,7 +58,7 @@ class TelegramPhoneCodeTest {
 	@Autowired
 	TelegramGatewayHolder telegram;
 
-	/** A random Indian mobile number that never ends in 0000 (the fake's "no Telegram" number). */
+	/** A random Indian mobile number that is never the fake's "no Telegram" number. */
 	static String phone() {
 		return "+919" + String.format("%08d", ThreadLocalRandom.current().nextLong(100_000_000L)) + "1";
 	}
@@ -135,11 +135,11 @@ class TelegramPhoneCodeTest {
 	@Test
 	void aNumberWithoutTelegramUsesTheCodeUpAndSuggestsSms() throws Exception {
 		User user = data.user("No Telegram", Role.TENANT);
-		String phone = "+91987654" + FakeTelegramGateway.NO_TELEGRAM_SUFFIX;
+		String phone = FakeTelegramGateway.NO_TELEGRAM_PHONE;
 		MockHttpServletResponse started = start(user, "{\"phone\":\"" + phone + "\",\"channel\":\"TELEGRAM\"}");
 		assertThat(started.getStatus()).isEqualTo(503);
 		assertThat(body(started).get("code").asString()).isEqualTo("telegram_send_failed");
-		assertThat(body(started).get("detail").asString()).contains("SMS");
+		assertThat(body(started).get("detail").asString()).contains("get the code by SMS instead");
 		assertThat(challenges.findFirstByPhoneE164OrderByCreatedAtDesc(phone).orElseThrow().getConsumedAt())
 			.isNotNull();
 	}

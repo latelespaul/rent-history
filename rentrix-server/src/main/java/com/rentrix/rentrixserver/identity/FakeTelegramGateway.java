@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Dev and test Telegram Gateway ({@code TELEGRAM_GATEWAY_FAKE=true}, refused in any other profile): never calls
- * Telegram. A number ending in {@code 0000} fails like a number without Telegram. Every other code is kept for
+ * Telegram. The number {@link #NO_TELEGRAM_PHONE} fails like a number without Telegram. Every other code is kept for
  * tests and, when {@code SMS_BACKEND=admin-relay} runs, handed to the admin relay, so the e2e stack reads it at
  * {@code GET /admin/sms-relay} as it does an SMS code; without the relay it is written to the dev log.
  */
@@ -21,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class FakeTelegramGateway implements TelegramGateway {
 
 	/** The fake's stand-in for a number that has no Telegram account. */
-	public static final String NO_TELEGRAM_SUFFIX = "0000";
+	public static final String NO_TELEGRAM_PHONE = "+919000000000";
 
 	/** One code the fake "delivered". */
 	public record Sent(String requestId, String phoneE164, String code) {
@@ -44,7 +44,7 @@ public class FakeTelegramGateway implements TelegramGateway {
 
 	@Override
 	public String send(String phoneE164, String code, Duration ttl) {
-		if (phoneE164.endsWith(NO_TELEGRAM_SUFFIX)) {
+		if (NO_TELEGRAM_PHONE.equals(phoneE164)) {
 			throw new GatewayException("sendVerificationMessage refused: PHONE_NUMBER_NOT_FOUND");
 		}
 		String requestId = "fake-" + UUID.randomUUID();
