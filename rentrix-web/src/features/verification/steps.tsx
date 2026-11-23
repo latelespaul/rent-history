@@ -212,7 +212,7 @@ export function PhoneStep({
   const telegram = method(identity, "TELEGRAM")?.available === true
   const smsAvailable = sms?.available === true
   // Null until the user picks: the default follows the identity data once it has loaded.
-  const [channel, setChannel] = useState<"TELEGRAM" | "SMS" | null>(null)
+  const [channel, setChannel] = useState<"SMS" | null>(null)
   const viaTelegram = telegram && channel !== "SMS"
   const [changing, setChanging] = useState(false)
   const [number, setNumber] = useState("")
@@ -354,19 +354,17 @@ export function PhoneStep({
                 {viaTelegram && " The number needs a Telegram account."}
               </p>
               {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
-              {telegram && smsAvailable && !challenge && (
+              {viaTelegram && smsAvailable && !challenge && (
                 <Button
                   type="button"
                   variant="link"
                   size="xs"
                   onClick={() => {
-                    setChannel(viaTelegram ? "SMS" : "TELEGRAM")
+                    setChannel("SMS")
                     start.reset()
                   }}
                 >
-                  {viaTelegram
-                    ? "No Telegram? Get the code by SMS"
-                    : "Send the code to Telegram instead"}
+                  No Telegram? Get the code by SMS
                 </Button>
               )}
             </form>

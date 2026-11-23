@@ -77,9 +77,4 @@ public class FakeTelegramGateway implements TelegramGateway {
 		return code.equals(reported.get(requestId));
 	}
 
-	/** The requests sent so far, oldest first, for tests. */
-	public List<Sent> sent() {
-		return List.copyOf(sent);
-	}
-
 }

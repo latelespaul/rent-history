@@ -123,11 +123,6 @@ public class PhoneOtpService {
 		return INDIAN_MOBILE.matcher(digits).matches() ? Optional.of(digits) : Optional.empty();
 	}
 	
-	/** Starts with the default channel: Telegram when it is configured, else SMS. */
-	public Started start(UUID userId, String phoneInput) {
-		return start(userId, phoneInput, null);
-	}
-	
 	/**
 	 * @param channel {@code TELEGRAM}, {@code SMS} or null for the default (Telegram when configured, else SMS)
 	 */
