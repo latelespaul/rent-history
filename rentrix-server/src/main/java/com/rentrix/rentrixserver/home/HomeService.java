@@ -9,6 +9,7 @@ import com.rentrix.rentrixserver.home.dto.AddHomeResult;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyService;
+import com.rentrix.rentrixserver.property.PropertyType;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
 import com.rentrix.rentrixserver.security.AccessTokenService;
@@ -103,12 +104,16 @@ public class HomeService {
 		if ((request.propertyId() == null) == (request.home() == null)) {
 			errors.add(new ApiProblem.FieldError("home", "required", "Give either the new home or the one you picked."));
 		}
+		// A standalone apartment (no society) is named by its building (captain 2026-11-23 11:35); a house or
+		// villa may go without one.
+		CreatePropertyRequest home = request.home();
+		if (home != null && home.propertyType() == PropertyType.APARTMENT && !StringUtils.hasText(home.buildingName())
+			&& (home.location() == null || home.location().societyId() == null && home.location().newSociety() == null)) {
+			errors.add(new ApiProblem.FieldError("home.buildingName", "required", "Enter the building name."));
+		}
 		if (request.relation() == HomeRelation.RENT) {
 			if (request.startDate() == null) {
 				errors.add(new ApiProblem.FieldError("startDate", "required", "Enter when you moved in."));
-			}
-			if (request.monthlyRentInr() == null) {
-				errors.add(new ApiProblem.FieldError("monthlyRentInr", "required", "Enter the monthly rent."));
 			}
 		} else if (request.relation() == HomeRelation.OWN) {
 			if (request.startDate() != null || request.monthlyRentInr() != null || request.owner() != null) {

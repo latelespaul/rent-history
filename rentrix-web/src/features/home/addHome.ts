@@ -25,6 +25,8 @@ export interface HomeDraft {
   /** The locality, typed only for a new city (it has no areas yet). */
   locality: string
   location: LocationDraft
+  /** The building of a standalone home (no society); required for an apartment. */
+  buildingName: string
   unitLabel: string
   pincode: string
   propertyType: PropertyType
@@ -48,6 +50,7 @@ export const EMPTY_HOME: HomeDraft = {
   otherState: "",
   locality: "",
   location: EMPTY_DRAFT,
+  buildingName: "",
   unitLabel: "",
   pincode: "",
   propertyType: "APARTMENT",
@@ -83,6 +86,13 @@ export type HomeErrors = Partial<Record<string, string>>
 const PIN = /^[1-9]\d{5}$/
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/** True when the home is not in a society, so it is named by its building (captain 2026-11-23 11:35). */
+export function standalone(draft: HomeDraft): boolean {
+  if (!draft.city) return false
+  if (draft.city === OTHER_CITY) return true
+  return hasArea(draft.location) && draft.location.society.kind === "none"
+}
+
 /** What is missing or wrong on one step, by field; empty when the step can go on. */
 export function checkStep(step: HomeStep, draft: HomeDraft, today: string): HomeErrors {
   const errors: HomeErrors = {}
@@ -94,6 +104,12 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
       if (!draft.locality.trim()) errors.locality = "Type the area or locality."
     } else if (!hasArea(draft.location)) errors.area = "Pick or type the area."
     else Object.assign(errors, checkNewNames(draft))
+    if (
+      standalone(draft) &&
+      draft.propertyType === "APARTMENT" &&
+      !(draft.buildingName ?? "").trim()
+    )
+      errors.buildingName = "Enter the building name."
     if (!PIN.test(draft.pincode.trim())) errors.pincode = "Enter the 6-digit PIN code."
     if (!draft.unitLabel.trim()) errors.unitLabel = "Enter the flat or house number."
   }
@@ -109,8 +125,8 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
         errors.endDate = "The move-out date is before the move-in date."
     }
     const rent = wholeNumber(draft.rent)
-    if (rent === undefined || !Number.isFinite(rent) || rent < 1)
-      errors.rent = "Enter the monthly rent in rupees."
+    if (rent !== undefined && (!Number.isFinite(rent) || rent < 1))
+      errors.rent = "Enter the monthly rent in rupees, or leave it empty."
     const deposit = wholeNumber(draft.deposit)
     if (deposit !== undefined && (!Number.isFinite(deposit) || deposit < 0))
       errors.deposit = "Enter the deposit in rupees, or leave it empty."
@@ -199,6 +215,9 @@ export function toAddHomeBody(draft: HomeDraft): AddHomeInput {
       city: OTHER_CITY,
       pincode: draft.pincode.trim(),
       locality: draft.locality.trim(),
+      ...((draft.buildingName ?? "").trim()
+        ? { buildingName: (draft.buildingName ?? "").trim() }
+        : {}),
       unitLabel: draft.unitLabel.trim(),
       propertyType: draft.propertyType,
       bedrooms: wholeNumber(draft.bedrooms) ?? null,
@@ -207,7 +226,10 @@ export function toAddHomeBody(draft: HomeDraft): AddHomeInput {
   } else {
     // The society names the home in search and on its page, as a building name does.
     const society = draft.location.society
-    const buildingName = society.kind === "none" ? undefined : society.name.trim() || undefined
+    const buildingName =
+      society.kind === "none"
+        ? (draft.buildingName ?? "").trim() || undefined
+        : society.name.trim() || undefined
     body.home = {
       city: draft.city,
       pincode: draft.pincode.trim(),
@@ -221,7 +243,8 @@ export function toAddHomeBody(draft: HomeDraft): AddHomeInput {
   if (body.relation === "RENT") {
     body.startDate = draft.startDate
     if (!draft.stillLiving && draft.endDate) body.endDate = draft.endDate
-    body.monthlyRentInr = wholeNumber(draft.rent)
+    const rent = wholeNumber(draft.rent)
+    if (rent !== undefined) body.monthlyRentInr = rent
     const deposit = wholeNumber(draft.deposit)
     if (deposit !== undefined) body.depositInr = deposit
     const owner = {

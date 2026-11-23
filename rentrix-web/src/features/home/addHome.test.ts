@@ -81,8 +81,10 @@ describe("add your home form (D-139)", () => {
     const rent = { ...address, relation: "RENT" as const }
     expect(checkStep("tenancy", { ...rent, startDate: "2026-12-01", rent: "abc" }, TODAY)).toEqual({
       startDate: "The move-in date cannot be in the future.",
-      rent: "Enter the monthly rent in rupees.",
+      rent: "Enter the monthly rent in rupees, or leave it empty.",
     })
+    // The rent is optional: an empty one is "not shared" (captain 2026-11-23 09:55).
+    expect(checkStep("tenancy", { ...rent, startDate: "2026-08-01", rent: "" }, TODAY)).toEqual({})
     expect(
       checkStep(
         "tenancy",
@@ -177,5 +179,25 @@ describe("add your home form (D-139)", () => {
       relation: "OWN",
       propertyId: "p1",
     })
+  })
+
+  it("names a standalone apartment by its building, and sends no rent when it is not shared", () => {
+    const flat: HomeDraft = {
+      ...address,
+      location: { ...address.location, society: { kind: "none" } },
+    }
+    expect(checkStep("address", flat, TODAY)).toEqual({ buildingName: "Enter the building name." })
+    expect(checkStep("address", { ...flat, propertyType: "INDEPENDENT_HOUSE" }, TODAY)).toEqual({})
+    const body = toAddHomeBody({
+      ...flat,
+      buildingName: " Sai Residency ",
+      relation: "RENT",
+      startDate: "2026-03-01",
+      rent: "",
+      ownerName: "Ravi",
+    })
+    expect(body.home?.buildingName).toBe("Sai Residency")
+    expect(body).not.toHaveProperty("monthlyRentInr")
+    expect(body.owner).toEqual({ name: "Ravi", email: undefined, phone: undefined })
   })
 })

@@ -18,6 +18,7 @@ import {
   matchQuery,
   OTHER_CITY,
   placeFieldErrors,
+  standalone,
   STEP_TITLES,
   stepsFor,
   toAddHomeBody,
@@ -140,7 +141,12 @@ function Added({ result }: { result: AddHomeResult }) {
           <Badge data-testid="added-by-tenant">Added by a tenant · not verified yet</Badge>
         )}
         {tenancy && (
-          <Badge variant="tenant">Your tenancy · {rupees(tenancy.initialRentInr)}/mo</Badge>
+          <Badge variant="tenant">
+            Your tenancy ·{" "}
+            {tenancy.initialRentInr === null
+              ? "Rent not shared"
+              : `${rupees(tenancy.initialRentInr)}/mo`}
+          </Badge>
         )}
       </p>
       <p className="mt-4 text-sm text-ink-700">
@@ -404,6 +410,28 @@ export default function AddHomePage() {
                   }}
                 />
               )}
+              {standalone(draft) && (
+                <Field
+                  id="ah-building"
+                  label={
+                    draft.propertyType === "APARTMENT" ? (
+                      "Building name"
+                    ) : (
+                      <>Building name {optional}</>
+                    )
+                  }
+                  hint="The name on the building, e.g. Sai Residency."
+                  error={error("buildingName")}
+                >
+                  <Input
+                    id="ah-building"
+                    value={draft.buildingName ?? ""}
+                    maxLength={160}
+                    onChange={(e) => set("buildingName", e.target.value)}
+                    className="h-11"
+                  />
+                </Field>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Field id="ah-unit" label="Flat / house no." error={error("unitLabel")}>
                   <Input
@@ -542,7 +570,12 @@ export default function AddHomePage() {
                 </Field>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field id="ah-rent" label="Monthly rent (₹)" error={error("rent")}>
+                <Field
+                  id="ah-rent"
+                  label={<>Monthly rent (₹) {optional}</>}
+                  hint="Leave it empty to keep it private: the home shows “Rent not shared”."
+                  error={error("rent")}
+                >
                   <Input
                     id="ah-rent"
                     inputMode="numeric"

@@ -388,7 +388,7 @@ public class DemoSeeder implements ApplicationRunner {
 		pending.setTenant(tenant("PNQ", 3));
 		pending.setStartDate(LocalDate.of(2021, 6, 1));
 		pending.setEndDate(LocalDate.of(2022, 5, 31));
-		pending.setInitialRentInr(21_000);
+		pending.setInitialRentInr(21_000L);
 		pending.setDepositInr(63_000L);
 		pending.setInitiatedBy(TenancyParty.TENANT);
 		pending.setStatus(TenancyStatus.PENDING_CONFIRMATION);

@@ -26,7 +26,8 @@ public record TenancyView(
 	String inviteEmail,
 	LocalDate startDate,
 	LocalDate endDate,
-	long initialRentInr,
+	/** Null when the tenant did not share the rent; the web shows "Rent not shared". */
+	Long initialRentInr,
 	Long currentRentInr,
 	LocalDate currentRentFrom,
 	Long depositInr,

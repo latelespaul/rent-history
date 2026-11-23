@@ -67,6 +67,19 @@ class SqliteMigrationTest {
 	}
 	
 	@Test
+	void tenancyRentIsOptionalAfterTheRebuildAndItsKeysStillHold() {
+		// V11 (sqlite vendor file) rebuilt tenancies with initial_rent_inr nullable (captain 2026-11-23 09:55)
+		assertThat(jdbc.queryForObject("select \"notnull\" from pragma_table_info('tenancies') where name = 'initial_rent_inr'",
+			Integer.class)).isZero();
+		assertThat(jdbc.queryForList("select name from sqlite_master where type = 'index' and tbl_name = 'tenancies'"
+			+ " and name like 'ix_%'", String.class)).containsExactlyInAnyOrder("ix_tenancies_property_status",
+			"ix_tenancies_tenant_status", "ix_tenancies_landlord_status", "ix_tenancies_pair", "ix_tenancies_verification");
+		assertThat(jdbc.queryForList("select \"table\" from pragma_foreign_key_list('reviews')", String.class))
+			.contains("tenancies");
+		assertThat(jdbc.queryForList("pragma foreign_key_check", Object.class)).isEmpty();
+	}
+	
+	@Test
 	void launchCitiesHaveActiveAreasWhosePincodesMatchTheCity() {
 		// V11: 8 - 12 well-known localities in each city that went live in V8 (#53 click-test bug 3)
 		List<String> counts = jdbc.queryForList("select city_code || ':' || count(*) from areas"

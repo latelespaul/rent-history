@@ -91,9 +91,14 @@ export function wholeNumber(value: string): number | undefined {
   return Number.isFinite(n) ? Math.round(n) : Number.NaN
 }
 
+/** "₹34,000 / month", or "Rent not shared" when the tenant left the rent out. */
+export function monthlyRent(rent: number | null): string {
+  return rent === null ? "Rent not shared" : `${rupees(rent)} / month`
+}
+
 /** "Current rent ₹34,000 / month from 1 Mar 2025"; the proposed rent while unconfirmed. */
 export function rentLine(tenancy: Tenancy): string {
-  if (tenancy.currentRentInr === null) return `${rupees(tenancy.initialRentInr)} / month`
+  if (tenancy.currentRentInr === null) return monthlyRent(tenancy.initialRentInr)
   const label = tenancy.status === "ACTIVE" ? "Current rent" : "Last rent"
   const from = dateLabel(tenancy.currentRentFrom ?? tenancy.startDate)
   return `${label} ${rupees(tenancy.currentRentInr)} / month from ${from}`

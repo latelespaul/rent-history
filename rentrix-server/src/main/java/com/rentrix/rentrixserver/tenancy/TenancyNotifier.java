@@ -36,14 +36,14 @@ class TenancyNotifier {
 		email.send(new EmailMessage(tenancy.getInviteEmail(),
 			PublicNames.shortName(tenancy.getLandlord().getDisplayName()) + " added you as a tenant on " + brand,
 			"""
-				%s says you rent %s, from %s at Rs %d a month.
+				%s says you rent %s, from %s%s.
 				
 				Sign in to %s with Google using this email address, then confirm or decline:
 				%s/tenancy-invite?token=%s
 				
 				The link works once and expires in 14 days. If you never rented this home, decline it or ignore this
 				email.""".formatted(PublicNames.shortName(tenancy.getLandlord().getDisplayName()), home(tenancy),
-				tenancy.getStartDate(), tenancy.getInitialRentInr(), brand, webBaseUrl,
+				tenancy.getStartDate(), rent(tenancy), brand, webBaseUrl,
 				URLEncoder.encode(rawToken, StandardCharsets.UTF_8))));
 	}
 	
@@ -51,10 +51,16 @@ class TenancyNotifier {
 	void confirmRequest(Tenancy tenancy, User counterparty) {
 		User initiator = tenancy.getInitiatedBy() == TenancyParty.LANDLORD ? tenancy.getLandlord() : tenancy.getTenant();
 		send(counterparty, "Confirm your tenancy at " + home(tenancy), """
-			%s asked you to confirm a tenancy at %s, from %s at Rs %d a month.
+			%s asked you to confirm a tenancy at %s, from %s%s.
 			
 			Confirm or decline within 14 days: %s""".formatted(PublicNames.shortName(initiator.getDisplayName()),
-			home(tenancy), tenancy.getStartDate(), tenancy.getInitialRentInr(), link(tenancy)));
+			home(tenancy), tenancy.getStartDate(), rent(tenancy), link(tenancy)));
+	}
+	
+	/** " at Rs 32000 a month", or ", rent not shared" when the tenant left it out. */
+	private static String rent(Tenancy tenancy) {
+		return tenancy.getInitialRentInr() == null ? ", rent not shared"
+			: " at Rs %d a month".formatted(tenancy.getInitialRentInr());
 	}
 	
 	void confirmed(Tenancy tenancy, User to) {
@@ -78,10 +84,10 @@ class TenancyNotifier {
 	/** To a real landlord: a tenant recorded their own tenancy on the landlord's home (D-142). */
 	void recordedByTenant(Tenancy tenancy, User to) {
 		send(to, "A tenant recorded a tenancy on your home", """
-			%s recorded a tenancy at %s, from %s at Rs %d a month.
+			%s recorded a tenancy at %s, from %s%s.
 			If this is wrong, report it from the tenancy page: %s""".formatted(
 			PublicNames.shortName(tenancy.getTenant().getDisplayName()), home(tenancy), tenancy.getStartDate(),
-			tenancy.getInitialRentInr(), link(tenancy)));
+			rent(tenancy), link(tenancy)));
 	}
 	
 	void rentRecordToConfirm(RentRecord record, User to) {

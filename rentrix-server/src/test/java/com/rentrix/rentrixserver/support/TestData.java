@@ -124,7 +124,7 @@ public class TestData {
 		tenancy.setTenant(tenant);
 		tenancy.setStartDate(start);
 		tenancy.setEndDate(end);
-		tenancy.setInitialRentInr(25_000);
+		tenancy.setInitialRentInr(25_000L);
 		tenancy.setInitiatedBy(TenancyParty.LANDLORD);
 		tenancy.setStatus(status);
 		return tenancies.save(tenancy);
