@@ -40,9 +40,11 @@ export default function SearchPage() {
       <h1 className="sr-only">Search homes</h1>
       <SearchBar
         city={search.city ?? null}
-        locality={search.locality ?? ""}
+        query={search.q ?? search.locality ?? ""}
         onCityChange={(code) => change({ city: code })}
-        onSubmit={({ city, locality }) => change({ city: city ?? undefined, locality })}
+        onSubmit={({ city, query }) =>
+          change({ city: city ?? undefined, q: query, locality: undefined })
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[17rem_1fr]">
@@ -61,8 +63,9 @@ export default function SearchPage() {
                   : "Searching…"}
               </h2>
               <p className="text-sm text-ink-500">
-                {cityName ? "Published homes only." : "Published homes in every live city."}
+                {cityName ? "Every home added, verified or not." : "Homes in every live city."}
                 {search.locality && ` Locality starts with “${search.locality}”.`}
+                {search.q && ` Matching “${search.q}”.`}
               </p>
             </div>
             <label className="flex items-center gap-2 text-sm text-ink-700">
@@ -136,7 +139,8 @@ export default function SearchPage() {
 
           <Notice tone="teal">
             Ratings show an average only after 3 reviews, so one review cannot define a home or a
-            person. Anyone can see ratings and facts; review text and rent history need sign-in.
+            person. Anyone can read a home&rsquo;s reviews; rent history needs sign-in. A home
+            without the green tick shows &ldquo;Not verified yet&rdquo;.
           </Notice>
         </section>
       </div>

@@ -250,9 +250,14 @@ class ReviewApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[0].body").value(GOOD))
 			.andExpect(jsonPath("$.items[0].submittedAt").doesNotExist());
-		// anonymous: the aggregate only (D-56)
+		// anonymous: home reviews are public with full text and ratings (D-157), but no actions or private dates
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews"))
-			.andExpect(status().isUnauthorized());
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[0].body").value(GOOD))
+			.andExpect(jsonPath("$.items[0].ratingOverall").value(4))
+			.andExpect(jsonPath("$.items[0].submittedAt").doesNotExist())
+			.andExpect(jsonPath("$.items[0].actions.edit").value(false))
+			.andExpect(jsonPath("$.items[0].actions.withdraw").value(false));
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/rating"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.reviewCount").value(1))

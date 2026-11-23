@@ -9,7 +9,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import { rupees } from "@/features/property/labels"
 import { RentRecords } from "@/features/tenancy/RentRecords"
 import { TenancyActions } from "@/features/tenancy/TenancyActions"
-import { EditTenancyButton, TenancyFacts } from "@/features/tenancy/TenancyCard"
+import { EditTenancyButton, MyReviewLink, TenancyFacts } from "@/features/tenancy/TenancyCard"
 import {
   counterparty,
   dateLabel,
@@ -63,9 +63,14 @@ function VerificationNote({ tenancy }: { tenancy: Tenancy }) {
   return <Badge data-testid="tenancy-not-verified">Not verified yet</Badge>
 }
 
-/** "Write a review" on the tenant's current or ended tenancy, while the D-39 window is open. */
+/**
+ * "Write a review" on the tenant's current or ended tenancy, while the D-39 window is open. Once
+ * written, "See my review" opens it on the home's page, where the author edits it (captain
+ * 2026-11-24 00:31).
+ */
 function ReviewCta({ tenancy }: { tenancy: Tenancy }) {
   if (tenancy.myRole !== "TENANT") return null
+  if (tenancy.reviewed) return <MyReviewLink tenancy={tenancy} size="default" />
   const reviews = reviewWindow(tenancy, today())
   if (reviews.state === "none") return null
   if (reviews.state === "open")

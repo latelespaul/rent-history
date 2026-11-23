@@ -30,8 +30,8 @@ import { RatingLine } from "@/features/property/Rating"
 import { RentHistory } from "@/features/property/RentHistory"
 import { useProperty, useSignedIn } from "@/features/property/useProperties"
 import { useAuth } from "@/features/auth/authContext"
-import { PencilIcon, TenancyIcon } from "@/components/ui/icons.gen"
-import type { PropertyDetail } from "@/types/api"
+import { PencilIcon, StarIcon, TenancyIcon } from "@/components/ui/icons.gen"
+import type { PropertyDetail, Tenancy } from "@/types/api"
 import { BRAND } from "@/lib/brand"
 
 function Breadcrumb({ property }: { property: PropertyDetail }) {
@@ -100,6 +100,15 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
             An average appears after 3 reviews, so one review cannot define a home.
           </p>
         )}
+        {property.rating.reviewCount > 0 && (
+          <a
+            href="#reviews"
+            className="text-sm font-semibold text-teal-700"
+            data-testid="read-reviews"
+          >
+            Read {reviewCount(property.rating.reviewCount)}
+          </a>
+        )}
       </div>
       <div className="flex items-start gap-3 border-t border-line pt-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-landlord-100 text-sm font-semibold text-landlord-600">
@@ -160,16 +169,43 @@ function MyNextSteps({ propertyId }: { propertyId: string }) {
   )
 }
 
+/** A tenancy on this home that stands or waits for the owner (not declined, expired or voided). */
+function livesHere(tenancy: Tenancy, propertyId: string): boolean {
+  return (
+    tenancy.property.id === propertyId &&
+    ["PENDING_CONFIRMATION", "ACTIVE", "ENDED"].includes(tenancy.status)
+  )
+}
+
 /**
  * "Edit home" for the person who added it, and "Edit my tenancy" for the tenant who added their
- * tenancy here (D-156): free until the team verifies them.
+ * tenancy here (D-156): free until the team verifies them. A tenant with any tenancy here gets
+ * "My tenancy" and "My review" instead of "I rent or rented this home" (captain 2026-11-24 00:31).
  */
 function MyEdits({ property }: { property: PropertyDetail }) {
   const mine = useMyTenancies("TENANT")
-  const tenancy = mine.data?.items.find((t) => t.property.id === property.id && t.actions.edit)
-  if (!property.editable && !tenancy) return null
+  const here = mine.data?.items.filter((t) => livesHere(t, property.id)) ?? []
+  const tenancy = here.find((t) => t.actions.edit)
+  const own = here[0]
+  const reviewed = here.some((t) => t.reviewed)
   return (
     <>
+      {own && !tenancy && (
+        <Button asChild variant="outline" size="sm" data-testid="home-my-tenancy">
+          <Link to={`/tenancies/${own.id}`}>
+            <TenancyIcon />
+            My tenancy
+          </Link>
+        </Button>
+      )}
+      {reviewed && (
+        <Button asChild variant="outline" size="sm" data-testid="home-my-review">
+          <a href="#reviews">
+            <StarIcon />
+            My review
+          </a>
+        </Button>
+      )}
       {property.editable && (
         <Button asChild variant="outline" size="sm" data-testid="home-edit">
           <Link to={`/homes/${property.id}/edit`}>
@@ -215,22 +251,31 @@ function PropertyActions({ property }: { property: PropertyDetail }) {
       </div>
     )
   }
-  if (property.status !== "PUBLISHED") return <MyEdits property={property} />
   return (
     <div className="flex flex-wrap gap-2">
       <MyEdits property={property} />
-      <Button asChild variant="outline" size="sm" data-testid="i-rent-this-home">
-        <Link to={`/homes/new?property=${property.id}`}>
-          <TenancyIcon />I rent or rented this home
-        </Link>
-      </Button>
+      {property.status === "PUBLISHED" && <IRentThisHome propertyId={property.id} />}
     </div>
   )
 }
 
+/** "I rent or rented this home", only for someone with no tenancy on it yet (captain 2026-11-24). */
+function IRentThisHome({ propertyId }: { propertyId: string }) {
+  const mine = useMyTenancies("TENANT")
+  // Wait for the list, so the button never flashes for a tenant who already lives here.
+  if (!mine.data || mine.data.items.some((t) => livesHere(t, propertyId))) return null
+  return (
+    <Button asChild variant="outline" size="sm" data-testid="i-rent-this-home">
+      <Link to={`/homes/new?property=${propertyId}`}>
+        <TenancyIcon />I rent or rented this home
+      </Link>
+    </Button>
+  )
+}
+
 /**
- * Property page (DESIGN.md screen 3, `/p/:id`). Anonymous visitors see place, facts and the
- * aggregate ratings; signed-in users also get rent history and review text (D-56). The flat
+ * Property page (DESIGN.md screen 3, `/p/:id`). Everyone sees place, facts, ratings and the
+ * home's reviews in full (D-157); signed-in users also get rent history (D-56). The flat
  * number shows only when the API sends it, i.e. to the owner and admins (D-57).
  */
 export default function PropertyPage() {
@@ -326,7 +371,7 @@ export default function PropertyPage() {
           </div>
 
           <RentHistory propertyId={property.id} signedIn={signedIn} />
-          <PropertyReviews propertyId={property.id} rating={property.rating} signedIn={signedIn} />
+          <PropertyReviews propertyId={property.id} rating={property.rating} />
         </div>
 
         <aside className="hidden space-y-6 lg:block">

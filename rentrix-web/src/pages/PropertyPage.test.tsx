@@ -4,8 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, configure, render, screen } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ApiError } from "@/api/errors"
-import type { CurrentUser, PropertyDetail, PropertyReview, RentHistoryRow } from "@/types/api"
-import { detail } from "@/test/properties"
+import type {
+  CurrentUser,
+  PropertyDetail,
+  PropertyReview,
+  RentHistoryRow,
+  Tenancy,
+} from "@/types/api"
+import { detail, page } from "@/test/properties"
 import PropertyPage from "./PropertyPage"
 
 const api = vi.hoisted(() => ({
@@ -13,6 +19,7 @@ const api = vi.hoisted(() => ({
   property: null as unknown as PropertyDetail | Error,
   rent: null as RentHistoryRow[] | null,
   reviews: null as PropertyReview[] | null,
+  tenancies: [] as Tenancy[],
 }))
 
 // The restored session: anonymous (null) or the signed-in user.
@@ -32,7 +39,51 @@ vi.mock("@/api/properties", async (importOriginal) => ({
   fetchPropertyReviews: vi.fn(async () => api.reviews),
 }))
 
+vi.mock("@/api/tenancies", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/tenancies")>()),
+  fetchMyTenancies: vi.fn(async () => page(api.tenancies)),
+}))
+
 const { fetchPropertyReviews, fetchRentHistory } = await import("@/api/properties")
+
+const HOME_ID = "00000000-0000-0000-0000-000000000001"
+
+/** The signed-in tenant's own tenancy on the page's home. */
+function myTenancy(overrides: Partial<Tenancy> = {}): Tenancy {
+  return {
+    id: "t1",
+    property: {
+      id: HOME_ID,
+      buildingName: "Demo Residency A",
+      locality: "Koramangala",
+      city: { code: "BLR", name: "Bangalore" },
+      unitLabel: "C202",
+      propertyType: "APARTMENT",
+    },
+    myRole: "TENANT",
+    landlord: { id: "u-landlord", shortName: "Demo L." },
+    tenant: { id: "u1", shortName: "Demo T." },
+    inviteEmail: null,
+    startDate: "2026-07-01",
+    endDate: null,
+    initialRentInr: 27000,
+    currentRentInr: null,
+    currentRentFrom: null,
+    depositInr: null,
+    depositRefundedInr: null,
+    status: "ACTIVE",
+    initiatedBy: "TENANT",
+    declineReason: null,
+    evidenceLevel: null,
+    createdAt: "2026-11-20T00:00:00Z",
+    expiresAt: null,
+    confirmedAt: null,
+    endedAt: null,
+    actions: { confirm: false, decline: false, cancel: false, end: true, addRentRecord: true },
+    reviewed: true,
+    ...overrides,
+  }
+}
 
 const TENANT: CurrentUser = {
   id: "u1",
@@ -66,21 +117,36 @@ beforeEach(() => {
   api.property = detail()
   api.rent = null
   api.reviews = null
+  api.tenancies = []
 })
 afterEach(cleanup)
 // Generous waits: the page resolves several queries before it settles.
 configure({ asyncUtilTimeout: 10000 })
 
 describe("PropertyPage", () => {
-  it("shows an anonymous visitor facts and ratings but no review text or rent history", async () => {
+  it("shows an anonymous visitor facts, ratings and the review text, but no rent history", async () => {
+    api.reviews = [
+      {
+        id: "r1",
+        ratingOverall: 4,
+        body: "Water supply was steady.",
+        author: { shortName: "Demo T." },
+        actions: { edit: false, withdraw: false, respond: false, editResponse: false },
+      },
+    ]
     renderPage()
 
     expect(await screen.findByRole("heading", { level: 1, name: /Demo Residency A/ })).toBeTruthy()
     expect(screen.getByText("Semi-furnished")).toBeTruthy()
     expect(screen.getAllByLabelText("Rated 4.3 out of 5 from 4 reviews").length).toBeGreaterThan(0)
-    expect(screen.getByText("Sign in to read 4 reviews from verified tenants.")).toBeTruthy()
+    // Home reviews are public with full text (captain 2026-11-24 00:31, D-157).
+    expect(await screen.findByText("Water supply was steady.")).toBeTruthy()
+    expect(screen.queryByText(/Sign in to read/)).toBeNull()
+    expect(screen.queryByTestId("my-review")).toBeNull()
+    expect(screen.queryByRole("button", { name: /Edit my review/ })).toBeNull()
+    expect(screen.queryByTestId("i-rent-this-home")).toBeNull()
     expect(screen.getByText(/Sign in to see the full rent history/)).toBeTruthy()
-    expect(fetchPropertyReviews).not.toHaveBeenCalled()
+    expect(fetchPropertyReviews).toHaveBeenCalled()
     expect(fetchRentHistory).not.toHaveBeenCalled()
     expect(screen.getByText(/Flat number visible only to the landlord and tenants/)).toBeTruthy()
   })
@@ -105,6 +171,37 @@ describe("PropertyPage", () => {
     expect(screen.getByText("₹36,500")).toBeTruthy()
     expect(screen.getByText("+7.4%")).toBeTruthy()
     expect(screen.queryByText(/Sign in to read/)).toBeNull()
+  })
+
+  it("offers 'I rent or rented this home' only to a signed-in user with no tenancy here", async () => {
+    api.user = TENANT
+    renderPage()
+    expect(await screen.findByTestId("i-rent-this-home")).toBeTruthy()
+    cleanup()
+
+    // Captain 2026-11-24 00:31: a tenant of this home gets their tenancy and review instead.
+    api.tenancies = [myTenancy()]
+    api.reviews = [
+      {
+        id: "r1",
+        ratingOverall: 4,
+        body: "Water supply was steady.",
+        author: { shortName: "Demo T." },
+        actions: { edit: true, withdraw: true, respond: false, editResponse: false },
+      },
+    ]
+    renderPage()
+    expect(await screen.findByTestId("home-my-tenancy")).toBeTruthy()
+    expect(screen.getByTestId("home-my-review")).toBeTruthy()
+    expect(await screen.findByTestId("my-review")).toBeTruthy()
+    expect(screen.getByRole("button", { name: /Edit my review/ })).toBeTruthy()
+    expect(screen.queryByTestId("i-rent-this-home")).toBeNull()
+    cleanup()
+
+    // A declined request does not count as living here.
+    api.tenancies = [myTenancy({ status: "DECLINED", reviewed: false })]
+    renderPage()
+    expect(await screen.findByTestId("i-rent-this-home")).toBeTruthy()
   })
 
   it("shows the landlord's green tick on the landlord card, or that they are not verified yet", async () => {

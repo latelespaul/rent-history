@@ -1,5 +1,10 @@
 package com.rentrix.rentrixserver.property;
 
+import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.LocationStatus;
+import com.rentrix.rentrixserver.location.LocationTestSupport;
+import com.rentrix.rentrixserver.location.Society;
+import com.rentrix.rentrixserver.location.SocietyKind;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.user.Role;
@@ -46,6 +51,9 @@ class PropertySearchTest {
 	
 	@Autowired
 	JdbcTemplate jdbc;
+	
+	@Autowired
+	LocationTestSupport locations;
 	
 	private User landlord;
 	
@@ -182,6 +190,36 @@ class PropertySearchTest {
 		mvc.perform(get("/properties").param("city", CITY).param("page", "9"))
 			.andExpect(jsonPath("$.items", hasSize(0)))
 			.andExpect(jsonPath("$.page.totalItems").value(5));
+	}
+	
+	/**
+	 * D-158 (captain 2026-11-24 00:31): anyone, signed in or not, finds a tenant's new home by its society, even a
+	 * typed one still pending review, by its PIN code and by its city's name; the card is tagged pending.
+	 */
+	@Test
+	void textFindsATypedPendingSocietyThePinCodeAndTheCityAnonymously() throws Exception {
+		Area area = locations.area(CITY, "Search Layout", "560102");
+		Society typed = locations.society(area, "Sobha Typed Greens", null, SocietyKind.APARTMENT_COMPLEX,
+			LocationStatus.PENDING, data.user("Typing Tenant", Role.TENANT));
+		Property home = home(null, "Search Layout", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		home.setArea(area);
+		home.setSociety(typed);
+		home.setPincode("560102");
+		home.setStreet(null);
+		properties.saveAndFlush(home);
+		home("Elsewhere", "Other Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED);
+		for (String q : List.of("sobha", "TYPED greens", "560102", "5601")) {
+			mvc.perform(get("/properties").param("city", CITY).param("q", q))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.page.totalItems").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(home.getPublicId().toString()))
+				.andExpect(jsonPath("$.items[0].locationPending").value(true))
+				.andExpect(jsonPath("$.items[0].verification").value("UNVERIFIED"));
+		}
+		mvc.perform(get("/properties").param("q", "search test city").param("size", "50"))
+			.andExpect(jsonPath("$.page.totalItems").value(2));
+		mvc.perform(get("/properties").param("city", CITY).param("q", "search layout"))
+			.andExpect(jsonPath("$.items[*].id", contains(home.getPublicId().toString())));
 	}
 	
 	@Test

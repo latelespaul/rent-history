@@ -47,7 +47,7 @@ public class SecurityConfig {
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
 	static final String[] PUBLIC_GET = {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
-		"/cities", "/stats", "/properties", "/properties/*", "/properties/*/rating",
+		"/cities", "/stats", "/properties", "/properties/*", "/properties/*/rating", "/properties/*/reviews",
 		"/areas", "/areas/*", "/societies", "/societies/*", "/societies/*/towers",
 		"/auth/config", "/auth/dev-users", "/auth/admin/dev-users",
 		// springdoc is only switched on in dev and test (D-64)

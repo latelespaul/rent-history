@@ -29,7 +29,6 @@ function renderReviews() {
         <PropertyReviews
           propertyId="01a20329-dcd1-7a5a-8ab0-1c35736d3aaa"
           rating={{ reviewCount: 3, average: 4.7 }}
-          signedIn
         />
       </MemoryRouter>
     </QueryClientProvider>,

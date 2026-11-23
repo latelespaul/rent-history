@@ -330,10 +330,13 @@ public class ReviewService {
 		return view(review, me, admin);
 	}
 
-	/** {@code GET /properties/{id}/reviews}: published property reviews, for signed-in readers (D-56). */
+	/**
+	 * {@code GET /properties/{id}/reviews}: published property reviews with full text and ratings, for everyone,
+	 * signed in or not (D-157). An anonymous caller gets no actions; the author gets edit and withdraw.
+	 */
 	public PageResponse<ReviewView> forProperty(UUID propertyId, AuthenticatedUser caller, Pageable pageable) {
-		User me = currentUser(caller);
-		boolean admin = caller.hasRole(Role.ADMIN);
+		User me = caller == null ? null : currentUser(caller);
+		boolean admin = caller != null && caller.hasRole(Role.ADMIN);
 		Property property = visibleProperty(propertyId, caller);
 		Page<Review> page = reviews.findByPropertyIdAndDirectionAndStatus(property.getId(),
 			ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED, pageable);
@@ -500,15 +503,16 @@ public class ReviewService {
 		}
 	}
 
+	/** {@code me} is null for an anonymous reader (D-157). */
 	private static boolean isAuthor(Review review, User me) {
-		return review.getAuthor().getId().equals(me.getId());
+		return me != null && review.getAuthor().getId().equals(me.getId());
 	}
 
 	/** The subject of a person review, or the home's landlord for a property review (§5.7). */
 	private static boolean isResponder(Review review, User me) {
 		User responder = review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY
 			? review.getProperty().getLandlord() : review.getSubjectUser();
-		return responder != null && responder.getId().equals(me.getId());
+		return me != null && responder != null && responder.getId().equals(me.getId());
 	}
 
 	private static Role authorRole(Review review) {

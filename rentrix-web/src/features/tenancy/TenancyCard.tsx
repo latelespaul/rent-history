@@ -8,6 +8,7 @@ import {
   LockIcon,
   PencilIcon,
   RupeeIcon,
+  StarIcon,
 } from "@/components/ui/icons.gen"
 import { rupees } from "@/features/property/labels"
 import type { Tenancy } from "@/types/api"
@@ -61,6 +62,25 @@ export function EditTenancyButton({
   )
 }
 
+/** "See my review" for the tenant who reviewed this home: it opens on the home's page to read or edit. */
+export function MyReviewLink({
+  tenancy,
+  size = "sm",
+}: {
+  tenancy: Tenancy
+  size?: "sm" | "default"
+}) {
+  if (tenancy.myRole !== "TENANT" || !tenancy.reviewed) return null
+  return (
+    <Button asChild variant="outline" size={size} data-testid="tenancy-my-review">
+      <Link to={`/p/${tenancy.property.id}#reviews`}>
+        <StarIcon />
+        See my review
+      </Link>
+    </Button>
+  )
+}
+
 /** One tenancy in a list (`/me/tenancies`, landlord dashboard), with the actions allowed now. */
 export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
   const status = TENANCY_STATUS[tenancy.status]
@@ -94,7 +114,9 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
           </p>
           <TenancyFacts tenancy={tenancy} />
         </div>
-        <div className="flex gap-2">
+        {/* Own line on a phone, so the buttons never squeeze the home's name and facts. */}
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <MyReviewLink tenancy={tenancy} />
           <EditTenancyButton tenancy={tenancy} />
           <Button asChild variant="outline" size="sm">
             <Link to={`/tenancies/${tenancy.id}`}>Open</Link>

@@ -93,14 +93,20 @@ public final class PropertySearchQuery {
 			params.add(criteria.minRating().subtract(SHOWN_AVERAGE_HALF_STEP));
 		}
 		if (criteria.text() != null) {
+			// D-158: one box finds a home by its area (locality), building, street, society (a typed, still pending
+			// name too), PIN code or city name. Society and city are matched through id subqueries, so no join
+			// multiplies rows and the range index above still drives the query.
 			String pattern = "%" + escapeLike(criteria.text()) + "%";
 			String like = " LIKE ? ESCAPE '" + LIKE_ESCAPE + "'";
 			sql.append(" AND (p.locality_key").append(like)
 				.append(" OR LOWER(p.building_name)").append(like)
-				.append(" OR LOWER(p.street)").append(like).append(")");
-			params.add(pattern);
-			params.add(pattern);
-			params.add(pattern);
+				.append(" OR LOWER(p.street)").append(like)
+				.append(" OR p.pincode").append(like)
+				.append(" OR p.society_id IN (SELECT s.id FROM societies s WHERE s.name_key").append(like).append(")")
+				.append(" OR p.city_code IN (SELECT c.code FROM cities c WHERE LOWER(c.name)").append(like).append("))");
+			for (int i = 0; i < 6; i++) {
+				params.add(pattern);
+			}
 		}
 		return new PropertySearchQuery(sql.toString(), params);
 	}
