@@ -75,21 +75,24 @@ public class RefreshTokenService {
 	
 	/**
 	 * Revokes {@code raw} and issues its successor. Revocations made before an error is thrown are committed
-	 * ({@code noRollbackFor}), so a reused token's family stays revoked.
+	 * ({@code noRollbackFor}), so a reused token's family stays revoked. The revoking UPDATE runs first, before
+	 * any read, so a concurrent write elsewhere makes this wait (busy timeout) instead of fail (D-11).
 	 */
 	@Transactional(noRollbackFor = ApiException.class)
 	public Rotation rotate(String raw) {
-		RefreshToken token = find(raw);
+		if (!StringUtils.hasText(raw)) {
+			throw invalid();
+		}
 		Instant now = now();
+		boolean rotated = tokens.revokeActiveByHash(hash(raw), now) == 1;
+		RefreshToken token = find(raw);
 		User user = token.getUser();
-		if (token.getRevokedAt() == null) {
-			if (!token.getExpiresAt().isAfter(now)) {
-				throw invalid();
-			}
+		if (rotated) {
 			requireActive(token, user, now);
-			if (tokens.revokeIfActive(token.getId(), now) == 1) {
-				return new Rotation(user, issue(user, token.getFamilyId()));
-			}
+			return new Rotation(user, issue(user, token.getFamilyId()));
+		}
+		if (token.getRevokedAt() == null) {
+			throw invalid(); // expired
 		}
 		if (isLatestRotationWithinGrace(token, now)) {
 			requireActive(token, user, now);

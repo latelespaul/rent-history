@@ -247,11 +247,11 @@ class AuthFlowTest {
 	@Test
 	void onlyOneOfTwoRotationsOfTheSameTokenCanRevokeIt() throws Exception {
 		String first = refreshToken(google(FakeGoogleTokenVerifier.token(sub(), email()), freshIp()));
-		Long id = refreshTokens.findByTokenHash(RefreshTokenService.hash(first)).orElseThrow().getId();
+		String hash = RefreshTokenService.hash(first);
 		Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
 		
-		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeIfActive(id, now))).isEqualTo(1);
-		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeIfActive(id, now))).isZero();
+		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeActiveByHash(hash, now))).isEqualTo(1);
+		assertThat(transactions.<Integer>execute(tx -> refreshTokens.revokeActiveByHash(hash, now))).isZero();
 	}
 	
 	@Test

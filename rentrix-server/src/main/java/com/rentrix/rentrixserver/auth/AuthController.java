@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -47,7 +48,16 @@ public class AuthController {
 	
 	@PostMapping("/refresh")
 	ResponseEntity<AuthResponse> refresh(HttpServletRequest request) {
-		return sessions.signedIn(request, auth.refresh(RefreshCookies.read(request)));
+		String raw = RefreshCookies.read(request);
+		AuthService.Session session;
+		try {
+			session = auth.refresh(raw);
+		} catch (PessimisticLockingFailureException locked) {
+			// The database refused a lock (SQLITE_BUSY) and the rotation rolled back whole: try once more, as
+			// IdempotencyFilter.complete does. A failed retry still answers 409 concurrent_update, never 401.
+			session = auth.refresh(raw);
+		}
+		return sessions.signedIn(request, session);
 	}
 	
 	@PostMapping("/logout")

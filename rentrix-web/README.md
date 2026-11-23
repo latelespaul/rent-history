@@ -82,7 +82,8 @@ The refresh token is an `HttpOnly` cookie, so the web and the API must be same-s
   `api.restoreSession()` trades the refresh cookie for a new one on page load.
 - On a `401` it calls `POST /auth/refresh` once (shared by concurrent calls) and retries once.
   Only a `401`/`403` from refresh ends the session (clears the token, calls `onSessionExpired`);
-  a `5xx`, `429` or network failure keeps it, and the caller gets the original error.
+  a `409` (concurrent write), `5xx` or network failure is retried once after ~300 ms, and if that
+  fails too, or on any other status (`429`, `400`, ...), the token is kept and the caller gets the original error.
 - Every error rejects with `ApiError` (`status`, stable `code`, `fieldErrors`, `traceId`) mapped from
   Problem Details (D-60). Network failures are `status 0`, `code "network_error"`.
 
