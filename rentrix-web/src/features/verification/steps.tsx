@@ -48,7 +48,7 @@ function phoneMethod(identity: IdentityView | undefined) {
 }
 
 /**
- * The posting method other than the phone that is verified (D-139): masked Aadhaar or LinkedIn,
+ * The posting method other than the phone that is verified (D-144): masked Aadhaar or LinkedIn,
  * else null.
  */
 function otherPostingMethod(identity: IdentityView | undefined): string | null {
@@ -57,7 +57,7 @@ function otherPostingMethod(identity: IdentityView | undefined): string | null {
   return null
 }
 
-/** Pick any one (D-139): the phone form is on this step; Aadhaar and LinkedIn on the next one. */
+/** Pick any one (D-144): the phone form is on this step; Aadhaar and LinkedIn on the next one. */
 function AnyOneNotice({ identity }: { identity: IdentityView | undefined }) {
   const withNext = useWithNext()
   const other = otherPostingMethod(identity)
@@ -189,7 +189,7 @@ function clock(seconds: number): string {
 }
 
 /**
- * Step 2 · Verify (any one), required (D-139, mockup `verify-v4-phone.html`): any one of phone,
+ * Step 2 · Verify (any one), required (D-144, mockup `verify-v4-phone.html`): any one of phone,
  * masked Aadhaar or LinkedIn lets the user post; this step holds the phone. "Verify with Truecaller" first
  * (Android with a Truecaller key on the API), else or after it an SMS code. With `?next=` the user
  * goes straight back to what they were doing (D-119).
@@ -417,7 +417,7 @@ function ComingSoonCard({ title, text }: { title: string; text: string }) {
 }
 
 /**
- * Step 3 · Aadhaar, LinkedIn, PAN (D-120, D-122, D-139, mockup `verify-v4-id.html`): masked Aadhaar
+ * Step 3 · Aadhaar, LinkedIn, PAN (D-120, D-122, D-144, mockup `verify-v4-id.html`): masked Aadhaar
  * or LinkedIn, once checked, is the one method that lets the user post when they skip the phone;
  * otherwise they are optional extra badges. PAN and masked Aadhaar wait for the document upload
  * (PLAN B12); LinkedIn works now (D-93).
@@ -583,7 +583,7 @@ const MISSING_STEP: Record<string, { label: string; path: string }> = {
 
 /**
  * Submit · "Request verification" (D-133): optional, because posting is already open with any one
- * verified method (D-132, D-139). Sends every held role still in `DRAFT` or `REJECTED`.
+ * verified method (D-132, D-144). Sends every held role still in `DRAFT` or `REJECTED`.
  */
 export function SubmitStep({
   entries,

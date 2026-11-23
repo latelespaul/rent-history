@@ -117,7 +117,7 @@ public class VerificationService implements VerificationStatuses {
 		if (steps.profile() == StepStatus.MISSING) {
 			missing.add("profile");
 		}
-		if (steps.method() != StepStatus.DONE) {
+		if (steps.method() == StepStatus.MISSING) {
 			missing.add("method");
 		}
 		if (!missing.isEmpty()) {
@@ -186,7 +186,7 @@ public class VerificationService implements VerificationStatuses {
 		StepStatus profile = user.getDisplayName() != null && !user.getDisplayName().isBlank()
 			&& user.getHomeCity() != null ? StepStatus.DONE : StepStatus.MISSING;
 		StepStatus phone = identity.isPhoneVerified(user) ? StepStatus.DONE : StepStatus.MISSING;
-		// The posting rule (D-139): any one of phone, masked Aadhaar or LinkedIn verified.
+		// The posting rule (D-144): any one of phone, masked Aadhaar or LinkedIn verified.
 		StepStatus method = identity.hasPostingMethod(user) ? StepStatus.DONE
 			: identity.hasPendingPostingMethod(user) ? StepStatus.PENDING : StepStatus.MISSING;
 		// The optional extra ID (D-120): PAN or masked Aadhaar; skipped when the user has added neither.

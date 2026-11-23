@@ -17,7 +17,7 @@ describe("account-menu progress row (D-121)", () => {
     expect(progressOf([entry({ steps: { method: "PENDING" } })])?.kind).toBe("phone")
   })
 
-  it("counts LinkedIn or Aadhaar as the one method, without a phone (D-139)", () => {
+  it("counts LinkedIn or Aadhaar as the one method, without a phone (D-144)", () => {
     const linkedinOnly = entry({ steps: { phone: "MISSING", method: "DONE", linkedin: "DONE" } })
     expect(progressOf([linkedinOnly])).toMatchObject({ kind: "draft" })
     expect(doneSteps(linkedinOnly).phone).toBe(true)

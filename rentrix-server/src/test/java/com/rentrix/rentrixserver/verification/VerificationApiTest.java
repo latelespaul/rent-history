@@ -187,7 +187,7 @@ class VerificationApiTest {
 	@Test
 	void submitWithoutAVerifiedMethodIsRefusedWithTheMissingSteps() throws Exception {
 		User user = applicant("No phone", Role.TENANT);
-		// A pending PAN is optional extra ID: PAN is not a posting method (D-139).
+		// A pending PAN is optional extra ID: PAN is not a posting method (D-144).
 		check(user, IdentityMethod.PAN, IdentityStatus.PENDING);
 		submit(user, "TENANT")
 			.andExpect(status().isUnprocessableContent())
@@ -318,7 +318,7 @@ class VerificationApiTest {
 		decide(admin, id, "approve", "{}")
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("no_verified_method"));
-		// Verifying the pending PAN inside the call does not count: PAN is not a posting method (D-139), nothing is kept.
+		// Verifying the pending PAN inside the call does not count: PAN is not a posting method (D-144), nothing is kept.
 		decide(admin, id, "approve", "{\"identity\": [{\"id\": \"" + pan.getPublicId()
 			+ "\", \"result\": \"VERIFIED\"}]}")
 			.andExpect(status().isUnprocessableContent());
@@ -371,6 +371,41 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.code").value("identity_not_decidable"));
 		assertThat(checks.findByPublicId(strangerPan.getPublicId()).orElseThrow().getStatus())
 			.isEqualTo(IdentityStatus.PENDING);
+	}
+
+	@Test
+	void aPendingAadhaarOrLinkedinMaySubmitAndApproveDecidesItThenPostingOpens() throws Exception {
+		for (IdentityMethod method : List.of(IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN)) {
+			User user = applicant(method + " pending", Role.TENANT);
+			IdentityVerification only = check(user, method, IdentityStatus.PENDING);
+			gatedWrite(user, Role.TENANT).andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.missing[0]").value("method"));
+			UUID id = submitted(user, Role.TENANT);
+			decide(admin(), id, "approve", "{\"identity\": [{\"id\": \"" + only.getPublicId()
+				+ "\", \"result\": \"VERIFIED\"}]}").andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("APPROVED"));
+			assertThat(checks.findByPublicId(only.getPublicId()).orElseThrow().getStatus())
+				.isEqualTo(IdentityStatus.VERIFIED);
+			mvc.perform(get("/me/verification").header(HttpHeaders.AUTHORIZATION, bearer(user)))
+				.andExpect(jsonPath("$[0].steps.method").value("DONE"));
+			gatedWrite(user, Role.TENANT).andExpect(status().isOk());
+		}
+	}
+
+	@Test
+	void approveRejectingTheOnlyMethodIsRefusedAndKeepsNothing() throws Exception {
+		for (IdentityMethod method : List.of(IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN)) {
+			User user = applicant(method + " rejected", Role.TENANT);
+			IdentityVerification only = check(user, method, IdentityStatus.PENDING);
+			UUID id = submitted(user, Role.TENANT);
+			decide(admin(), id, "approve", "{\"identity\": [{\"id\": \"" + only.getPublicId()
+				+ "\", \"result\": \"REJECTED\", \"code\": \"OTHER\"}]}")
+				.andExpect(status().isUnprocessableContent())
+				.andExpect(jsonPath("$.code").value("no_verified_method"));
+			assertThat(checks.findByPublicId(only.getPublicId()).orElseThrow().getStatus())
+				.isEqualTo(IdentityStatus.PENDING);
+			assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.PENDING);
+		}
 	}
 
 	@Test
@@ -434,7 +469,7 @@ class VerificationApiTest {
 			.andExpect(jsonPath("$.code").value("id_verification_required"));
 		assertThat(applications.findByPublicId(id).orElseThrow().getStatus()).isEqualTo(VerificationStatus.APPROVED);
 
-		// A verified PAN is an extra badge only: PAN is not a posting method (D-139).
+		// A verified PAN is an extra badge only: PAN is not a posting method (D-144).
 		check(user, IdentityMethod.PAN, IdentityStatus.VERIFIED);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isForbidden());
 		// Verifying a phone again lifts it without a new approval.
@@ -442,7 +477,7 @@ class VerificationApiTest {
 		phone.setStatus(IdentityStatus.VERIFIED);
 		checks.save(phone);
 		gatedWrite(user, Role.LANDLORD).andExpect(status().isOk());
-		// With a verified Aadhaar too, losing the phone again leaves posting open (any one method, D-139).
+		// With a verified Aadhaar too, losing the phone again leaves posting open (any one method, D-144).
 		check(user, IdentityMethod.AADHAAR, IdentityStatus.VERIFIED);
 		new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
 			identity.phoneChanged(users.findById(user.getId()).orElseThrow()));

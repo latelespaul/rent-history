@@ -14,7 +14,7 @@ const counts = (status: StepStatus, alsoPending: boolean) =>
   status === "DONE" || (alsoPending && status === "PENDING")
 
 /**
- * Whether each step counts as done for one role (D-121, D-139): Profile and Rental details when
+ * Whether each step counts as done for one role (D-121, D-144): Profile and Rental details when
  * `DONE`; "Verify (any one)" when phone, masked Aadhaar or LinkedIn is verified (`method`); the
  * badges step when PAN, Aadhaar or LinkedIn is `DONE` or waiting for an admin (`PENDING`).
  */
@@ -38,7 +38,7 @@ export function nextStep(entry: VerificationEntry): (typeof STEPS)[number] | nul
   )
 }
 
-/** Whether the user may post (D-139): any one of phone, masked Aadhaar or LinkedIn is verified. */
+/** Whether the user may post (D-144): any one of phone, masked Aadhaar or LinkedIn is verified. */
 export function canPost(entries: VerificationEntry[]): boolean {
   return entries.some((entry) => (entry.steps.method ?? entry.steps.phone) === "DONE")
 }
@@ -66,7 +66,7 @@ const RANK: Record<VerificationEntry["status"], number> = {
 }
 
 /**
- * The one row the account menu shows (D-121, D-133, D-139): no verified method first ("Verify to
+ * The one row the account menu shows (D-121, D-133, D-144): no verified method first ("Verify to
  * post"), then the role that needs the user first: `REJECTED` ("Changes needed"), `DRAFT`
  * ("Get verified: n of 4 steps"), `PENDING` ("Waiting for review"). Null when nothing is open,
  * including for users who hold no tenant or landlord role.

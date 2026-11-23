@@ -161,7 +161,7 @@ describe("verification stepper", () => {
     expect(screen.getAllByText("Coming soon")).toHaveLength(2)
   })
 
-  it("offers any one method and counts a verified LinkedIn without a phone (D-139)", async () => {
+  it("offers any one method and counts a verified LinkedIn without a phone (D-144)", async () => {
     renderApp("/verify/phone")
     expect(await screen.findByText(/pick any one: phone, aadhaar or linkedin/i)).toBeTruthy()
     cleanup()

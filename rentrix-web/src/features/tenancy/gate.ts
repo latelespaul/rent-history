@@ -2,7 +2,7 @@ import { useLocation } from "react-router-dom"
 import { isApiError } from "@/api/errors"
 
 /**
- * The API's gate code for trust writes (D-132, D-139): the caller has no verified method (phone,
+ * The API's gate code for trust writes (D-132, D-144): the caller has no verified method (phone,
  * masked Aadhaar or LinkedIn). Since open by default the API no longer answers `approval_required`.
  */
 export const GATE_CODES = ["id_verification_required"] as const

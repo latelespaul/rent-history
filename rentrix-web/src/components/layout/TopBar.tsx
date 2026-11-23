@@ -102,13 +102,11 @@ function ProgressRow({ progress }: { progress: Progress }) {
     )
   const role = progress.role ? ROLE_WORD[progress.role] : null
   const hint =
-    progress.kind === "phone"
-      ? "Then you can post right away"
-      : progress.kind === "pending"
-        ? `You can post meanwhile${role ? ` · ${role}` : ""}`
-        : progress.kind === "rejected"
-          ? `See the reason and resubmit${role ? ` · ${role}` : ""}`
-          : `${progress.hint}${role ? ` · ${role}` : ""}`
+    progress.kind === "pending"
+      ? `You can post meanwhile${role ? ` · ${role}` : ""}`
+      : progress.kind === "rejected"
+        ? `See the reason and resubmit${role ? ` · ${role}` : ""}`
+        : `${progress.hint}${role ? ` · ${role}` : ""}`
   return (
     <span className="flex w-full items-start gap-2.5">
       <span className="mt-0.5 shrink-0">{icon}</span>

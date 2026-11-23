@@ -52,8 +52,9 @@ public class VerificationDecisions {
 	private final Clock clock;
 	
 	/**
-	 * Applies the identity results first (each audited), then needs the applicant's {@code VERIFIED}
-	 * phone ({@code 422 phone_not_verified}, D-117); on that refusal nothing is kept, the identity results included.
+	 * Applies the identity results first (each audited), then needs any one {@code VERIFIED} posting method of the
+	 * applicant: phone, masked Aadhaar or LinkedIn ({@code 422 no_verified_method}, D-144); on that refusal nothing is
+	 * kept, the identity results included.
 	 */
 	@Transactional
 	public AdminApplicationView approve(UUID adminId, UUID applicationId, String note, List<IdentityResult> results) {

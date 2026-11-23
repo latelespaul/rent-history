@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 import { freshLogin, pickRole } from "./support"
 
 /**
- * Verify with any one (captain 2026-11-22 23:25, D-139): to post, a user needs any one verified
+ * Verify with any one (captain 2026-11-22 23:25, D-144): to post, a user needs any one verified
  * method: phone, masked Aadhaar or LinkedIn. The stepper offers all three on its "Verify (any
  * one)" step, and a LinkedIn link counts once our team has checked it. The API tests cover
  * posting with only Aadhaar or only LinkedIn verified; the admin check of a LinkedIn link has no

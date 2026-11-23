@@ -7,6 +7,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ApiError } from "@/api/errors"
 import NotFoundPage from "@/pages/NotFoundPage"
 import { LAUNCH_CITIES, NINE_CITIES, SEED_STATS, byName } from "@/test/cities"
+import { progressOf } from "@/features/verification/progress"
 import { AppLayout } from "./AppLayout"
 import { initials, navFor, type ShellViewer } from "./nav"
 
@@ -155,6 +156,37 @@ describe("top bar", () => {
     expect(within(dialog).getByRole("link", { name: "Search" })).toBeTruthy()
     expect(within(dialog).getByRole("link", { name: "Sign in" })).toBeTruthy()
     expect(await within(dialog).findByRole("button", { name: /choose a city/i })).toBeTruthy()
+  })
+})
+
+describe("verification row", () => {
+  it("shows the any-one hint on the Verify to post row of the menu", async () => {
+    renderShell("/", {
+      shortName: "New T.",
+      roles: ["TENANT"],
+      isDemo: false,
+      progress: progressOf([
+        {
+          role: "TENANT",
+          status: "DRAFT",
+          revision: 1,
+          steps: {
+            profile: "DONE",
+            phone: "MISSING",
+            method: "MISSING",
+            identity: "SKIPPED",
+            linkedin: "SKIPPED",
+            rentalAgreement: "SKIPPED",
+          },
+        },
+      ]),
+    })
+    const user = userEvent.setup()
+    await user.click(within(banner()).getByRole("button", { name: "Menu" }))
+    const row = within(await screen.findByRole("dialog")).getByRole("link", {
+      name: /Verify to post/,
+    })
+    expect(row.textContent).toContain("Any one: phone, Aadhaar or LinkedIn")
   })
 })
 

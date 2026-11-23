@@ -26,9 +26,9 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 /**
- * Identity checks per user (§5.15, D-99 – D-106, D-117, D-139). The two rules the gate and the badge use live here: a
+ * Identity checks per user (§5.15, D-99 – D-106, D-117, D-144). The two rules the gate and the badge use live here: a
  * user may post when any one posting method is {@code VERIFIED}: the phone (SMS code or Truecaller), masked Aadhaar or
- * LinkedIn ({@link #hasPostingMethod}, D-139, which replaces phone-only D-117), and is <b>ID verified</b> (the public
+ * LinkedIn ({@link #hasPostingMethod}, D-144, which replaces phone-only D-117), and is <b>ID verified</b> (the public
  * badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED} ({@link #isIdVerified}, D-100). The methods the user
  * did not need to post stay optional extra badges. The same rules hold for tenants and landlords.
  */
@@ -48,17 +48,20 @@ public class IdentityService {
 		IdentityMethod.TRUECALLER);
 	
 	/**
-	 * The methods that let a user post (D-139, captain 2026-11-22): any one of phone (SMS code or Truecaller), masked
+	 * The methods that let a user post (D-144, captain 2026-11-22): any one of phone (SMS code or Truecaller), masked
 	 * Aadhaar or LinkedIn, {@code VERIFIED}. PAN is not one of them; it only gives the "ID verified" badge.
 	 */
 	public static final Set<IdentityMethod> POSTING_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
 		IdentityMethod.TRUECALLER, IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN);
 	
-	/** The ID methods an admin decides from an upload, also inside an application decision (D-102, D-103, D-105). */
+	/**
+	 * The methods an admin decides, also inside an application decision (D-102, D-103, D-105): PAN and Aadhaar from
+	 * an upload, and LinkedIn from its link (D-144).
+	 */
 	public static final Set<IdentityMethod> ADMIN_CHECKED_ID_METHODS =
-		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
+		EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN, IdentityMethod.LINKEDIN);
 	
-	/** Reject codes an admin can give a PAN or Aadhaar check (§5.15). */
+	/** Reject codes an admin can give a PAN, Aadhaar or LinkedIn check (§5.15). */
 	static final Set<IdentityRejectCode> ADMIN_REJECT_CODES = EnumSet.of(IdentityRejectCode.ID_UNREADABLE,
 		IdentityRejectCode.ID_NAME_MISMATCH, IdentityRejectCode.AADHAAR_NOT_MASKED, IdentityRejectCode.OTHER);
 	
@@ -79,7 +82,7 @@ public class IdentityService {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
 	}
 	
-	/** The posting rule (D-139): any one of {@link #POSTING_METHODS} is verified and not revoked. */
+	/** The posting rule (D-144): any one of {@link #POSTING_METHODS} is verified and not revoked. */
 	@Transactional(readOnly = true)
 	public boolean hasPostingMethod(User user) {
 		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, POSTING_METHODS,
@@ -196,7 +199,7 @@ public class IdentityService {
 	}
 	
 	/**
-	 * An admin decides one {@code PENDING} PAN or Aadhaar check of {@code owner} while deciding their application
+	 * An admin decides one {@code PENDING} PAN, Aadhaar or LinkedIn check of {@code owner} while deciding their application
 	 * (D-105), audited as {@code VERIFY_IDENTITY} / {@code REJECT_IDENTITY} (D-87) in the caller's transaction.
 	 * A reject needs a code. The ID file is deleted on the decision once files exist (PLAN B12, D-96).
 	 *
@@ -211,7 +214,7 @@ public class IdentityService {
 			.orElseThrow(() -> ApiException.notFound("Identity check"));
 		if (!ADMIN_CHECKED_ID_METHODS.contains(row.getMethod())) {
 			throw ApiException.rule("identity_not_decidable",
-				"Only PAN and masked Aadhaar checks are decided with an application.");
+				"Only PAN, masked Aadhaar and LinkedIn checks are decided with an application.");
 		}
 		if (row.getStatus() != IdentityStatus.PENDING) {
 			throw ApiException.conflict("invalid_transition", "This identity check is not waiting for a decision.");

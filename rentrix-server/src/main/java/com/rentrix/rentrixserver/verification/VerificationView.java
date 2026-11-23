@@ -25,7 +25,7 @@ public record VerificationView(
 ) {
 	
 	/**
-	 * The stepper's steps (D-120, D-139): the profile and any one verified method ({@code method}: phone, masked
+	 * The stepper's steps (D-120, D-144): the profile and any one verified method ({@code method}: phone, masked
 	 * Aadhaar or LinkedIn; {@code PENDING} while only an admin-checked one waits) are required to request
 	 * verification. {@code phone}, {@code identity} (PAN or Aadhaar) and {@code linkedin} show each method on its own;
 	 * the rental details are optional.

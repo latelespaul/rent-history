@@ -3,7 +3,7 @@ import { ClockIcon } from "@/components/ui/icons.gen"
 import { Container } from "./Container"
 
 /**
- * "Verify to post" (D-120, D-132, D-139): on every page while the signed-in user has no verified
+ * "Verify to post" (D-120, D-132, D-144): on every page while the signed-in user has no verified
  * method (phone, masked Aadhaar or LinkedIn), except inside the stepper and the welcome screens. The link brings the user back
  * here afterwards (`?next=`, D-119).
  */
