@@ -938,7 +938,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/admin/tenancies?status=&city=&q=`, `/admin/reviews?status=&direction=&city=&q=` | records lists |
 | GET | `/admin/tenancies/{id}`, `/admin/reviews/{id}`, `/admin/properties/{id}` | record detail with audit trail |
 | GET | `/admin/reports?status=` | reports queue |
-| POST | `/admin/reports/{id}/resolve` | `{outcome: DISMISS|HIDE|VOID_TENANCY|SUSPEND_USER, note}`. *Built (W9 PR 2)*: `DISMISS` (`DISMISS_REPORT`) and `HIDE` of a reported review (`{code, note?}`, the review is hidden as above and the report `ACTIONED`); the reporter as admin `403 admin_conflict`; `VOID_TENANCY` and `SUSPEND_USER` follow |
+| POST | `/admin/reports/{id}/resolve` | `{outcome: DISMISS|HIDE|VOID_TENANCY|SUSPEND_USER, note}`. *Built (W9 PR 2)*: `DISMISS` (`DISMISS_REPORT`) and `HIDE` of a reported review (`{code, note?}`, the review is hidden as above and the report `ACTIONED`); the reporter, or a party to the reported item (D-88), as admin `403 admin_conflict` on either outcome; `VOID_TENANCY` and `SUSPEND_USER` follow |
 | POST | `/admin/reviews/{id}/hide`, `/restore` | |
 | POST | `/admin/tenancies/{id}/void` | |
 | POST | `/admin/tenancy-documents/{id}/accept`, `/reject` | |
