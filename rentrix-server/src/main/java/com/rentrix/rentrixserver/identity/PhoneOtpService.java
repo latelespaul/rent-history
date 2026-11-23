@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.config.BrandProperties;
 import com.rentrix.rentrixserver.notification.sms.AdminRelaySmsSender;
+import com.rentrix.rentrixserver.notification.sms.PhoneMasks;
 import com.rentrix.rentrixserver.notification.sms.SmsSendException;
 import com.rentrix.rentrixserver.notification.sms.SmsSender;
 import com.rentrix.rentrixserver.user.User;
@@ -130,6 +131,9 @@ public class PhoneOtpService {
 		boolean telegram = useTelegram(channel);
 		String phone = normalisePhone(phoneInput).orElseThrow(() -> ApiException.validation(List.of(
 			new ApiProblem.FieldError("phone", "pattern", "Use an Indian mobile number, e.g. +919876543210."))));
+		if (properties.isTestNumber(phone)) {
+			return startTestNumber(userId, phone);
+		}
 		if (telegram) {
 			return startTelegram(userId, phone, availability.telegram().orElseThrow(PhoneOtpService::unavailable));
 		}
@@ -148,6 +152,23 @@ public class PhoneOtpService {
 		log.info("Phone OTP challenge {} started for user {}", challenge.getPublicId(), userId);
 		return new Started(challenge.getPublicId(), challenge.getExpiresAt(),
 			sender instanceof AdminRelaySmsSender ? Started.TEAM : Started.SMS);
+	}
+	
+	/**
+	 * A test-range number (firstmate 2026-11-23): the code is held for the admin relay page (and the dev log) and is
+	 * never sent by SMS, the Telegram Gateway or the relay's Telegram push. With a real sender, it is not sent at all.
+	 */
+	private Started startTestNumber(UUID userId, String phone) {
+		SmsSender sender = availability.sender().orElse(null);
+		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
+		PhoneOtpChallenge challenge = reserve(userId, phone, hasher.hmac(phone), code, PhoneOtpChallenge.SMS);
+		if (sender instanceof AdminRelaySmsSender relay) {
+			relay.send(phone, code + " is your " + brand.name() + " verification code.");
+		} else {
+			log.info("Phone OTP for test number {} held back: not sent (OTP_TEST_NUMBER_PREFIX)", PhoneMasks.mask(phone));
+		}
+		log.info("Phone OTP challenge {} started for user {} (test number)", challenge.getPublicId(), userId);
+		return new Started(challenge.getPublicId(), challenge.getExpiresAt(), Started.TEAM);
 	}
 	
 	private boolean useTelegram(String channel) {

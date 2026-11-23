@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,6 +42,7 @@ public class AdminRelaySmsSender implements SmsSender {
 	private final Clock clock;
 	private final boolean logCodes;
 	private final RelayPush push;
+	private final Predicate<String> neverPush;
 	
 	/**
 	 * @param ttl      how long a code is kept: the OTP lifetime ({@code OTP_TTL_MINUTES})
@@ -54,10 +56,19 @@ public class AdminRelaySmsSender implements SmsSender {
 	 * @param push also called with each held code; {@link RelayPush#NONE} for none
 	 */
 	public AdminRelaySmsSender(Duration ttl, Clock clock, boolean logCodes, RelayPush push) {
+		this(ttl, clock, logCodes, push, phone -> false);
+	}
+	
+	/**
+	 * @param neverPush numbers whose codes stay on the relay page and log only: the test range, never pushed
+	 */
+	public AdminRelaySmsSender(Duration ttl, Clock clock, boolean logCodes, RelayPush push,
+		Predicate<String> neverPush) {
 		this.ttl = ttl;
 		this.clock = clock;
 		this.logCodes = logCodes;
 		this.push = push;
+		this.neverPush = neverPush;
 	}
 	
 	@Override
@@ -74,6 +85,9 @@ public class AdminRelaySmsSender implements SmsSender {
 				text);
 		} else {
 			log.info("SMS code for {} held for admins (SMS_BACKEND=admin-relay, not sent)", PhoneMasks.mask(phoneE164));
+		}
+		if (neverPush.test(phoneE164)) {
+			return;
 		}
 		try {
 			push.push(phoneE164, held.code(), held.expiresAt());

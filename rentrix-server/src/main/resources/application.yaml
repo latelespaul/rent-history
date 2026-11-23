@@ -135,6 +135,9 @@ app:
     # HMAC key for phone numbers, PAN and OTP codes (D-101, D-106). Env only, >= 32 bytes.
     hash-key: ${ID_HASH_KEY:}
     otp-ttl: ${OTP_TTL_MINUTES:10}m       # phone OTP lifetime (D-101)
+    # Test phone numbers (+91 99999 0xxxx): codes held for the admin relay and log only, never sent
+    # by SMS, the Telegram Gateway or the relay's Telegram push. E2E and release gates use only these.
+    otp-test-number-prefix: ${OTP_TEST_NUMBER_PREFIX:+91999990}
   # Preview deployment flag (D-137): allows SMS_BACKEND=admin-relay under prod. Off = live mode.
   preview-mode: ${PREVIEW_MODE:false}
   truecaller:

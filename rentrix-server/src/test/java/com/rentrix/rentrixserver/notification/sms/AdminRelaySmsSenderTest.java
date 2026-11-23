@@ -90,4 +90,19 @@ class AdminRelaySmsSenderTest {
 			.doesNotContain("telegram down");
 	}
 	
+	/** Firstmate 2026-11-23: a test-range number is held for admins but never pushed to Telegram. */
+	@Test
+	void aTestNumberIsHeldButNeverPushed() {
+		java.util.List<String> pushed = new java.util.ArrayList<>();
+		String test = "+919999901234";
+		AdminRelaySmsSender relay = new AdminRelaySmsSender(Duration.ofMinutes(10), clock, false,
+			(phone, code, expiresAt) -> pushed.add(phone), phone -> phone.startsWith("+91999990"));
+		relay.send(test, "482913 is your Rentrix verification code.");
+		assertThat(pushed).isEmpty();
+		assertThat(relay.pending()).singleElement().extracting(AdminRelaySmsSender.RelayedCode::code)
+			.isEqualTo("482913");
+		relay.send(PHONE, "111222 is your Rentrix verification code.");
+		assertThat(pushed).containsExactly(PHONE);
+	}
+	
 }

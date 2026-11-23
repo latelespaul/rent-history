@@ -95,4 +95,18 @@ class AdminRelaySmsTest {
 		assertThat(identity.isPhoneVerified(user)).isTrue();
 	}
 	
+	@Test
+	void aTestNumberIsShownInFullSoE2eRunsFindTheirOwnCode() throws Exception {
+		User user = data.user("Gate tenant", Role.TENANT);
+		User admin = data.user("Gate admin", Role.ADMIN);
+		mvc.perform(post("/me/identity/phone/start").header(HttpHeaders.AUTHORIZATION, bearer(user))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\"+919999901234\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.delivery").value("TEAM"));
+		mvc.perform(get("/admin/sms-relay").with(adminHost())
+				.header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[?(@.userId == '" + user.getPublicId() + "')].phone").value("+919999901234"));
+	}
+	
 }

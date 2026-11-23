@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test"
-import { freshLogin, pickRole, verifyPhone } from "./support"
+import { freshLogin, pickRole, verifyPhone, testPhone } from "./support"
 
 /**
- * Phone code through the Telegram Gateway (D-146). The e2e stack runs the fake gateway
- * (`TELEGRAM_GATEWAY_FAKE=true`, dev profile), which hands each code to the admin relay instead of
- * Telegram, so `verifyPhone` reads it at `GET /admin/sms-relay` as it does an SMS code.
+ * The phone step offers Telegram first (D-146). The number is a test one (+91 99999 0xxxx), so the
+ * code never goes to Telegram or SMS, even through the fake gateway: it is held for the admin relay,
+ * where `verifyPhone` reads it. The Telegram send itself is covered by `TelegramPhoneCodeTest`.
  */
 test("a new user gets the phone code on Telegram by default and the phone counts as verified", async ({
   page,
@@ -20,7 +20,7 @@ test("a new user gets the phone code on Telegram by default and the phone counts
     page.getByRole("button", { name: /no telegram\? get the code by sms/i }),
   ).toBeVisible()
 
-  await verifyPhone(page, `9${Date.now().toString().slice(-8)}1`)
+  await verifyPhone(page, testPhone())
 
   await expect(page).toHaveURL(/\/verify\/id/)
   await expect(page.getByText(/phone verified · \+91 xxxxxx\d{4}/i)).toBeVisible()

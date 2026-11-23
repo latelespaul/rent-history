@@ -60,7 +60,31 @@ class TelegramPhoneCodeTest {
 
 	/** A random Indian mobile number that is never the fake's "no Telegram" number. */
 	static String phone() {
-		return "+919" + String.format("%08d", ThreadLocalRandom.current().nextLong(100_000_000L)) + "1";
+		String phone;
+		do {
+			phone = "+919" + String.format("%08d", ThreadLocalRandom.current().nextLong(100_000_000L)) + "1";
+		} while (phone.startsWith(IdentityProperties.DEFAULT_TEST_PREFIX));
+		return phone;
+	}
+	
+	/** Firstmate 2026-11-23: a test-range number never goes to the Telegram Gateway, even when it is the default. */
+	@Test
+	void aTestNumberNeverGoesToTelegram() throws Exception {
+		User user = data.user("Test number user", Role.TENANT);
+		String phone = "+919999904321";
+		for (String body : new String[] {"{\"phone\":\"" + phone + "\"}",
+			"{\"phone\":\"" + phone + "\",\"channel\":\"TELEGRAM\"}"}) {
+			MockHttpServletResponse started = start(user, body);
+			assertThat(started.getStatus()).as(started.getContentAsString()).isEqualTo(200);
+			assertThat(body(started).get("delivery").asString()).isEqualTo("TEAM");
+		}
+		org.assertj.core.api.Assertions.assertThatThrownBy(() -> fake().lastCode(phone))
+			.isInstanceOf(IllegalStateException.class);
+		assertThat(challenges.findAll().stream().filter(c -> phone.equals(c.getPhoneE164())))
+			.isNotEmpty().allSatisfy(c -> {
+				assertThat(c.getChannel()).isEqualTo(PhoneOtpChallenge.SMS);
+				assertThat(c.getGatewayRequestId()).isNull();
+			});
 	}
 
 	private FakeTelegramGateway fake() {

@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.admin;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.identity.IdentityProperties;
 import com.rentrix.rentrixserver.identity.PhoneOtpChallenge;
 import com.rentrix.rentrixserver.identity.PhoneOtpChallengeRepository;
 import com.rentrix.rentrixserver.notification.sms.AdminRelaySmsSender;
@@ -28,17 +29,20 @@ import java.util.UUID;
 @RestController
 public class AdminSmsRelayController {
 	
-	/** One relayed code; the phone is masked (D-106). */
+	/** One relayed code; the phone is masked (D-106), except a test-range number, which is shown in full. */
 	public record RelayedCodeView(UUID userId, String displayName, String email, String phone, String code,
 		Instant sentAt, Instant expiresAt) {
 	}
 	
 	private final AdminRelaySmsSender relay;
 	private final PhoneOtpChallengeRepository challenges;
+	private final IdentityProperties identity;
 	
-	public AdminSmsRelayController(ObjectProvider<SmsSender> sender, PhoneOtpChallengeRepository challenges) {
+	public AdminSmsRelayController(ObjectProvider<SmsSender> sender, PhoneOtpChallengeRepository challenges,
+		IdentityProperties identity) {
 		this.relay = sender.getIfAvailable() instanceof AdminRelaySmsSender r ? r : null;
 		this.challenges = challenges;
+		this.identity = identity;
 	}
 	
 	@GetMapping("/admin/sms-relay")
@@ -52,7 +56,9 @@ public class AdminSmsRelayController {
 				.orElse(null);
 			return new RelayedCodeView(challenge == null ? null : challenge.getUser().getPublicId(),
 				challenge == null ? null : challenge.getUser().getDisplayName(),
-				challenge == null ? null : challenge.getUser().getEmail(), PhoneMasks.mask(code.phoneE164()),
+				challenge == null ? null : challenge.getUser().getEmail(),
+				// A test number belongs to no one, so e2e runs can find their own code by the full number.
+				identity.isTestNumber(code.phoneE164()) ? code.phoneE164() : PhoneMasks.mask(code.phoneE164()),
 				code.code(), code.sentAt(), code.expiresAt());
 		}).toList();
 		log.info("Admin {} read {} relayed SMS codes", caller.publicId(), codes.size());

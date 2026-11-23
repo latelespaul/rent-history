@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, pickRole, verifyPhone } from "./support"
+import { daysAgo, freshLogin, pickRole, verifyPhone, testPhone } from "./support"
 
 /**
  * The new-user journey, from a brand-new account (dev-only fresh-user login) to something on a
@@ -39,7 +39,7 @@ test("a new tenant adds their home, records the tenancy, reviews it and finds it
   const tag = Date.now().toString(36)
   const society = `E2E Society ${tag}`
   const flat = `F-${tag}`
-  const phone = `9${Date.now().toString().slice(-9)}`
+  const phone = testPhone()
   const ownerPhone = "+919800012345"
   const review =
     "Bright rooms and steady water supply. The landlord fixed every repair within a week."

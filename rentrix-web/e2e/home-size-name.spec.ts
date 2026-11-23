@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, verifyPhone } from "./support"
+import { daysAgo, freshLogin, verifyPhone, testPhone } from "./support"
 
 /**
  * Captain 2026-11-23 17:18, at 390 px: (1) the home size is a chip (1 RK … 5+ BHK, Studio, Other
@@ -12,7 +12,7 @@ test("a typed society name and an 'Other' home size save, show and filter", asyn
   test.setTimeout(testInfo.timeout * 2)
   const tag = `${Date.now().toString(36)}${testInfo.project.name[0]}`
   const society = `Typed Greens ${tag}`
-  const phone = `${testInfo.project.name === "mobile" ? 8 : 9}${Date.now().toString().slice(-9)}`
+  const phone = testPhone()
   const shot = (name: string) =>
     page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true })
 

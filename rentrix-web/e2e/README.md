@@ -38,5 +38,8 @@ Against a deployed stack (DEV), also set:
   seed landlord, home and tenant per project.
 - Sign in with `devLogin(page, "Demo Tenant BLR-1")` (a seed user) or `freshLogin(page)` (a new
   account that still has to pick a role; `POST /auth/dev-login/new`, dev and test only).
+- Verify a phone only with `verifyPhone(page, testPhone())`: test numbers (`+91 99999 0xxxx`) are
+  never sent by SMS or Telegram (root README "Test phone numbers"), and `verifyPhone` refuses any
+  other number.
 - A bug found by a click-test becomes a spec. While another PR is fixing it, mark the spec
   `test.fixme` with the bug reference in its title, and flip it to `test` when the fix merges.

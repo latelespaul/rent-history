@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { freshLogin, verifyPhone } from "./support"
+import { freshLogin, verifyPhone, testPhone } from "./support"
 
 /**
  * Release gate for "Add your home" before LIVE (captain 2026-11-23 11:35): every step 1-4 and
@@ -349,7 +349,7 @@ test.describe("add your home release gate (390 px)", () => {
     await page.getByRole("checkbox", { name: /I accept the Terms/ }).check()
     await page.getByRole("button", { name: "Continue" }).click()
     await page.getByTestId("welcome-verify").click()
-    await verifyPhone(page, `7${Date.now().toString().slice(-9)}`)
+    await verifyPhone(page, testPhone())
     await expect(page).toHaveURL(/\/homes\/new$/)
 
     for (const scenario of SCENARIOS) {

@@ -55,7 +55,8 @@ public class SmsConfig {
 			push = telegramPush(properties.telegram(), brand, challenges, transactions, clock);
 			log.info("admin-relay codes are also pushed to {} Telegram chat(s)", properties.telegram().chatIds().size());
 		}
-		return new AdminRelaySmsSender(identity.otpTtl(), clock, env.acceptsProfiles(Profiles.of("dev")), push);
+		return new AdminRelaySmsSender(identity.otpTtl(), clock, env.acceptsProfiles(Profiles.of("dev")), push,
+			identity::isTestNumber);
 	}
 	
 	private static RelayPush telegramPush(SmsProperties.Telegram telegram, BrandProperties brand,

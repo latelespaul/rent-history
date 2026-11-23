@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, verifyPhone } from "./support"
+import { daysAgo, freshLogin, verifyPhone, testPhone } from "./support"
 
 /**
  * After "Save my home" the flow goes on (captain 2026-11-23 14:53): "Home added. 1 optional step
@@ -13,7 +13,7 @@ test("the next steps after adding a home: skip both, then review from My tenanci
   test.setTimeout(testInfo.timeout * 2)
   const tag = `${Date.now().toString(36)}${testInfo.project.name[0]}`
   const building = `Next Steps Court ${tag}`
-  const phone = `${testInfo.project.name === "mobile" ? 8 : 9}${Date.now().toString().slice(-9)}`
+  const phone = testPhone()
   const review =
     "Quiet street and a fair landlord. The water supply was steady through every summer month."
 
@@ -93,7 +93,7 @@ test("a home left years ago can be reviewed from the next-steps screen", async (
   test.setTimeout(testInfo.timeout * 2)
   const tag = `${Date.now().toString(36)}${testInfo.project.name[0]}`
   const building = `Old Steps Court ${tag}`
-  const phone = `${testInfo.project.name === "mobile" ? 8 : 9}${Date.now().toString().slice(-9)}`
+  const phone = testPhone()
   const review =
     "A calm lane and a landlord who fixed things quickly. The water supply was steady all year."
 

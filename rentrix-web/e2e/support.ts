@@ -1,5 +1,5 @@
 import { appendFileSync } from "node:fs"
-import { expect, request, type Page } from "@playwright/test"
+import { expect, request, test, type Page } from "@playwright/test"
 
 /**
  * Shared steps for the e2e specs. They drive the real UI only; the stack must run the API in the
@@ -82,6 +82,27 @@ export async function apiBaseUrl(page: Page) {
 }
 
 /**
+ * The test phone numbers, +91 99999 0xxxx (`OTP_TEST_NUMBER_PREFIX`, firstmate 2026-11-23): their
+ * codes are held for the admin relay and never sent by SMS or Telegram. Every e2e run uses only
+ * these, so no run on a shared stack (DEV) pushes a code to anyone.
+ */
+const TEST_PHONE = /^999990\d{4}$/
+
+let testPhoneCalls = 0
+
+/**
+ * A number in the test range, as the 10 digits the phone step takes. The last digit is the
+ * project's index, so desktop and mobile never share one; the three before it come from the
+ * clock, the worker and a per-worker counter, so each call gets its own number.
+ */
+export function testPhone(): string {
+  const info = test.info()
+  const project = info.config.projects.findIndex((p) => p.name === info.project.name)
+  const slot = (Math.floor(Date.now() / 1000) + info.parallelIndex * 100 + testPhoneCalls++) % 1000
+  return `999990${String(slot).padStart(3, "0")}${Math.max(project, 0) % 10}`
+}
+
+/**
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
  * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
@@ -90,6 +111,10 @@ export async function apiBaseUrl(page: Page) {
  * carry `X-Forwarded-Host: admin.<host>`, which the API honours from loopback and Docker peers only.
  */
 export async function verifyPhone(page: Page, digits: string) {
+  expect(
+    TEST_PHONE.test(digits),
+    `e2e uses test numbers only (+91 99999 0xxxx), got …${digits.slice(-4)}`,
+  ).toBe(true)
   await expect(page).toHaveURL(/\/verify\/phone/)
   await page.getByLabel(/your mobile number/i).fill(digits)
   await page.getByRole("button", { name: /send code/i }).click()
@@ -125,7 +150,7 @@ export async function verifyPhone(page: Page, digits: string) {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
   ).json()) as Array<{ phone: string; code: string }>
-  const code = relayed.find((c) => c.phone.endsWith(digits.slice(-4)))?.code
+  const code = relayed.find((c) => c.phone.endsWith(digits))?.code
   await api.dispose()
   expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
   await page.getByLabel(/enter the 6-digit code/i).fill(code!)
