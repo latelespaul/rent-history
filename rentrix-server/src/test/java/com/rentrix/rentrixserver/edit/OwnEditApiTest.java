@@ -463,6 +463,38 @@ class OwnEditApiTest {
 	}
 
 	@Test
+	void aRepeatChangeRequestJoinsTheOpenOneAndReopensAHandledOne() throws Exception {
+		User tenant = tenant("Repeat Request Tenant");
+		String tenancy = addHome(tenant, "M-130", TODAY.minusMonths(3)).at("/tenancy/id").asString();
+		String body = """
+			{"targetType": "TENANCY", "targetId": "%s", "note": "%s"}""";
+		String first = json.readTree(mvc.perform(post("/me/change-requests")
+				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(tenancy, "Please remove this tenancy.")))
+			.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asString();
+		mvc.perform(post("/me/change-requests").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body.formatted(tenancy, "Also the rent record of last month.")))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(first));
+		assertThat(jdbc.queryForObject("select details from reports where public_id = ?", String.class, first))
+			.isEqualTo("Please remove this tenancy.\n\nAlso the rent record of last month.");
+
+		User admin = admin();
+		mvc.perform(post("/admin/reports/" + first + "/resolve").with(adminHost())
+				.header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"outcome\": \"DISMISS\"}"))
+			.andExpect(status().isOk());
+		mvc.perform(post("/me/change-requests").header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content(body.formatted(tenancy, "Asking again.")))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.id").value(first));
+		mvc.perform(get("/admin/queue").with(adminHost()).header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin))
+				.param("type", "REPORT"))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].details[1]".formatted(first)).value("Asking again."));
+	}
+
+	@Test
 	void theHistoryNeverHoldsAFullIdNumber() {
 		assertThat(EditHistory.mask("my aadhaar 1234 5678 9012 and PAN ABCDE1234F"))
 			.isEqualTo("my aadhaar XXXX XXXX 9012 and PAN XXXXXXXXXX");
