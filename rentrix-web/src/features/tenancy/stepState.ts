@@ -31,7 +31,7 @@ export function agreementStep(tenancy: Tenancy): AgreementStep {
 
 /**
  * The tenant's review of the home (D-27): `todo` while the window is open and no review is
- * written (`GET /me/review-tasks` lists it), `done` once written, `later` until the D-39 window
+ * written (`GET /me/review-tasks` lists it), `done` once written (`tenancy.reviewed`), `later` until the D-39 window
  * opens on `today` (`YYYY-MM-DD`). `tasks` undefined = not loaded.
  */
 export function reviewStep(
@@ -44,7 +44,8 @@ export function reviewStep(
   if (window.state === "not_yet") return { state: "later", opens: window.opens }
   if (window.state !== "open" || tasks === undefined) return { state: "none" }
   const open = tasks.some((t) => t.tenancyId === tenancy.id && t.direction === "TENANT_TO_PROPERTY")
-  return open ? { state: "todo" } : { state: "done" }
+  if (open) return { state: "todo" }
+  return tenancy.reviewed ? { state: "done" } : { state: "none" }
 }
 
 /**

@@ -53,7 +53,12 @@ describe("the two optional next steps", () => {
   it("offers the review while its window is open and nothing is written", () => {
     const task = [{ tenancyId: "t1", direction: "TENANT_TO_PROPERTY" as const }]
     expect(reviewStep(base, task, "2026-11-23")).toEqual({ state: "todo" })
-    expect(reviewStep(base, [], "2026-11-23")).toEqual({ state: "done" })
+    expect(reviewStep({ ...base, reviewed: true }, [], "2026-11-23")).toEqual({ state: "done" })
+    // Opening day: the browser's date already opens the window but the server's (UTC) does not list
+    // the task yet. Nothing was written, so it is not "done".
+    expect(reviewStep({ ...base, startDate: "2026-09-24" }, [], "2026-11-23")).toEqual({
+      state: "none",
+    })
     expect(reviewStep(base, undefined, "2026-11-23")).toEqual({ state: "none" })
     // D-39: the review opens 60 days after moving in.
     expect(reviewStep({ ...base, startDate: "2026-11-01" }, task, "2026-11-23")).toEqual({
