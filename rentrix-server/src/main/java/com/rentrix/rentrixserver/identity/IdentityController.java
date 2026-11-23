@@ -43,7 +43,8 @@ public class IdentityController {
 	private final TruecallerService truecaller;
 	private final UserRepository users;
 	
-	public record PhoneStartRequest(@NotBlank @Size(max = 20) String phone) {
+	/** {@code channel}: {@code TELEGRAM}, {@code SMS} or absent for the default (Telegram when configured, D-146). */
+	public record PhoneStartRequest(@NotBlank @Size(max = 20) String phone, @Size(max = 16) String channel) {
 	}
 	
 	public record PhoneConfirmRequest(@NotNull UUID challengeId, @NotBlank @Size(max = 6) String code) {
@@ -61,7 +62,7 @@ public class IdentityController {
 	@PostMapping("/phone/start")
 	public PhoneOtpService.Started startPhone(@AuthenticationPrincipal AuthenticatedUser caller,
 		@Valid @RequestBody PhoneStartRequest body) {
-		return phoneOtp.start(caller.publicId(), body.phone());
+		return phoneOtp.start(caller.publicId(), body.phone(), body.channel());
 	}
 	
 	@PostMapping("/phone/confirm")

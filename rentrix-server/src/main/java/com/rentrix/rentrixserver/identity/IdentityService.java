@@ -43,16 +43,16 @@ public class IdentityService {
 	 */
 	public static final Set<IdentityMethod> ID_METHODS = EnumSet.of(IdentityMethod.AADHAAR, IdentityMethod.PAN);
 	
-	/** The methods that verify the account's phone (D-117): an SMS code or Truecaller. Either one counts. */
+	/** The methods that verify the account's phone (D-117): an SMS code, Truecaller or Telegram. Any one counts. */
 	public static final Set<IdentityMethod> PHONE_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
-		IdentityMethod.TRUECALLER);
+		IdentityMethod.TRUECALLER, IdentityMethod.TELEGRAM);
 	
 	/**
-	 * The methods that let a user post (D-144, captain 2026-11-22): any one of phone (SMS code or Truecaller), masked
+	 * The methods that let a user post (D-144, captain 2026-11-22): any one of phone (SMS code, Truecaller or Telegram), masked
 	 * Aadhaar or LinkedIn, {@code VERIFIED}. PAN is not one of them; it only gives the "ID verified" badge.
 	 */
 	public static final Set<IdentityMethod> POSTING_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
-		IdentityMethod.TRUECALLER, IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN);
+		IdentityMethod.TRUECALLER, IdentityMethod.TELEGRAM, IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN);
 	
 	/**
 	 * The methods an admin decides, also inside an application decision (D-102, D-103, D-105): PAN and Aadhaar from
@@ -289,6 +289,7 @@ public class IdentityService {
 	private IdentityView.Method method(IdentityMethod method, IdentityVerification row) {
 		boolean available = switch (method) {
 			case PHONE_OTP -> phoneOtp.available();
+			case TELEGRAM -> phoneOtp.telegramAvailable();
 			case TRUECALLER -> truecallerAvailable();
 			case LINKEDIN -> true;
 			// PAN and masked Aadhaar need the private document upload of PLAN B12.
@@ -315,7 +316,7 @@ public class IdentityService {
 		return switch (row.getMethod()) {
 			case PAN -> "XXXXXX" + last4;
 			case AADHAAR -> "XXXX XXXX " + last4;
-			case PHONE_OTP, TRUECALLER -> PhoneMasks.fromLast4(last4);
+			case PHONE_OTP, TRUECALLER, TELEGRAM -> PhoneMasks.fromLast4(last4);
 			case LINKEDIN -> throw new IllegalStateException("unreachable");
 		};
 	}

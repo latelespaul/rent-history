@@ -140,6 +140,18 @@ class StartupGuardTest {
 	}
 	
 	@Test
+	void prodRefusesTheFakeTelegramGatewayAndATokenWithoutAHashKey() {
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.telegram-gateway.fake", "true")))
+			.hasMessageContaining("TELEGRAM_GATEWAY_FAKE");
+		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.telegram-gateway.token", "tg-token")))
+			.hasMessageContaining("TELEGRAM_GATEWAY_TOKEN needs ID_HASH_KEY")
+			.satisfies(e -> assertThat(e.getMessage()).doesNotContain("tg-token"));
+		assertThatCode(() -> StartupGuard.check(prod().withProperty("app.telegram-gateway.token", "tg-token")
+			.withProperty("app.identity.hash-key", "a-production-id-hash-key-long-enough-0123456789")))
+			.doesNotThrowAnyException();
+	}
+	
+	@Test
 	void prodRefusesTheLogSmsBackend() {
 		assertThatThrownBy(() -> StartupGuard.check(prod().withProperty("app.sms.backend", "log")))
 			.hasMessageContaining("SMS_BACKEND=log");

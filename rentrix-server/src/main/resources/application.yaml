@@ -145,6 +145,12 @@ app:
     app-key: ${TRUECALLER_APP_KEY:}
     app-name: ${TRUECALLER_APP_NAME:}
     fake: ${TRUECALLER_FAKE:false}          # dev/test only: FakeTruecallerVerifier, no Truecaller call
+  telegram-gateway:
+    # Phone codes through the Telegram Gateway API (identity/PhoneOtpService, D-146): Telegram shows
+    # the code in the user's Telegram app. Env only, never committed or logged. No token = no
+    # Telegram option; with one, Telegram is the default phone method and SMS the fallback.
+    token: ${TELEGRAM_GATEWAY_TOKEN:}
+    fake: ${TELEGRAM_GATEWAY_FAKE:false}    # dev/test only: FakeTelegramGateway, no Telegram call
   sms:
     # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
     # phone_otp_unavailable) and the API still starts. "http" needs SMS_HTTP_URL and

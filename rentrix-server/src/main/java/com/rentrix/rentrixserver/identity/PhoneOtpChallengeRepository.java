@@ -49,4 +49,10 @@ public interface PhoneOtpChallengeRepository extends JpaRepository<PhoneOtpChall
 	@Query("delete from PhoneOtpChallenge c where c.expiresAt < :cutoff or c.consumedAt < :cutoff")
 	int deleteFinishedBefore(@Param("cutoff") Instant cutoff);
 	
+	/** Records Telegram's {@code request_id} once the code was handed to Telegram (D-146). */
+	@Modifying
+	@Transactional
+	@Query("update PhoneOtpChallenge c set c.gatewayRequestId = :requestId where c.id = :id")
+	int setGatewayRequestId(@Param("id") Long id, @Param("requestId") String requestId);
+	
 }

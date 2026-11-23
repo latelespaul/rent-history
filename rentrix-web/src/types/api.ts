@@ -531,8 +531,12 @@ export interface VerificationEntry {
   decision?: { code?: string; note?: string; decidedAt: string }
 }
 
-/** `TRUECALLER` is the phone verified by Truecaller; it counts like `PHONE_OTP` (either one is the phone). */
-export type IdentityMethod = "AADHAAR" | "PAN" | "PHONE_OTP" | "LINKEDIN" | "TRUECALLER"
+/**
+ * `TRUECALLER` is the phone verified by Truecaller and `TELEGRAM` the phone verified by a code sent to
+ * its Telegram (D-146); each counts like `PHONE_OTP` (any one is the phone).
+ */
+export type IdentityMethod =
+  "AADHAAR" | "PAN" | "PHONE_OTP" | "LINKEDIN" | "TRUECALLER" | "TELEGRAM"
 export type IdentityStatus = "PENDING" | "VERIFIED" | "REJECTED" | "REVOKED"
 
 /** One method on `GET /me/identity`: masked values only (D-106). */
@@ -583,7 +587,7 @@ export interface PhoneChallenge {
   expiresAt: string
   /**
    * `SMS`: a provider sent it. `TEAM`: the preview-only admin relay (D-137), where our team passes
-   * the code on by WhatsApp or SMS.
+   * the code on by WhatsApp or SMS. `TELEGRAM`: Telegram shows it in the user's Telegram (D-146).
    */
-  delivery?: "SMS" | "TEAM"
+  delivery?: "SMS" | "TEAM" | "TELEGRAM"
 }

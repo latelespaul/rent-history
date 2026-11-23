@@ -53,7 +53,9 @@ function ProfileForm({ user }: { user: CurrentUser }) {
   const identity = useIdentity()
   const phoneVerified = Boolean(
     identity.data?.methods.some(
-      (m) => (m.method === "PHONE_OTP" || m.method === "TRUECALLER") && m.status === "VERIFIED",
+      (m) =>
+        (m.method === "PHONE_OTP" || m.method === "TRUECALLER" || m.method === "TELEGRAM") &&
+        m.status === "VERIFIED",
     ),
   )
   const save = useMutation({

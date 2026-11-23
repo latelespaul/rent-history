@@ -39,9 +39,9 @@ function method(identity: IdentityView | undefined, name: IdentityMethodView["me
   return identity?.methods.find((m) => m.method === name)
 }
 
-/** The account's phone: whichever of SMS code or Truecaller verified it, else the SMS method. */
+/** The account's phone: whichever of SMS code, Truecaller or Telegram verified it, else the SMS method. */
 function phoneMethod(identity: IdentityView | undefined) {
-  const verified = ["PHONE_OTP", "TRUECALLER"]
+  const verified = ["PHONE_OTP", "TRUECALLER", "TELEGRAM"]
     .map((name) => method(identity, name as IdentityMethodView["method"]))
     .find((m) => m?.status === "VERIFIED")
   return verified ?? method(identity, "PHONE_OTP")
@@ -208,6 +208,12 @@ export function PhoneStep({
   const sms = method(identity, "PHONE_OTP")
   const verified = phone?.status === "VERIFIED"
   const truecaller = method(identity, "TRUECALLER")?.available === true && canUseTruecaller()
+  // Telegram (D-146) is the default way to get the code when it is on; SMS is the fallback.
+  const telegram = method(identity, "TELEGRAM")?.available === true
+  const smsAvailable = sms?.available === true
+  // Null until the user picks: the default follows the identity data once it has loaded.
+  const [channel, setChannel] = useState<"SMS" | null>(null)
+  const viaTelegram = telegram && channel !== "SMS"
   const [changing, setChanging] = useState(false)
   const [number, setNumber] = useState("")
   const [challenge, setChallenge] = useState<PhoneChallenge | null>(null)
@@ -225,7 +231,7 @@ export function PhoneStep({
     },
   })
   const start = useMutation({
-    mutationFn: () => startPhoneCheck(toE164(number)),
+    mutationFn: () => startPhoneCheck(toE164(number), viaTelegram ? "TELEGRAM" : "SMS"),
     onSuccess: (sent) => {
       setChallenge(sent)
       setSentAt(Date.now())
@@ -241,7 +247,7 @@ export function PhoneStep({
     navigate(next ?? withNext("/verify/id"))
   }
 
-  if (sms && !sms.available && !verified && !truecaller) {
+  if (sms && !sms.available && !verified && !truecaller && !telegram) {
     return (
       <StepFrame step="phone" entries={entries}>
         <AnyOneNotice identity={identity} />
@@ -282,13 +288,18 @@ export function PhoneStep({
       <div className="space-y-6">
         <AnyOneNotice identity={identity} />
         {truecaller && <TruecallerCard onVerified={truecallerVerified} />}
-        {truecaller && sms && !sms.available && (
+        {truecaller && sms && !sms.available && !telegram && (
           <Notice tone="warn">SMS codes are not available yet. Use Truecaller for now.</Notice>
         )}
-        {(!truecaller || sms?.available !== false) && (
+        {(!truecaller || sms?.available !== false || telegram) && (
           <>
             {truecaller && (
-              <p className="text-sm font-medium text-ink-700">Or verify with an SMS code</p>
+              <p className="text-sm font-medium text-ink-700">
+                {viaTelegram ? "Or get a code on Telegram" : "Or verify with an SMS code"}
+              </p>
+            )}
+            {viaTelegram && (
+              <p className="text-sm text-ink-700">We send the code to your Telegram.</p>
             )}
             <form
               noValidate
@@ -330,14 +341,38 @@ export function PhoneStep({
                 ) : (
                   <Button type="submit" disabled={start.isPending || number.trim() === ""}>
                     <MessageIcon />
-                    {start.isPending ? "Sending…" : "Send code"}
+                    {start.isPending
+                      ? "Sending…"
+                      : viaTelegram
+                        ? "Send code to Telegram"
+                        : "Send code"}
                   </Button>
                 )}
               </div>
               <p className="text-xs text-ink-500">
                 Indian mobile numbers only. Private: never shown on your profile.
+                {viaTelegram && " The number needs a Telegram account."}
               </p>
-              {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
+              {start.error && (
+                <Notice tone="danger">
+                  {isApiError(start.error) && start.error.code === "telegram_send_failed"
+                    ? start.error.message
+                    : errorMessage(start.error)}
+                </Notice>
+              )}
+              {viaTelegram && smsAvailable && !challenge && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
+                  onClick={() => {
+                    setChannel("SMS")
+                    start.reset()
+                  }}
+                >
+                  No Telegram? Get the code by SMS
+                </Button>
+              )}
             </form>
           </>
         )}
@@ -353,9 +388,11 @@ export function PhoneStep({
           >
             <Label htmlFor="verify-code">2 · Enter the 6-digit code</Label>
             <p className="text-sm text-ink-500">
-              {challenge.delivery === "TEAM"
-                ? `We'll message you the code shortly (WhatsApp/SMS from the ${BRAND.name} team). It works for 10 minutes.`
-                : "We sent it by SMS. It works for 10 minutes."}
+              {challenge.delivery === "TELEGRAM"
+                ? "We sent it to your Telegram: open Telegram to see it. It works for 10 minutes."
+                : challenge.delivery === "TEAM"
+                  ? `We'll message you the code shortly (WhatsApp/SMS from the ${BRAND.name} team). It works for 10 minutes.`
+                  : "We sent it by SMS. It works for 10 minutes."}
             </p>
             <Input
               id="verify-code"

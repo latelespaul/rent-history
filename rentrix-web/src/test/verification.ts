@@ -23,6 +23,7 @@ export function identity(
   phone: StepStatus | "VERIFIED" | null = null,
   available = true,
   truecaller = false,
+  telegram = false,
 ): IdentityView {
   return {
     idVerified: false,
@@ -38,6 +39,7 @@ export function identity(
       },
       { method: "LINKEDIN", status: null, available: true },
       { method: "TRUECALLER", status: null, available: truecaller },
+      { method: "TELEGRAM", status: null, available: telegram },
     ],
   }
 }
