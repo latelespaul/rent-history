@@ -22,7 +22,7 @@ import java.util.UUID;
  * and admins only. A review about the caller that still awaits reveal is listed as a bare {@code AWAITING_REVEAL}
  * entry, with no ratings, text or author (D-46). {@code verification} is the green tick (D-134): {@code UNVERIFIED}
  * ("Not verified yet") until an admin decides, then {@code VERIFIED} or {@code REJECTED}. A form review (D-157) has
- * {@code criteria}, the parameters the author rated in form order, and may have {@code wouldRecommend}, {@code pros}
+ * {@code formReview} true and its comment is optional on edit; it has {@code criteria}, the parameters the author rated in form order, and may have {@code wouldRecommend}, {@code pros}
  * and {@code cons}; {@code body} is absent when it has no comment. Pros and cons are hidden with the text (D-50).
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -34,6 +34,7 @@ public record ReviewView(
 	Integer ratingA,
 	Integer ratingB,
 	Integer ratingC,
+	Boolean formReview,
 	Map<ReviewCriterion, Integer> criteria,
 	Boolean wouldRecommend,
 	String body,

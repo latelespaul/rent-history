@@ -97,6 +97,7 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
     void queryClient.invalidateQueries({ queryKey: ["properties"] })
     void queryClient.invalidateQueries({ queryKey: ["tenancies"] })
     void queryClient.invalidateQueries({ queryKey: myReviewKeys.all })
+    void queryClient.invalidateQueries({ queryKey: ["users"] })
   }
   const save = useMutation({
     mutationFn: () =>
@@ -153,7 +154,7 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
             <Button
               type="submit"
               size="sm"
-              disabled={save.isPending || (!text.trim() && !review.criteria)}
+              disabled={save.isPending || (!text.trim() && !review.formReview)}
             >
               Save
             </Button>

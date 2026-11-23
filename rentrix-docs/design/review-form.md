@@ -19,14 +19,14 @@ One form writes the existing two review rows of the tenant: `TENANT_TO_PROPERTY`
 ## Validation
 
 - `ratingOverall` is required, 1–5. Every parameter rating is optional, 1–5. An unknown parameter, or one of the other direction, is an error.
-- A review with at least one parameter rating is a form review: its comment, pros and cons are optional, at most 2000 / 1000 / 1000 characters, and each passes the D-43 personal-data and profanity rules. A review without parameter ratings keeps D-43's 30-character minimum.
+- A review written with `/review-form` is a form review, marked by `reviews.form_review` (V17): its comment, pros and cons are optional on create and on every edit, at most 2000 / 1000 / 1000 characters, and each passes the D-43 personal-data and profanity rules. Any other review keeps D-43's 30-character minimum.
 - Every broken rule is a field error (`422 validation_failed`) on its own path, such as `home.criteria.PARKING`, `landlord.ratingOverall` or `home.pros`. All of them come back in one answer. The web shows each error under its field and never a generic banner.
 
 ## API
 
 - `POST /tenancies/{id}/review-form` `{home: Part, landlord?: Part}`, with `Part = {ratingOverall, criteria: {PARAM: 1–5}, wouldRecommend?, body?, pros?, cons?}`. It writes both reviews in one transaction, so both are saved or neither is. It runs every create rule per direction (D-37 to D-45), then publishes as today: the home at once; the landlord review at once only when the landlord's review already waits (D-46). The answer is `201 {home: ReviewView, landlord?: ReviewView}`.
-- `POST /tenancies/{id}/reviews` and `PATCH /reviews/{id}` take the same optional `criteria`, `wouldRecommend`, `pros` and `cons`. On `PATCH`, a missing field keeps its value.
-- `ReviewView` gains `criteria`, `wouldRecommend`, `pros` and `cons`. They are hidden with the text while a review awaits reveal or its text is hidden (D-46, D-50).
+- `POST /tenancies/{id}/reviews` and `PATCH /reviews/{id}` take no form fields. `PATCH` edits the overall rating and the text; a form review keeps its parameter ratings, `wouldRecommend`, pros and cons.
+- `ReviewView` gains `formReview` (true for a form review), `criteria`, `wouldRecommend`, `pros` and `cons`. They are hidden with the text while a review awaits reveal or its text is hidden (D-46, D-50).
 - `RatingDetail` (`GET /properties/{id}/rating`, `landlordRating` on `GET /users/{id}`) gains `criteria: [{criterion, ratingCount, average?}]` and `recommend: {answered, yes}`.
 
 ## Overall rating

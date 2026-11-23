@@ -175,14 +175,54 @@ class ReviewFormApiTest {
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.errors[0].field").value("body"))
 			.andExpect(jsonPath("$.errors[0].code").value("too_short"));
+		// the plain endpoint takes no form fields, so they do not make it a form review
 		mvc.perform(post("/tenancies/" + tenancy.getPublicId() + "/reviews")
 				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON)
 				.content("""
 					{"direction": "TENANT_TO_PROPERTY", "ratingOverall": 4, "body": "Too short",
 					 "criteria": {"WATER_SUPPLY": 5}}"""))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].code").value("too_short"));
+		String json = mvc.perform(post("/tenancies/" + tenancy.getPublicId() + "/reviews")
+				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{"direction": "TENANT_TO_PROPERTY", "ratingOverall": 4,
+					 "body": "Good water and a quiet street all year."}"""))
 			.andExpect(status().isCreated())
-			.andExpect(jsonPath("$.body").value("Too short"))
-			.andExpect(jsonPath("$.criteria.WATER_SUPPLY").value(5));
+			.andExpect(jsonPath("$.formReview").doesNotExist())
+			.andExpect(jsonPath("$.criteria").doesNotExist())
+			.andReturn().getResponse().getContentAsString();
+		mvc.perform(patch("/reviews/" + JsonPath.read(json, "$.id")).header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"ratingOverall": 4, "body": "Good water"}"""))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].code").value("too_short"));
+	}
+
+	@Test
+	void aFormReviewWithNoParametersKeepsItsOptionalCommentOnEdit() throws Exception {
+		User landlord = data.approved("Lata Landlord", Role.LANDLORD);
+		User tenant = data.approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+		String json = form(tenant, tenancy, """
+			{"home": {"ratingOverall": 4, "body": "Good water and a quiet street all year."}}""")
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.home.formReview").value(true))
+			.andExpect(jsonPath("$.home.criteria").doesNotExist())
+			.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(json, "$.home.id");
+
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"ratingOverall": 4, "body": "Good water"}"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.formReview").value(true))
+			.andExpect(jsonPath("$.body").value("Good water"));
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(tenant))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"ratingOverall": 3, "body": ""}"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.body").doesNotExist());
 	}
 
 	@Test
@@ -202,13 +242,15 @@ class ReviewFormApiTest {
 			.andExpect(jsonPath("$.ratingOverall").value(3))
 			.andExpect(jsonPath("$.criteria.PRIVACY").value(4))
 			.andExpect(jsonPath("$.wouldRecommend").value(true));
+		// the edit endpoint takes no form fields
 		mvc.perform(patch("/reviews/" + landlordReview).header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON).content("""
 					{"ratingOverall": 2, "body": "", "criteria": {"RESPONSIVENESS": 1}, "wouldRecommend": false}"""))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.criteria.RESPONSIVENESS").value(1))
-			.andExpect(jsonPath("$.criteria.PRIVACY").doesNotExist())
-			.andExpect(jsonPath("$.wouldRecommend").value(false));
+			.andExpect(jsonPath("$.ratingOverall").value(2))
+			.andExpect(jsonPath("$.body").doesNotExist())
+			.andExpect(jsonPath("$.criteria.RESPONSIVENESS").value(4))
+			.andExpect(jsonPath("$.wouldRecommend").value(true));
 		assertThat(jdbc.queryForList("select criteria from review_revisions order by revision_no", String.class))
 			.containsExactly("RESPONSIVENESS=4,DEPOSIT_RETURN=4,TRANSPARENCY=4,PRIVACY=4,BEHAVIOUR=4",
 				"RESPONSIVENESS=4,DEPOSIT_RETURN=4,TRANSPARENCY=4,PRIVACY=4,BEHAVIOUR=4");

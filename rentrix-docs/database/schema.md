@@ -26,6 +26,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | `V9__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V9_1__home_records_fks.sql` for `added_by` |
 | `V10__telegram_phone_codes.sql` (built in the Telegram phone code PR) | — | `phone_otp_challenges` + `channel` (default `SMS`), `gateway_request_id` | SYSTEM_DESIGN D-146 |
 | `V16__review_form.sql` (built in the review form PR) | — | `review_criterion_ratings`; `reviews` + `would_recommend`, `pros`, `cons`; `review_revisions` + `criteria`, `would_recommend`, `pros`, `cons` | §9, SYSTEM_DESIGN D-157 |
+| `V17__review_form_marker.sql` (built in the review form PR) | — | `reviews` + `form_review` (default `FALSE`) | SYSTEM_DESIGN D-157 |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 
@@ -480,6 +481,9 @@ ALTER TABLE review_revisions ADD COLUMN criteria VARCHAR(500);  -- "WATER_SUPPLY
 ALTER TABLE review_revisions ADD COLUMN would_recommend BOOLEAN;
 ALTER TABLE review_revisions ADD COLUMN pros VARCHAR(1000);
 ALTER TABLE review_revisions ADD COLUMN cons VARCHAR(1000);
+
+-- V17: written with the review form; its comment stays optional on every edit
+ALTER TABLE reviews ADD COLUMN form_review BOOLEAN DEFAULT FALSE NOT NULL;
 ```
 
 The foreign key is a table constraint inside `CREATE TABLE`, which MySQL enforces like SQLite and PostgreSQL, so no vendor file is needed. `reviews.body` stays `NOT NULL`: a form review without a comment stores an empty string, so SQLite needs no table rebuild.

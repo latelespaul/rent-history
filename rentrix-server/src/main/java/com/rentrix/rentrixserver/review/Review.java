@@ -82,6 +82,10 @@ public class Review extends PublicEntity {
 	@BatchSize(size = 50)
 	private Map<ReviewCriterion, Integer> criteria = new HashMap<>();
 	
+	/** D-157: written with the review form, so the comment stays optional on every edit. */
+	@Column(name = "form_review", nullable = false)
+	private boolean formReview;
+	
 	/** D-157: "would you recommend"; null when not answered. */
 	@Column(name = "would_recommend")
 	private Boolean wouldRecommend;

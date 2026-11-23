@@ -121,8 +121,8 @@ public class ReviewService {
 		requireVolume(me, 1);
 		List<ApiProblem.FieldError> errors = new ArrayList<>();
 		Content content = content("", direction, false, request.ratingOverall(), request.ratingA(),
-			request.ratingB(), request.ratingC(), request.criteria(), request.wouldRecommend(), request.body(),
-			request.pros(), request.cons(), tenancy.getProperty().getUnitLabel(), errors);
+			request.ratingB(), request.ratingC(), null, null, request.body(), null, null,
+			tenancy.getProperty().getUnitLabel(), errors);
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
@@ -262,16 +262,11 @@ public class ReviewService {
 		}
 		approvals.require(me, authorRole(review));
 		Instant now = now();
-		// D-157: the form fields keep their value when the request leaves them out.
+		// D-157: the form fields keep their value; a form review keeps its optional comment.
 		List<ApiProblem.FieldError> errors = new ArrayList<>();
-		// A stored text under 30 characters can only come from the form, so the review stays a form review.
-		boolean formReview = ReviewContentRules.strip(review.getBody()).length() < ReviewContentRules.REVIEW_MIN;
-		Content content = content("", review.getDirection(), formReview, request.ratingOverall(), request.ratingA(),
-			request.ratingB(), request.ratingC(),
-			request.criteria() != null ? request.criteria() : names(review.getCriteria()),
-			request.wouldRecommend() != null ? request.wouldRecommend() : review.getWouldRecommend(), request.body(),
-			request.pros() != null ? request.pros() : review.getPros(),
-			request.cons() != null ? request.cons() : review.getCons(),
+		Content content = content("", review.getDirection(), review.isFormReview(), request.ratingOverall(),
+			request.ratingA(), request.ratingB(), request.ratingC(), names(review.getCriteria()),
+			review.getWouldRecommend(), request.body(), review.getPros(), review.getCons(),
 			review.getProperty().getUnitLabel(), errors);
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
@@ -580,14 +575,14 @@ public class ReviewService {
 	}
 
 	/** A review's checked ratings and text (D-27, D-43, D-157). */
-	private record Content(int ratingOverall, Integer ratingA, Integer ratingB, Integer ratingC,
+	private record Content(boolean form, int ratingOverall, Integer ratingA, Integer ratingB, Integer ratingC,
 		Map<ReviewCriterion, Integer> criteria, Boolean wouldRecommend, String body, String pros, String cons) {
 	}
 
 	/**
 	 * Checks one review's ratings and text, adding a field error under {@code prefix} for each broken rule. The
 	 * overall rating is required; parameter ratings are optional, 1–5, and must belong to the direction. A form review
-	 * ({@code form}, or any form field given) has an optional comment; any other review's body is the D-43 review text
+	 * ({@code form}) has an optional comment; any other review's body is the D-43 review text
 	 * of 30 characters or more. Pros and cons are optional (D-157).
 	 */
 	private static Content content(String prefix, ReviewDirection direction, boolean form, Integer overall,
@@ -616,17 +611,16 @@ public class ReviewService {
 				}
 			});
 		}
-		boolean formReview = form || !criteria.isEmpty() || wouldRecommend != null || blankToNull(pros) != null
-			|| blankToNull(cons) != null;
-		errors.addAll(ReviewContentRules.problems(prefix + "body", body, formReview ? 0 : ReviewContentRules.REVIEW_MIN,
+		errors.addAll(ReviewContentRules.problems(prefix + "body", body, form ? 0 : ReviewContentRules.REVIEW_MIN,
 			ReviewContentRules.REVIEW_MAX, unitLabel));
 		errors.addAll(ReviewContentRules.problems(prefix + "pros", pros, 0, ReviewContentRules.PROS_CONS_MAX, unitLabel));
 		errors.addAll(ReviewContentRules.problems(prefix + "cons", cons, 0, ReviewContentRules.PROS_CONS_MAX, unitLabel));
-		return new Content(overall == null ? 0 : overall, ratingA, ratingB, ratingC, criteria, wouldRecommend,
+		return new Content(form, overall == null ? 0 : overall, ratingA, ratingB, ratingC, criteria, wouldRecommend,
 			ReviewContentRules.strip(body), blankToNull(pros), blankToNull(cons));
 	}
 
 	private static void apply(Review review, Content content) {
+		review.setFormReview(content.form());
 		review.setRatingOverall(content.ratingOverall());
 		review.setRatingA(content.ratingA());
 		review.setRatingB(content.ratingB());
@@ -801,6 +795,7 @@ public class ReviewService {
 			r.getRatingA(),
 			r.getRatingB(),
 			r.getRatingC(),
+			r.isFormReview() ? Boolean.TRUE : null,
 			r.getCriteria().isEmpty() ? null : criteria(r),
 			r.getWouldRecommend(),
 			textHidden && !privileged ? null : blankToNull(r.getBody()),
@@ -824,7 +819,7 @@ public class ReviewService {
 	/** A review about the caller that still awaits reveal: no ratings, text or author (D-46). */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
-			null, null, null, null, null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
+			null, null, null, null, null, null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
 			ReviewView.Actions.NONE, null);
 	}
 

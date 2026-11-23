@@ -597,6 +597,8 @@ export interface PropertyReview {
   ratingA?: number
   ratingB?: number
   ratingC?: number
+  /** Written with the review form (D-157): the comment is optional on edit. */
+  formReview?: boolean
   /** The review form's parameter ratings (D-157), in form order. */
   criteria?: Partial<Record<ReviewCriterion, number>>
   wouldRecommend?: boolean

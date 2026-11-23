@@ -64,6 +64,10 @@ class MigrationVendorParseTest {
 			+ " where lower(constraint_name) = 'fk_review_criterion_ratings_review'", Integer.class)).isEqualTo(1);
 		assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where lower(table_name) ="
 			+ " 'reviews' and lower(column_name) in ('would_recommend', 'pros', 'cons')", Integer.class)).isEqualTo(3);
+		// V17 the form review marker (D-157)
+		assertThat(versions).contains("17");
+		assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where lower(table_name) ="
+			+ " 'reviews' and lower(column_name) = 'form_review'", Integer.class)).isEqualTo(1);
 	}
 	
 	@ParameterizedTest(name = "{0}")

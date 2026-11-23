@@ -149,6 +149,7 @@ final class DemoReviews {
 				review.getCriteria().put(criteria.get(i), Math.max(1, Math.min(5, rating + spread)));
 			}
 			review.setWouldRecommend(rating >= 4);
+			review.setFormReview(true);
 		}
 		review.setBody(texts.get(index % texts.size()));
 		review.setSubmittedAt(submittedAt);
