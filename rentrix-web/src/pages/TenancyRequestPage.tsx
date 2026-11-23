@@ -331,7 +331,7 @@ export default function TenancyRequestPage() {
             (shownInline ? (
               <Notice tone="danger">Some details need a fix: see the messages above.</Notice>
             ) : (
-              <ActionError error={create.error} />
+              <ActionError error={create.error} startDate={startDate} />
             ))}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={create.isPending || !chosen}>

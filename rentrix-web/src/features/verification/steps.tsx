@@ -113,7 +113,7 @@ function StepActions({
   )
 }
 
-/** Step 1 · Profile (D-120): display name and home city, saved with `PATCH /me`. */
+/** Step 1 · Profile (D-120): display name and an optional home city, saved with `PATCH /me`. */
 export function ProfileStep({ entries }: { entries: VerificationEntry[] }) {
   const { state, acceptUpdate } = useAuth()
   const navigate = useNavigate()
@@ -135,7 +135,6 @@ export function ProfileStep({ entries }: { entries: VerificationEntry[] }) {
     event.preventDefault()
     const length = displayName.trim().length
     if (length < 2 || length > 60) return setProblem("Use 2 to 60 characters for your name.")
-    if (!homeCity) return setProblem("Choose your home city.")
     setProblem(null)
     save.mutate()
   }
@@ -155,7 +154,7 @@ export function ProfileStep({ entries }: { entries: VerificationEntry[] }) {
         <CityPicker
           value={homeCity}
           onChange={setHomeCity}
-          label="Home city"
+          label="Home city (optional)"
           className="max-w-[360px]"
         />
         {(problem || save.error) && (
@@ -404,7 +403,7 @@ export function PhoneStep({
 
 function ComingSoonCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-lg border border-line p-4">
+    <div className="min-w-0 rounded-lg border border-line p-4">
       <p className="flex flex-wrap items-center gap-2">
         <DocumentIcon size={18} className="text-ink-500" />
         <b className="text-ink-900">{title}</b>
@@ -461,7 +460,7 @@ export function IdStep({
           <Link to={withNext("/verify/phone")}>your phone</Link> at once.
         </Notice>
       )}
-      <div className="mt-4 grid gap-3 nav:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 nav:grid-cols-3">
         <ComingSoonCard
           title="PAN card"
           text="Type your PAN and upload the card. An admin checks it; the file is deleted after the check."
@@ -470,7 +469,7 @@ export function IdStep({
           title="Masked Aadhaar"
           text="Upload the masked copy from UIDAI and type its last 4 digits only. Never the full number."
         />
-        <div className="rounded-lg border border-line p-4">
+        <div className="min-w-0 rounded-lg border border-line p-4">
           <p className="flex flex-wrap items-center gap-2">
             <LinkIcon size={18} className="text-ink-500" />
             <b className="text-ink-900">LinkedIn</b>
@@ -577,7 +576,7 @@ export function RentalStep({ entries }: { entries: VerificationEntry[] }) {
 }
 
 const MISSING_STEP: Record<string, { label: string; path: string }> = {
-  profile: { label: "Profile: your name and home city", path: "/verify/profile" },
+  profile: { label: "Profile: your name", path: "/verify/profile" },
   method: { label: "Verify with any one: phone, Aadhaar or LinkedIn", path: "/verify/phone" },
 }
 

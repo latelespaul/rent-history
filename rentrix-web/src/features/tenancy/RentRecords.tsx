@@ -11,7 +11,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import { monthLabel, rupees } from "@/features/property/labels"
 import type { RentRecord, RentRecordInput, Tenancy } from "@/types/api"
 import { ActionError } from "./ApprovalPrompt"
-import { RENT_RECORD_STATUS, today, wholeNumber } from "./labels"
+import { RENT_RECORD_STATUS, rentChangeMonths, wholeNumber } from "./labels"
 import { useRefreshTenancyData, useRentRecords } from "./useTenancies"
 
 function RecordRow({ record, onDone }: { record: RentRecord; onDone: () => void }) {
@@ -58,8 +58,10 @@ function RecordRow({ record, onDone }: { record: RentRecord; onDone: () => void 
   )
 }
 
-function AddRentRecord({ tenancyId, onDone }: { tenancyId: string; onDone: () => void }) {
-  const [month, setMonth] = useState(today().slice(0, 7))
+function AddRentRecord({ tenancy, onDone }: { tenancy: Tenancy; onDone: () => void }) {
+  const tenancyId = tenancy.id
+  const months = rentChangeMonths(tenancy)
+  const [month, setMonth] = useState(months.initial)
   const [rent, setRent] = useState("")
   const [maintenance, setMaintenance] = useState("")
   const add = useMutation({
@@ -98,7 +100,8 @@ function AddRentRecord({ tenancyId, onDone }: { tenancyId: string; onDone: () =>
             id="rr-month"
             type="month"
             value={month}
-            max={today().slice(0, 7)}
+            min={months.min}
+            max={months.max}
             onChange={(e) => setMonth(e.target.value)}
             className="h-10"
           />
@@ -189,7 +192,7 @@ export function RentRecords({ tenancy }: { tenancy: Tenancy }) {
         Rent records
       </h2>
       {body}
-      {tenancy.actions.addRentRecord && <AddRentRecord tenancyId={tenancy.id} onDone={onDone} />}
+      {tenancy.actions.addRentRecord && <AddRentRecord tenancy={tenancy} onDone={onDone} />}
     </section>
   )
 }

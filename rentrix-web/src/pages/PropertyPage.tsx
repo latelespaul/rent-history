@@ -13,6 +13,7 @@ import {
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { initials } from "@/components/layout/nav"
 import { placeLine, propertyTitle, reviewCount } from "@/features/property/labels"
+import { PersonTick } from "@/features/property/PersonTick"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
 import { PropertyReviews } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
@@ -96,6 +97,7 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-ink-900">{landlord.shortName}</span>
             <Badge variant="landlord">Landlord</Badge>
+            {!property.addedByTenant && <PersonTick verified={landlord.verified} role="landlord" />}
           </p>
           {property.addedByTenant ? (
             <p className="text-xs text-ink-500">

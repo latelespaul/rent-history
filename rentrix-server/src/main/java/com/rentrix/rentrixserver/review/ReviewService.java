@@ -26,6 +26,7 @@ import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.profile.ProfileAccess;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
+import com.rentrix.rentrixserver.verification.GreenTicks;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -92,6 +93,7 @@ public class ReviewService {
 	private final UserRepository users;
 	private final ApprovalGuard approvals;
 	private final IdentityService identity;
+	private final GreenTicks greenTicks;
 	private final ProfileAccess access;
 	private final RatingRecomputer recomputer;
 	private final ReviewNotifier notifier;
@@ -623,11 +625,12 @@ public class ReviewService {
 	private ReviewView.Author authorLine(Review r, boolean admin) {
 		User author = r.getAuthor();
 		if (author.getDeletedAt() != null) {
-			return new ReviewView.Author(null, FORMER_USER, Badges.NONE);
+			return new ReviewView.Author(null, FORMER_USER, Badges.NONE, false);
 		}
 		boolean landlordAuthor = r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT;
 		return new ReviewView.Author(landlordAuthor || admin ? author.getPublicId() : null,
-			PublicNames.shortName(author.getDisplayName()), identity.badges(author));
+			PublicNames.shortName(author.getDisplayName()), identity.badges(author),
+			greenTicks.has(author, landlordAuthor ? Role.LANDLORD : Role.TENANT));
 	}
 
 	private static PartyRef party(User user) {

@@ -302,9 +302,9 @@ describe("verification stepper", () => {
     await user.click(await screen.findByRole("button", { name: "Request verification" }))
 
     expect(await screen.findByText("Finish these first:")).toBeTruthy()
-    expect(
-      screen.getByRole("link", { name: /profile: your name and home city/i }).getAttribute("href"),
-    ).toBe("/verify/profile")
+    expect(screen.getByRole("link", { name: /profile: your name/i }).getAttribute("href")).toBe(
+      "/verify/profile",
+    )
     expect(verification.requestVerification).toHaveBeenCalledWith("TENANT")
   })
 

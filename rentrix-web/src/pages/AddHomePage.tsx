@@ -592,7 +592,7 @@ export default function AddHomePage() {
             </>
           )}
 
-          <ActionError error={save.error} />
+          <ActionError error={save.error} startDate={draft.startDate} />
 
           {!(step === "address" && matches && matches.length > 0) && (
             <div className="flex gap-2 pt-1">

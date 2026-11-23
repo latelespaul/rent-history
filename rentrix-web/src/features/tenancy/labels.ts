@@ -98,3 +98,20 @@ export function rentLine(tenancy: Tenancy): string {
   const from = dateLabel(tenancy.currentRentFrom ?? tenancy.startDate)
   return `${label} ${rupees(tenancy.currentRentInr)} / month from ${from}`
 }
+
+/**
+ * The months a rent change can start in: from the tenancy's start month to its end month, or to
+ * this month while it runs. `initial` is the latest of those, so an ended tenancy opens on its
+ * last month, not on this month (#44 re-test).
+ */
+export function rentChangeMonths(
+  t: Pick<Tenancy, "startDate" | "endDate">,
+  now: string = today(),
+): { min: string; max: string; initial: string } {
+  const min = t.startDate.slice(0, 7)
+  const thisMonth = now.slice(0, 7)
+  const end = t.endDate?.slice(0, 7)
+  const last = end && end < thisMonth ? end : thisMonth
+  const max = last < min ? min : last
+  return { min, max, initial: max }
+}

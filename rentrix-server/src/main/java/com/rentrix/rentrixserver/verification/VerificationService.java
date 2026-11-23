@@ -183,8 +183,9 @@ public class VerificationService implements VerificationStatuses {
 	}
 	
 	private Steps steps(User user) {
+		// The profile step needs only a display name; the home city is optional (captain re-test of #44).
 		StepStatus profile = user.getDisplayName() != null && !user.getDisplayName().isBlank()
-			&& user.getHomeCity() != null ? StepStatus.DONE : StepStatus.MISSING;
+			? StepStatus.DONE : StepStatus.MISSING;
 		StepStatus phone = identity.isPhoneVerified(user) ? StepStatus.DONE : StepStatus.MISSING;
 		// The posting rule (D-144): any one of phone, masked Aadhaar or LinkedIn verified.
 		StepStatus method = identity.hasPostingMethod(user) ? StepStatus.DONE

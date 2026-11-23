@@ -46,8 +46,9 @@ public record ReviewView(
 	VerificationState verification
 ) {
 	
+	/** {@code verified}: the author's green tick for the role they wrote as (D-134). */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public record Author(UUID id, String shortName, Badges badges) {
+	public record Author(UUID id, String shortName, Badges badges, boolean verified) {
 	}
 	
 	/** The reviewed home; no unit label (D-57). */

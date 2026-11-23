@@ -14,10 +14,10 @@ const overlap = (conflict: ProblemDetails["conflict"]) =>
     conflict,
   })
 
-function renderError(error: unknown) {
+function renderError(error: unknown, startDate?: string) {
   render(
     <MemoryRouter>
-      <ActionError error={error} />
+      <ActionError error={error} startDate={startDate} />
     </MemoryRouter>,
   )
 }
@@ -46,6 +46,24 @@ describe("ActionError on 409 tenancy_overlap", () => {
 
     expect(screen.getByText(/Jan 2023 – Dec 2024/)).toBeTruthy()
     expect(screen.queryByRole("link")).toBeNull()
+  })
+
+  it("asks an earlier range to end before the clashing tenancy starts", () => {
+    renderError(overlap({ from: "2023-01", to: "2024-12", status: "ENDED" }), "2022-06-01")
+
+    expect(screen.getByText(/so the new one must end before Jan 2023\./)).toBeTruthy()
+  })
+
+  it("asks a later or inside range to start after the clashing tenancy ends", () => {
+    renderError(overlap({ from: "2023-01", to: "2024-12", status: "ENDED" }), "2024-03-01")
+
+    expect(screen.getByText(/so the new one must start after Dec 2024\./)).toBeTruthy()
+  })
+
+  it("names both ways out when the asked start is not known", () => {
+    renderError(overlap({ from: "2023-01", to: "2024-12", status: "ENDED" }))
+
+    expect(screen.getByText(/must end before Jan 2023 or start after Dec 2024\./)).toBeTruthy()
   })
 
   it("shows the server's message for a same-tenant overlap that names no home tenancy", () => {
