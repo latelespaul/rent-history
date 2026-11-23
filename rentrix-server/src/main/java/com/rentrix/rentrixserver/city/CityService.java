@@ -86,13 +86,30 @@ public class CityService {
 		if (city == null) {
 			throw notLive();
 		}
+		String problem = pincodeProblem(city, pincode);
+		if (problem != null) {
+			throw invalidPincode(problem.startsWith("Pincode must") ? "pattern" : "city_mismatch", problem);
+		}
+	}
+	
+	/**
+	 * {@link #requirePincode}'s answer without throwing, for a check that only reports it ("Add your home" step 1):
+	 * null when the city is live and the pincode fits it.
+	 */
+	public String pincodeProblem(String code, String pincode) {
+		City city = code == null ? null : cities.findById(code).filter(City::isLive).orElse(null);
+		return city == null ? "We are not live in this city yet." : pincodeProblem(city, pincode);
+	}
+	
+	private static String pincodeProblem(City city, String pincode) {
 		if (pincode == null || !PINCODE.matcher(pincode).matches()) {
-			throw invalidPincode("pattern", "Pincode must be 6 digits.");
+			return "Pincode must be 6 digits.";
 		}
 		List<String> prefixes = city.pincodePrefixList();
 		if (!prefixes.isEmpty() && prefixes.stream().noneMatch(pincode::startsWith)) {
-			throw invalidPincode("city_mismatch", "This pincode is not in " + city.getName() + ".");
+			return "This pincode is not in " + city.getName() + ".";
 		}
+		return null;
 	}
 	
 	private static boolean matches(City city, String query) {

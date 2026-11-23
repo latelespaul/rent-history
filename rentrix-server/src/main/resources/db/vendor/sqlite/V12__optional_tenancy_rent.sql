@@ -6,7 +6,7 @@
 -- foreign keys off, new table, copy, drop, rename, indexes, foreign keys on.
 -- The columns and constraints are V1's plus V7's verification columns and V9's
 -- rent_visibility, unchanged but for initial_rent_inr. Runs outside Flyway's
--- transaction (V11__optional_tenancy_rent.sql.conf); the SAVEPOINT is its own.
+-- transaction (V12__optional_tenancy_rent.sql.conf); the SAVEPOINT is its own.
 -- =============================================================================
 PRAGMA foreign_keys = OFF;
 SAVEPOINT optional_tenancy_rent;

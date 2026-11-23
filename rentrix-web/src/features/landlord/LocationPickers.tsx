@@ -106,6 +106,7 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
                       id: a.id,
                       name: a.name,
                       status: a.status,
+                      pincodes: a.pincodes,
                     }),
                   )
                 }

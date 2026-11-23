@@ -120,7 +120,11 @@ describe("add your home form (D-139)", () => {
       pincode: "570002",
       unitLabel: "12",
     }
-    expect(checkStep("address", other, TODAY)).toEqual({ locality: "Type the area or locality." })
+    // Not in a society: an apartment there needs its building name too.
+    expect(checkStep("address", other, TODAY)).toEqual({
+      locality: "Type the area or locality.",
+      buildingName: "Enter the building name.",
+    })
     expect(matchQuery({ ...other, locality: "Gokulam" })).toBeNull()
     expect(toAddHomeBody({ ...other, locality: " Gokulam ", relation: "OWN" })).toEqual({
       relation: "OWN",

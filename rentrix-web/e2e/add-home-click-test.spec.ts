@@ -14,6 +14,8 @@ import { daysAgo, freshLogin, verifyPhone } from "./support"
 test("a new tenant adds a Hyderabad flat in Tower 4 · Wing B, tagged pending review", async ({
   page,
 }, testInfo) => {
+  // Phone verification and five checks: more than one default timeout on a busy runner.
+  test.setTimeout(testInfo.timeout * 2)
   const tag = `${Date.now().toString(36)}${testInfo.project.name[0]}`
   const society = `E2E Lake View ${tag}`
   const flat = `12${Date.now().toString().slice(-2)}`

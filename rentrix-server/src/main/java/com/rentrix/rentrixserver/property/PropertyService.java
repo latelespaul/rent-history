@@ -169,7 +169,7 @@ public class PropertyService {
 	@Transactional
 	public PropertyDetail create(CreatePropertyRequest request, AuthenticatedUser caller) {
 		User landlord = currentUser(caller);
-		Property property = build(request, landlord, landlord, false);
+		Property property = build(request, landlord, landlord, false, false);
 		property.setStatus(PropertyStatus.DRAFT);
 		Property saved = properties.saveAndFlush(property);
 		return detail(saved, caller);
@@ -182,7 +182,7 @@ public class PropertyService {
 	 */
 	@Transactional
 	public Property newHome(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
-		Property property = build(request, owner, proposer, pendingCity);
+		Property property = build(request, owner, proposer, pendingCity, true);
 		property.setStatus(PropertyStatus.PUBLISHED);
 		property.setUnitLabelVisibility(UnclaimedLandlord.is(owner) ? FieldVisibility.OPEN : FieldVisibility.MASKED);
 		return property;
@@ -240,9 +240,11 @@ public class PropertyService {
 	
 	/**
 	 * A new property from the request, owned by {@code owner}; {@code proposer} files any location proposals. A home
-	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only.
+	 * in a pending city (D-143) has no hierarchy yet: it is placed by its free-text locality only. A home added by its
+	 * tenant or owner ({@code addedHome}) may use a PIN code its area does not list (a warning in the form).
 	 */
-	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity) {
+	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity,
+		boolean addedHome) {
 		String city = request.city().trim();
 		String pincode = request.pincode().trim();
 		if (pendingCity) {
@@ -258,7 +260,7 @@ public class PropertyService {
 		property.setLandlord(owner);
 		property.setCity(cities.getReferenceById(city));
 		if (request.location() != null) {
-			place(property, locations.resolve(city, pincode, request.location(), proposer));
+			place(property, locations.resolve(city, pincode, request.location(), proposer, addedHome));
 		} else {
 			property.setLocality(requireLocality(request.locality()));
 		}

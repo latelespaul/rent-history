@@ -68,7 +68,7 @@ class SqliteMigrationTest {
 	
 	@Test
 	void tenancyRentIsOptionalAfterTheRebuildAndItsKeysStillHold() {
-		// V11 (sqlite vendor file) rebuilt tenancies with initial_rent_inr nullable (captain 2026-11-23 09:55)
+		// V12 (sqlite vendor file) rebuilt tenancies with initial_rent_inr nullable (captain 2026-11-23 09:55)
 		assertThat(jdbc.queryForObject("select \"notnull\" from pragma_table_info('tenancies') where name = 'initial_rent_inr'",
 			Integer.class)).isZero();
 		assertThat(jdbc.queryForList("select name from sqlite_master where type = 'index' and tbl_name = 'tenancies'"

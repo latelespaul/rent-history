@@ -1,7 +1,7 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useSearchParams } from "react-router-dom"
-import { addHome, fetchHomeMatches } from "@/api/homes"
+import { addHome, checkAddress, fetchHomeMatches } from "@/api/homes"
 import { isApiError } from "@/api/errors"
 import { Container } from "@/components/layout/Container"
 import { Badge } from "@/components/ui/badge"
@@ -26,7 +26,7 @@ import {
   type HomeErrors,
 } from "@/features/home/addHome"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
-import { EMPTY_DRAFT } from "@/features/landlord/locationDraft"
+import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
 import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { dateLabel, today } from "@/features/tenancy/labels"
@@ -68,6 +68,36 @@ function Field({
 }
 
 const optional = <span className="font-normal text-ink-500">(optional)</span>
+
+/** The input that shows each form error, focused when a save sends the user back to it. */
+const FIELD_IDS: Record<string, string> = {
+  city: "ah-city",
+  otherCity: "ah-other-city",
+  otherState: "ah-other-state",
+  locality: "ah-locality",
+  area: "pf-area",
+  society: "pf-society",
+  tower: "pf-tower",
+  wing: "pf-wing",
+  buildingName: "ah-building",
+  unitLabel: "ah-unit",
+  pincode: "ah-pincode",
+  relation: "ah-relation-rent",
+  startDate: "ah-start",
+  endDate: "ah-end",
+  rent: "ah-rent",
+  deposit: "ah-deposit",
+  ownerName: "ah-owner-name",
+  ownerEmail: "ah-owner-email",
+  ownerPhone: "ah-owner-phone",
+}
+
+/** The form errors a draft field's change makes stale. */
+const ERRORS_OF: Partial<Record<keyof HomeDraft, string[]>> = {
+  location: ["area", "society", "tower", "wing"],
+  propertyType: ["buildingName"],
+  stillLiving: ["endDate"],
+}
 
 /** "Is it this one?" (D-139): homes that match the PIN code, society and flat number. */
 function Matches({
@@ -210,9 +240,58 @@ export default function AddHomePage() {
   const [checkedKey, setCheckedKey] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
   const [result, setResult] = useState<AddHomeResult | null>(null)
+  const [pinWarning, setPinWarning] = useState<string | null>(null)
+  const focusKey = useRef<string | null>(null)
+  const keepPin = useRef<string | null>(null)
+  const form = useRef<HTMLFormElement>(null)
 
-  const set = <K extends keyof HomeDraft>(key: K, value: HomeDraft[K]) =>
+  /** Clears the errors a change makes stale: no error outlives the value it was about. */
+  const clearErrors = (key: keyof HomeDraft) => {
+    const stale = ERRORS_OF[key] ?? [key]
+    setErrors((current) =>
+      stale.some((k) => k in current)
+        ? Object.fromEntries(Object.entries(current).filter(([k]) => !stale.includes(k)))
+        : current,
+    )
+  }
+
+  const set = <K extends keyof HomeDraft>(key: K, value: HomeDraft[K]) => {
+    clearErrors(key)
     setDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  /** The PIN code, typed (`typed`) or picked from the area's list; a new one needs a new check. */
+  const setPincode = (pincode: string, typed: boolean) => {
+    clearErrors("pincode")
+    setPinWarning(null)
+    setDraft((current) => ({
+      ...current,
+      pincode,
+      pincodeTyped: typed || current.pincodeTyped,
+    }))
+  }
+
+  /** A new area fills in its main PIN code, unless the user typed one (firstmate 2026-11-23 14:51). */
+  const setLocation = (location: LocationDraft) => {
+    clearErrors("location")
+    setDraft((current) => {
+      const area = location.area
+      const before = current.location.area
+      const changed = area.kind === "pick" && (before.kind !== "pick" || before.id !== area.id)
+      const main = area.kind === "pick" ? area.pincodes?.[0] : undefined
+      if (!changed || !main || current.pincodeTyped) return { ...current, location }
+      return { ...current, location, pincode: main }
+    })
+    setPinWarning(null)
+  }
+
+  // A save that sends the user back to a step focuses the field with the error.
+  useEffect(() => {
+    const key = focusKey.current
+    if (!key) return
+    focusKey.current = null
+    document.getElementById(FIELD_IDS[key] ?? "")?.focus()
+  }, [stepIndex, errors, pinWarning])
 
   const save = useMutation({
     mutationFn: () => addHome(toAddHomeBody(draft)),
@@ -234,6 +313,7 @@ export default function AddHomePage() {
       if (!placed) return
       setErrors(placed.errors)
       setStepIndex(placed.step)
+      focusKey.current = Object.keys(placed.errors)[0] ?? null
       window.scrollTo?.({ top: 0 })
     },
   })
@@ -253,7 +333,7 @@ export default function AddHomePage() {
   const step = steps[index]
   const last = index === steps.length - 1
   const error = (field: string) => errors[field]
-  // Field errors are shown by their fields (see `onError`); other failures as a notice.
+  // Field errors are shown by their fields only (see `onError`); never as a banner.
   const fieldFailure = isApiError(save.error) && save.error.fieldErrors.length > 0
 
   const go = (to: number) => {
@@ -268,6 +348,32 @@ export default function AddHomePage() {
     const found = checkStep(step, draft, today())
     setErrors(found)
     if (Object.keys(found).length > 0) return
+    // Step 1's own server check (firstmate 2026-11-23 14:50): a PIN code outside the city blocks
+    // here, on Next; one the picked area does not list only warns, and the user may keep it.
+    if (step === "address" && !draft.propertyId && draft.city !== OTHER_CITY) {
+      const pincode = draft.pincode.trim()
+      const area = draft.location.area.kind === "pick" ? draft.location.area.id : undefined
+      setChecking(true)
+      try {
+        const checked = await checkAddress({ city: draft.city, pincode, area })
+        if (checked.pincodeError) {
+          setErrors({ pincode: checked.pincodeError })
+          focusKey.current = "pincode"
+          return
+        }
+        const kept = keepPin.current === pincode || draft.keptPincode === pincode
+        if (checked.pincodeWarning && !kept) {
+          setPinWarning(checked.pincodeWarning)
+          focusKey.current = "pincode"
+          return
+        }
+        if (kept && draft.keptPincode !== pincode) set("keptPincode", pincode)
+      } catch {
+        // The save checks again; a failed check never blocks the form.
+      } finally {
+        setChecking(false)
+      }
+    }
     if (step === "address" && !draft.propertyId) {
       const query = matchQuery(draft)
       const key = JSON.stringify(query)
@@ -319,6 +425,7 @@ export default function AddHomePage() {
 
         <form
           noValidate
+          ref={form}
           onSubmit={(e) => void next(e)}
           aria-label="Add your home"
           className="space-y-4 rounded-xl border border-line bg-surface p-5 shadow-sm"
@@ -345,9 +452,12 @@ export default function AddHomePage() {
                   id="ah-city"
                   className={selectClass}
                   value={draft.city}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    clearErrors("city")
+                    clearErrors("location")
+                    setPinWarning(null)
                     setDraft((d) => ({ ...d, city: e.target.value, location: EMPTY_DRAFT }))
-                  }
+                  }}
                 >
                   <option value="">Pick a city</option>
                   {cities.data?.map((c) => (
@@ -400,7 +510,7 @@ export default function AddHomePage() {
                 <LocationPickers
                   city={draft.city}
                   value={draft.location}
-                  onChange={(location) => set("location", location)}
+                  onChange={setLocation}
                   error={error("area")}
                   hint="Pick the area. If it or your society is missing, add it: new names show at once, tagged “Pending review”, and the team reviews them."
                   levelErrors={{
@@ -449,11 +559,53 @@ export default function AddHomePage() {
                     inputMode="numeric"
                     maxLength={6}
                     value={draft.pincode}
-                    onChange={(e) => set("pincode", e.target.value)}
+                    onChange={(e) => setPincode(e.target.value, true)}
                     className="h-11"
+                    aria-invalid={Boolean(error("pincode"))}
                   />
                 </Field>
               </div>
+              {draft.location.area.kind === "pick" &&
+                (draft.location.area.pincodes?.length ?? 0) > 1 && (
+                  <div className="flex flex-wrap items-center gap-1.5" data-testid="ah-pin-choices">
+                    <span className="text-xs text-ink-500">
+                      {draft.location.area.name} PIN codes:
+                    </span>
+                    {draft.location.area.pincodes!.map((pin) => (
+                      <Button
+                        key={pin}
+                        type="button"
+                        size="xs"
+                        variant={pin === draft.pincode.trim() ? "default" : "outline"}
+                        onClick={() => setPincode(pin, false)}
+                      >
+                        {pin}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              {pinWarning && (
+                <div
+                  data-testid="ah-pincode-warning"
+                  role="status"
+                  className="space-y-2 rounded-md bg-warn-100 p-3 text-sm text-[#6f4608]"
+                >
+                  <p>{pinWarning}</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    data-testid="ah-keep-pincode"
+                    onClick={() => {
+                      keepPin.current = draft.pincode.trim()
+                      setPinWarning(null)
+                      form.current?.requestSubmit()
+                    }}
+                  >
+                    Keep this PIN
+                  </Button>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Field id="ah-type" label="Type">
                   <select
@@ -647,13 +799,7 @@ export default function AddHomePage() {
             </>
           )}
 
-          {fieldFailure ? (
-            <p className="text-sm text-danger-600" data-testid="ah-fix-fields">
-              Check the field marked in red, then save again.
-            </p>
-          ) : (
-            <ActionError error={save.error} startDate={draft.startDate} />
-          )}
+          {!fieldFailure && <ActionError error={save.error} startDate={draft.startDate} />}
 
           {!(step === "address" && matches && matches.length > 0) && (
             <div className="flex gap-2 pt-1">

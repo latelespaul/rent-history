@@ -234,7 +234,8 @@ export default function PropertyPage() {
           <MapPinIcon size={16} className="text-ink-500" />
           {[property.street, placeLine(property)].filter(Boolean).join(", ")}
         </p>
-        {unitLine(property.location, property.unitLabel) && (
+        {/* Inside a tower or wing; a plain flat number shows in "About this home" below. */}
+        {(property.location?.tower || property.location?.wing) && (
           <p data-testid="unit-line" className="text-sm font-medium text-ink-700">
             {unitLine(property.location, property.unitLabel)}
           </p>

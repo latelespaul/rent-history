@@ -6,6 +6,9 @@ import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.home.dto.AddHomeRequest;
 import com.rentrix.rentrixserver.home.dto.AddHomeResult;
+import com.rentrix.rentrixserver.home.dto.AddressCheck;
+import com.rentrix.rentrixserver.location.Area;
+import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.PropertyService;
@@ -29,6 +32,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * "Add your home" (D-139): one call stores the home, the caller's tenancy and its first rent record, and the owner's
@@ -47,6 +51,26 @@ public class HomeService {
 	private final ApprovalGuard approvals;
 	private final AccessTokenService tokens;
 	private final CityService cityService;
+	private final LocationService locations;
+	
+	/**
+	 * Step 1's PIN code against the city (a hard error: its prefixes, D-84) and against the picked area (only a
+	 * warning, since PIN codes cross area borders and the area data is incomplete; firstmate 2026-11-23 14:50).
+	 */
+	@Transactional(readOnly = true)
+	public AddressCheck checkAddress(String city, String pincode, UUID areaId, AuthenticatedUser caller) {
+		// Never through the throwing checks: their transaction would mark this one rollback-only.
+		String error = cityService.pincodeProblem(city, pincode == null ? null : pincode.trim());
+		if (areaId == null) {
+			return new AddressCheck(error, null, null);
+		}
+		Area area = locations.areaFilter(areaId, caller, "area");
+		List<String> pins = area.pincodeList();
+		String warning = error == null && pincode != null && !pins.isEmpty() && !pins.contains(pincode.trim())
+			? pincode.trim() + " is usually not in " + area.getName() + "; check the PIN."
+			: null;
+		return new AddressCheck(error, warning, pins);
+	}
 	
 	@Transactional
 	public AddHomeResult add(AddHomeRequest request, AuthenticatedUser caller) {

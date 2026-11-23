@@ -23,8 +23,15 @@ interface Scenario {
   city: string
   area: string
   pincode: string
-  /** A PIN code of another city, typed first: the save must point at the PIN field on step 1. */
+  /** A PIN code of another city, typed first: step 1's Next blocks it by the PIN field. */
   wrongPincode?: string
+  /** The PIN the picked area fills in by itself (firstmate 2026-11-23 14:51). */
+  autoPincode?: string
+  /** A PIN of this city the area does not list: step 1 warns; `keepPin` keeps it, else it is corrected. */
+  otherAreaPincode?: string
+  keepPin?: boolean
+  /** The API rejects the first save on the PIN code: back to step 1, the PIN field focused. */
+  serverReject?: boolean
   /** A new society; without it the home is standalone. */
   society?: string
   buildingName?: string
@@ -46,7 +53,9 @@ const SCENARIOS: Scenario[] = [
     city: "Bangalore",
     area: "Koramangala",
     pincode: "560034",
+    autoPincode: "560034",
     wrongPincode: "400001",
+    serverReject: true,
     society: `Gate Greens ${tag}`,
     type: "Apartment",
     bedrooms: "2",
@@ -60,6 +69,8 @@ const SCENARIOS: Scenario[] = [
     city: "Hyderabad",
     area: "Gachibowli",
     pincode: "500032",
+    autoPincode: "500032",
+    otherAreaPincode: "500081",
     buildingName: `Sai Residency ${tag}`,
     type: "Apartment",
     year: 2017,
@@ -113,6 +124,18 @@ const SCENARIOS: Scenario[] = [
     year: 2022,
     rent: "9000",
   },
+  {
+    name: "08-pin-outside-area-kept",
+    city: "Bangalore",
+    area: "HSR Layout",
+    pincode: "560008",
+    otherAreaPincode: "560008",
+    keepPin: true,
+    buildingName: `Kept Pin Apartments ${tag}`,
+    type: "Apartment",
+    year: 2023,
+    rent: "26000",
+  },
 ]
 
 async function shot(page: Page, testInfo: TestInfo, name: string) {
@@ -139,6 +162,9 @@ async function fillAddress(page: Page, s: Scenario, pincode: string) {
     .getByRole("list", { name: "Areas" })
     .getByRole("button", { name: new RegExp(`^${s.area}`) })
     .click()
+  // The area fills in its main PIN code, and lists the others when it has several.
+  if (s.autoPincode) await expect(page.getByLabel("PIN code")).toHaveValue(s.autoPincode)
+  if (s.area === "Koramangala") await expect(page.getByTestId("ah-pin-choices")).toBeVisible()
   if (s.society) {
     await page.locator("#pf-society").selectOption({ label: "+ Add a society…" })
     await page.getByLabel("New society name").fill(s.society)
@@ -156,8 +182,8 @@ async function fillAddress(page: Page, s: Scenario, pincode: string) {
   if (s.bedrooms) await page.locator("#ah-bedrooms").fill(s.bedrooms)
 }
 
-async function nextFromAddress(page: Page) {
-  await page.getByTestId("ah-next").click()
+async function nextFromAddress(page: Page, click = true) {
+  if (click) await page.getByTestId("ah-next").click()
   const step2 = page.getByTestId("add-home-step").filter({ hasText: /step 2 of 4/i })
   await expect(step2.or(page.getByTestId("home-matches"))).toBeVisible()
   if (await page.getByTestId("home-matches").isVisible())
@@ -178,8 +204,38 @@ async function addHome(page: Page, testInfo: TestInfo, s: Scenario) {
     await shot(page, testInfo, `${s.name}-1a-building-required`)
     await page.locator("#ah-building").fill(s.buildingName)
   }
-  await shot(page, testInfo, `${s.name}-1-where`)
-  await nextFromAddress(page)
+  if (s.wrongPincode) {
+    // PIN vs city is a hard block, on step 1's own Next (firstmate 2026-11-23 14:50).
+    await page.getByLabel("PIN code").fill(s.wrongPincode)
+    await page.getByTestId("ah-next").click()
+    await step(page, 1)
+    await expect(page.getByTestId("ah-pincode-error")).toContainText(/not in/i)
+    await expect(page.locator("#ah-pincode")).toBeFocused()
+    await shot(page, testInfo, `${s.name}-1b-pincode-city-blocked`)
+    await page.getByLabel("PIN code").fill(s.pincode)
+    // No stale error: it goes as soon as the field changes.
+    await expect(page.getByTestId("ah-pincode-error")).toHaveCount(0)
+  }
+  let moved = false
+  if (s.otherAreaPincode) {
+    // PIN vs area only warns: correct it, or keep it.
+    await page.getByLabel("PIN code").fill(s.otherAreaPincode)
+    await page.getByTestId("ah-next").click()
+    await expect(page.getByTestId("ah-pincode-warning")).toContainText(
+      `${s.otherAreaPincode} is usually not in ${s.area}; check the PIN.`,
+    )
+    await step(page, 1)
+    await shot(page, testInfo, `${s.name}-1c-pincode-area-warning`)
+    if (s.keepPin) {
+      await page.getByTestId("ah-keep-pincode").click()
+      moved = true
+    } else {
+      await page.getByLabel("PIN code").fill(s.pincode)
+      await expect(page.getByTestId("ah-pincode-warning")).toHaveCount(0)
+    }
+  }
+  if (!moved) await shot(page, testInfo, `${s.name}-1-where`)
+  await nextFromAddress(page, !moved)
 
   await page.getByTestId("ah-relation-rent").click()
   await shot(page, testInfo, `${s.name}-2-role`)
@@ -215,21 +271,40 @@ async function addHome(page: Page, testInfo: TestInfo, s: Scenario) {
     await expect(page.locator("#ah-owner-phone")).toHaveValue(s.owner?.phone ?? "")
   }
 
-  await page.getByTestId("ah-save").click()
-
-  if (s.wrongPincode) {
-    // The API's PIN error goes back to step 1, by the PIN field, never as the generic banner.
+  if (s.serverReject) {
+    // One rejected save: the API's step 1 error goes back to step 1, by the PIN field, focused,
+    // and never shows on step 4 or as the generic banner.
+    let rejected = false
+    await page.route("**/me/homes", async (route) => {
+      if (rejected || route.request().method() !== "POST") return route.fallback()
+      rejected = true
+      await route.fulfill({
+        status: 422,
+        contentType: "application/problem+json",
+        body: JSON.stringify({
+          status: 422,
+          code: "validation_failed",
+          title: "Invalid request",
+          detail: GENERIC,
+          errors: [
+            { field: "home.pincode", code: "city_mismatch", message: "Check this PIN code." },
+          ],
+        }),
+      })
+    })
+    await page.getByTestId("ah-save").click()
     await step(page, 1)
-    await expect(page.getByTestId("ah-pincode-error")).toContainText(/not in/i)
-    await shot(page, testInfo, `${s.name}-1b-pincode-error`)
-    await page.getByLabel("PIN code").fill(s.pincode)
+    await expect(page.getByTestId("ah-pincode-error")).toHaveText("Check this PIN code.")
+    await expect(page.locator("#ah-pincode")).toBeFocused()
+    await shot(page, testInfo, `${s.name}-1d-save-rejected-back-to-step-1`)
+    await page.unroute("**/me/homes")
     await nextFromAddress(page)
     for (const n of [3, 4]) {
       await page.getByTestId("ah-next").click()
       await step(page, n)
     }
-    await page.getByTestId("ah-save").click()
   }
+  await page.getByTestId("ah-save").click()
 
   const done = page.getByTestId("add-home-done")
   await expect(done).toBeVisible()

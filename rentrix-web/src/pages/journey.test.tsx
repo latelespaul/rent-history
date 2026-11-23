@@ -126,6 +126,7 @@ describe("new-user journey", () => {
     await user.type(screen.getAllByLabelText("City")[1], "Mysuru")
     await user.type(screen.getByLabelText("State"), "Karnataka")
     await user.type(screen.getByLabelText("Area or locality"), "Gokulam")
+    await user.type(screen.getByLabelText("Building name"), "Lake View")
     await user.type(screen.getByLabelText("Flat / house no."), "12")
     await user.type(screen.getByLabelText("PIN code"), "570002")
     await user.click(screen.getByTestId("ah-next"))
@@ -140,7 +141,7 @@ describe("new-user journey", () => {
 
     expect(await screen.findByRole("heading", { name: /step 3 of 4 · your tenancy/i })).toBeTruthy()
     await user.type(screen.getByLabelText("Moved in"), "2026-03-01")
-    await user.type(screen.getByLabelText("Monthly rent (₹)"), "18000")
+    await user.type(screen.getByLabelText(/monthly rent/i), "18000")
     await user.click(screen.getByTestId("ah-next"))
 
     expect(await screen.findByRole("heading", { name: /step 4 of 4 · the owner/i })).toBeTruthy()
@@ -155,6 +156,7 @@ describe("new-user journey", () => {
         city: "OTHER",
         pincode: "570002",
         locality: "Gokulam",
+        buildingName: "Lake View",
         unitLabel: "12",
         propertyType: "APARTMENT",
         bedrooms: null,

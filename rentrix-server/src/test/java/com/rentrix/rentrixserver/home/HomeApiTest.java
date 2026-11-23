@@ -375,4 +375,28 @@ class HomeApiTest {
 			TODAY.minusMonths(4)));
 	}
 
+	/** Firstmate 2026-11-23 14:50: PIN vs city blocks at step 1; PIN vs area only warns, and the home saves. */
+	@Test
+	void stepOneChecksThePinAgainstTheCityAndOnlyWarnsAboutTheArea() throws Exception {
+		User tenant = tenant("Pin Tenant");
+		mvc.perform(get("/me/homes/address-check").param("city", "BLR").param("pincode", "400001")
+				.header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pincodeError").value("This pincode is not in Bangalore."))
+			.andExpect(jsonPath("$.pincodeWarning").doesNotExist());
+		mvc.perform(get("/me/homes/address-check").param("city", CITY).param("pincode", "300299")
+				.param("area", area.getPublicId().toString()).header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.pincodeError").doesNotExist())
+			.andExpect(jsonPath("$.pincodeWarning").value("300299 is usually not in Home Area; check the PIN."))
+			.andExpect(jsonPath("$.areaPincodes[0]").value("300201"));
+		mvc.perform(get("/me/homes/address-check").param("city", CITY).param("pincode", "300202")
+				.param("area", area.getPublicId().toString()).header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.pincodeWarning").doesNotExist());
+		// The user kept the PIN: the home saves on its area.
+		JsonNode kept = added(tenant, rentBody(newHome("Flat 77").replace("\"300201\"", "\"300299\""),
+			TODAY.minusMonths(2))).get("property");
+		assertThat(kept.get("pincode").asString()).isEqualTo("300299");
+	}
+
 }

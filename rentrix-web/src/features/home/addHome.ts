@@ -29,6 +29,10 @@ export interface HomeDraft {
   buildingName: string
   unitLabel: string
   pincode: string
+  /** True once the user typed the PIN code: a later area change no longer refills it. */
+  pincodeTyped?: boolean
+  /** A PIN code the picked area does not list, kept after the warning (firstmate 2026-11-23 14:50). */
+  keptPincode?: string
   propertyType: PropertyType
   bedrooms: string
   /** A published home picked from "Is it this one?"; the address fields are then ignored. */

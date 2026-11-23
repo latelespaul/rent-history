@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.home;
 
 import com.rentrix.rentrixserver.home.dto.AddHomeRequest;
 import com.rentrix.rentrixserver.home.dto.AddHomeResult;
+import com.rentrix.rentrixserver.home.dto.AddressCheck;
 import com.rentrix.rentrixserver.property.PropertyService;
 import com.rentrix.rentrixserver.property.dto.PropertyCard;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
@@ -33,6 +34,13 @@ public class HomeController {
 		@RequestParam(required = false) UUID society, @RequestParam(name = "societyName", required = false) String name,
 		@RequestParam String unit) {
 		return properties.matches(city, pincode, society, name, unit);
+	}
+	
+	/** {@code GET /me/homes/address-check}: step 1's PIN code against the city (blocks) and the area (warns). */
+	@GetMapping("/me/homes/address-check")
+	public AddressCheck addressCheck(@RequestParam String city, @RequestParam String pincode,
+		@RequestParam(required = false) UUID area, @AuthenticationPrincipal AuthenticatedUser caller) {
+		return homes.checkAddress(city, pincode, area, caller);
 	}
 	
 	/** {@code POST /me/homes}: the home, the caller's tenancy and rent, and the owner's contact, in one step. */

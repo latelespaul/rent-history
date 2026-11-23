@@ -223,6 +223,17 @@ public class LocationService {
 	 */
 	@Transactional
 	public Placement resolve(String cityCode, String pincode, LocationInput input, User actor) {
+		return resolve(cityCode, pincode, input, actor, false);
+	}
+	
+	/**
+	 * {@link #resolve(String, String, LocationInput, User)}, where {@code pincodeMayLeaveArea} lets a picked area take
+	 * a PIN code it does not list: "Add your home" only warns about it (firstmate 2026-11-23 14:50), because PIN codes
+	 * cross area borders and the area PIN data is incomplete. The city's PIN prefixes still hold.
+	 */
+	@Transactional
+	public Placement resolve(String cityCode, String pincode, LocationInput input, User actor,
+		boolean pincodeMayLeaveArea) {
 		Objects.requireNonNull(actor, "actor");
 		Viewer viewer = Viewer.of(actor);
 		LocationInput in = input == null ? new LocationInput(null, null, null, null, null, null, null, null) : input;
@@ -288,7 +299,7 @@ public class LocationService {
 			}
 			area.addPincode(areaPincode);
 		}
-		if (!area.pincodeList().contains(pincode)) {
+		if (!pincodeMayLeaveArea && !area.pincodeList().contains(pincode)) {
 			throw reads(viewer, area)
 				? new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "pincode_not_in_area",
 					"PIN code " + pincode + " is not in " + area.getName() + ".",
