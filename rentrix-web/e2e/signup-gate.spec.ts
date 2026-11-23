@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { verifyPhone } from "./support"
+import { apiBaseUrl, verifyPhone } from "./support"
 
 /**
  * Release gate (captain 2026-11-23 13:26): the complete new-user chain at 390 px. Landing, sign
@@ -152,7 +152,8 @@ test.describe("new-user sign-up release gate (390 px)", () => {
 
     await test.step("9 sign out and back in keeps everything", async () => {
       // The user's id, read through the session cookie before signing out.
-      const refreshed = await page.request.post("/api/v1/auth/refresh")
+      const apiBase = await apiBaseUrl(page)
+      const refreshed = await page.request.post(`${apiBase}/auth/refresh`)
       expect(refreshed.ok()).toBe(true)
       const { user } = (await refreshed.json()) as { user: { id: string } }
       await page.goto("/settings")
@@ -162,7 +163,9 @@ test.describe("new-user sign-up release gate (390 px)", () => {
       ).toBeVisible()
       await shot(page, testInfo, "15-signed-out")
       // Dev login stands in for Google here too: the same account signs in again.
-      const again = await page.request.post("/api/v1/auth/dev-login", { data: { userId: user.id } })
+      const again = await page.request.post(`${apiBase}/auth/dev-login`, {
+        data: { userId: user.id },
+      })
       expect(again.ok()).toBe(true)
       await page.goto("/settings")
       await expect(page.getByLabel("Display name")).toHaveValue(name)

@@ -56,6 +56,14 @@ function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
+/** The browser calls the API at the URL `/config.js` names (D-04), not on the web origin. */
+export async function apiBaseUrl(page: Page) {
+  return page.evaluate(() => {
+    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
+    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
+  })
+}
+
 /**
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
@@ -70,11 +78,7 @@ export async function verifyPhone(page: Page, digits: string) {
   await page.getByRole("button", { name: /send code/i }).click()
   // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
   await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
-  // The browser calls the API at the URL `/config.js` names (D-04), not on the web origin.
-  const apiBase = await page.evaluate(() => {
-    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
-    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
-  })
+  const apiBase = await apiBaseUrl(page)
   const api = await request.newContext({
     extraHTTPHeaders: { "X-Forwarded-Host": `admin.${new URL(apiBase).hostname}` },
   })
