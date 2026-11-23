@@ -108,12 +108,17 @@ app:
     google:
       # GIS ID-token flow needs only the client id (D-74). Env only, never committed.
       client-id: ${GOOGLE_CLIENT_ID:}
-    admin-emails: ${ADMIN_EMAILS:}        # comma list of verified Google emails (D-19, D-78)
     refresh-token-ttl: 30d                # D-63
     refresh-reuse-grace: 30s              # D-63: the last rotated token still answers this long (tabs racing)
     rate-limit:                           # POST /auth/google and /auth/dev-login, per client IP (§13)
       requests: 20
       period: 15m
+  admin-console:
+    # The admin console's own host (D-19, SYSTEM_DESIGN §13.3). Only requests to these host names
+    # (Host, or X-Forwarded-Host from TRUSTED_PROXIES) may sign in as an admin or call /admin/**;
+    # the main site never sees the admin role. Empty = no admin console.
+    hosts: ${ADMIN_HOSTS:}                # comma list, e.g. admin.doorwayliving.in
+    emails: ${ADMIN_CONSOLE_EMAILS:}      # comma list of verified Google emails allowed to sign in there
   web:
     # Public URL of the web app, for links in emails (tenancy invites, D-65).
     base-url: ${APP_BASE_URL:}

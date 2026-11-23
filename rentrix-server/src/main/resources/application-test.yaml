@@ -27,6 +27,8 @@ app:
     base-url: ${APP_BASE_URL:http://localhost:5173}
   dev-login:
     enabled: ${DEV_LOGIN_ENABLED:false}
+  admin-console:
+    hosts: ${ADMIN_HOSTS:admin.localhost}   # the admin console on http://admin.localhost:5173 (§13.3)
   auth:
     google:
       # Not a real client id: tests use FakeGoogleTokenVerifier and never call Google (D-75).

@@ -176,11 +176,6 @@ function Roles({ user }: { user: CurrentUser }) {
           </div>
         )
       })}
-      {user.roles.includes("ADMIN") && (
-        <p className="flex items-center gap-2 text-sm text-ink-500">
-          <Badge variant="admin">Admin</Badge> Granted by the site operators, not in settings.
-        </p>
-      )}
       {add.isError && <Notice tone="danger">{errorMessage(add.error)}</Notice>}
     </div>
   )

@@ -31,6 +31,18 @@ class AccessTokenServiceTest {
 	}
 	
 	@Test
+	void aMainSiteTokenNeverHoldsAdminAndAnAdminTokenHoldsOnlyAdmin() {
+		UUID id = UUID.randomUUID();
+		AuthenticatedUser main = service(SECRET, NOW).verify(service(SECRET, NOW).issue(id, Set.of(Role.ADMIN,
+			Role.TENANT)));
+		assertThat(main.adminSession()).isFalse();
+		assertThat(main.roles()).containsExactly(Role.TENANT);
+		AuthenticatedUser admin = service(SECRET, NOW).verify(service(SECRET, NOW).issueAdmin(id));
+		assertThat(admin.adminSession()).isTrue();
+		assertThat(admin.roles()).containsExactly(Role.ADMIN);
+	}
+	
+	@Test
 	void expiredTokenIsRejected() {
 		String token = service(SECRET, NOW).issue(UUID.randomUUID(), Set.of());
 		assertThatThrownBy(() -> service(SECRET, NOW.plus(Duration.ofMinutes(16))).verify(token))

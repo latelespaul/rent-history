@@ -30,12 +30,6 @@ import { LandingCoverage } from "@/features/landing/LandingCoverage"
 import { GreenTick, LandingPreview } from "@/features/landing/LandingPreview"
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
-import type { CurrentUser } from "@/types/api"
-
-/** Where a signed-in visitor of `/` goes: the app (admins to their console, everyone else to Search). */
-function appHome(user: CurrentUser): string {
-  return user.roles.includes("ADMIN") ? "/admin" : "/search"
-}
 
 /** Section heading type: one scale for the whole page (28 px on a phone, 40 px from 1024 px). */
 const H2 =
@@ -279,7 +273,8 @@ export default function HomePage() {
   }, [signingOut, state.status, navigate])
   if (state.status === "loading") return <AuthPending />
   if (state.status === "signedIn" && !signingOut) {
-    return <Navigate to={appHome(state.user)} replace />
+    // A signed-in visitor goes to Search; the admin console is on its own host (SYSTEM_DESIGN §13.3).
+    return <Navigate to="/search" replace />
   }
 
   return (

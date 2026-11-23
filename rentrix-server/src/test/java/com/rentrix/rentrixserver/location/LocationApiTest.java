@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItem;
@@ -123,8 +124,10 @@ class LocationApiTest {
 		mvc.perform(get("/areas").param("city", CITY).header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.items[*].name", contains("Active Area", "Proposed Area")))
 			.andExpect(jsonPath("$.items[1].status").value("PENDING"));
-		mvc.perform(get("/areas").param("city", CITY).header("Authorization", support.bearer(admin)))
+		mvc.perform(get("/areas").param("city", CITY).with(adminHost()).header("Authorization", support.adminBearer(admin)))
 			.andExpect(jsonPath("$.page.totalItems").value(2));
+		mvc.perform(get("/areas").param("city", CITY).header("Authorization", support.bearer(admin)))
+			.andExpect(jsonPath("$.page.totalItems").value(1));
 		
 		mvc.perform(get("/areas/{id}", proposed.getPublicId())).andExpect(status().isNotFound());
 		mvc.perform(get("/areas/{id}", proposed.getPublicId()).header("Authorization", support.bearer(other)))
@@ -140,8 +143,8 @@ class LocationApiTest {
 		mvc.perform(get("/areas/{id}", active.getPublicId()).header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.societies[*].name", contains("Active Society", "Proposed Society")));
 		mvc.perform(get("/societies/{id}", pendingSociety.getPublicId())).andExpect(status().isNotFound());
-		mvc.perform(get("/societies/{id}", pendingSociety.getPublicId())
-				.header("Authorization", support.bearer(admin)))
+		mvc.perform(get("/societies/{id}", pendingSociety.getPublicId()).with(adminHost())
+				.header("Authorization", support.adminBearer(admin)))
 			.andExpect(status().isOk());
 		
 		mvc.perform(get("/societies/{id}/towers", society.getPublicId()))

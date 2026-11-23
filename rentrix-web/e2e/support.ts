@@ -60,7 +60,9 @@ function escape(text: string): string {
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
  * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
- * the way an admin passes it on in a preview.
+ * the way an admin passes it on in a preview. Admin calls work only on the admin host
+ * (SYSTEM_DESIGN §13.3), so they carry `X-Forwarded-Host: admin.<host>`, which the API honours
+ * from the loopback and Docker-bridge peers it trusts.
  */
 export async function verifyPhone(page: Page, digits: string) {
   await expect(page).toHaveURL(/\/verify\/phone/)
@@ -73,15 +75,17 @@ export async function verifyPhone(page: Page, digits: string) {
     const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
     return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
   })
-  const api = await request.newContext()
-  const users = (await (await api.get(`${apiBase}/auth/dev-users`)).json()) as Array<{
+  const api = await request.newContext({
+    extraHTTPHeaders: { "X-Forwarded-Host": `admin.${new URL(apiBase).hostname}` },
+  })
+  const users = (await (await api.get(`${apiBase}/auth/admin/dev-users`)).json()) as Array<{
     id: string
     displayName: string
   }>
   const admin = users.find((u) => u.displayName === "Demo Admin")
   expect(admin, "the demo seed has its admin").toBeTruthy()
   const session = (await (
-    await api.post(`${apiBase}/auth/dev-login`, { data: { userId: admin!.id } })
+    await api.post(`${apiBase}/auth/admin/dev-login`, { data: { userId: admin!.id } })
   ).json()) as { accessToken: string }
   const relayed = (await (
     await api.get(`${apiBase}/admin/sms-relay`, {

@@ -206,11 +206,12 @@ class LocationResolveTest {
 	}
 	
 	@Test
-	void anAdminCreatesActiveRows() {
+	void anAdminRowGivesNoActiveRowsOnTheMainSite() {
+		// Homes are written only on the main site, where nobody is an admin (D-19): proposals stay PENDING.
 		User admin = data.user("Location Admin", Role.ADMIN, Role.LANDLORD);
 		Placement placed = service.resolve(CITY, "200001", new LocationInput(area.getPublicId(), null,
 			society.getPublicId(), null, null, new LocationInput.NewTower("Tower 7", null), null, null), admin);
-		assertThat(placed.tower().getStatus()).isEqualTo(LocationStatus.ACTIVE);
+		assertThat(placed.tower().getStatus()).isEqualTo(LocationStatus.PENDING);
 		assertThat(placed.tower().getKind()).isEqualTo(TowerKind.TOWER);
 		assertThat(placed.tower().getSortOrder()).isEqualTo(2);
 	}

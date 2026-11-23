@@ -218,7 +218,7 @@ public class LocationService {
 	 * the proposals below it (no duplicate rows). The joiner may then read and reuse the row by id.</li>
 	 * </ul>
 	 * Proposals by a landlord are saved {@code PENDING} with {@code created_by} = the actor, so lists show them
-	 * only to them and admins until listing approval; an admin's are {@code ACTIVE} (D-109). Call inside the transaction
+	 * only to them and admins until listing approval (D-109; the admin console never writes homes, D-19). Call inside the transaction
 	 * that saves the property.
 	 */
 	@Transactional

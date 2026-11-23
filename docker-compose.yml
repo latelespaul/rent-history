@@ -23,7 +23,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (at least 32 bytes) in .env}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8081}
-      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      # Admin console on its own host (SYSTEM_DESIGN §13.3): host names, and who may sign in there.
+      ADMIN_HOSTS: ${ADMIN_HOSTS:-}
+      ADMIN_CONSOLE_EMAILS: ${ADMIN_CONSOLE_EMAILS:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       SEED_DEMO: ${SEED_DEMO:-false}
       ID_HASH_KEY: ${ID_HASH_KEY:-}
@@ -57,6 +59,8 @@ services:
     environment:
       # The browser calls the API directly, so this must be a URL the browser can reach.
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8080/api/v1}
+      # The admin console (admin.* host) calls the API here; empty = same-origin /api/v1.
+      ADMIN_API_BASE_URL: ${ADMIN_API_BASE_URL:-}
     ports:
       - "${WEB_PORT:-8081}:8080"
     depends_on:

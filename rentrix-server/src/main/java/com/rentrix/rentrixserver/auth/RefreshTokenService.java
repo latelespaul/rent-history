@@ -27,13 +27,15 @@ import java.util.UUID;
  * cannot both succeed. Presenting the family's most recently rotated token again within the reuse grace
  * window (default 30 s, e.g. two tabs refreshing at once) returns an access token for the current successor
  * without rotating again. Any other reuse of a rotated or revoked token revokes its whole family (theft
- * detection).
+ * detection). An admin console family (§13.3) has raw values starting with {@link #ADMIN_PREFIX}; its successors keep
+ * the prefix, and the hash covers it, so a main-site token cannot be turned into an admin one.
  */
 @Slf4j
 @Service
 public class RefreshTokenService {
 	
 	private static final SecureRandom RANDOM = new SecureRandom();
+	static final String ADMIN_PREFIX = "adm.";
 	
 	private final RefreshTokenRepository tokens;
 	private final Duration ttl;
@@ -51,12 +53,18 @@ public class RefreshTokenService {
 		return ttl;
 	}
 	
-	/** Stores a new token in {@code familyId} and returns its raw value (the cookie value). */
+	/** Stores a new main-site token in {@code familyId} and returns its raw value (the cookie value). */
 	@Transactional
 	public String issue(User user, UUID familyId) {
+		return issue(user, familyId, false);
+	}
+	
+	/** Stores a new token in {@code familyId}, an admin console one when {@code admin}, and returns its raw value. */
+	@Transactional
+	public String issue(User user, UUID familyId, boolean admin) {
 		byte[] bytes = new byte[32];
 		RANDOM.nextBytes(bytes);
-		String raw = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+		String raw = (admin ? ADMIN_PREFIX : "") + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
 		RefreshToken token = new RefreshToken();
 		token.setUser(user);
 		token.setTokenHash(hash(raw));
@@ -89,7 +97,7 @@ public class RefreshTokenService {
 		User user = token.getUser();
 		if (rotated) {
 			requireActive(token, user, now);
-			return new Rotation(user, issue(user, token.getFamilyId()));
+			return new Rotation(user, issue(user, token.getFamilyId(), isAdmin(raw)));
 		}
 		if (token.getRevokedAt() == null) {
 			throw invalid(); // expired
@@ -112,6 +120,11 @@ public class RefreshTokenService {
 		tokens.findByTokenHash(hash(raw))
 			.filter(t -> t.getRevokedAt() == null)
 			.ifPresent(t -> t.setRevokedAt(now()));
+	}
+	
+	/** True for a raw value of an admin console family. */
+	public static boolean isAdmin(String raw) {
+		return raw != null && raw.startsWith(ADMIN_PREFIX);
 	}
 	
 	private RefreshToken find(String raw) {

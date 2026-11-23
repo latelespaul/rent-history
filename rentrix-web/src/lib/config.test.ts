@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DEFAULT_API_BASE_URL, resolveApiBaseUrl } from "./config"
+import { DEFAULT_API_BASE_URL, isAdminHost, resolveApiBaseUrl } from "./config"
 
 describe("resolveApiBaseUrl", () => {
   it("prefers the runtime value from public/config.js", () => {
@@ -22,5 +22,20 @@ describe("resolveApiBaseUrl", () => {
     expect(resolveApiBaseUrl("https://api.rentrix.in/api/v1//")).toBe(
       "https://api.rentrix.in/api/v1",
     )
+  })
+})
+
+describe("isAdminHost", () => {
+  it("is true for the admin console's hosts", () => {
+    expect(isAdminHost("admin.doorwayliving.in")).toBe(true)
+    expect(isAdminHost("admin.doorway.129-225-77-1.sslip.io")).toBe(true)
+    expect(isAdminHost("ADMIN.localhost")).toBe(true)
+  })
+
+  it("is false for the main site", () => {
+    expect(isAdminHost("doorwayliving.in")).toBe(false)
+    expect(isAdminHost("www.doorwayliving.in")).toBe(false)
+    expect(isAdminHost("localhost")).toBe(false)
+    expect(isAdminHost("myadmin.example.test")).toBe(false)
   })
 })

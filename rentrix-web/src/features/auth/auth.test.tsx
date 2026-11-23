@@ -144,7 +144,7 @@ describe("login page", () => {
 
   it("lists seed users in the dev picker and signs in as the chosen one", async () => {
     h.config = { googleClientId: null, devLogin: true }
-    const landlord = DEV_USERS[1]
+    const landlord = DEV_USERS[0]
     vi.mocked(auth.devLogin).mockResolvedValue({
       accessToken: "dev-token",
       user: landlord,
@@ -155,7 +155,7 @@ describe("login page", () => {
 
     const panel = await screen.findByRole("region", { name: /dev login/i })
     await within(panel).findByText("Demo Landlord BLR-1")
-    expect(within(panel).getByRole("group", { name: "Staff (1)" })).toBeTruthy()
+    expect(within(panel).queryByRole("group", { name: /staff/i })).toBeNull()
     expect(within(panel).getByRole("group", { name: "Landlords (2)" })).toBeTruthy()
     expect(within(panel).getByText("Landlord pending")).toBeTruthy()
     expect(within(panel).getByText("Tenant rejected")).toBeTruthy()
@@ -187,7 +187,7 @@ describe("login page", () => {
     h.config = { googleClientId: null, devLogin: true }
     vi.mocked(auth.devLogin).mockResolvedValue({
       accessToken: "dev-token",
-      user: DEV_USERS[1],
+      user: DEV_USERS[0],
       needsOnboarding: false,
     })
     const router = renderApp("/login")
@@ -253,18 +253,12 @@ describe("guarded routes", () => {
     expect(where(router)).toBe("/welcome?next=%2Fme%2Ftenancies")
   })
 
-  it("shows No access on admin pages for non-admins", async () => {
-    h.restored = makeUser()
+  it("has no admin pages on the main site, not even for admins", async () => {
+    h.restored = makeUser({ roles: ["ADMIN", "TENANT"] })
     renderApp("/admin")
 
-    expect(await screen.findByText("No access")).toBeTruthy()
-  })
-
-  it("opens admin pages for admins", async () => {
-    h.restored = makeUser({ roles: ["ADMIN"], needsOnboarding: true })
-    renderApp("/admin")
-
-    expect(await screen.findByText("Admin console")).toBeTruthy()
+    expect(await screen.findByText("Page not found")).toBeTruthy()
+    expect(screen.queryByText("Admin console")).toBeNull()
   })
 })
 

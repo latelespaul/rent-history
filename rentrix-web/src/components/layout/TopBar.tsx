@@ -194,7 +194,7 @@ function SignIn({ block }: { block?: boolean }) {
 
 /**
  * The sticky top bar (DESIGN.md §4.4 `.topbar`): brand, role-aware nav, the city picker,
- * "Admin" and "Demo data" badges, and the viewer or "Sign in". Under 860 px the nav, picker and
+ * the "Demo data" badge, and the viewer or "Sign in". Under 860 px the nav, picker and
  * sign-in fold into a menu sheet behind the hamburger.
  */
 export function TopBar({
@@ -206,7 +206,6 @@ export function TopBar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const items = navFor(viewer)
-  const isAdmin = viewer?.roles.includes("ADMIN") ?? false
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
@@ -233,7 +232,6 @@ export function TopBar({
         <ShellCityPicker className="hidden w-56 nav:block" />
         <span className="flex-1" />
         <div className="flex items-center gap-3">
-          {isAdmin && <Badge variant="admin">Admin</Badge>}
           {viewer?.isDemo && <DemoBadge className="max-sm:hidden" />}
           {viewer && (
             // "+ Add your home" (D-139, captain 22:22): in both modes, on every page.

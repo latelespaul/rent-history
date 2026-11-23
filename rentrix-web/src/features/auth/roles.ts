@@ -26,18 +26,19 @@ export interface Group {
   users: CurrentUser[]
 }
 
-/** Staff, landlords, tenants, then seed users who have not picked a role yet. */
+/**
+ * Landlords, tenants, then seed users who have not picked a role yet. The seed admin is not
+ * offered on the main site; it signs in on the admin host (SYSTEM_DESIGN §13.3).
+ */
 export function groupDevUsers(users: CurrentUser[]): Group[] {
   const groups: Group[] = [
-    { key: "staff", label: "Staff", users: [] },
     { key: "landlords", label: "Landlords", users: [] },
     { key: "tenants", label: "Tenants", users: [] },
     { key: "new", label: "Not onboarded", users: [] },
   ]
-  const [staff, landlords, tenants, fresh] = groups
+  const [landlords, tenants, fresh] = groups
   for (const user of users) {
-    if (user.roles.includes("ADMIN")) staff.users.push(user)
-    else if (user.needsOnboarding) fresh.users.push(user)
+    if (user.needsOnboarding) fresh.users.push(user)
     else if (user.roles.includes("LANDLORD")) landlords.users.push(user)
     else tenants.users.push(user)
   }

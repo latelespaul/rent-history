@@ -136,16 +136,15 @@ describe("top bar", () => {
     expect(within(banner()).queryByRole("link", { name: "Sign in" })).toBeNull()
   })
 
-  it("marks an admin and gives the admin nav", () => {
-    renderShell("/", { shortName: "Demo A.", roles: ["ADMIN"], isDemo: false })
-    expect(within(banner()).getByText("Admin")).toBeTruthy()
-    expect(within(banner()).queryByText("Demo data")).toBeNull()
+  it("never marks an admin or gives an admin nav on the main site", () => {
+    renderShell("/", { shortName: "Demo A.", roles: ["ADMIN", "TENANT"], isDemo: false })
+    expect(within(banner()).queryByText("Admin")).toBeNull()
     const nav = within(banner()).getByRole("navigation", { name: "Main" })
     expect(
       within(nav)
         .getAllByRole("link")
         .map((a) => a.textContent),
-    ).toEqual(["Dashboard", "Approvals", "Records", "Cities"])
+    ).toEqual(["Search", "My tenancies"])
   })
 
   it("folds nav, city picker and sign-in into the mobile menu", async () => {

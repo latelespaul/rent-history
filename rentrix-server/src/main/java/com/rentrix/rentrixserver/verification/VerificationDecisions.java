@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.verification;
 
+import com.rentrix.rentrixserver.admin.AdminConsoleMembers;
 import com.rentrix.rentrixserver.admin.AuditLog;
 import com.rentrix.rentrixserver.admin.ModerationActionType;
 import com.rentrix.rentrixserver.admin.ModerationTargetType;
@@ -8,11 +9,8 @@ import com.rentrix.rentrixserver.identity.IdentityRejectCode;
 import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.identity.IdentityStatus;
 import com.rentrix.rentrixserver.identity.IdentityVerification;
-import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
-import com.rentrix.rentrixserver.user.UserRoles;
-import com.rentrix.rentrixserver.user.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -46,7 +44,7 @@ public class VerificationDecisions {
 	private final VerificationService verification;
 	private final IdentityService identity;
 	private final UserRepository users;
-	private final UserRoles userRoles;
+	private final AdminConsoleMembers adminMembers;
 	private final AuditLog audit;
 	private final ApplicationEventPublisher events;
 	private final Clock clock;
@@ -138,11 +136,10 @@ public class VerificationDecisions {
 		return application;
 	}
 	
-	/** The caller must hold {@code ADMIN} now (config or {@code user_roles}, D-19), not only in the token. */
+	/** The caller must be an admin console member now ({@code ADMIN_CONSOLE_EMAILS} or {@code user_roles}, D-19), not only in the token. */
 	private User admin(UUID adminId) {
 		return users.findByPublicId(adminId)
-			.filter(u -> u.getStatus() == UserStatus.ACTIVE)
-			.filter(u -> userRoles.effective(u).contains(Role.ADMIN))
+			.filter(adminMembers::isMember)
 			.orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "forbidden", "You are not allowed to do this."));
 	}
 	

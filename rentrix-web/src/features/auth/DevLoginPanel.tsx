@@ -19,14 +19,12 @@ interface Props {
 }
 
 const AVATAR = {
-  admin: "bg-ink-900 text-white",
   landlord: "bg-landlord-100 text-landlord-600",
   tenant: "bg-tenant-100 text-tenant-600",
   none: "bg-sunk text-ink-700",
 } as const
 
 function tone(user: CurrentUser): keyof typeof AVATAR {
-  if (user.roles.includes("ADMIN")) return "admin"
   if (user.roles.includes("LANDLORD")) return "landlord"
   if (user.roles.includes("TENANT")) return "tenant"
   return "none"
@@ -63,9 +61,7 @@ export function DevLoginPanel({ onSignIn, onSignInAsNew, pending }: Props) {
     return [...codes].sort().map((code) => ({ code, name: names.get(code) ?? code }))
   }, [users.data, cities.data])
 
-  const shown = (users.data ?? []).filter(
-    (u) => !city || u.homeCity === city || u.roles.includes("ADMIN"),
-  )
+  const shown = (users.data ?? []).filter((u) => !city || u.homeCity === city)
   const groups = groupDevUsers(shown)
 
   return (

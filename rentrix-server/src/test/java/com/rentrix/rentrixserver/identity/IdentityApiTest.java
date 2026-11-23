@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
+import static com.rentrix.rentrixserver.support.AdminConsole.adminBearer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -77,7 +79,7 @@ class IdentityApiTest {
 	@Test
 	void smsRelayIsNotFoundWithoutTheAdminRelaySender() throws Exception {
 		User admin = data.user("Relay admin", Role.ADMIN);
-		mvc.perform(get("/admin/sms-relay").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+		mvc.perform(get("/admin/sms-relay").with(adminHost()).header(HttpHeaders.AUTHORIZATION, adminBearer(tokens, admin)))
 			.andExpect(status().isNotFound());
 	}
 	

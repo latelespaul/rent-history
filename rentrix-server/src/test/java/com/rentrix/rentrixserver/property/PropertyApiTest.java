@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -126,9 +127,12 @@ class PropertyApiTest {
 		mvc.perform(get("/properties/" + id).header("Authorization", support.bearer(owner)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.unitLabel").value("T-101"));
-		mvc.perform(get("/properties/" + id).header("Authorization", support.bearer(admin)))
+		mvc.perform(get("/properties/" + id).with(adminHost()).header("Authorization", support.adminBearer(admin)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.unitLabel").value("T-101"));
+		// The same account on the main site has no admin powers (D-19).
+		mvc.perform(get("/properties/" + id).header("Authorization", support.bearer(admin)))
+			.andExpect(status().isNotFound());
 		mvc.perform(patch("/properties/" + id).header("Authorization", support.bearer(other))
 				.contentType(MediaType.APPLICATION_JSON).content("{\"bedrooms\": 3}"))
 			.andExpect(status().isNotFound());

@@ -1,11 +1,13 @@
 package com.rentrix.rentrixserver.auth;
 
+import com.rentrix.rentrixserver.admin.AdminConsoleMembers;
 import com.rentrix.rentrixserver.auth.google.GoogleIdentity;
 import com.rentrix.rentrixserver.auth.google.GoogleTokenVerifier;
 import com.rentrix.rentrixserver.auth.google.InvalidGoogleTokenException;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.user.User;
+import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserRoles;
 import com.rentrix.rentrixserver.user.UserStatus;
@@ -27,7 +29,9 @@ import java.util.UUID;
 /**
  * Sign-in, refresh and logout (§13). Google is the production login (D-70); dev login reuses
  * {@link #startSession} for seed users (D-77). Both return the API's own access token (D-62) and a new
- * refresh token family (D-63); the Google token is never stored.
+ * refresh token family (D-63); the Google token is never stored. The admin console (§13.3) has its own sign-in,
+ * session and refresh ({@link #signInAdminWithGoogle}, {@link #startAdminSession}, {@link #refreshAdmin}), open only
+ * to {@link AdminConsoleMembers}; main-site sessions never carry {@code ADMIN} (D-19).
  */
 @Service
 @RequiredArgsConstructor
@@ -42,10 +46,19 @@ public class AuthService {
 	private final UserRoles userRoles;
 	private final UserViews userViews;
 	private final AuthProperties properties;
+	private final AdminConsoleMembers adminMembers;
 	private final Clock clock;
 	
-	/** A started or refreshed session: the access token, the raw refresh token (cookie) and the user. */
-	public record Session(String accessToken, String refreshToken, UserView user) {
+	/**
+	 * A started or refreshed session: the access token, the raw refresh token (cookie) and the user. {@code admin}
+	 * marks an admin console session, which gets the admin cookie.
+	 */
+	public record Session(String accessToken, String refreshToken, UserView user, boolean admin) {
+		
+		public Session(String accessToken, String refreshToken, UserView user) {
+			this(accessToken, refreshToken, user, false);
+		}
+		
 	}
 	
 	/**
@@ -55,6 +68,26 @@ public class AuthService {
 	 */
 	@Transactional
 	public Session signInWithGoogle(String idToken) {
+		GoogleIdentity identity = verifiedGoogle(idToken);
+		return startSession(googleUser(identity, email(identity)));
+	}
+	
+	/**
+	 * Admin console sign-in (§13.3): like {@link #signInWithGoogle}, but only for an {@link AdminConsoleMembers}
+	 * member, checked before any account is created, so a stranger on the admin host leaves no user row behind.
+	 */
+	@Transactional
+	public Session signInAdminWithGoogle(String idToken) {
+		GoogleIdentity identity = verifiedGoogle(idToken);
+		String email = email(identity);
+		boolean dbAdmin = users.findByGoogleSub(identity.sub()).filter(u -> u.hasRole(Role.ADMIN)).isPresent();
+		if (!dbAdmin && !adminMembers.isListed(email)) {
+			throw notAnAdmin();
+		}
+		return startAdminSession(googleUser(identity, email));
+	}
+	
+	private GoogleIdentity verifiedGoogle(String idToken) {
 		if (!properties.googleEnabled()) {
 			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "google_sign_in_disabled",
 				"Google sign-in is not configured on this server.");
@@ -69,7 +102,15 @@ public class AuthService {
 			|| !StringUtils.hasText(identity.sub())) {
 			throw googleTokenInvalid();
 		}
-		String email = identity.email().trim().toLowerCase(Locale.ROOT);
+		return identity;
+	}
+	
+	private static String email(GoogleIdentity identity) {
+		return identity.email().trim().toLowerCase(Locale.ROOT);
+	}
+	
+	/** Finds the user by {@code google_sub} or creates one, and refreshes the Google fields (D-72). */
+	private User googleUser(GoogleIdentity identity, String email) {
 		Optional<User> bySub = users.findByGoogleSub(identity.sub());
 		Optional<User> byEmail = users.findByEmail(email);
 		if (byEmail.isPresent() && (bySub.isEmpty() || !byEmail.get().getId().equals(bySub.get().getId()))) {
@@ -87,7 +128,7 @@ public class AuthService {
 		user.setGoogleName(identity.name());
 		user.setAvatarUrl(identity.pictureUrl());
 		user.setLastLoginAt(now);
-		return startSession(users.save(user));
+		return users.save(user);
 	}
 	
 	/** Starts a session for an existing user who already passed a sign-in check. */
@@ -102,8 +143,41 @@ public class AuthService {
 	/** Rotates the refresh token (D-63); roles are re-read from the database for the new access token. */
 	@Transactional(noRollbackFor = ApiException.class)
 	public Session refresh(String refreshToken) {
+		if (RefreshTokenService.isAdmin(refreshToken)) {
+			throw RefreshTokenService.invalid();
+		}
 		RefreshTokenService.Rotation rotation = refreshTokens.rotate(refreshToken);
 		return new Session(accessToken(rotation.user()), rotation.token(), userViews.of(rotation.user()));
+	}
+	
+	/** Starts an admin console session (§13.3) for a member who passed a sign-in check. */
+	@Transactional
+	public Session startAdminSession(User user) {
+		requireActive(user);
+		if (!adminMembers.isMember(user)) {
+			throw notAnAdmin();
+		}
+		user.setLastLoginAt(now());
+		String refresh = refreshTokens.issue(user, UUID.randomUUID(), true);
+		return new Session(accessTokens.issueAdmin(user.getPublicId()), refresh, userViews.of(user), true);
+	}
+	
+	/**
+	 * Rotates an admin console refresh token. Membership is checked again, so an email removed from
+	 * {@code ADMIN_CONSOLE_EMAILS} ends the session at its next refresh ({@code 403 not_an_admin}).
+	 */
+	@Transactional(noRollbackFor = ApiException.class)
+	public Session refreshAdmin(String refreshToken) {
+		if (!RefreshTokenService.isAdmin(refreshToken)) {
+			throw RefreshTokenService.invalid();
+		}
+		RefreshTokenService.Rotation rotation = refreshTokens.rotate(refreshToken);
+		User user = rotation.user();
+		if (!adminMembers.isMember(user)) {
+			refreshTokens.revoke(rotation.token());
+			throw notAnAdmin();
+		}
+		return new Session(accessTokens.issueAdmin(user.getPublicId()), rotation.token(), userViews.of(user), true);
 	}
 	
 	@Transactional
@@ -140,6 +214,11 @@ public class AuthService {
 	
 	private Instant now() {
 		return clock.instant().truncatedTo(ChronoUnit.MILLIS);
+	}
+	
+	static ApiException notAnAdmin() {
+		return new ApiException(HttpStatus.FORBIDDEN, "not_an_admin",
+			"This account is not an admin of the console.");
 	}
 	
 	private static ApiException googleTokenInvalid() {

@@ -299,9 +299,9 @@ class AuthFlowTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"Asha\"}"))
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("onboarding_required"));
+		// The admin console is not on the main site at all (§13.3).
 		mvc.perform(get("/admin/anything").header(HttpHeaders.AUTHORIZATION, bearer(auth)))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("onboarding_required"));
+			.andExpect(status().isNotFound());
 		mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(auth)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.needsOnboarding").value(true));
