@@ -108,7 +108,9 @@ test("fill every parameter, submit, and see the averages on the home and landlor
     const submitted = page.getByTestId("review-submitted")
     await expect(submitted.getByText(/you submitted this review/i)).toBeVisible()
     // the landlord had already reviewed this tenancy, so both publish together (D-46)
-    await expect(submitted.getByTestId("review-landlord-state")).toContainText(/published together/i)
+    await expect(submitted.getByTestId("review-landlord-state")).toContainText(
+      /published together/i,
+    )
     await shot(page, testInfo, "06-success")
     await submitted.getByTestId("review-view-home").click()
   })
@@ -136,8 +138,9 @@ test("fill every parameter, submit, and see the averages on the home and landlor
     const breakdown = page.getByTestId("landlord-breakdown")
     for (const criterion of Object.keys(LANDLORD))
       await expect(breakdown.getByTestId(`landlord-breakdown-${criterion}`)).toContainText(/\d\.\d/)
-    await expect(page.getByTestId("property-review").filter({ hasText: "Would recommend" }).first())
-      .toBeVisible()
+    await expect(
+      page.getByTestId("property-review").filter({ hasText: "Would recommend" }).first(),
+    ).toBeVisible()
     await shot(page, testInfo, "08-landlord-averages")
   })
 

@@ -8,11 +8,11 @@ Captain 2026-11-23 21:29: the review is a structured form, not a bare text box. 
 
 One form writes the existing two review rows of the tenant: `TENANT_TO_PROPERTY` (the home) and `TENANT_TO_LANDLORD` (the landlord). The landlord part is left out when the landlord is not on the platform (D-139) or was already reviewed.
 
-- New table `review_criterion_ratings (id, review_id, criterion, rating 1–5, created_at, updated_at)`, unique `(review_id, criterion)`. One row per parameter the user rated; a skipped parameter has no row.
+- New table `review_criterion_ratings (review_id, criterion, rating 1–5)`, primary key `(review_id, criterion)`. One row per parameter the user rated; a skipped parameter has no row.
 - Parameters (`ReviewCriterion`), each tied to one direction:
   - home: `WATER_SUPPLY`, `POWER_BACKUP`, `MAINTENANCE`, `CLEANLINESS`, `SECURITY`, `PARKING`, `NOISE`, `NEIGHBOURHOOD`, `VALUE_FOR_RENT`;
   - landlord: `RESPONSIVENESS`, `DEPOSIT_RETURN`, `TRANSPARENCY`, `PRIVACY`, `BEHAVIOUR`.
-- New columns on `reviews`: `would_recommend` (BOOLEAN, null = not answered), `pros`, `cons` (VARCHAR 1000, null = none). `review_revisions` gains the same three plus `criteria` (text such as `WATER_SUPPLY=4,NOISE=2`), so an edit keeps the previous version (§5.7).
+- New columns on `reviews`: `would_recommend` (BOOLEAN, null = not answered), `pros`, `cons` (VARCHAR 1000, null = none); V17 adds `form_review` (BOOLEAN, default false), true for a review written with the form. `review_revisions` gains the same three plus `criteria` (text such as `WATER_SUPPLY=4,NOISE=2`), so an edit keeps the previous version (§5.7).
 - `body` is the part's optional comment. The column stays NOT NULL, so no comment is stored as an empty string. This avoids a table rebuild on SQLite.
 - Migration `V16__review_form.sql` (V15 is the edit-own PR's) uses only `ALTER TABLE … ADD COLUMN` and `CREATE TABLE` with table-level constraints, the portable subset of D-10. It runs unchanged on SQLite, MySQL and PostgreSQL. Existing reviews stay valid: they keep `rating_overall` and their optional `rating_a/b/c` (D-29), have no parameter rows, and show as before.
 
