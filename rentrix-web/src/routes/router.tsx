@@ -7,6 +7,7 @@ import EditHomePage from "@/pages/EditHomePage"
 import EditTenancyPage from "@/pages/EditTenancyPage"
 import HomePage from "@/pages/HomePage"
 import LandlordDashboardPage from "@/pages/LandlordDashboardPage"
+import LandlordPage from "@/pages/LandlordPage"
 import LegalPage from "@/pages/LegalPage"
 import LoginPage from "@/pages/LoginPage"
 import MyTenanciesPage from "@/pages/MyTenanciesPage"
@@ -54,6 +55,7 @@ export const routes = [
           { path: "/tenancies/new", element: <TenancyRequestPage /> },
           { path: "/tenancies/:id/review", element: <WriteReviewPage /> },
           { path: "/tenancies/:id/edit", element: <EditTenancyPage /> },
+          { path: "/u/:id", element: <LandlordPage /> },
           { path: "/tenancies/:id", element: <TenancyPage /> },
           { path: "/tenancy-invite", element: <TenancyInvitePage /> },
           // Owner mode's home (PLAN R10): open to every signed-in user; without the landlord

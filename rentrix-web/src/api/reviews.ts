@@ -1,4 +1,13 @@
-import type { Page, PropertyReview, TenancyParty } from "@/types/api"
+import type {
+  Page,
+  PropertyReview,
+  RatingDetail,
+  ReviewFormInput,
+  ReviewFormResult,
+  ReviewTask,
+  TenancyParty,
+  UserProfile,
+} from "@/types/api"
 import { api } from "./client"
 
 export const myReviewKeys = {
@@ -30,6 +39,41 @@ export function fetchMyReceivedReviews(
 ): Promise<Page<PropertyReview>> {
   return api.get<Page<PropertyReview>>("/me/reviews/received", {
     query: { as, page: 0, size: 50 },
+    signal,
+  })
+}
+
+export const reviewKeys = {
+  tasks: ["reviews", "tasks"] as const,
+  propertyRating: (id: string) => ["properties", "rating", id] as const,
+  user: (id: string) => ["users", id] as const,
+  userReviews: (id: string) => ["users", id, "reviews"] as const,
+}
+
+/** `POST /tenancies/{id}/review-form` (D-157): the home and the landlord review, both or neither. */
+export function submitReviewForm(tenancyId: string, body: ReviewFormInput) {
+  return api.post<ReviewFormResult>(`/tenancies/${encodeURIComponent(tenancyId)}/review-form`, body)
+}
+
+/** `GET /me/review-tasks`: the reviews the caller can write now (window open, not written). */
+export function fetchReviewTasks(signal?: AbortSignal) {
+  return api.get<ReviewTask[]>("/me/review-tasks", { signal })
+}
+
+/** `GET /properties/{id}/rating`: public, with the per-parameter averages (D-158). */
+export function fetchPropertyRating(id: string, signal?: AbortSignal) {
+  return api.get<RatingDetail>(`/properties/${encodeURIComponent(id)}/rating`, { signal })
+}
+
+/** `GET /users/{id}`: a landlord's profile (signed in, D-55). */
+export function fetchUserProfile(id: string, signal?: AbortSignal) {
+  return api.get<UserProfile>(`/users/${encodeURIComponent(id)}`, { signal })
+}
+
+/** `GET /users/{id}/reviews`: the published reviews the landlord received. */
+export function fetchUserReviews(id: string, signal?: AbortSignal) {
+  return api.get<Page<PropertyReview>>(`/users/${encodeURIComponent(id)}/reviews`, {
+    query: { size: 50 },
     signal,
   })
 }

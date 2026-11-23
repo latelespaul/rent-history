@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, pickRole, verifyPhone, testPhone } from "./support"
+import { daysAgo, freshLogin, pickRole, testPhone, verifyPhone, writeHomeReview } from "./support"
 
 /**
  * The new-user journey, from a brand-new account (dev-only fresh-user login) to something on a
@@ -92,8 +92,7 @@ test("a new tenant adds their home, records the tenancy, reviews it and finds it
   })
 
   await test.step("the review, then 'You submitted this review'", async () => {
-    await page.getByTestId("review-star-4").click()
-    await page.getByLabel(/your review/i).fill(review)
+    await writeHomeReview(page, 4, review)
     await page.getByTestId("review-submit").click()
     const submitted = page.getByTestId("review-submitted")
     await expect(submitted.getByText(/you submitted this review/i)).toBeVisible()
