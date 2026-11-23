@@ -125,7 +125,7 @@ class IdentityApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.idVerified").value(true))
 			.andExpect(jsonPath("$.linkedinVerified").value(false))
-			.andExpect(jsonPath("$.methods.length()").value(5))
+			.andExpect(jsonPath("$.methods.length()").value(6))
 			.andExpect(jsonPath("$.methods[0].method").value("AADHAAR"))
 			.andExpect(jsonPath("$.methods[0].status").value("PENDING"))
 			.andExpect(jsonPath("$.methods[0].masked").value("XXXX XXXX 1234"))
@@ -140,7 +140,10 @@ class IdentityApiTest {
 			.andExpect(jsonPath("$.methods[3].available").value(true))
 			.andExpect(jsonPath("$.methods[4].method").value("TRUECALLER"))
 			.andExpect(jsonPath("$.methods[4].status").doesNotExist())
-			.andExpect(jsonPath("$.methods[4].available").value(true));
+			.andExpect(jsonPath("$.methods[4].available").value(true))
+			// No Telegram Gateway in the test profile (D-146): the method is listed but unavailable.
+			.andExpect(jsonPath("$.methods[5].method").value("TELEGRAM"))
+			.andExpect(jsonPath("$.methods[5].available").value(false));
 	}
 	
 	@Test

@@ -28,9 +28,18 @@ export function fetchIdentity(signal?: AbortSignal): Promise<IdentityView> {
   return api.get<IdentityView>("/me/identity", { signal })
 }
 
-/** `POST /me/identity/phone/start`: sends a 6-digit code by SMS (D-101). */
-export function startPhoneCheck(phone: string): Promise<PhoneChallenge> {
-  return api.post<PhoneChallenge>("/me/identity/phone/start", { phone })
+/**
+ * `POST /me/identity/phone/start`: sends a 6-digit code (D-101) to the number's Telegram or by SMS
+ * (D-146). Without a channel the server picks its default: Telegram when it is configured.
+ */
+export function startPhoneCheck(
+  phone: string,
+  channel?: "TELEGRAM" | "SMS",
+): Promise<PhoneChallenge> {
+  return api.post<PhoneChallenge>(
+    "/me/identity/phone/start",
+    channel ? { phone, channel } : { phone },
+  )
 }
 
 /** `POST /me/identity/phone/confirm`: checks the code; the reply is the new `GET /me/identity`. */

@@ -41,5 +41,9 @@ app:
     # number and never calls Truecaller.
     app-key: ${TRUECALLER_APP_KEY:dev-only-fake-truecaller-key}
     fake: ${TRUECALLER_FAKE:true}
+  telegram-gateway:
+    # FakeTelegramGateway: Telegram is the default phone method, nothing is sent; the code goes to
+    # the admin relay when SMS_BACKEND=admin-relay, else to this log.
+    fake: ${TELEGRAM_GATEWAY_FAKE:true}
   sms:
     backend: ${SMS_BACKEND:log}   # OTP codes go to the API log, never to a phone

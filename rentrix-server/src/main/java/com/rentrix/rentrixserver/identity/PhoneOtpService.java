@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.security.SecureRandom;
@@ -27,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +47,10 @@ import java.util.regex.Pattern;
  * an in-process lock keyed by the number. The cross-account per-number cap is therefore per instance until a shared
  * store exists. The SMS goes out after that commit, outside every lock; a failed send uses the challenge up, so it
  * still counts toward the limits but can never be confirmed.
+ * <p>
+ * The code can also go through the Telegram Gateway (D-146): same code, limits and checks, but Telegram shows it in
+ * the user's Telegram app. When Telegram is configured it is the default channel and SMS is the fallback the user
+ * picks. A code confirmed from Telegram marks {@code TELEGRAM} {@code VERIFIED} instead of {@code PHONE_OTP}.
  */
 @Slf4j
 @Service
@@ -88,12 +95,14 @@ public class PhoneOtpService {
 	
 	/**
 	 * The answer to {@code POST /me/identity/phone/start}. {@code delivery} is {@code SMS} when a provider sends the
-	 * code, or {@code TEAM} under the preview-only admin relay (D-137), where the team passes the code on by hand.
+	 * code, {@code TEAM} under the preview-only admin relay (D-137), where the team passes the code on by hand, or
+	 * {@code TELEGRAM} when Telegram shows it in the user's Telegram app (D-146).
 	 */
 	public record Started(UUID challengeId, Instant expiresAt, String delivery) {
 		
 		public static final String SMS = "SMS";
 		public static final String TEAM = "TEAM";
+		public static final String TELEGRAM = "TELEGRAM";
 		
 	}
 	
@@ -114,13 +123,25 @@ public class PhoneOtpService {
 		return INDIAN_MOBILE.matcher(digits).matches() ? Optional.of(digits) : Optional.empty();
 	}
 	
+	/** Starts with the default channel: Telegram when it is configured, else SMS. */
 	public Started start(UUID userId, String phoneInput) {
-		SmsSender sender = availability.sender().orElseThrow(PhoneOtpService::unavailable);
+		return start(userId, phoneInput, null);
+	}
+	
+	/**
+	 * @param channel {@code TELEGRAM}, {@code SMS} or null for the default (Telegram when configured, else SMS)
+	 */
+	public Started start(UUID userId, String phoneInput, String channel) {
+		boolean telegram = useTelegram(channel);
 		String phone = normalisePhone(phoneInput).orElseThrow(() -> ApiException.validation(List.of(
 			new ApiProblem.FieldError("phone", "pattern", "Use an Indian mobile number, e.g. +919876543210."))));
+		if (telegram) {
+			return startTelegram(userId, phone, availability.telegram().orElseThrow(PhoneOtpService::unavailable));
+		}
+		SmsSender sender = availability.sender().orElseThrow(PhoneOtpService::unavailable);
 		String phoneHmac = hasher.hmac(phone);
 		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
-		PhoneOtpChallenge challenge = reserve(userId, phone, phoneHmac, code);
+		PhoneOtpChallenge challenge = reserve(userId, phone, phoneHmac, code, PhoneOtpChallenge.SMS);
 		try {
 			sender.send(phone, code + " is your " + brand.name() + " verification code.");
 		} catch (SmsSendException e) {
@@ -134,8 +155,40 @@ public class PhoneOtpService {
 			sender instanceof AdminRelaySmsSender ? Started.TEAM : Started.SMS);
 	}
 	
+	private boolean useTelegram(String channel) {
+		if (channel == null || channel.isBlank()) {
+			return availability.telegramAvailable();
+		}
+		return switch (channel.trim().toUpperCase(Locale.ROOT)) {
+			case PhoneOtpChallenge.TELEGRAM -> true;
+			case PhoneOtpChallenge.SMS -> false;
+			default -> throw ApiException.validation(List.of(
+				new ApiProblem.FieldError("channel", "enum", "Use TELEGRAM or SMS.")));
+		};
+	}
+	
+	/** The code goes out through the Telegram Gateway after the challenge commits, outside every lock. */
+	private Started startTelegram(UUID userId, String phone, TelegramGateway gateway) {
+		String phoneHmac = hasher.hmac(phone);
+		String code = "%06d".formatted(RANDOM.nextInt(1_000_000));
+		PhoneOtpChallenge challenge = reserve(userId, phone, phoneHmac, code, PhoneOtpChallenge.TELEGRAM);
+		String requestId;
+		try {
+			requestId = gateway.send(phone, code, properties.otpTtl());
+		} catch (TelegramGateway.GatewayException e) {
+			challenges.consume(challenge.getId(), MAX_ATTEMPTS, now());
+			log.warn("Telegram phone code not sent for user {}: {}", userId, e.getMessage());
+			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "telegram_send_failed",
+				"We could not send the code to Telegram. Check that this number has Telegram, or get the code by "
+					+ "SMS instead.");
+		}
+		challenges.setGatewayRequestId(challenge.getId(), requestId);
+		log.info("Telegram phone code challenge {} started for user {}", challenge.getPublicId(), userId);
+		return new Started(challenge.getPublicId(), challenge.getExpiresAt(), Started.TELEGRAM);
+	}
+	
 	/** Checks the send limits and commits the challenge, under the number's stripe lock and the user row lock. */
-	private PhoneOtpChallenge reserve(UUID userId, String phone, String phoneHmac, String code) {
+	private PhoneOtpChallenge reserve(UUID userId, String phone, String phoneHmac, String code, String channel) {
 		ReentrantLock phoneLock = PHONE_LOCKS[Math.floorMod(phoneHmac.hashCode(), PHONE_LOCKS.length)];
 		try {
 			if (!phoneLock.tryLock(LOCK_WAIT.toMillis(), TimeUnit.MILLISECONDS)) {
@@ -147,20 +200,21 @@ public class PhoneOtpService {
 		}
 		try {
 			return new TransactionTemplate(transactionManager)
-				.execute(status -> insertChallenge(userId, phone, phoneHmac, code));
+				.execute(status -> insertChallenge(userId, phone, phoneHmac, code, channel));
 		} finally {
 			phoneLock.unlock();
 		}
 	}
 	
-	private PhoneOtpChallenge insertChallenge(UUID userId, String phone, String phoneHmac, String code) {
+	private PhoneOtpChallenge insertChallenge(UUID userId, String phone, String phoneHmac, String code,
+		String channel) {
 		User user = users.lockByPublicId(userId)
 			.filter(u -> u.getStatus() != UserStatus.DELETED)
 			.orElseThrow(() -> ApiException.notFound("User"));
-		boolean alreadyVerified = checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP)
+		boolean alreadyVerified = IdentityService.PHONE_METHODS.stream()
+			.flatMap(method -> checks.findByUserAndMethod(user, method).stream())
 			.filter(row -> row.getStatus() == IdentityStatus.VERIFIED)
-			.filter(row -> IdHasher.same(row.getValueHmac(), phoneHmac))
-			.isPresent();
+			.anyMatch(row -> IdHasher.same(row.getValueHmac(), phoneHmac));
 		if (alreadyVerified) {
 			throw ApiException.conflict("phone_already_verified", "This phone number is already verified.");
 		}
@@ -173,6 +227,7 @@ public class PhoneOtpService {
 		challenge.setUser(user);
 		challenge.setPhoneE164(phone);
 		challenge.setPhoneHmac(phoneHmac);
+		challenge.setChannel(channel);
 		challenge.setCodeHmac(codeHmac(challenge.getPublicId(), code));
 		challenge.setCreatedAt(now);
 		challenge.setExpiresAt(now.plus(properties.otpTtl()));
@@ -185,7 +240,9 @@ public class PhoneOtpService {
 	 */
 	@Transactional(noRollbackFor = ApiException.class)
 	public IdentityView confirm(UUID userId, UUID challengeId, String code) {
-		availability.sender().orElseThrow(PhoneOtpService::unavailable);
+		if (!availability.available() && !availability.telegramAvailable()) {
+			throw unavailable();
+		}
 		User user = load(userId);
 		if (code == null || !CODE.matcher(code.trim()).matches()) {
 			throw ApiException.validation(List.of(new ApiProblem.FieldError("code", "pattern", "Enter the 6-digit code.")));
@@ -212,15 +269,38 @@ public class PhoneOtpService {
 			throw expired();
 		}
 		markVerified(user, challenge, now);
+		if (PhoneOtpChallenge.TELEGRAM.equals(challenge.getChannel()) && challenge.getGatewayRequestId() != null) {
+			reportToTelegram(challenge.getGatewayRequestId(), code.trim());
+		}
 		return identity.view(user);
+	}
+	
+	/**
+	 * Tells Telegram the code was entered (its delivery statistics), after the verification commits, so the call
+	 * never holds the transaction. Best effort: the code is already checked against our HMAC.
+	 */
+	private void reportToTelegram(String requestId, String code) {
+		availability.telegram().ifPresent(gateway -> TransactionSynchronizationManager.registerSynchronization(
+			new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					try {
+						gateway.reportEntered(requestId, code);
+					} catch (RuntimeException e) {
+						log.info("Telegram code status not reported ({})", e.getClass().getSimpleName());
+					}
+				}
+			}));
 	}
 	
 	private void markVerified(User user, PhoneOtpChallenge challenge, Instant now) {
 		String phone = challenge.getPhoneE164();
-		IdentityVerification row = checks.findByUserAndMethod(user, IdentityMethod.PHONE_OTP).orElseGet(() -> {
+		IdentityMethod method = PhoneOtpChallenge.TELEGRAM.equals(challenge.getChannel()) ? IdentityMethod.TELEGRAM
+			: IdentityMethod.PHONE_OTP;
+		IdentityVerification row = checks.findByUserAndMethod(user, method).orElseGet(() -> {
 			IdentityVerification created = new IdentityVerification();
 			created.setUser(user);
-			created.setMethod(IdentityMethod.PHONE_OTP);
+			created.setMethod(method);
 			return created;
 		});
 		row.resetDecision();
@@ -230,7 +310,7 @@ public class PhoneOtpService {
 		row.setCheckedBy(CheckedBy.OTP);
 		row.setVerifiedAt(now);
 		checks.save(row);
-		identity.revokeOtherPhone(user, IdentityMethod.PHONE_OTP, row.getValueHmac());
+		identity.revokeOtherPhone(user, method, row.getValueHmac());
 		user.setPhone(phone);
 		users.save(user);
 		applications.findByUser(user).forEach(application -> {
@@ -239,7 +319,7 @@ public class PhoneOtpService {
 			event.setRevision(application.getRevision());
 			event.setEvent(VerificationEventType.PHONE_VERIFIED);
 			event.setActor(user);
-			event.setCode("SMS_OTP");
+			event.setCode(method == IdentityMethod.TELEGRAM ? "TELEGRAM" : "SMS_OTP");
 			event.setCreatedAt(now);
 			events.save(event);
 		});

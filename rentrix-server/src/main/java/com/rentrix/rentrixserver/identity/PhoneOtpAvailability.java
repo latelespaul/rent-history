@@ -9,16 +9,19 @@ import java.util.Optional;
 /**
  * Whether phone OTP can run (D-101): it needs an {@link SmsSender} ({@code SMS_BACKEND}) and an
  * {@code ID_HASH_KEY} to hash the code. In {@code prod} without them the method is listed as unavailable and its
- * endpoints answer {@code 503 phone_otp_unavailable}; the API still starts.
+ * endpoints answer {@code 503 phone_otp_unavailable}; the API still starts. The Telegram channel needs a
+ * {@link TelegramGateway} ({@code TELEGRAM_GATEWAY_TOKEN}) and the same hash key.
  */
 @Component
 public class PhoneOtpAvailability {
 	
 	private final SmsSender sender;
+	private final TelegramGateway telegram;
 	private final boolean hashing;
 	
-	public PhoneOtpAvailability(ObjectProvider<SmsSender> sender, IdHasher hasher) {
+	public PhoneOtpAvailability(ObjectProvider<SmsSender> sender, TelegramGatewayHolder telegram, IdHasher hasher) {
 		this.sender = sender.getIfAvailable();
+		this.telegram = telegram.gateway();
 		this.hashing = hasher.available();
 	}
 	
@@ -29,6 +32,16 @@ public class PhoneOtpAvailability {
 	/** The sender, when phone OTP is available. */
 	public Optional<SmsSender> sender() {
 		return available() ? Optional.of(sender) : Optional.empty();
+	}
+	
+	/** Whether codes can go through Telegram: a gateway is configured and codes can be hashed. */
+	public boolean telegramAvailable() {
+		return telegram != null && hashing;
+	}
+	
+	/** The Telegram gateway, when the Telegram channel is available. */
+	public Optional<TelegramGateway> telegram() {
+		return telegramAvailable() ? Optional.of(telegram) : Optional.empty();
 	}
 	
 }

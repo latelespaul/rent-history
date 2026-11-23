@@ -16,8 +16,8 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 /**
- * One SMS code sent for phone verification (§5.16, D-101). The code is kept only as an HMAC; {@code publicId}
- * is the {@code challengeId} the client sends back.
+ * One code sent for phone verification (§5.16, D-101), by SMS or through Telegram (D-146). The code is kept only
+ * as an HMAC; {@code publicId} is the {@code challengeId} the client sends back.
  */
 @Entity
 @Table(name = "phone_otp_challenges")
@@ -51,5 +51,16 @@ public class PhoneOtpChallenge extends PublicEntity {
 	
 	@Column(name = "consumed_at")
 	private Instant consumedAt;
+	
+	/** {@link #SMS} or {@link #TELEGRAM} (D-146). */
+	@Column(name = "channel", nullable = false, updatable = false, length = 16)
+	private String channel = SMS;
+	
+	/** Telegram's {@code request_id} for a {@link #TELEGRAM} code, set once Telegram accepted it. */
+	@Column(name = "gateway_request_id", length = 64)
+	private String gatewayRequestId;
+	
+	public static final String SMS = "SMS";
+	public static final String TELEGRAM = "TELEGRAM";
 	
 }

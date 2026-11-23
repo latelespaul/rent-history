@@ -28,7 +28,9 @@ import java.util.Set;
  *   {@code ID_HASH_KEY}; {@code admin-relay} (codes shown to admins, D-137) is refused outside dev and test unless
  *   {@code PREVIEW_MODE=true}, needs an {@code ID_HASH_KEY} there, and logs one warning on every start;</li>
  *   <li>a set {@code ID_HASH_KEY} is at least 32 bytes (dev and test ship a built-in one);</li>
- *   <li>{@code TRUECALLER_FAKE=true} (any access token verifies any number) is refused outside dev and test.</li>
+ *   <li>{@code TRUECALLER_FAKE=true} (any access token verifies any number) is refused outside dev and test;</li>
+ *   <li>{@code TELEGRAM_GATEWAY_FAKE=true} (codes are not sent, only logged or relayed) is refused outside dev and
+ *   test, and a set {@code TELEGRAM_GATEWAY_TOKEN} needs an {@code ID_HASH_KEY} to hash the codes.</li>
  * </ul>
  * <p>No {@code SMS_BACKEND} outside dev and test starts with one warning: phone OTP is unavailable
  * ({@code 503 phone_otp_unavailable}, D-101), so a deployment without an SMS provider keeps starting.
@@ -99,6 +101,14 @@ public class StartupGuard implements ApplicationListener<ApplicationEnvironmentP
 		}
 		if (LOCAL_PROFILES.contains(profile)) {
 			return;
+		}
+		if (env.getProperty("app.telegram-gateway.fake", Boolean.class, false)) {
+			throw new IllegalStateException("Refusing to start: TELEGRAM_GATEWAY_FAKE=true never sends Telegram codes "
+				+ "and is allowed only in the dev and test profiles.");
+		}
+		if (StringUtils.hasText(env.getProperty("app.telegram-gateway.token")) && !hasHashKey) {
+			throw new IllegalStateException("Refusing to start: TELEGRAM_GATEWAY_TOKEN needs ID_HASH_KEY (at least "
+				+ MIN_ID_HASH_KEY_BYTES + " bytes) to hash the phone codes.");
 		}
 		if (env.getProperty("app.truecaller.fake", Boolean.class, false)) {
 			throw new IllegalStateException("Refusing to start: TRUECALLER_FAKE=true accepts made-up Truecaller tokens "
