@@ -245,6 +245,10 @@ public class PropertyService {
 	 */
 	private Property build(CreatePropertyRequest request, User owner, User proposer, boolean pendingCity,
 		boolean addedHome) {
+		if (request.homeSize() == HomeSize.OTHER && blankToNull(request.homeSizeOther()) == null) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("homeSizeOther", "required",
+				"Type the size, e.g. 2.5 BHK.")));
+		}
 		String city = request.city().trim();
 		String pincode = request.pincode().trim();
 		if (pendingCity) {
@@ -269,10 +273,6 @@ public class PropertyService {
 		property.setUnitLabel(blankToNull(request.unitLabel()));
 		property.setPincode(pincode);
 		property.setPropertyType(request.propertyType());
-		if (request.homeSize() == HomeSize.OTHER && blankToNull(request.homeSizeOther()) == null) {
-			throw ApiException.validation(List.of(new ApiProblem.FieldError("homeSizeOther", "required",
-				"Type the size, e.g. 2.5 BHK.")));
-		}
 		property.setHomeSize(request.homeSize() != null ? request.homeSize()
 			: HomeSize.fromBedrooms(request.propertyType(), request.bedrooms()));
 		property.setHomeSizeOther(request.homeSize() == HomeSize.OTHER ? blankToNull(request.homeSizeOther()) : null);
@@ -307,6 +307,10 @@ public class PropertyService {
 		}
 		if (request.propertyType() != null) {
 			property.setPropertyType(request.propertyType());
+			if (property.getHomeSize() != HomeSize.OTHER
+				&& (request.propertyType() == PropertyType.STUDIO || property.getHomeSize() == HomeSize.STUDIO)) {
+				property.setHomeSize(HomeSize.fromBedrooms(request.propertyType(), property.getBedrooms()));
+			}
 		}
 		if (request.bedrooms() != null) {
 			property.setBedrooms(request.bedrooms());
