@@ -20,19 +20,19 @@ describe("next steps after adding a home (captain 2026-11-23 14:53)", () => {
   })
   afterEach(() => vi.useRealTimers())
 
-  it("counts the review and the agreement until each is done", () => {
-    expect(stepsLeft(tenancy({}))).toBe(2)
-    expect(stepsLeftLabel(2)).toBe("2 optional steps left")
-    expect(stepsLeft(tenancy({ reviewed: true }))).toBe(1)
+  it("counts the review until it is written, never the placeholder agreement step", () => {
+    expect(stepsLeft(tenancy({}))).toBe(1)
     expect(stepsLeftLabel(1)).toBe("1 optional step left")
-    expect(stepsLeft(tenancy({ reviewed: true, evidenceLevel: "DOCUMENT" }))).toBe(0)
+    expect(stepsLeftLabel(2)).toBe("2 optional steps left")
+    expect(stepsLeft(tenancy({ reviewed: true }))).toBe(0)
+    expect(stepsLeft(tenancy({ evidenceLevel: "MUTUAL", reviewed: true }))).toBe(0)
   })
 
   it("keeps a review that is not open yet, drops one whose window closed", () => {
-    expect(stepsLeft(tenancy({ startDate: "2026-11-01" }))).toBe(2)
+    expect(stepsLeft(tenancy({ startDate: "2026-11-01" }))).toBe(1)
     expect(
       stepsLeft(tenancy({ status: "ENDED", startDate: "2024-01-01", endDate: "2024-06-30" })),
-    ).toBe(1)
+    ).toBe(0)
   })
 
   it("is only for the tenant's own live or past records", () => {

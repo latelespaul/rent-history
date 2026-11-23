@@ -631,7 +631,7 @@ public class TenancyService {
 			t.getConfirmedAt(),
 			t.getEndedAt(),
 			actions,
-			side != null && me != null && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()));
+			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()));
 	}
 
 	/** {@code priya@gmail.com} → {@code p***@g***.com}: enough for the landlord to recognise, not to read. */

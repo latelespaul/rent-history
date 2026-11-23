@@ -42,7 +42,7 @@ public record TenancyView(
 	Instant endedAt,
 	TenancyActions actions,
 	/**
-	 * True once the caller wrote a review on this tenancy. "Add your home" keeps a "Rate and review" step visible
+	 * True once the caller, as the tenant, wrote a review on this tenancy (always false for the landlord side). "Add your home" keeps a "Rate and review" step visible
 	 * until then (captain 2026-11-23 14:53).
 	 */
 	boolean reviewed

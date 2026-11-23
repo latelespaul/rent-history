@@ -166,9 +166,10 @@ describe("new-user journey", () => {
       monthlyRentInr: 18000,
       owner: { name: "Ravi", email: undefined, phone: undefined },
     })
-    // The flow goes on (captain 2026-11-23 14:53): two optional steps, each skippable.
+    // The flow goes on (captain 2026-11-23 14:53): the review counts; the agreement card is a
+    // placeholder until PR #62 and is not counted.
     expect(within(done).getByTestId("add-home-steps-left").textContent).toMatch(
-      /home added\. 2 optional steps left/i,
+      /home added\. 1 optional step left/i,
     )
     expect(
       within(done)

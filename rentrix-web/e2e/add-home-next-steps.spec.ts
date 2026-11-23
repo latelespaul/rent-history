@@ -2,9 +2,10 @@ import { expect, test } from "@playwright/test"
 import { daysAgo, freshLogin, verifyPhone } from "./support"
 
 /**
- * After "Save my home" the flow goes on (captain 2026-11-23 14:53): "Home added. 2 optional steps
- * left", rate and review the home, and upload the rental agreement (coming soon). Both are
- * skippable, and both stay on My tenancies and the home's page until done.
+ * After "Save my home" the flow goes on (captain 2026-11-23 14:53): "Home added. 1 optional step
+ * left", rate and review the home; the rental agreement card below it is a "Coming soon"
+ * placeholder until PR #62 and is not counted. The review is skippable and stays on My tenancies
+ * and the home's page until done.
  */
 test("the next steps after adding a home: skip both, then review from My tenancies", async ({
   page,
@@ -46,7 +47,7 @@ test("the next steps after adding a home: skip both, then review from My tenanci
 
     const done = page.getByTestId("add-home-done")
     await expect(done.getByTestId("add-home-steps-left")).toHaveText(
-      /home added\. 2 optional steps left/i,
+      /home added\. 1 optional step left/i,
     )
     await expect(done.getByTestId("next-step-review")).toBeVisible()
     await expect(done.getByTestId("next-step-agreement")).toContainText(/coming soon/i)
@@ -66,21 +67,18 @@ test("the next steps after adding a home: skip both, then review from My tenanci
     })
     await mine.getByRole("link", { name: building }).click()
     const onPage = page.getByTestId("home-next-steps")
-    await expect(onPage).toContainText(/2 optional steps left/i)
+    await expect(onPage).toContainText(/1 optional step left/i)
     await expect(onPage.getByTestId("next-step-agreement")).toBeVisible()
   })
 
-  await test.step("review it: the review step goes, the agreement step stays", async () => {
+  await test.step("review it: no next-steps prompt remains", async () => {
     await page.getByTestId("home-next-steps").getByTestId("add-home-write-review").click()
     await page.getByTestId("review-star-4").click()
     await page.getByLabel(/your review/i).fill(review)
     await page.getByTestId("review-submit").click()
     await page.getByTestId("review-submitted").getByTestId("review-view-home").click()
     await expect(page.getByTestId("property-review").filter({ hasText: review })).toBeVisible()
-    const onPage = page.getByTestId("home-next-steps")
-    await expect(onPage).toContainText(/1 optional step left/i)
-    await expect(onPage.getByTestId("next-step-review")).toHaveCount(0)
-    await expect(onPage.getByTestId("next-step-agreement")).toBeVisible()
+    await expect(page.getByTestId("home-next-steps")).toHaveCount(0)
     await page.screenshot({
       path: testInfo.outputPath("next-steps-after-review.png"),
       fullPage: true,
