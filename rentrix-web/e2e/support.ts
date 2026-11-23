@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs"
 import { expect, request, type Page } from "@playwright/test"
 
 /**
@@ -18,8 +19,24 @@ export async function devLogin(page: Page, name: string, next?: string) {
   await expect(page).not.toHaveURL(/\/login/, { timeout: SIGN_IN_TIMEOUT })
 }
 
+/**
+ * Records the email of each account `POST /auth/dev-login/new` makes, to `E2E_NEW_USERS_LOG` when
+ * set, so a run on a shared stack (DEV) can list the test users to clean up afterwards.
+ */
+export function recordNewUsers(page: Page) {
+  const log = process.env.E2E_NEW_USERS_LOG
+  if (!log) return
+  page.on("response", async (response) => {
+    if (!/\/auth\/dev-login\/new$/.test(new URL(response.url()).pathname)) return
+    if (!response.ok()) return
+    const body = (await response.json().catch(() => null)) as { user?: { email?: string } } | null
+    if (body?.user?.email) appendFileSync(log, `${body.user.email}\n`)
+  })
+}
+
 /** Signs in as a brand-new account that still has to pick a role (dev only). */
 export async function freshLogin(page: Page, next?: string) {
+  recordNewUsers(page)
   await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : "/login")
   await page
     .getByRole("region", { name: /dev login/i })
@@ -56,13 +73,21 @@ function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
+/** The browser calls the API at the URL `/config.js` names (D-04), not on the web origin. */
+export async function apiBaseUrl(page: Page) {
+  return page.evaluate(() => {
+    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
+    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
+  })
+}
+
 /**
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
  * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
  * the way an admin passes it on in a preview. Admin calls work only on the admin host
- * (SYSTEM_DESIGN §13.3), so they carry `X-Forwarded-Host: admin.<host>`, which the API honours
- * from the loopback and Docker-bridge peers it trusts.
+ * (SYSTEM_DESIGN §13.3): on a deployed stack they go to `ADMIN_BASE_URL`; on the local stack they
+ * carry `X-Forwarded-Host: admin.<host>`, which the API honours from loopback and Docker peers only.
  */
 export async function verifyPhone(page: Page, digits: string) {
   await expect(page).toHaveURL(/\/verify\/phone/)
@@ -70,25 +95,33 @@ export async function verifyPhone(page: Page, digits: string) {
   await page.getByRole("button", { name: /send code/i }).click()
   // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
   await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
-  // The browser calls the API at the URL `/config.js` names (D-04), not on the web origin.
-  const apiBase = await page.evaluate(() => {
-    const runtime = (window as { __RENTRIX_CONFIG__?: { apiBaseUrl?: string } }).__RENTRIX_CONFIG__
-    return new URL(runtime?.apiBaseUrl || "/api/v1", location.origin).href.replace(/\/+$/, "")
-  })
-  const api = await request.newContext({
-    extraHTTPHeaders: { "X-Forwarded-Host": `admin.${new URL(apiBase).hostname}` },
-  })
-  const users = (await (await api.get(`${apiBase}/auth/admin/dev-users`)).json()) as Array<{
+  const apiBase = await apiBaseUrl(page)
+  // A deployed stack has a real admin host: `ADMIN_BASE_URL` names it, and the admin calls go
+  // there. The local e2e stack has none, so they carry the admin host header the API trusts from
+  // loopback and Docker-bridge peers only.
+  const adminBase = process.env.ADMIN_BASE_URL
+  const apiHost = new URL(apiBase).hostname
+  if (!adminBase && !isLocalHost(apiHost)) {
+    throw new Error(
+      `ADMIN_BASE_URL is not set and the API host ${apiHost} is not local: set ADMIN_BASE_URL to ` +
+        "the admin host that serves /api/v1 (e.g. https://admin.<dev host>)",
+    )
+  }
+  const adminApi = adminBase ? new URL("/api/v1", adminBase).href.replace(/\/+$/, "") : apiBase
+  const api = await request.newContext(
+    adminBase ? {} : { extraHTTPHeaders: { "X-Forwarded-Host": `admin.${apiHost}` } },
+  )
+  const users = (await (await api.get(`${adminApi}/auth/admin/dev-users`)).json()) as Array<{
     id: string
     displayName: string
   }>
   const admin = users.find((u) => u.displayName === "Demo Admin")
   expect(admin, "the demo seed has its admin").toBeTruthy()
   const session = (await (
-    await api.post(`${apiBase}/auth/admin/dev-login`, { data: { userId: admin!.id } })
+    await api.post(`${adminApi}/auth/admin/dev-login`, { data: { userId: admin!.id } })
   ).json()) as { accessToken: string }
   const relayed = (await (
-    await api.get(`${apiBase}/admin/sms-relay`, {
+    await api.get(`${adminApi}/admin/sms-relay`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
   ).json()) as Array<{ phone: string; code: string }>
@@ -97,4 +130,15 @@ export async function verifyPhone(page: Page, digits: string) {
   expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
   await page.getByLabel(/enter the 6-digit code/i).fill(code!)
   await page.getByRole("button", { name: /verify and continue/i }).click()
+}
+
+/** Loopback names and single-label Docker service names (the compose and CI stacks). */
+function isLocalHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]" ||
+    !hostname.includes(".")
+  )
 }

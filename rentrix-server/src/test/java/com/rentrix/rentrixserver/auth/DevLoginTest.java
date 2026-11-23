@@ -117,6 +117,8 @@ class DevLoginTest {
 		assertThat(second.at("/user/id").asString()).isNotEqualTo(body.at("/user/id").asString());
 		assertThat(mvc.perform(get("/auth/dev-users")).andReturn().getResponse().getContentAsString())
 			.doesNotContain(body.at("/user/id").asString());
+		// It can sign out and back in (the e2e sign-up gate does), as with Google.
+		assertThat(devLogin(UUID.fromString(body.at("/user/id").asString())).getStatus()).isEqualTo(200);
 	}
 	
 	@Test

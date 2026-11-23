@@ -36,7 +36,8 @@ import java.util.UUID;
  * or {@code test} profile is active <em>and</em> {@code DEV_LOGIN_ENABLED=true}; elsewhere the routes are
  * {@code 404}, and {@code StartupGuard} refuses to start any other profile with the flag on.
  * {@code POST /auth/dev-login/new} signs in as a brand-new user with no role yet, so the first sign-in (role pick,
- * account created, verification stepper) can be clicked through without Google too. Seed admins are not offered here:
+ * account created, verification stepper) can be clicked through without Google too; {@code POST /auth/dev-login}
+ * also accepts such a user, so it can sign out and back in. Seed admins are not offered here:
  * they sign in on the admin host ({@link AdminDevLoginController}, D-19).
  */
 @RestController
@@ -45,6 +46,9 @@ import java.util.UUID;
 @ConditionalOnProperty(prefix = "app.dev-login", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class DevLoginController {
+	
+	/** {@code google_sub} prefix of the users {@code POST /dev-login/new} creates. */
+	static final String NEW_USER_SUB = "dev-new-";
 	
 	private final UserRepository users;
 	private final UserViews userViews;
@@ -66,8 +70,9 @@ public class DevLoginController {
 	@Transactional
 	public ResponseEntity<AuthResponse> devLogin(@Valid @RequestBody DevLoginRequest body, HttpServletRequest request) {
 		rateLimiter.check(request);
+		// A demo seed user, or one that dev-login/new made, so a fresh account can sign out and back in (e2e).
 		User user = users.findByPublicId(body.userId())
-			.filter(User::isDemo)
+			.filter(u -> u.isDemo() || u.getGoogleSub() != null && u.getGoogleSub().startsWith(NEW_USER_SUB))
 			.filter(u -> !u.hasRole(Role.ADMIN))
 			.orElseThrow(() -> ApiException.notFound("Demo user"));
 		return sessions.signedIn(request, auth.startSession(user));
@@ -80,7 +85,7 @@ public class DevLoginController {
 		rateLimiter.check(request);
 		String tag = UUID.randomUUID().toString().substring(0, 8);
 		User user = new User();
-		user.setGoogleSub("dev-new-" + tag);
+		user.setGoogleSub(NEW_USER_SUB + tag);
 		user.setEmail("new-user-" + tag + "@example.test");
 		user.setEmailVerifiedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 		user.setDisplayName("New User");
