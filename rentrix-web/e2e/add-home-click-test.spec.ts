@@ -19,7 +19,7 @@ test("a new tenant adds a Hyderabad flat in Tower 4 · Wing B, tagged pending re
   const tag = `${Date.now().toString(36)}${testInfo.project.name[0]}`
   const society = `E2E Lake View ${tag}`
   const flat = `12${Date.now().toString().slice(-2)}`
-  // One phone per project: both projects run against the same database.
+  // Both projects run against the same database: testPhone() gives each its own number.
   const phone = testPhone()
   const shot = (name: string) =>
     page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true })

@@ -1,5 +1,5 @@
 import { appendFileSync } from "node:fs"
-import { expect, request, type Page } from "@playwright/test"
+import { expect, request, test, type Page } from "@playwright/test"
 
 /**
  * Shared steps for the e2e specs. They drive the real UI only; the stack must run the API in the
@@ -88,9 +88,18 @@ export async function apiBaseUrl(page: Page) {
  */
 const TEST_PHONE = /^999990\d{4}$/
 
-/** A random number in the test range, as the 10 digits the phone step takes. */
+let testPhoneCalls = 0
+
+/**
+ * A number in the test range, as the 10 digits the phone step takes. The last digit is the
+ * project's index, so desktop and mobile never share one; the three before it come from the
+ * clock, the worker and a per-worker counter, so each call gets its own number.
+ */
 export function testPhone(): string {
-  return `999990${String(Math.floor(Math.random() * 10_000)).padStart(4, "0")}`
+  const info = test.info()
+  const project = info.config.projects.findIndex((p) => p.name === info.project.name)
+  const slot = (Math.floor(Date.now() / 1000) + info.parallelIndex * 100 + testPhoneCalls++) % 1000
+  return `999990${String(slot).padStart(3, "0")}${Math.max(project, 0) % 10}`
 }
 
 /**

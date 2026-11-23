@@ -3,6 +3,7 @@ package com.rentrix.rentrixserver.identity;
 import com.rentrix.rentrixserver.notification.sms.PhoneMasks;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class IdentityUnitTest {
 	
@@ -26,6 +27,26 @@ class IdentityUnitTest {
 		assertThat(PhoneOtpService.normalisePhone("+915876543210")).isEmpty();
 		assertThat(PhoneOtpService.normalisePhone("+14155550123")).isEmpty();
 		assertThat(PhoneOtpService.normalisePhone("")).isEmpty();
+	}
+	
+	@Test
+	void theTestNumberPrefixIsNormalisedLikeAPhoneNumber() {
+		for (String written : new String[] {"+91999990", "+91 99999 0", "91999990", "999990", " (99999)-0 ", "+91.99999.0"}) {
+			IdentityProperties properties = new IdentityProperties(null, null, written);
+			assertThat(properties.otpTestNumberPrefix()).as(written).isEqualTo("+91999990");
+			assertThat(properties.isTestNumber("+919999904321")).as(written).isTrue();
+			assertThat(properties.isTestNumber("+919999914321")).as(written).isFalse();
+		}
+		assertThat(new IdentityProperties(null, null, null).otpTestNumberPrefix()).isEqualTo("+91999990");
+		assertThat(new IdentityProperties(null, null, "  ").otpTestNumberPrefix()).isEqualTo("+91999990");
+	}
+	
+	@Test
+	void aMalformedTestNumberPrefixFailsAtStartup() {
+		for (String bad : new String[] {"+1415", "+91", "+91abc", "+919999900000", "+91 9999x", "++91999990"}) {
+			assertThatThrownBy(() -> new IdentityProperties(null, null, bad)).as(bad)
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("OTP_TEST_NUMBER_PREFIX");
+		}
 	}
 	
 	@Test

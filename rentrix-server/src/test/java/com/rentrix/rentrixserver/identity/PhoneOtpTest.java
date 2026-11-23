@@ -92,7 +92,11 @@ class PhoneOtpTest {
 	
 	/** A random Indian mobile number, so tests never share a per-number limit. */
 	static String phone() {
-		return "+919" + String.format("%09d", ThreadLocalRandom.current().nextLong(1_000_000_000L));
+		String phone;
+		do {
+			phone = "+919" + String.format("%09d", ThreadLocalRandom.current().nextLong(1_000_000_000L));
+		} while (phone.startsWith(IdentityProperties.DEFAULT_TEST_PREFIX));
+		return phone;
 	}
 	
 	private String bearer(User user) {
