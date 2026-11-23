@@ -31,7 +31,7 @@ curl -s -c cookies.txt -H 'Content-Type: application/json' \
   -d '{"userId":"<id from dev-users>"}' http://localhost:8080/api/v1/auth/dev-login
 ```
 
-The response holds `accessToken` (send it as `Authorization: Bearer …`) and sets the `rentrix_refresh` cookie for `POST /api/v1/auth/refresh`. `POST /api/v1/auth/dev-login/new` (no body) signs in as a brand-new user with no role yet (`needsOnboarding: true`, a made-up `@example.test` email), so the first sign-in, the role pick, the account-created screen and the verification steps can be tried without Google; the web's dev panel has a "Sign in as a new user" button for it. `POST /api/v1/auth/dev-login` also accepts a user this route created (never an admin), so the same fresh account can sign out and back in. Dev login does not exist in any other profile, and the API refuses to start with `DEV_LOGIN_ENABLED=true` outside `dev` and `test`.
+The response holds `accessToken` (send it as `Authorization: Bearer …`) and sets the `rentrix_refresh` cookie for `POST /api/v1/auth/refresh`. `POST /api/v1/auth/dev-login/new` (optional `{key}` to reuse one made-up account, see `SYSTEM_DESIGN.md` §12) signs in as a brand-new user with no role yet (`needsOnboarding: true`, a made-up `@example.test` email), so the first sign-in, the role pick, the account-created screen and the verification steps can be tried without Google; the web's dev panel has a "Sign in as a new user" button for it. `POST /api/v1/auth/dev-login` also accepts a user this route created (never an admin), so the same fresh account can sign out and back in. Dev login does not exist in any other profile, and the API refuses to start with `DEV_LOGIN_ENABLED=true` outside `dev` and `test`.
 
 ### Create a Google OAuth client
 
