@@ -391,7 +391,7 @@ CREATE INDEX ix_rental_agreements_purge ON rental_agreements (purge_after);
 | the live agreement of a tenancy (status not `REPLACED`) | `ix_rental_agreements_tenancy` |
 | the applicant's agreements in the admin approval pane | `ix_rental_agreements_application` |
 | reuse check by file hash or anchor number (D-129) | `ix_rental_agreements_sha256`, `ix_rental_agreements_anchor` |
-| retention job: files to delete (D-131; `purge_after` = 30 days after the later of `decided_at` and `counterparty_confirmed_at`, 90 days after upload when no other party is linked) | `ix_rental_agreements_purge` |
+| retention job: files to delete (`purge_after`, rule in SYSTEM_DESIGN D-131) | `ix_rental_agreements_purge` |
 
 Never in any column: a full Aadhaar number (typed fields are masked at intake, D-131), a full PAN, the decrypted file. `application_id` is set only while no tenancy is linked or for the admin's history; when an onboarding agreement is linked to a tenancy both stay set.
 

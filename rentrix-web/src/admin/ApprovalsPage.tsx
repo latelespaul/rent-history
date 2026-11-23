@@ -61,9 +61,7 @@ function AgreementFile({ agreementId }: { agreementId: string }) {
       >
         {link.isPending ? "Getting the file…" : "Open the rental agreement"}
       </Button>
-      {link.isError && (
-        <p className="mt-1 text-sm text-danger-600">{errorMessage(link.error)}</p>
-      )}
+      {link.isError && <p className="mt-1 text-sm text-danger-600">{errorMessage(link.error)}</p>}
     </div>
   )
 }
