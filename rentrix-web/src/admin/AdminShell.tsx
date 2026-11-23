@@ -12,8 +12,12 @@ interface AdminNavItem {
   icon: IconName
 }
 
-/** The console's pages. PLAN W9 adds the approvals queue in front of the relay. */
-const ADMIN_NAV: AdminNavItem[] = [{ to: "/sms-relay", label: "OTP relay", icon: "message" }]
+/** The console's pages: the approvals queue first (W9), reports, then the OTP relay. */
+const ADMIN_NAV: AdminNavItem[] = [
+  { to: "/approvals", label: "Approvals", icon: "shield-check" },
+  { to: "/reports", label: "Reports", icon: "flag" },
+  { to: "/sms-relay", label: "OTP relay", icon: "message" },
+]
 
 /**
  * The admin console's frame (SYSTEM_DESIGN §13.3), phone first: a slim top bar with the brand and

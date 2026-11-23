@@ -1,4 +1,4 @@
-import { expect, test, type TestInfo } from "@playwright/test"
+import { expect, test, type Page, type TestInfo } from "@playwright/test"
 import { devLogin } from "./support"
 
 /**
@@ -37,6 +37,13 @@ test("the main site never shows, offers or serves the admin console", async ({ p
   expect(status).toBe(404)
 })
 
+async function signInSeedAdmin(page: Page, admin: string) {
+  await page.goto(`${admin}/login`)
+  const dev = page.getByRole("region", { name: /dev login · seed admins/i })
+  await dev.getByRole("button", { name: "Sign in as Demo Admin" }).click()
+  await expect(page).toHaveURL(/\/approvals/, { timeout: 30_000 })
+}
+
 test("the admin host signs in the seed admin and opens the OTP relay", async ({
   page,
 }, testInfo) => {
@@ -54,7 +61,11 @@ test("the admin host signs in the seed admin and opens the OTP relay", async ({
   await expect(dev.getByRole("button", { name: /^Sign in as Demo Tenant/ })).toHaveCount(0)
   await dev.getByRole("button", { name: "Sign in as Demo Admin" }).click()
 
-  await expect(page).toHaveURL(/\/sms-relay$/, { timeout: 30_000 })
+  // The approvals queue is the console's home page (W9 PR 2); the relay is one tap away.
+  await expect(page).toHaveURL(/\/approvals$/, { timeout: 30_000 })
+  await expect(page.getByRole("heading", { name: "Approvals" })).toBeVisible()
+  await page.getByRole("link", { name: "OTP relay" }).first().click()
+  await expect(page).toHaveURL(/\/sms-relay$/)
   await expect(page.getByRole("heading", { name: "OTP relay" })).toBeVisible()
   // The docker e2e stack sends codes to the API log (SMS_BACKEND=log), so the relay says it is off;
   // a stack with SMS_BACKEND=admin-relay lists its codes instead.
@@ -71,4 +82,48 @@ test("the admin host signs in the seed admin and opens the OTP relay", async ({
   await expect(page.getByRole("heading", { name: "OTP relay" })).toBeVisible()
   await page.getByRole("button", { name: /sign out/i }).click()
   await expect(page).toHaveURL(/\/login/)
+})
+
+test("the approvals queue answers a card in one tap and opens reports", async ({
+  page,
+}, testInfo) => {
+  const admin = adminBase(testInfo)
+  await signInSeedAdmin(page, admin)
+  const filters = page.getByRole("group", { name: "Filter by type" })
+  await expect(filters.getByRole("button", { name: /^All/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await testInfo.attach("admin-approvals", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  })
+
+  // The seed leaves one tenancy waiting for the other side, with no tick yet (D-134).
+  await filters.getByRole("button", { name: /^Tenancies/ }).click()
+  await expect(page).toHaveURL(/type=TENANCY/)
+  // Only tenancy cards: right after the tap the list can still show the previous filter's cards.
+  const tenancy = page
+    .getByRole("listitem")
+    .filter({ has: page.getByText("Tenancy", { exact: true }) })
+  const card = tenancy.filter({ has: page.getByRole("button", { name: /^Approve:/ }) })
+  const empty = page.getByText("Nothing waiting")
+  await expect(card.first().or(empty)).toBeVisible()
+  if (await card.count()) {
+    // Pin the card by its title: while the reasons are open it has no Approve button, so the
+    // filtered `card` locator would no longer match it.
+    const title = await card.first().getByRole("heading").first().innerText()
+    const pinned = tenancy.and(page.getByRole("listitem", { name: title, exact: true })).first()
+    // Reject takes two taps and can be cancelled before the reason is picked.
+    await pinned.getByRole("button", { name: /^Reject:/ }).click()
+    await expect(pinned.getByRole("button", { name: "Can't confirm" })).toBeVisible()
+    await pinned.getByRole("button", { name: "Cancel" }).click()
+    await pinned.getByRole("button", { name: /^Approve:/ }).click()
+    await expect(page.getByText(/Approved · Verified by Doorway Living/)).toBeVisible()
+  }
+
+  await page.getByRole("link", { name: "Reports" }).first().click()
+  await expect(page).toHaveURL(/\/reports$/)
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible()
+  await expect(page.getByRole("group", { name: "Filter by type" })).toHaveCount(0)
 })

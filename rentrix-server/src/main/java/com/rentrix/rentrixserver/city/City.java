@@ -57,6 +57,11 @@ public class City extends TimestampedEntity {
 		return city;
 	}
 	
+	/** An admin approves a city someone typed (D-143): it shows in pickers and search from now on. */
+	public void goLive() {
+		live = true;
+	}
+	
 	public List<String> aliasList() {
 		return splitList(aliases);
 	}
