@@ -116,7 +116,7 @@ erDiagram
     identity_verifications {
         bigint id PK
         bigint user_id FK
-        varchar method "AADHAAR PAN PHONE_OTP LINKEDIN TRUECALLER"
+        varchar method "AADHAAR PAN PHONE_OTP LINKEDIN TRUECALLER TELEGRAM"
         varchar status
         varchar last4
         char value_hmac "PAN, phone only"

@@ -24,6 +24,7 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | none (design v4) | B17 | phone required for submit, approve and the gate (D-117) | rules only, no DDL |
 | `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
 | `V9__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V9_1__home_records_fks.sql` for `added_by` |
+| `V10__telegram_phone_codes.sql` (built in the Telegram phone code PR) | — | `phone_otp_challenges` + `channel` (default `SMS`), `gateway_request_id` | SYSTEM_DESIGN D-146 |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 
@@ -33,14 +34,14 @@ Order on master is whatever order the PRs merge; the plan's intended order is B1
 
 ### 2.1 `identity_verifications`
 
-One row per user per method. "ID verified" = any row with `method IN ('AADHAAR','PAN','PHONE_OTP') AND status = 'VERIFIED'` (D-99). *Changed in design v4* (D-117, D-100): the gate needs `method IN ('PHONE_OTP','TRUECALLER') AND status = 'VERIFIED'` (`TRUECALLER` from D-138); the "ID verified" badge needs `method IN ('AADHAAR','PAN') AND status = 'VERIFIED'`.
+One row per user per method. "ID verified" = any row with `method IN ('AADHAAR','PAN','PHONE_OTP') AND status = 'VERIFIED'` (D-99). *Changed in design v4* (D-117, D-100): the gate needs `method IN ('PHONE_OTP','TRUECALLER') AND status = 'VERIFIED'` (`TRUECALLER` from D-138, `TELEGRAM` from D-146); the "ID verified" badge needs `method IN ('AADHAAR','PAN') AND status = 'VERIFIED'`.
 
 ```sql
 CREATE TABLE identity_verifications (
     id              BIGINT            NOT NULL,
     public_id       CHAR(36)          NOT NULL,
     user_id         BIGINT            NOT NULL,
-    method          VARCHAR(16)       NOT NULL,   -- AADHAAR | PAN | PHONE_OTP | LINKEDIN | TRUECALLER
+    method          VARCHAR(16)       NOT NULL,   -- AADHAAR | PAN | PHONE_OTP | LINKEDIN | TRUECALLER | TELEGRAM
     status          VARCHAR(16)       NOT NULL,   -- PENDING | VERIFIED | REJECTED | REVOKED
     last4           VARCHAR(4),                   -- PAN, Aadhaar, phone: last 4 only; null for LINKEDIN
     value_hmac      CHAR(64),                     -- HMAC-SHA256 hex of PAN or E.164 phone; null for AADHAAR, LINKEDIN
@@ -86,6 +87,8 @@ CREATE TABLE phone_otp_challenges (
     phone_hmac      CHAR(64)          NOT NULL,   -- per-number send limit across accounts
     code_hmac       CHAR(64)          NOT NULL,   -- HMAC of the 6-digit code; the code is never stored
     attempts        INTEGER           NOT NULL DEFAULT 0,
+    channel         VARCHAR(16)       NOT NULL DEFAULT 'SMS',  -- SMS | TELEGRAM (V10, D-146)
+    gateway_request_id VARCHAR(64),               -- Telegram Gateway request_id (V10, D-146)
     expires_at      ${timestamp_type} NOT NULL,   -- created_at + OTP_TTL_MINUTES
     consumed_at     ${timestamp_type},
     created_at      ${timestamp_type} NOT NULL,

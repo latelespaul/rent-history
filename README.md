@@ -103,18 +103,18 @@ Lists show only `ACTIVE` rows, plus the signed-in landlord's own `PENDING` propo
 
 ## Identity verification
 
-Every tenant and landlord verifies **any one** method before they can post (tenancies, rent records, reviews, listings): a **phone number** by SMS code, masked **Aadhaar** or **LinkedIn** (a method counts only once it is verified; Aadhaar and LinkedIn wait for an admin check). Without one the account is read-only and those writes answer `403 id_verification_required` with `missing: ["method"]`. Nothing else gates posting: what a user posts shows at once, and an admin review later gives it the green tick. "Request verification" (`POST /api/v1/me/verification/{role}/submit`) is optional and needs a finished profile and one method verified or waiting for its check; the admin approve then needs one verified (`422 no_verified_method`). PAN is never a posting method, only a badge. A new number is stored only by a confirmed code: `PATCH /api/v1/me` can clear the phone but answers `422 phone_needs_otp` for a new one. The web walks users through all of this at `/verify`.
+Every tenant and landlord verifies **any one** method before they can post (tenancies, rent records, reviews, listings): a **phone number** by a code sent to Telegram or by SMS, masked **Aadhaar** or **LinkedIn** (a method counts only once it is verified; Aadhaar and LinkedIn wait for an admin check). Without one the account is read-only and those writes answer `403 id_verification_required` with `missing: ["method"]`. Nothing else gates posting: what a user posts shows at once, and an admin review later gives it the green tick. "Request verification" (`POST /api/v1/me/verification/{role}/submit`) is optional and needs a finished profile and one method verified or waiting for its check; the admin approve then needs one verified (`422 no_verified_method`). PAN is never a posting method, only a badge. A new number is stored only by a confirmed code: `PATCH /api/v1/me` can clear the phone but answers `422 phone_needs_otp` for a new one. The web walks users through all of this at `/verify`.
 
 A profile is **ID verified** (the public badge) when PAN or masked Aadhaar is verified; a phone alone gives no badge. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.
 
 ### Try phone OTP locally
 
-In `dev` and `test`, `SMS_BACKEND` defaults to `log`: no SMS is sent, and the code is written to the API log instead (the only place a code is ever logged). With an access token from dev login or Google sign-in:
+In `dev` and `test`, `SMS_BACKEND` defaults to `log`: no SMS is sent, and the code is written to the API log instead (the only place a code is ever logged). In `dev` Telegram is the default channel (see [Phone code on Telegram](#phone-code-on-telegram)), so pass `"channel":"SMS"` to get an SMS code. With an access token from dev login or Google sign-in:
 
 ```sh
 TOKEN=…   # accessToken
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-  -d '{"phone":"+919876543210"}' http://localhost:8080/api/v1/me/identity/phone/start
+  -d '{"phone":"+919876543210","channel":"SMS"}' http://localhost:8080/api/v1/me/identity/phone/start
 # → {"challengeId":"…","expiresAt":"…"}; the API log shows
 #   SMS to +91 XXXXXX3210 (SMS_BACKEND=log, not sent): 123456 is your Doorway Living verification code.
 curl -s -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
@@ -133,6 +133,12 @@ Codes expire after 10 minutes (`OTP_TTL_MINUTES`) and allow 5 tries; a user gets
 A preview deployment can run phone OTP before an SMS provider is signed up: `SMS_BACKEND=admin-relay` sends no SMS and holds each pending code in API memory until it expires. An admin reads them at `GET /api/v1/admin/sms-relay` (user, masked phone, code, expiry; admins only) and passes the code to the user. Outside `dev` and `test` it starts only with `PREVIEW_MODE=true` and an `ID_HASH_KEY`; every start logs a `WARN` naming `admin-relay`, and only `dev` writes the codes to the log. Live mode is `PREVIEW_MODE` off with `SMS_BACKEND=http`. Codes are lost on restart: the user asks for a new one.
 
 To get each code without opening the admin console, also set `ADMIN_RELAY_TELEGRAM_BOT_TOKEN` and `ADMIN_RELAY_TELEGRAM_CHAT_IDS` (comma list): every held code is then pushed to those Telegram chats as `Doorway Living OTP for <name> (+91 XXXXXX3210): 123456 — expires 10 min`. Both live in env only; the token is never logged. The push runs in the background, and a Telegram failure logs one warning and never breaks the OTP. While the relay is on, the web's code step says the team will message the code (WhatsApp/SMS) instead of "We sent it by SMS".
+
+### Phone code on Telegram
+
+With `TELEGRAM_GATEWAY_TOKEN` set (a Telegram Gateway API token, env only, never logged; it also needs `ID_HASH_KEY`), Telegram is the default phone method: the code shows in the Telegram app of the account registered to the number, and the web offers "No Telegram? Get the code by SMS" as the fallback. Without the token the option is hidden. A number Telegram cannot reach answers `503 telegram_send_failed` (SYSTEM_DESIGN D-146).
+
+In `dev`, `TELEGRAM_GATEWAY_FAKE` defaults to `true` (`test` keeps it off): nothing is sent, and the code goes to the admin relay when `SMS_BACKEND=admin-relay`, else to the API log as `Telegram code for +91 XXXXXX3210 (TELEGRAM_GATEWAY_FAKE=true, not sent): 123456`. `+919000000000` plays a number without Telegram. `TELEGRAM_GATEWAY_FAKE=true` outside `dev` and `test` refuses to start.
 
 ### Verify with Truecaller
 
