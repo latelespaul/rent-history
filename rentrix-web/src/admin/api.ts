@@ -27,6 +27,7 @@ export const adminKeys = {
   smsRelay: ["admin", "sms-relay"] as const,
   queue: ["admin", "queue"] as const,
   editHistory: (type: string, id: string) => ["admin", "edit-history", type, id] as const,
+  auditLog: (action: string | null, page: number) => ["admin", "audit-log", action, page] as const,
 }
 
 /** `GET /auth/config`: the Google client id and whether dev login exists. */
@@ -178,4 +179,31 @@ export function fetchEditHistory(
   signal?: AbortSignal,
 ): Promise<EditHistoryRow[]> {
   return adminApi.get<EditHistoryRow[]>("/admin/edit-history", { query: { type, id }, signal })
+}
+
+/** One row of the admin audit log (D-87); an account deletion has `self` and no actor (D-159). */
+export interface AuditEntry {
+  action: string
+  targetType: string
+  targetRef: string
+  actor: string | null
+  self: boolean
+  reason: string | null
+  createdAt: string
+}
+
+export interface AuditPage {
+  items: AuditEntry[]
+  page: { number: number; size: number; totalItems: number; totalPages: number }
+}
+
+/** `GET /admin/audit-log?action=&page=`: the audit log, newest first, optionally one action. */
+export function fetchAuditLog(
+  filter: { action?: string | null; page?: number },
+  signal?: AbortSignal,
+): Promise<AuditPage> {
+  return adminApi.get<AuditPage>("/admin/audit-log", {
+    query: { action: filter.action ?? undefined, page: filter.page ?? 0, size: 50 },
+    signal,
+  })
 }

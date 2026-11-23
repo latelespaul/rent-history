@@ -53,6 +53,14 @@ export function completeOnboarding(body: OnboardingRequest): Promise<MeUpdate> {
   return api.post<MeUpdate>("/me/onboarding", body)
 }
 
+/**
+ * `DELETE /me` (D-58, D-157): deletes the account at once. `confirm` must be `DELETE`; a sign-in older than
+ * 10 minutes is `403 reauth_required`. The reply clears the refresh cookie.
+ */
+export function deleteAccount(confirm: string): Promise<void> {
+  return api.delete<void>("/me", { body: { confirm } })
+}
+
 /** `PATCH /me`: profile edits and role adds (D-16). The reply carries a fresh token. */
 export function updateMe(body: UpdateMeRequest): Promise<MeUpdate> {
   return api.patch<MeUpdate>("/me", body)

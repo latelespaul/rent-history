@@ -185,7 +185,7 @@ function Roles({ user }: { user: CurrentUser }) {
 
 /**
  * `/settings` (DESIGN.md "settings", not mocked): profile edits, add the other role (D-16),
- * approval status per role (D-89) and sign out. Account deletion comes with W7.
+ * approval status per role (D-89), sign out, and the way to delete the account (D-58).
  */
 export default function SettingsPage() {
   const { state, signOut } = useAuth()
@@ -232,6 +232,20 @@ export default function SettingsPage() {
             >
               <LogoutIcon />
               Sign out
+            </Button>
+          </div>
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-sm font-semibold text-ink-900">Delete my account</p>
+            <p className="mt-1 text-sm text-ink-500">
+              Removes your personal data at once. Reviews and tenancies stay as “Deleted user”.
+            </p>
+            <Button
+              asChild
+              variant="destructive"
+              className="mt-2 px-0"
+              data-testid="settings-delete"
+            >
+              <Link to="/settings/delete-account">Delete my account</Link>
             </Button>
           </div>
         </Section>
