@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.location;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
 import com.rentrix.rentrixserver.support.IntegrationTest;
@@ -223,6 +224,8 @@ class LocationResolveTest {
 			new LocationInput.NewArea("resolve   AREA", "200001"), null, null, null, null, null, null), landlord));
 		assertThat(sameArea.getStatus()).isEqualTo(HttpStatus.CONFLICT);
 		assertThat(sameArea.getCode()).isEqualTo("location_exists");
+		assertThat(sameArea.getErrors()).extracting(ApiProblem.FieldError::field)
+			.containsExactly("location.newArea.name");
 		assertThat(rejected(() -> service.resolve(CITY, "200001", new LocationInput(area.getPublicId(), null, null,
 			new LocationInput.NewSociety("RESOLVE GREENS", SocietyKind.GATED_COMMUNITY, null, null), null, null, null,
 			null), landlord)).getStatus()).isEqualTo(HttpStatus.CONFLICT);

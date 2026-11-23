@@ -117,6 +117,11 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
     if (!PIN.test(draft.pincode.trim())) errors.pincode = "Enter the 6-digit PIN code."
     if (!draft.unitLabel.trim()) errors.unitLabel = "Enter the flat or house number."
   }
+  if (step === "address" && !draft.propertyId) {
+    const bedrooms = wholeNumber(draft.bedrooms)
+    if (bedrooms !== undefined && (!Number.isFinite(bedrooms) || bedrooms < 0 || bedrooms > 20))
+      errors.bedrooms = "Enter 0 to 20 bedrooms, or leave it empty."
+  }
   if (step === "relation" && !draft.relation) errors.relation = "Choose one."
   if (step === "relation" && draft.relation === "OWN" && draft.propertyId)
     errors.relation = "This home is already listed. Claiming it is checked by an admin."
@@ -173,8 +178,9 @@ export function fieldPlace(field: string): { step: HomeStep; key: string } {
   if (owner) return { step: "owner", key: `owner${owner[1][0].toUpperCase()}${owner[1].slice(1)}` }
   if (path.startsWith("newCity"))
     return { step: "address", key: path === "newCity.state" ? "otherState" : "otherCity" }
-  const address: Record<string, string> = { home: "city", location: "area", propertyType: "type" }
-  return { step: "address", key: address[path] ?? path }
+  const address: Record<string, string> = { home: "city", location: "area", propertyId: "form" }
+  const keys = ["city", "buildingName", "unitLabel", "pincode", "propertyType", "bedrooms", "locality"]
+  return { step: "address", key: address[path] ?? (keys.includes(path) ? path : "form") }
 }
 
 /** The API's field errors as form errors, with the first step that holds one; null when none. */

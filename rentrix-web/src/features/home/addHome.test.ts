@@ -38,6 +38,13 @@ describe("add your home form (D-139)", () => {
     expect(checkStep("address", { ...EMPTY_HOME, propertyId: "p1" }, TODAY)).toEqual({})
   })
 
+  it("checks the bedrooms on step 1: 0 to 20, or empty", () => {
+    expect(checkStep("address", { ...address, bedrooms: "25" }, TODAY)).toEqual({
+      bedrooms: "Enter 0 to 20 bedrooms, or leave it empty.",
+    })
+    expect(checkStep("address", { ...address, bedrooms: "3" }, TODAY)).toEqual({})
+  })
+
   it("takes a one-letter tower or wing, and stops on step 1 for an empty one (#53 bug 1)", () => {
     const inTower = (tower: string, wing: string): HomeDraft => ({
       ...address,
@@ -61,6 +68,9 @@ describe("add your home form (D-139)", () => {
     expect(fieldPlace("home.pincode")).toEqual({ step: "address", key: "pincode" })
     expect(fieldPlace("monthlyRentInr")).toEqual({ step: "tenancy", key: "rent" })
     expect(fieldPlace("owner.email")).toEqual({ step: "owner", key: "ownerEmail" })
+    expect(fieldPlace("home.bedrooms")).toEqual({ step: "address", key: "bedrooms" })
+    expect(fieldPlace("home.propertyType")).toEqual({ step: "address", key: "propertyType" })
+    expect(fieldPlace("home.street")).toEqual({ step: "address", key: "form" })
     const steps = stepsFor({ ...address, relation: "RENT" })
     expect(
       placeFieldErrors(

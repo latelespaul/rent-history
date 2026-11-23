@@ -289,8 +289,9 @@ public class LocationService {
 		} else {
 			String areaPincode = in.newArea().pincode().trim();
 			requireAreaPincode(cityCode, areaPincode);
-			area = pendingTwin(areas.findByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name())),
-				Area::getStatus, "An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
+			area = pendingTwin("newArea.name",
+				areas.findByCityCodeAndNameKey(cityCode, LocationNames.key(in.newArea().name())), Area::getStatus,
+				"An area with this name already exists in " + cityName(cityCode) + "; pick it instead.");
 			if (area == null) {
 				area = new Area();
 				area.setCity(city);
@@ -318,7 +319,8 @@ public class LocationService {
 			}
 		} else if (in.newSociety() != null) {
 			if (area.getId() != null) {
-				society = pendingTwin(societies.findByAreaAndNameKey(area, LocationNames.key(in.newSociety().name())),
+				society = pendingTwin("newSociety.name",
+					societies.findByAreaAndNameKey(area, LocationNames.key(in.newSociety().name())),
 					Society::getStatus,
 					"A society with this name already exists in " + area.getName() + "; pick it instead.");
 			}
@@ -342,7 +344,8 @@ public class LocationService {
 			}
 		} else if (in.newTower() != null) {
 			if (society.getId() != null) {
-				tower = pendingTwin(towers.findBySocietyAndNameKey(society, LocationNames.key(in.newTower().name())),
+				tower = pendingTwin("newTower.name",
+					towers.findBySocietyAndNameKey(society, LocationNames.key(in.newTower().name())),
 					SocietyTower::getStatus,
 					"A tower with this name already exists in " + society.getName() + "; pick it instead.");
 			}
@@ -365,7 +368,8 @@ public class LocationService {
 			}
 		} else if (in.newWing() != null) {
 			if (tower.getId() != null) {
-				wing = pendingTwin(wings.findByTowerAndNameKey(tower, LocationNames.key(in.newWing().name())),
+				wing = pendingTwin("newWing.name",
+					wings.findByTowerAndNameKey(tower, LocationNames.key(in.newWing().name())),
 					SocietyWing::getStatus,
 					"A wing with this name already exists in " + tower.getName() + "; pick it instead.");
 			}
@@ -375,21 +379,26 @@ public class LocationService {
 			}
 		}
 		
+		String saving = null;
 		try {
 			if (in.newArea() != null) {
+				saving = "newArea.name";
 				areas.saveAndFlush(area);
 			}
 			if (society != null && society.getId() == null) {
+				saving = "newSociety.name";
 				societies.saveAndFlush(society);
 			}
 			if (tower != null && tower.getId() == null) {
+				saving = "newTower.name";
 				towers.saveAndFlush(tower);
 			} else if (wing != null && wing.getId() == null) {
+				saving = "newWing.name";
 				wings.saveAndFlush(wing);
 			}
 		} catch (DataIntegrityViolationException e) {
 			// a concurrent proposal with the same name won the unique (parent, name_key) key
-			throw exists("A place with this name was just added; pick it instead.");
+			throw exists(saving, "A place with this name was just added; pick it instead.");
 		}
 		return new Placement(area, society, tower, wing);
 	}
@@ -553,12 +562,13 @@ public class LocationService {
 	 * (its {@code created_by} unchanged); an {@code ACTIVE} or {@code HIDDEN} one is a {@code 409 location_exists}.
 	 * Null when the name is new.
 	 */
-	private static <T> T pendingTwin(Optional<T> existing, Function<T, LocationStatus> status, String detail) {
+	private static <T> T pendingTwin(String fieldName, Optional<T> existing, Function<T, LocationStatus> status,
+		String detail) {
 		if (existing.isEmpty()) {
 			return null;
 		}
 		if (status.apply(existing.get()) != LocationStatus.PENDING) {
-			throw exists(detail);
+			throw exists(fieldName, detail);
 		}
 		return existing.get();
 	}
@@ -619,8 +629,9 @@ public class LocationService {
 			List.of(field(LOCATION + fieldName, "mismatch", detail)));
 	}
 	
-	private static ApiException exists(String detail) {
-		return ApiException.conflict("location_exists", detail);
+	private static ApiException exists(String fieldName, String detail) {
+		return new ApiException(HttpStatus.CONFLICT, "location_exists", detail,
+			List.of(field(LOCATION + fieldName, "exists", detail)));
 	}
 	
 	private static String blankToNull(String value) {

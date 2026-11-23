@@ -82,6 +82,8 @@ const FIELD_IDS: Record<string, string> = {
   buildingName: "ah-building",
   unitLabel: "ah-unit",
   pincode: "ah-pincode",
+  propertyType: "ah-type",
+  bedrooms: "ah-bedrooms",
   relation: "ah-relation-rent",
   startDate: "ah-start",
   endDate: "ah-end",
@@ -95,7 +97,7 @@ const FIELD_IDS: Record<string, string> = {
 /** The form errors a draft field's change makes stale. */
 const ERRORS_OF: Partial<Record<keyof HomeDraft, string[]>> = {
   location: ["area", "society", "tower", "wing"],
-  propertyType: ["buildingName"],
+  propertyType: ["propertyType", "buildingName"],
   stillLiving: ["endDate"],
 }
 
@@ -607,7 +609,7 @@ export default function AddHomePage() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field id="ah-type" label="Type">
+                <Field id="ah-type" label="Type" error={error("propertyType")}>
                   <select
                     id="ah-type"
                     className={selectClass}
@@ -621,7 +623,11 @@ export default function AddHomePage() {
                     ))}
                   </select>
                 </Field>
-                <Field id="ah-bedrooms" label={<>Bedrooms {optional}</>}>
+                <Field
+                  id="ah-bedrooms"
+                  label={<>Bedrooms {optional}</>}
+                  error={error("bedrooms")}
+                >
                   <Input
                     id="ah-bedrooms"
                     inputMode="numeric"
@@ -799,6 +805,7 @@ export default function AddHomePage() {
             </>
           )}
 
+          {error("form") && <p className="text-sm text-danger-600">{error("form")}</p>}
           {!fieldFailure && <ActionError error={save.error} startDate={draft.startDate} />}
 
           {!(step === "address" && matches && matches.length > 0) && (
