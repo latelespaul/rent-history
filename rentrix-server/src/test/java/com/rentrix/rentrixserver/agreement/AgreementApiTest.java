@@ -326,8 +326,8 @@ class AgreementApiTest {
 		RentalAgreement decided = agreements.findByPublicId(UUID.fromString(id)).orElseThrow();
 		assertThat(decided.getStatus()).isEqualTo(AgreementStatus.DECIDED);
 		assertThat(decided.getDecidedAt()).isNotNull();
-		// The other party never confirmed this file: it goes 90 days after upload (D-131).
-		assertThat(decided.getPurgeAfter()).isEqualTo(decided.getCreatedAt().plus(Duration.ofDays(90)));
+		// The other party never confirmed this file: it goes 30 days after the decision (D-131).
+		assertThat(decided.getPurgeAfter()).isEqualTo(decided.getDecidedAt().plus(Duration.ofDays(30)));
 		
 		mvc.perform(get("/tenancies/" + tenancy.getPublicId()).header("Authorization", support.bearer(tenant)))
 			.andExpect(jsonPath("$.verificationStatus").value("VERIFIED"))

@@ -15,8 +15,7 @@ export type AgreementStep =
   | { state: "verified" }
   | { state: "rejected"; reason: string | null }
 
-export type ReviewStep =
-  { state: "todo" } | { state: "done" } | { state: "later"; opens: string } | { state: "none" }
+export type ReviewStep = { state: "todo" } | { state: "done" } | { state: "none" }
 
 export function agreementStep(tenancy: Tenancy): AgreementStep {
   if (tenancy.verificationStatus === "VERIFIED") return { state: "verified" }
@@ -33,25 +32,18 @@ export function agreementStep(tenancy: Tenancy): AgreementStep {
  * The tenant's review of the home (D-27): `todo` while the window is open and no review is
  * written (`GET /me/review-tasks` lists it), `done` once written. `tasks` undefined = not loaded.
  */
-export function reviewStep(
-  tenancy: Tenancy,
-  tasks: ReviewTask[] | undefined,
-  today: string,
-): ReviewStep {
+export function reviewStep(tenancy: Tenancy, tasks: ReviewTask[] | undefined): ReviewStep {
   if (tenancy.myRole !== "TENANT") return { state: "none" }
-  const window = reviewWindow(tenancy, today)
-  if (window.state === "not_yet") return { state: "later", opens: window.opens }
-  if (window.state !== "open" || tasks === undefined) return { state: "none" }
+  if (reviewWindow(tenancy).state !== "open" || tasks === undefined) return { state: "none" }
   const open = tasks.some((t) => t.tenancyId === tenancy.id && t.direction === "TENANT_TO_PROPERTY")
   return open ? { state: "todo" } : { state: "done" }
 }
 
-/** How many of the two optional steps the caller can still do ("2 optional steps left"). */
+/** How many of the two optional steps the caller can act on now ("2 optional steps left"). */
 export function stepsLeft(agreement: AgreementStep, review: ReviewStep): number {
   const agreementLeft =
     agreement.state === "todo" || agreement.state === "draft" || agreement.state === "rejected"
-  const reviewLeft = review.state === "todo" || review.state === "later"
-  return Number(agreementLeft) + Number(reviewLeft)
+  return Number(agreementLeft) + Number(review.state === "todo")
 }
 
 export function stepsLeftLabel(count: number): string {

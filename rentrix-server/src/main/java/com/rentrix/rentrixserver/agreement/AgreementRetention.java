@@ -7,16 +7,15 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * When an agreement's file is deleted (D-131): {@code AGREEMENT_FILE_RETENTION_DAYS} (30) days after the later of the
- * admin decision and the other party's confirmation of that file. While no other party has confirmed it, the file
- * goes 90 days after upload, decided or not, so a file never waits forever for a party who never comes (a home whose
- * owner is not on the platform). Once the other party confirmed, it waits for the decision. The masked fields, the
- * hash, the anchor number and the tier stay.
+ * When an agreement's file is deleted (D-131): once the team decided it, {@code AGREEMENT_FILE_RETENTION_DAYS} (30)
+ * days after the later of the admin decision and the other party's confirmation of that file, or after the decision
+ * alone when no other party confirmed it. While it is undecided, the file goes 90 days after upload, so a file never
+ * waits forever for a decision. The masked fields, the hash, the anchor number and the tier stay.
  */
 @Component
 public class AgreementRetention {
 	
-	static final Duration UNCONFIRMED = Duration.ofDays(90);
+	static final Duration UNDECIDED = Duration.ofDays(90);
 	
 	private final Duration afterDecision;
 	
@@ -27,15 +26,13 @@ public class AgreementRetention {
 		this.afterDecision = Duration.ofDays(days);
 	}
 	
-	/** The {@code purge_after} for an agreement with these times; null while it must wait for the decision. */
+	/** The {@code purge_after} for an agreement with these times. */
 	public Instant purgeAfter(Instant uploadedAt, Instant decidedAt, Instant counterpartyConfirmedAt) {
-		if (counterpartyConfirmedAt == null) {
-			return uploadedAt.plus(UNCONFIRMED);
-		}
 		if (decidedAt == null) {
-			return null;
+			return uploadedAt.plus(UNDECIDED);
 		}
-		Instant later = decidedAt.isAfter(counterpartyConfirmedAt) ? decidedAt : counterpartyConfirmedAt;
+		Instant later = counterpartyConfirmedAt != null && counterpartyConfirmedAt.isAfter(decidedAt)
+			? counterpartyConfirmedAt : decidedAt;
 		return later.plus(afterDecision);
 	}
 	

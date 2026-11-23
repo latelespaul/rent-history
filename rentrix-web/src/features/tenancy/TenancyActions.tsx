@@ -153,7 +153,9 @@ export function TenancyActions({
               />
             </div>
           </div>
-          <p className="text-xs text-ink-500">Ending opens the review window for both sides.</p>
+          <p className="text-xs text-ink-500">
+            After it ends, both sides can still review it for 180 days.
+          </p>
           <Button disabled={run.isPending} onClick={() => run.mutate("end")}>
             End tenancy
           </Button>

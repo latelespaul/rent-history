@@ -60,11 +60,20 @@ class AgreementRulesTest {
 		Instant confirmed = upload.plus(Duration.ofDays(10));
 		
 		assertThat(rule.purgeAfter(upload, null, null)).isEqualTo(upload.plus(Duration.ofDays(90)));
-		assertThat(rule.purgeAfter(upload, decided, null)).isEqualTo(upload.plus(Duration.ofDays(90)));
-		assertThat(rule.purgeAfter(upload, null, confirmed)).isNull();
+		assertThat(rule.purgeAfter(upload, null, confirmed)).isEqualTo(upload.plus(Duration.ofDays(90)));
+		assertThat(rule.purgeAfter(upload, decided, null)).isEqualTo(decided.plus(Duration.ofDays(30)));
 		assertThat(rule.purgeAfter(upload, decided, confirmed)).isEqualTo(confirmed.plus(Duration.ofDays(30)));
 		assertThat(rule.purgeAfter(upload, confirmed.plus(Duration.ofDays(1)), confirmed))
 			.isEqualTo(confirmed.plus(Duration.ofDays(31)));
+	}
+	
+	@Test
+	void aFileUploadedOnDayZeroAndDecidedOnDayTwoGoesOnDay32() {
+		AgreementRetention rule = new AgreementRetention(30);
+		Instant upload = Instant.parse("2026-01-01T00:00:00Z");
+		
+		assertThat(rule.purgeAfter(upload, upload.plus(Duration.ofDays(2)), null))
+			.isEqualTo(upload.plus(Duration.ofDays(32)));
 	}
 	
 }

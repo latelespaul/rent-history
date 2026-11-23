@@ -9,7 +9,7 @@ const FILE_EXTENSION = /\.(pdf|jpe?g|png|heic)$/i
 
 /** The consent the uploader ticks before the file is sent (D-131). */
 export const CONSENT_TEXT =
-  "I agree that Doorway Living stores this agreement encrypted, shows it only to the other party of this tenancy and to the Doorway Living team, uses it to verify this tenancy, and deletes the file 30 days after the team's check and the other party's confirmation (or 90 days after upload if the other party never confirms it)."
+  "I agree that Doorway Living stores this agreement encrypted, shows it only to the other party of this tenancy and to the Doorway Living team, uses it to verify this tenancy, and deletes the file 30 days after the team's check and the other party's confirmation (or 90 days after upload if the team has not checked it by then)."
 
 /** The form as typed: every field a string, so nothing jumps while the user types. */
 export interface AgreementForm {

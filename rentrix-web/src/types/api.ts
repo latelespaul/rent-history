@@ -495,7 +495,6 @@ export type ReviewDirection = "TENANT_TO_PROPERTY" | "TENANT_TO_LANDLORD" | "LAN
 export interface ReviewTask {
   tenancyId: string
   direction: ReviewDirection
-  closesOn?: string
 }
 
 /** `POST /tenancies` (§12.2): the landlord gives `counterpartyEmail`; a tenant does not. */

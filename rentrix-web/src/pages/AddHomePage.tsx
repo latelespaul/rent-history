@@ -163,7 +163,7 @@ function Matches({
  */
 function Added({ result }: { result: AddHomeResult }) {
   const { property, tenancy } = result
-  const reviews = tenancy ? reviewWindow(tenancy, today()) : null
+  const reviews = tenancy ? reviewWindow(tenancy) : null
   return (
     <section
       data-testid="add-home-done"

@@ -283,7 +283,7 @@ class ReviewApiTest {
 	}
 
 	@Test
-	void reviewWindowNeverClosesButMustBeOpen() throws Exception {
+	void reviewWindowNeverClosesAndANewTenancyIsOpenAtOnce() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Property property = home(landlord);
@@ -291,10 +291,10 @@ class ReviewApiTest {
 		Tenancy old = ended(property, tenant, TODAY.minusYears(3), TODAY.minusYears(2));
 		write(tenant, old, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD).andExpect(status().isCreated());
 
-		Tenancy fresh = data.tenancy(home(landlord), tenant, TODAY.minusDays(30), null, TenancyStatus.ACTIVE);
-		write(tenant, fresh, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD)
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("review_window_not_open"));
+		Tenancy fresh = data.tenancy(home(landlord), tenant, TODAY, null, TenancyStatus.ACTIVE);
+		mvc.perform(get("/me/review-tasks").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$[?(@.tenancyId == '" + fresh.getPublicId() + "')]", hasSize(2)));
+		write(tenant, fresh, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD).andExpect(status().isCreated());
 
 		Tenancy pending = data.tenancy(home(landlord), tenant, TODAY.minusYears(1), null,
 			TenancyStatus.PENDING_CONFIRMATION);
@@ -302,7 +302,7 @@ class ReviewApiTest {
 			.andExpect(status().isUnprocessableContent())
 			.andExpect(jsonPath("$.code").value("tenancy_not_confirmed"));
 
-		// ended 10 days ago after 30 days: the end opens the window before day 60
+		// a 30-day stay that ended 10 days ago is open too
 		Tenancy shortStay = ended(home(landlord), tenant, TODAY.minusDays(40), TODAY.minusDays(10));
 		write(tenant, shortStay, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD).andExpect(status().isCreated());
 	}

@@ -174,7 +174,8 @@ app:
     # D-127: "manual" (the uploader types the fields) is the only extractor; no OCR or LLM is built.
     extractor: ${AGREEMENT_EXTRACTOR:manual}
     # D-131: days after the later of the team's decision and the other party's confirmation before
-    # the file is deleted (90 days after upload while no other party has confirmed it).
+    # the file is deleted (after the decision alone when no other party confirmed it; 90 days after
+    # upload while undecided).
     file-retention-days: ${AGREEMENT_FILE_RETENTION_DAYS:30}
   sms:
     # Phone OTP only (D-101). Empty = no SMS: the phone method is unavailable (503
