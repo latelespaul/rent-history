@@ -36,7 +36,8 @@ import java.util.UUID;
  * or {@code test} profile is active <em>and</em> {@code DEV_LOGIN_ENABLED=true}; elsewhere the routes are
  * {@code 404}, and {@code StartupGuard} refuses to start any other profile with the flag on.
  * {@code POST /auth/dev-login/new} signs in as a brand-new user with no role yet, so the first sign-in (role pick,
- * account created, verification stepper) can be clicked through without Google too. Seed admins are not offered here:
+ * account created, verification stepper) can be clicked through without Google too; {@code POST /auth/dev-login}
+ * also accepts such a user, so it can sign out and back in. Seed admins are not offered here:
  * they sign in on the admin host ({@link AdminDevLoginController}, D-19).
  */
 @RestController

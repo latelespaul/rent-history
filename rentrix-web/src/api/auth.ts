@@ -28,7 +28,7 @@ export function fetchDevUsers(signal?: AbortSignal): Promise<CurrentUser[]> {
   return api.get<CurrentUser[]>("/auth/dev-users", { signal })
 }
 
-/** `POST /auth/dev-login`: sign in as a demo seed user (dev profile only, D-77). */
+/** `POST /auth/dev-login`: sign in as a demo seed user, or one `dev-login/new` made (dev profile only, D-77). */
 export function devLogin(userId: string): Promise<AuthSession> {
   return api.post<AuthSession>("/auth/dev-login", { userId })
 }
