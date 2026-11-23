@@ -217,6 +217,23 @@ describe("verification stepper", () => {
     expect(verification.startPhoneCheck).toHaveBeenLastCalledWith("+919876543210", "SMS")
   })
 
+  it("shows the server's fallback text when Telegram cannot reach the number (D-146)", async () => {
+    h.identity = identity(null, true, false, true)
+    const detail =
+      "We could not send the code to Telegram. Check that this number has Telegram, or get the code by SMS instead."
+    vi.mocked(verification.startPhoneCheck).mockRejectedValueOnce(
+      new ApiError({ status: 503, code: "telegram_send_failed", detail }),
+    )
+    renderApp("/verify/phone")
+    const user = userEvent.setup()
+
+    await user.type(await screen.findByLabelText(/your mobile number/i), "98765 43210")
+    await user.click(screen.getByRole("button", { name: "Send code to Telegram" }))
+
+    expect(await screen.findByText(detail)).toBeTruthy()
+    expect(screen.queryByText(/the server had a problem/i)).toBeNull()
+  })
+
   it("says the team will message the code when the API relays it by hand", async () => {
     vi.mocked(verification.startPhoneCheck).mockImplementationOnce(async () => ({
       challengeId: "c1",

@@ -353,7 +353,13 @@ export function PhoneStep({
                 Indian mobile numbers only. Private: never shown on your profile.
                 {viaTelegram && " The number needs a Telegram account."}
               </p>
-              {start.error && <Notice tone="danger">{errorMessage(start.error)}</Notice>}
+              {start.error && (
+                <Notice tone="danger">
+                  {isApiError(start.error) && start.error.code === "telegram_send_failed"
+                    ? start.error.message
+                    : errorMessage(start.error)}
+                </Notice>
+              )}
               {viaTelegram && smsAvailable && !challenge && (
                 <Button
                   type="button"
