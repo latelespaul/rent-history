@@ -330,6 +330,17 @@ class AdminQueueTest {
 			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("admin_conflict"));
 		assertThat(tenancies.findById(own.getId()).orElseThrow().getVerificationStatus()).isNull();
 
+		Review written = review(tenancy(landlord, admin), ReviewDirection.TENANT_TO_LANDLORD);
+		Report aboutOwn = new Report();
+		aboutOwn.setReporter(landlord);
+		aboutOwn.setTargetType(ReportTargetType.REVIEW);
+		aboutOwn.setTargetId(written.getId());
+		aboutOwn.setReason(ReportReason.HARASSMENT_OR_HATE);
+		aboutOwn = reports.save(aboutOwn);
+		decide(admin, "reports/" + aboutOwn.getPublicId() + "/resolve", "{\"outcome\":\"DISMISS\"}")
+			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("admin_conflict"));
+		assertThat(reports.findById(aboutOwn.getId()).orElseThrow().getStatus()).isEqualTo(ReportStatus.OPEN);
+
 		// An admin token whose holder is not a member any more is refused at the decision.
 		User former = admin();
 		String stale = adminBearer(tokens, former);

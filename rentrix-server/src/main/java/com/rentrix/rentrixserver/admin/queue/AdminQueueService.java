@@ -22,6 +22,7 @@ import com.rentrix.rentrixserver.report.ReportStatus;
 import com.rentrix.rentrixserver.report.ReportTargetType;
 import com.rentrix.rentrixserver.review.Review;
 import com.rentrix.rentrixserver.review.ReviewDirection;
+import com.rentrix.rentrixserver.review.ReviewResponse;
 import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
@@ -466,6 +467,7 @@ public class AdminQueueService {
 			throw ApiException.conflict("invalid_transition", "This report is already handled.");
 		}
 		notSelf(admin, report.getReporter());
+		reportConflict(admin, report);
 		ReportStatus outcome;
 		switch (action) {
 			case APPROVE -> {
@@ -481,7 +483,6 @@ public class AdminQueueService {
 				if (r == null) {
 					throw ApiException.notFound("Review");
 				}
-				reviewConflict(admin, r);
 				// Another report on the same review may have hidden it already: this one is then closed as well.
 				if (r.getStatus() != ReviewStatus.HIDDEN) {
 					hide(admin, r, code, note);
@@ -518,6 +519,43 @@ public class AdminQueueService {
 		notSelf(admin, r.getSubjectUser());
 		notSelf(admin, r.getTenancy().getLandlord());
 		notSelf(admin, r.getTenancy().getTenant());
+	}
+
+	private void reportConflict(User admin, Report report) {
+		Long target = report.getTargetId();
+		if (target == null) {
+			return;
+		}
+		switch (report.getTargetType()) {
+			case REVIEW -> {
+				Review r = em.find(Review.class, target);
+				if (r != null) {
+					reviewConflict(admin, r);
+				}
+			}
+			case REVIEW_RESPONSE -> {
+				ReviewResponse response = em.find(ReviewResponse.class, target);
+				if (response != null) {
+					notSelf(admin, response.getAuthor());
+					reviewConflict(admin, response.getReview());
+				}
+			}
+			case USER -> notSelf(admin, em.find(User.class, target));
+			case PROPERTY -> {
+				Property p = em.find(Property.class, target);
+				if (p != null) {
+					notSelf(admin, p.getLandlord());
+					notSelf(admin, p.getAddedBy());
+				}
+			}
+			case TENANCY -> {
+				Tenancy t = em.find(Tenancy.class, target);
+				if (t != null) {
+					notSelf(admin, t.getLandlord());
+					notSelf(admin, t.getTenant());
+				}
+			}
+		}
 	}
 
 	/** D-88: an admin never decides on something they are a party to. */
