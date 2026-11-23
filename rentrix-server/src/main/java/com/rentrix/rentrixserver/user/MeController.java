@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** The caller's own account (§12.2 "Me"). Account deletion ({@code DELETE /me}, D-58) comes with PLAN B8. */
+/** The caller's own account (§12.2 "Me"). Account deletion ({@code DELETE /me}, D-58) is {@code AccountController}. */
 @RestController
 @RequestMapping("/me")
 @RequiredArgsConstructor

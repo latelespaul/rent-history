@@ -84,7 +84,6 @@ public class ReviewService {
 
 	private static final List<TenancyStatus> CONFIRMED = List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED);
 	private static final Set<ReviewStatus> EDITABLE = EnumSet.of(ReviewStatus.AWAITING_REVEAL, ReviewStatus.PUBLISHED);
-	private static final String FORMER_USER = "Former member";
 
 	private final ReviewRepository reviews;
 	private final ReviewRevisionRepository revisions;
@@ -628,21 +627,21 @@ public class ReviewService {
 	private ReviewView.Author authorLine(Review r, boolean admin) {
 		User author = r.getAuthor();
 		if (author.getDeletedAt() != null) {
-			return new ReviewView.Author(null, FORMER_USER, Badges.NONE, false);
+			return new ReviewView.Author(null, PublicNames.DELETED_USER, Badges.NONE, false);
 		}
 		boolean landlordAuthor = r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT;
 		return new ReviewView.Author(landlordAuthor || admin ? author.getPublicId() : null,
-			PublicNames.shortName(author.getDisplayName()), identity.badges(author),
+			PublicNames.of(author), identity.badges(author),
 			greenTicks.has(author, landlordAuthor ? Role.LANDLORD : Role.TENANT));
 	}
 
 	private static PartyRef party(User user) {
-		return user.getDeletedAt() != null ? new PartyRef(null, FORMER_USER)
-			: new PartyRef(user.getPublicId(), PublicNames.shortName(user.getDisplayName()));
+		return user.getDeletedAt() != null ? new PartyRef(null, PublicNames.DELETED_USER)
+			: new PartyRef(user.getPublicId(), PublicNames.of(user));
 	}
 
 	private static String displayName(User user) {
-		return user.getDeletedAt() != null ? FORMER_USER : PublicNames.shortName(user.getDisplayName());
+		return PublicNames.of(user);
 	}
 
 	static ReviewView.PropertyRef propertyRef(Property p) {

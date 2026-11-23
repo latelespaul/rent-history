@@ -6,6 +6,7 @@ import com.rentrix.rentrixserver.user.UserStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -69,16 +70,19 @@ public class RefreshTokenService {
 		token.setUser(user);
 		token.setTokenHash(hash(raw));
 		token.setFamilyId(familyId);
-		token.setExpiresAt(now().plus(ttl));
+		Instant now = now();
+		token.setCreatedAt(now); // the family's first one is the sign-in time (auth_time, D-157)
+		token.setExpiresAt(now.plus(ttl));
 		tokens.save(token);
 		return raw;
 	}
 	
 	/**
-	 * A rotated token: the owner and the raw value of its replacement in the same family, or {@code null}
-	 * when a grace-window reuse kept the current successor (the caller keeps its cookie).
+	 * A rotated token: the owner, the raw value of its replacement in the same family, or {@code null}
+	 * when a grace-window reuse kept the current successor (the caller keeps its cookie), and when the family's
+	 * sign-in happened ({@code auth_time}, D-157).
 	 */
-	public record Rotation(User user, String token) {
+	public record Rotation(User user, String token, Instant signedInAt) {
 	}
 	
 	/**
@@ -97,14 +101,14 @@ public class RefreshTokenService {
 		User user = token.getUser();
 		if (rotated) {
 			requireActive(token, user, now);
-			return new Rotation(user, issue(user, token.getFamilyId(), isAdmin(raw)));
+			return new Rotation(user, issue(user, token.getFamilyId(), isAdmin(raw)), familyStart(token));
 		}
 		if (token.getRevokedAt() == null) {
 			throw invalid(); // expired
 		}
 		if (isLatestRotationWithinGrace(token, now)) {
 			requireActive(token, user, now);
-			return new Rotation(user, null);
+			return new Rotation(user, null, familyStart(token));
 		}
 		log.warn("Refresh token reuse detected; revoking token family {}", token.getFamilyId());
 		revokeFamily(token.getFamilyId(), now);
@@ -120,6 +124,17 @@ public class RefreshTokenService {
 		tokens.findByTokenHash(hash(raw))
 			.filter(t -> t.getRevokedAt() == null)
 			.ifPresent(t -> t.setRevokedAt(now()));
+	}
+	
+	/** Deletes every refresh token of the user, so no device can refresh any more (account deletion, D-160). */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public int deleteAll(User user) {
+		return tokens.deleteByUserId(user.getId());
+	}
+	
+	private Instant familyStart(RefreshToken token) {
+		Instant start = tokens.findFamilyStart(token.getFamilyId());
+		return start != null ? start : token.getCreatedAt();
 	}
 	
 	/** True for a raw value of an admin console family. */

@@ -52,7 +52,7 @@ public class UserProfileService {
 		}
 		return new UserProfileView(
 			person.getPublicId(),
-			PublicNames.shortName(person.getDisplayName()),
+			PublicNames.of(person),
 			YearMonth.from(person.getCreatedAt().atZone(ZoneOffset.UTC)),
 			identity.badges(person),
 			landlord ? rating(RatingSubjectType.LANDLORD, person) : null,

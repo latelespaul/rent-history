@@ -5,6 +5,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -20,7 +22,8 @@ import javax.crypto.SecretKey;
 
 /**
  * Issues and verifies access tokens (D-62): HS256 JWT with {@code sub} (user public id),
- * {@code roles}, {@code iat}, {@code exp} and {@code jti}. An admin console token (§13.3) also has
+ * {@code roles}, {@code iat}, {@code exp}, {@code jti} and {@code auth_time} (when the session's sign-in happened, kept
+ * through refreshes and role changes; D-157). An admin console token (§13.3) also has
  * {@code ctx: "admin"} and the single role {@code ADMIN}; a main-site token never holds {@code ADMIN} (D-19), not
  * even when the caller passes it.
  */
@@ -30,6 +33,7 @@ public class AccessTokenService {
 	static final String ROLES_CLAIM = "roles";
 	static final String CONTEXT_CLAIM = "ctx";
 	static final String ADMIN_CONTEXT = "admin";
+	static final String AUTH_TIME_CLAIM = "auth_time";
 	
 	private final SecretKey key;
 	private final JwtProperties properties;
@@ -41,21 +45,42 @@ public class AccessTokenService {
 		this.key = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
 	}
 	
-	/** A main-site token; {@code ADMIN} is dropped from {@code roles}. */
+	/**
+	 * A main-site token for a session that is already running, e.g. after a role change; {@code ADMIN} is dropped
+	 * from {@code roles}. It keeps the {@code auth_time} of the current request's token when that token is the same
+	 * user's, else the session counts as signed in now.
+	 */
 	public String issue(UUID userPublicId, Collection<Role> roles) {
-		return build(userPublicId, roles.stream().filter(r -> r != Role.ADMIN).toList(), false);
+		return issue(userPublicId, roles, currentAuthTime(userPublicId));
+	}
+	
+	/** A main-site token whose session's sign-in happened at {@code authTime}; {@code ADMIN} is dropped. */
+	public String issue(UUID userPublicId, Collection<Role> roles, Instant authTime) {
+		return build(userPublicId, roles.stream().filter(r -> r != Role.ADMIN).toList(), false, authTime);
 	}
 	
 	/** An admin console token: role {@code ADMIN} only, {@code ctx: "admin"}. */
 	public String issueAdmin(UUID userPublicId) {
-		return build(userPublicId, List.of(Role.ADMIN), true);
+		return build(userPublicId, List.of(Role.ADMIN), true, null);
 	}
 	
-	private String build(UUID userPublicId, Collection<Role> roles, boolean admin) {
+	private Instant currentAuthTime(UUID userPublicId) {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		if (auth != null && auth.getPrincipal() instanceof AuthenticatedUser caller
+			&& caller.publicId().equals(userPublicId) && caller.authTime() != null) {
+			return caller.authTime();
+		}
+		return clock.instant();
+	}
+	
+	private String build(UUID userPublicId, Collection<Role> roles, boolean admin, Instant authTime) {
 		Instant now = clock.instant();
 		var builder = Jwts.builder();
 		if (admin) {
 			builder.claim(CONTEXT_CLAIM, ADMIN_CONTEXT);
+		}
+		if (authTime != null) {
+			builder.claim(AUTH_TIME_CLAIM, authTime.getEpochSecond());
 		}
 		return builder
 			.subject(userPublicId.toString())
@@ -82,10 +107,15 @@ public class AccessTokenService {
 			} else {
 				roles.remove(Role.ADMIN);
 			}
-			return new AuthenticatedUser(UUID.fromString(claims.getSubject()), roles, admin);
+			return new AuthenticatedUser(UUID.fromString(claims.getSubject()), roles, admin,
+				authTime(claims.get(AUTH_TIME_CLAIM)));
 		} catch (JwtException | IllegalArgumentException e) {
 			throw new InvalidTokenException("Access token is invalid or expired", e);
 		}
+	}
+	
+	private static Instant authTime(Object claim) {
+		return claim instanceof Number seconds ? Instant.ofEpochSecond(seconds.longValue()) : null;
 	}
 	
 	private static Set<Role> roles(Object claim) {

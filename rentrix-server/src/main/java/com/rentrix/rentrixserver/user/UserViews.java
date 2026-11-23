@@ -19,7 +19,7 @@ public class UserViews {
 		return new UserView(
 			user.getPublicId(),
 			user.getDisplayName(),
-			PublicNames.shortName(user.getDisplayName()),
+			PublicNames.of(user),
 			user.getEmail(),
 			user.getEmailVerifiedAt() != null,
 			user.getAvatarUrl(),

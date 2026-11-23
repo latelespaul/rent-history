@@ -641,7 +641,7 @@ public class PropertyService {
 		LandlordSummary owner = UnclaimedLandlord.is(landlord)
 			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null, false)
 			: new LandlordSummary(signedIn ? landlord.getPublicId() : null,
-				PublicNames.shortName(landlord.getDisplayName()), landlordRating, landlordVerified);
+				PublicNames.of(landlord), landlordRating, landlordVerified);
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPincode(),
 			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
@@ -674,7 +674,7 @@ public class PropertyService {
 	
 	private static String landlordName(User landlord) {
 		return UnclaimedLandlord.is(landlord) ? UnclaimedLandlord.PUBLIC_NAME
-			: PublicNames.shortName(landlord.getDisplayName());
+			: PublicNames.of(landlord);
 	}
 	
 	private RatingAggregate aggregate(RatingSubjectType type, Long subjectId) {

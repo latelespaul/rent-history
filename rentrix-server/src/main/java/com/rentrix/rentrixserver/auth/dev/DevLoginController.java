@@ -14,6 +14,7 @@ import com.rentrix.rentrixserver.user.UserViews;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -78,15 +80,35 @@ public class DevLoginController {
 		return sessions.signedIn(request, auth.startSession(user));
 	}
 	
-	/** A new, not-onboarded, non-demo user: like a first Google sign-in, with a made-up example.test email. */
+	/**
+	 * Optional {@code key} stands for one Google account: {@code dev-new-<key>} is its subject and
+	 * {@code new-user-<key>@example.test} its email. Without it a random key is used.
+	 */
+	public record NewUserRequest(@Pattern(regexp = "[a-z0-9]{1,16}") String key) {
+	}
+	
+	/**
+	 * A new, not-onboarded, non-demo user: like a first Google sign-in, with a made-up example.test email. With a
+	 * {@code key} it behaves like Google for that one account: the live user with its subject signs in again, and once
+	 * that account is deleted (D-58) the same key, so the same email, makes a new, empty user.
+	 */
 	@PostMapping("/dev-login/new")
 	@Transactional
-	public ResponseEntity<AuthResponse> devLoginAsNewUser(HttpServletRequest request) {
+	public ResponseEntity<AuthResponse> devLoginAsNewUser(@Valid @RequestBody(required = false) NewUserRequest body,
+		HttpServletRequest request) {
 		rateLimiter.check(request);
-		String tag = UUID.randomUUID().toString().substring(0, 8);
+		String tag = body != null && body.key() != null ? body.key() : UUID.randomUUID().toString().substring(0, 8);
+		String email = "new-user-" + tag + "@example.test";
+		Optional<User> existing = users.findByGoogleSub(NEW_USER_SUB + tag);
+		if (existing.isPresent()) {
+			return sessions.signedIn(request, auth.startSession(existing.get()));
+		}
+		if (users.findByEmail(email).isPresent()) {
+			throw ApiException.conflict("account_email_conflict", "This email is already used by another account.");
+		}
 		User user = new User();
 		user.setGoogleSub(NEW_USER_SUB + tag);
-		user.setEmail("new-user-" + tag + "@example.test");
+		user.setEmail(email);
 		user.setEmailVerifiedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 		user.setDisplayName("New User");
 		return sessions.signedIn(request, auth.startSession(users.save(user)));

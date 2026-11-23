@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
 import AddHomePage from "@/pages/AddHomePage"
+import DeleteAccountPage from "@/pages/DeleteAccountPage"
 import EditHomePage from "@/pages/EditHomePage"
 import EditTenancyPage from "@/pages/EditTenancyPage"
 import HomePage from "@/pages/HomePage"
@@ -45,6 +46,7 @@ export const routes = [
           { path: "/welcome/created", element: <WelcomeCreatedPage /> },
           { path: "/verify/*", element: <VerifyPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/settings/delete-account", element: <DeleteAccountPage /> },
           { path: "/me/tenancies", element: <MyTenanciesPage /> },
           { path: "/homes/new", element: <AddHomePage /> },
           { path: "/homes/:id/edit", element: <EditHomePage /> },

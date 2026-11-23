@@ -30,6 +30,7 @@ import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.user.UserStatus;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
@@ -921,7 +922,10 @@ public class TenancyService {
 		if (UnclaimedLandlord.is(user)) {
 			return new PartyRef(null, UnclaimedLandlord.PUBLIC_NAME);
 		}
-		return new PartyRef(user.getPublicId(), PublicNames.shortName(user.getDisplayName()));
+		if (user.getStatus() == UserStatus.DELETED) {
+			return new PartyRef(null, PublicNames.DELETED_USER);
+		}
+		return new PartyRef(user.getPublicId(), PublicNames.of(user));
 	}
 
 }
