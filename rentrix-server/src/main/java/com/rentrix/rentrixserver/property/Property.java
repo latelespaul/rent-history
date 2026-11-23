@@ -89,6 +89,16 @@ public class Property extends PublicEntity {
 	@Column(name = "bedrooms")
 	private Integer bedrooms;
 	
+	/** 1 RK, 1-4 BHK, 5+ BHK, studio or other (captain 2026-11-23 17:18); null when not given. */
+	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
+	@Column(name = "home_size", length = 16)
+	private HomeSize homeSize;
+	
+	/** The size in the user's words when {@code homeSize} is {@code OTHER}, e.g. "2.5 BHK". */
+	@Column(name = "home_size_other", length = 40)
+	private String homeSizeOther;
+	
 	@Column(name = "bathrooms")
 	private Integer bathrooms;
 	

@@ -214,4 +214,22 @@ describe("add your home form (D-139)", () => {
     expect(body).not.toHaveProperty("monthlyRentInr")
     expect(body.owner).toEqual({ name: "Ravi", email: undefined, phone: undefined })
   })
+
+  it("sends the home size, and asks for words when it is Other (captain 2026-11-23 17:18)", () => {
+    expect(toAddHomeBody({ ...address, relation: "OWN" }).home).not.toHaveProperty("homeSize")
+    expect(toAddHomeBody({ ...address, relation: "OWN", homeSize: "RK1" }).home).toMatchObject({
+      homeSize: "RK1",
+    })
+    expect(checkStep("address", { ...address, homeSize: "OTHER" }, TODAY)).toEqual({
+      homeSizeOther: "Type the size, e.g. 2.5 BHK.",
+    })
+    const other = toAddHomeBody({
+      ...address,
+      relation: "OWN",
+      homeSize: "OTHER",
+      homeSizeOther: " 2.5 BHK ",
+    })
+    expect(other.home).toMatchObject({ homeSize: "OTHER", homeSizeOther: "2.5 BHK" })
+    expect(fieldPlace("home.homeSizeOther")).toEqual({ step: "address", key: "homeSizeOther" })
+  })
 })

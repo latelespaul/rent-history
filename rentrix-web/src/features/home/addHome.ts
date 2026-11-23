@@ -5,7 +5,7 @@ import {
   type LocationDraft,
 } from "@/features/landlord/locationDraft"
 import { wholeNumber } from "@/features/tenancy/labels"
-import type { AddHomeInput, PropertyType } from "@/types/api"
+import type { AddHomeInput, HomeSize, PropertyType } from "@/types/api"
 import type { HomeMatchQuery } from "@/api/homes"
 
 /**
@@ -34,7 +34,12 @@ export interface HomeDraft {
   /** A PIN code the picked area does not list, kept after the warning (firstmate 2026-11-23 14:50). */
   keptPincode?: string
   propertyType: PropertyType
+  /** Older drafts only: the form now asks for the home size, and the API derives bedrooms from it. */
   bedrooms: string
+  /** 1 RK … 5+ BHK, studio or other (captain 2026-11-23 17:18); "" when not picked. */
+  homeSize: HomeSize | ""
+  /** The size in the user's words, for "Other". */
+  homeSizeOther: string
   /** A published home picked from "Is it this one?"; the address fields are then ignored. */
   propertyId: string | null
   relation: "RENT" | "OWN" | null
@@ -59,6 +64,8 @@ export const EMPTY_HOME: HomeDraft = {
   pincode: "",
   propertyType: "APARTMENT",
   bedrooms: "",
+  homeSize: "",
+  homeSizeOther: "",
   propertyId: null,
   relation: null,
   startDate: "",
@@ -121,6 +128,8 @@ export function checkStep(step: HomeStep, draft: HomeDraft, today: string): Home
     const bedrooms = wholeNumber(draft.bedrooms)
     if (bedrooms !== undefined && (!Number.isFinite(bedrooms) || bedrooms < 0 || bedrooms > 20))
       errors.bedrooms = "Enter 0 to 20 bedrooms, or leave it empty."
+    if (draft.homeSize === "OTHER" && !draft.homeSizeOther.trim())
+      errors.homeSizeOther = "Type the size, e.g. 2.5 BHK."
   }
   if (step === "relation" && !draft.relation) errors.relation = "Choose one."
   if (step === "relation" && draft.relation === "OWN" && draft.propertyId)
@@ -186,6 +195,8 @@ export function fieldPlace(field: string): { step: HomeStep; key: string } {
     "pincode",
     "propertyType",
     "bedrooms",
+    "homeSize",
+    "homeSizeOther",
     "locality",
   ]
   return { step: "address", key: address[path] ?? (keys.includes(path) ? path : "form") }
@@ -222,6 +233,13 @@ export function matchQuery(draft: HomeDraft): HomeMatchQuery | null {
   }
 }
 
+/** The home size fields of the body, only when one is picked. */
+function homeSizeBody(draft: HomeDraft): { homeSize?: HomeSize; homeSizeOther?: string } {
+  if (!draft.homeSize) return {}
+  if (draft.homeSize !== "OTHER") return { homeSize: draft.homeSize }
+  return { homeSize: "OTHER", homeSizeOther: draft.homeSizeOther.trim().slice(0, 40) }
+}
+
 const trimmed = (value: string) => (value.trim() ? value.trim() : undefined)
 
 /** The `POST /me/homes` body. */
@@ -239,6 +257,7 @@ export function toAddHomeBody(draft: HomeDraft): AddHomeInput {
       unitLabel: draft.unitLabel.trim(),
       propertyType: draft.propertyType,
       bedrooms: wholeNumber(draft.bedrooms) ?? null,
+      ...homeSizeBody(draft),
     }
     body.newCity = { name: draft.otherCity.trim(), state: draft.otherState.trim() }
   } else {
@@ -255,6 +274,7 @@ export function toAddHomeBody(draft: HomeDraft): AddHomeInput {
       unitLabel: draft.unitLabel.trim(),
       propertyType: draft.propertyType,
       bedrooms: wholeNumber(draft.bedrooms) ?? null,
+      ...homeSizeBody(draft),
       location: toLocationInput(draft.location, draft.pincode),
     }
   }

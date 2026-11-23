@@ -17,6 +17,8 @@ export interface PropertySearch {
   locality?: string
   type?: string
   bedrooms?: number
+  /** Home size (captain 2026-11-23 17:18), e.g. `BHK2`. */
+  homeSize?: string
   minRating?: number
   q?: string
   sort?: string

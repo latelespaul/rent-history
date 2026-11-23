@@ -380,6 +380,57 @@ class HomeApiTest {
 			TODAY.minusMonths(4)));
 	}
 
+	/**
+	 * Captain 2026-11-23 17:18: the home size is optional, fills the bedrooms, shows on the page and filters
+	 * search; "Other" keeps the user's words; a typed society name is a new one, pending review.
+	 */
+	@Test
+	void theHomeSizeSavesShowsAndFiltersSearch() throws Exception {
+		User tenant = tenant("Size Tenant");
+		String sized = """
+			{"city": "%s", "pincode": "300201", "unitLabel": "%s", "propertyType": "APARTMENT", "homeSize": "%s"%s,
+			 "location": {"areaId": "%s", "newSociety": {"name": "%s", "kind": "APARTMENT_COMPLEX"}}}""";
+		JsonNode rk = added(tenant, rentBody(sized.formatted(CITY, "R1", "RK1", "", area.getPublicId(),
+			"Typed Society Heights"), TODAY.minusMonths(4))).get("property");
+		assertThat(rk.get("homeSize").asString()).isEqualTo("RK1");
+		assertThat(rk.get("bedrooms").asInt()).isZero();
+		assertThat(rk.at("/location/society/status").asString()).isEqualTo("PENDING");
+		JsonNode two = added(tenant("Size Tenant Two"), rentBody(sized.formatted(CITY, "B2", "BHK2", "",
+			area.getPublicId(), "Typed Society Two"), TODAY.minusMonths(4))).get("property");
+		assertThat(two.get("bedrooms").asInt()).isEqualTo(2);
+		JsonNode other = added(tenant("Size Tenant Three"), rentBody(sized.formatted(CITY, "O3", "OTHER",
+			", \"homeSizeOther\": \" 2.5 BHK \"", area.getPublicId(), "Typed Society Three"), TODAY.minusMonths(4)))
+			.get("property");
+		assertThat(other.get("homeSizeOther").asString()).isEqualTo("2.5 BHK");
+		assertThat(other.get("bedrooms").isNull()).isTrue();
+
+		mvc.perform(get("/properties/" + two.get("id").asString()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.homeSize").value("BHK2"));
+		mvc.perform(get("/properties").param("city", CITY).param("homeSize", "bhk2"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[*].id").value(org.hamcrest.Matchers.hasItem(two.get("id").asString())))
+			.andExpect(jsonPath("$.items[*].id").value(org.hamcrest.Matchers.not(
+				org.hamcrest.Matchers.hasItem(rk.get("id").asString()))));
+		mvc.perform(get("/properties").param("city", CITY).param("size", "50"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSize".formatted(rk.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("RK1")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSize".formatted(other.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("OTHER")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSizeOther".formatted(other.get("id").asString()))
+				.value(org.hamcrest.Matchers.contains("2.5 BHK")))
+			.andExpect(jsonPath("$.items[?(@.id == '%s')].homeSizeOther".formatted(rk.get("id").asString()))
+				.value(org.hamcrest.Matchers.empty()));
+		add(tenant("Size Tenant Four"), rentBody(sized.formatted(CITY, "O4", "OTHER", ", \"homeSizeOther\": \"  \"",
+			area.getPublicId(), "Typed Society Four"), TODAY.minusMonths(4)))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("homeSizeOther"));
+		mvc.perform(get("/properties").param("homeSize", "3BHK"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("homeSize"));
+	}
+
 	/** Firstmate 2026-11-23 14:50: PIN vs city blocks at step 1; PIN vs area only warns, and the home saves. */
 	@Test
 	void stepOneChecksThePinAgainstTheCityAndOnlyWarnsAboutTheArea() throws Exception {

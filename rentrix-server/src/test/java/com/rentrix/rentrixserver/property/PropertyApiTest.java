@@ -220,6 +220,35 @@ class PropertyApiTest {
 	}
 	
 	@Test
+	void otherHomeSizeNeedsWords() throws Exception {
+		User landlord = data.user("Other Size Landlord", Role.LANDLORD);
+		mvc.perform(post("/properties").header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(NEW_HOME.replace("\"bedrooms\": 2,", "\"homeSize\": \"OTHER\", \"homeSizeOther\": \" \",")))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("homeSizeOther"));
+	}
+	
+	@Test
+	void changingTheTypeKeepsTheHomeSizeInStep() throws Exception {
+		User owner = data.user("Type Change Owner", Role.LANDLORD);
+		String auth = support.bearer(owner);
+		String id = create(owner);
+		mvc.perform(patch("/properties/" + id).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"propertyType\": \"STUDIO\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.homeSize").value("STUDIO"));
+		mvc.perform(patch("/properties/" + id).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"propertyType\": \"APARTMENT\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.homeSize").value("BHK2"));
+		mvc.perform(patch("/properties/" + id).header("Authorization", auth).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"propertyType\": \"VILLA\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.homeSize").value("BHK2"));
+	}
+	
+	@Test
 	void submitOnlyFromDraftOrRejected() throws Exception {
 		User owner = data.user("Submit Owner", Role.LANDLORD);
 		String auth = support.bearer(owner);

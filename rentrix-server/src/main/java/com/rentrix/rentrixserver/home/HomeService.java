@@ -120,7 +120,7 @@ public class HomeService {
 	private static CreatePropertyRequest withCity(CreatePropertyRequest r, String city) {
 		return new CreatePropertyRequest(city, r.locality(), r.buildingName(), r.street(), r.unitLabel(), r.pincode(),
 			r.propertyType(), r.bedrooms(), r.bathrooms(), r.areaSqft(), r.furnishing(), r.parking(), r.description(),
-			r.location());
+			r.location(), r.homeSize(), r.homeSizeOther());
 	}
 	
 	private static void check(AddHomeRequest request) {

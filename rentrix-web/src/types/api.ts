@@ -142,6 +142,10 @@ export interface PropertyCard {
   street: string | null
   propertyType: PropertyType
   bedrooms: number | null
+  /** Absent when not given. */
+  homeSize?: HomeSize
+  /** The size in the user's words, with `homeSize` `OTHER`. */
+  homeSizeOther?: string
   bathrooms: number | null
   areaSqft: number | null
   furnishing: Furnishing | null
@@ -167,6 +171,9 @@ export interface LandlordSummary {
 
 export type PropertyStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED"
 
+/** How big a home is, as Indian listings say it (captain 2026-11-23 17:18). */
+export type HomeSize = "RK1" | "BHK1" | "BHK2" | "BHK3" | "BHK4" | "BHK5_PLUS" | "STUDIO" | "OTHER"
+
 /** `GET /properties/{id}`: `unitLabel` only for the owner and admins (D-56, D-57). */
 export interface PropertyDetail {
   id: string
@@ -178,6 +185,10 @@ export interface PropertyDetail {
   unitLabel?: string
   propertyType: PropertyType
   bedrooms: number | null
+  /** Absent when not given. */
+  homeSize?: HomeSize
+  /** The size in the user's words, with `homeSize` `OTHER`. */
+  homeSizeOther?: string
   bathrooms: number | null
   areaSqft: number | null
   furnishing: Furnishing | null
@@ -322,6 +333,8 @@ export interface PropertyInput {
   unitLabel?: string
   propertyType: PropertyType
   bedrooms?: number | null
+  homeSize?: HomeSize
+  homeSizeOther?: string
   bathrooms?: number | null
   areaSqft?: number | null
   furnishing?: Furnishing | null

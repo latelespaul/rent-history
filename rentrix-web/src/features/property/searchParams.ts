@@ -28,14 +28,36 @@ export const TYPE_OPTIONS: ReadonlyArray<{ value: PropertyType; label: string }>
   { value: "PG", label: "PG" },
 ]
 
-/** Bedroom choices; the API matches an exact count (0 is a studio). */
+/** Bedroom choices; the API matches an exact count (0 is a studio). Older links only: the panel offers home size. */
 export const BEDROOM_OPTIONS = [1, 2, 3, 4] as const
+
+/** Home-size filter values, as the API names them. */
+const SIZES = new Set<string>([
+  "RK1",
+  "BHK1",
+  "BHK2",
+  "BHK3",
+  "BHK4",
+  "BHK5_PLUS",
+  "STUDIO",
+  "OTHER",
+])
 
 /** Minimum property rating; it only matches homes with 3+ reviews (D-52). */
 export const RATING_OPTIONS = [3, 3.5, 4, 4.5] as const
 
 /** The filter keys the URL may carry, in the order they are written. */
-const KEYS = ["city", "locality", "q", "type", "bedrooms", "minRating", "sort", "page"] as const
+const KEYS = [
+  "city",
+  "locality",
+  "q",
+  "type",
+  "homeSize",
+  "bedrooms",
+  "minRating",
+  "sort",
+  "page",
+] as const
 
 const TYPES = new Set<string>(TYPE_OPTIONS.map((t) => t.value))
 const SORT_VALUES = new Set<string>(SORTS.map((s) => s.value))
@@ -63,6 +85,7 @@ function textParam(value: string | null): string | undefined {
  */
 export function searchFromParams(params: URLSearchParams): PropertySearch {
   const type = params.get("type")?.toUpperCase()
+  const homeSize = params.get("homeSize")?.toUpperCase()
   const sort = params.get("sort")
   const page = intParam(params.get("page"), 1, 10_000)
   return {
@@ -70,6 +93,7 @@ export function searchFromParams(params: URLSearchParams): PropertySearch {
     locality: textParam(params.get("locality")),
     q: textParam(params.get("q")),
     type: type && TYPES.has(type) ? type : undefined,
+    homeSize: homeSize && SIZES.has(homeSize) ? homeSize : undefined,
     bedrooms: intParam(params.get("bedrooms"), 0, 20),
     minRating: ratingParam(params.get("minRating")),
     sort: sort && SORT_VALUES.has(sort) && sort !== DEFAULT_SORT ? sort : undefined,
@@ -104,7 +128,12 @@ export function withFilters(current: URLSearchParams, changes: SearchFilters): U
 
 /** How many filters beyond the city are set (for the "Clear" link and the mobile toggle). */
 export function activeFilterCount(search: PropertySearch): number {
-  return [search.locality, search.q, search.type, search.bedrooms, search.minRating].filter(
-    (v) => v !== undefined,
-  ).length
+  return [
+    search.locality,
+    search.q,
+    search.type,
+    search.homeSize,
+    search.bedrooms,
+    search.minRating,
+  ].filter((v) => v !== undefined).length
 }

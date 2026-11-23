@@ -1,4 +1,4 @@
-import type { Furnishing, PropertyType, RatingSummary } from "@/types/api"
+import type { Furnishing, HomeSize, PropertyType, RatingSummary } from "@/types/api"
 
 /** Display words for the API's enums and numbers. No number here is invented: each formats API data. */
 
@@ -23,6 +23,42 @@ export function typeLabel(type: PropertyType): string {
 
 export function furnishingLabel(furnishing: Furnishing | null | undefined): string | null {
   return furnishing ? (FURNISHING_LABELS[furnishing] ?? furnishing) : null
+}
+
+/** The home-size chips, in order (captain 2026-11-23 17:18). */
+export const HOME_SIZES: Array<{ value: HomeSize; label: string }> = [
+  { value: "RK1", label: "1 RK" },
+  { value: "BHK1", label: "1 BHK" },
+  { value: "BHK2", label: "2 BHK" },
+  { value: "BHK3", label: "3 BHK" },
+  { value: "BHK4", label: "4 BHK" },
+  { value: "BHK5_PLUS", label: "5+ BHK" },
+  { value: "STUDIO", label: "Studio" },
+  { value: "OTHER", label: "Other" },
+]
+
+/** "2 BHK", "1 RK", or the user's own words for "Other"; null when not given. */
+export function homeSizeLabel(
+  size: HomeSize | null | undefined,
+  other?: string | null,
+): string | null {
+  if (!size) return null
+  if (size === "OTHER") return other?.trim() || null
+  return HOME_SIZES.find((s) => s.value === size)?.label ?? null
+}
+
+/**
+ * The size fact of a home: its home size (1 RK, 2 BHK, "2.5 BHK"…), else its bedroom count; null
+ * when unknown or when it only repeats the type ("Studio").
+ */
+export function sizeLabel(home: {
+  propertyType: PropertyType
+  bedrooms: number | null
+  homeSize?: HomeSize
+  homeSizeOther?: string
+}): string | null {
+  const size = homeSizeLabel(home.homeSize, home.homeSizeOther) ?? bedroomsLabel(home.bedrooms)
+  return size === typeLabel(home.propertyType) ? null : size
 }
 
 /** "2 BHK" for flats and houses; "Studio" has no bedroom count of its own. */

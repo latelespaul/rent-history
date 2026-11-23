@@ -83,6 +83,10 @@ public final class PropertySearchQuery {
 			sql.append(" AND p.bedrooms = ?");
 			params.add(criteria.bedrooms());
 		}
+		if (criteria.homeSize() != null) {
+			sql.append(" AND p.home_size = ?");
+			params.add(criteria.homeSize().name());
+		}
 		if (criteria.minRating() != null) {
 			sql.append(" AND ra.review_count >= ? AND ra.average >= ?");
 			params.add(MIN_REVIEWS_FOR_AVERAGE);
