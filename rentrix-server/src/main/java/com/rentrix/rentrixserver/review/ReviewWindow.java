@@ -7,13 +7,12 @@ import java.time.LocalDate;
 
 /**
  * D-39 review window of a confirmed tenancy: it opens once the tenancy has been {@code ACTIVE} for
- * {@value #OPENS_AFTER_DAYS} days or when it ends, whichever is first, and closes {@value #CLOSES_AFTER_DAYS} days
- * after the end date. While the tenancy is current it stays open.
+ * {@value #OPENS_AFTER_DAYS} days or when it ends, whichever is first, and never closes (open model, firstmate
+ * 2026-11-23).
  */
 public final class ReviewWindow {
 	
 	public static final int OPENS_AFTER_DAYS = 60;
-	public static final int CLOSES_AFTER_DAYS = 180;
 	
 	private ReviewWindow() {
 	}
@@ -28,15 +27,8 @@ public final class ReviewWindow {
 		return end != null && end.isBefore(afterSixtyDays) ? end : afterSixtyDays;
 	}
 	
-	/** The last day reviews can be written, or {@code null} while the tenancy is current. */
-	public static LocalDate closesOn(Tenancy tenancy) {
-		return tenancy.getStatus() == TenancyStatus.ENDED && tenancy.getEndDate() != null
-			? tenancy.getEndDate().plusDays(CLOSES_AFTER_DAYS) : null;
-	}
-	
 	public static boolean isOpen(Tenancy tenancy, LocalDate today) {
-		LocalDate closes = closesOn(tenancy);
-		return confirmed(tenancy) && !today.isBefore(opensOn(tenancy)) && (closes == null || !today.isAfter(closes));
+		return confirmed(tenancy) && !today.isBefore(opensOn(tenancy));
 	}
 	
 }

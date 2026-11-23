@@ -283,14 +283,13 @@ class ReviewApiTest {
 	}
 
 	@Test
-	void reviewWindowClosedOrNotYetOpenIs422() throws Exception {
+	void reviewWindowNeverClosesButMustBeOpen() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Property property = home(landlord);
-		Tenancy old = ended(property, tenant, TODAY.minusYears(3), TODAY.minusDays(181));
-		write(tenant, old, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD)
-			.andExpect(status().isUnprocessableContent())
-			.andExpect(jsonPath("$.code").value("review_window_closed"));
+		// open model (firstmate 2026-11-23): a tenancy that ended 2 years ago still takes a new review
+		Tenancy old = ended(property, tenant, TODAY.minusYears(3), TODAY.minusYears(2));
+		write(tenant, old, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD).andExpect(status().isCreated());
 
 		Tenancy fresh = data.tenancy(home(landlord), tenant, TODAY.minusDays(30), null, TenancyStatus.ACTIVE);
 		write(tenant, fresh, ReviewDirection.TENANT_TO_LANDLORD, 4, GOOD)

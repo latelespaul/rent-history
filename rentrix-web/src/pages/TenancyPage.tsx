@@ -71,9 +71,7 @@ function ReviewCta({ tenancy }: { tenancy: Tenancy }) {
     )
   return (
     <p className="text-sm text-ink-500" data-testid="tenancy-review-window">
-      {reviews.state === "not_yet"
-        ? `You can review this home from ${dateLabel(reviews.opens)}.`
-        : `Reviews for this tenancy closed on ${dateLabel(reviews.closes)}.`}
+      You can review this home from {dateLabel(reviews.opens)}.
     </p>
   )
 }

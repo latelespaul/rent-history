@@ -196,6 +196,11 @@ function Added({ result }: { result: AddHomeResult }) {
           <NextSteps tenancy={tenancy} />
         </div>
       )}
+      {tenancy?.reviewed && left === 0 && (
+        <Notice tone="info" className="mt-5 text-left" data-testid="add-home-no-steps">
+          You&rsquo;ve reviewed this home.
+        </Notice>
+      )}
       <Button asChild variant="outline" className="mt-4 w-full" data-testid="add-home-view">
         <Link to={`/p/${property.id}`}>See the home&rsquo;s page</Link>
       </Button>

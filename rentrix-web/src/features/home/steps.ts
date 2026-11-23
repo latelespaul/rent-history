@@ -9,11 +9,9 @@ export function agreementDone(tenancy: Pick<Tenancy, "evidenceLevel">): boolean 
   return tenancy.evidenceLevel === "DOCUMENT"
 }
 
-/** Whether the "Rate and review" step is still open: not written yet, and its window not closed. */
+/** Whether the "Rate and review" step is still open: not written yet (the window never closes). */
 export function reviewStepOpen(tenancy: Tenancy): boolean {
-  if (tenancy.reviewed) return false
-  const window = reviewWindow(tenancy, today())
-  return window.state === "open" || window.state === "not_yet"
+  return !tenancy.reviewed && reviewWindow(tenancy, today()).state !== "none"
 }
 
 /**

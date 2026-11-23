@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -53,13 +52,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	List<Review> findByAuthorIdAndSubmittedAtAfterOrderBySubmittedAtAsc(Long authorId, Instant since);
 
 	/**
-	 * Reveal job (D-46): person reviews still hidden whose 14 days passed, or whose review window closed
-	 * (tenancy ended before {@code endedBefore}). Index ix_reviews_status_submitted.
+	 * Reveal job (D-46): person reviews still hidden whose 14 days passed. Index ix_reviews_status_submitted.
 	 */
-	@Query("select r.publicId from Review r join r.tenancy t where r.status = :status "
-		+ "and (r.submittedAt < :submittedBefore or (t.endDate is not null and t.endDate < :endedBefore))")
-	List<UUID> findRevealDue(@Param("status") ReviewStatus status, @Param("submittedBefore") Instant submittedBefore,
-		@Param("endedBefore") LocalDate endedBefore);
+	@Query("select r.publicId from Review r where r.status = :status and r.submittedAt < :submittedBefore")
+	List<UUID> findRevealDue(@Param("status") ReviewStatus status, @Param("submittedBefore") Instant submittedBefore);
 
 	/** Source rows for recomputing a person aggregate (D-33). */
 	List<Review> findBySubjectUserIdAndDirectionAndStatusAndCountsInAggregateTrue(Long subjectUserId,

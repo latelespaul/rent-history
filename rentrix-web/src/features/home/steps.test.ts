@@ -28,11 +28,11 @@ describe("next steps after adding a home (captain 2026-11-23 14:53)", () => {
     expect(stepsLeft(tenancy({ evidenceLevel: "MUTUAL", reviewed: true }))).toBe(0)
   })
 
-  it("keeps a review that is not open yet, drops one whose window closed", () => {
+  it("keeps a review that is not open yet, and one for a home left years ago", () => {
     expect(stepsLeft(tenancy({ startDate: "2026-11-01" }))).toBe(1)
     expect(
       stepsLeft(tenancy({ status: "ENDED", startDate: "2024-01-01", endDate: "2024-06-30" })),
-    ).toBe(0)
+    ).toBe(1)
   })
 
   it("is only for the tenant's own live or past records", () => {
