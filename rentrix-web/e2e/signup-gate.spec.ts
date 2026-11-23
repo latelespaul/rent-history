@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, verifyPhone } from "./support"
+import { apiBaseUrl, recordNewUsers, verifyPhone } from "./support"
 
 /**
  * Release gate (captain 2026-11-23 13:26): the complete new-user chain at 390 px. Landing, sign
@@ -42,6 +42,7 @@ test.describe("new-user sign-up release gate (390 px)", () => {
       "Good light, a fair owner and quick repairs. The society water supply was steady all year."
     let homeUrl = ""
 
+    recordNewUsers(page)
     await test.step("1 landing", async () => {
       await page.goto("/")
       await expect(
