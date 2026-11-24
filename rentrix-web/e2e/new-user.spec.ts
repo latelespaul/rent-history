@@ -107,6 +107,7 @@ test("a new tenant adds their home, records the tenancy, reviews it and finds it
     const mine = page.getByTestId("property-review").filter({ hasText: review })
     await expect(mine).toBeVisible()
     await expect(mine.getByTestId("tick-unverified")).toHaveText("Not verified yet")
+    await expect(page.getByTestId("reviews-count")).toHaveText("1 review · 0 verified")
     await expect(page.getByText(/9800012345/)).toHaveCount(0)
 
     await page.goto("/search?city=BLR&locality=Koramangala")

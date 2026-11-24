@@ -83,6 +83,16 @@ export function reviewCount(n: number): string {
   return `${n} ${n === 1 ? "review" : "reviews"}`
 }
 
+/**
+ * The count beside a review list: every review listed, plus how many are verified when that is
+ * fewer (only verified reviews count in the rating, D-163), e.g. "1 review · 0 verified". Until the
+ * list loads (`listed` undefined) it is the rating's own count.
+ */
+export function listedReviewCount(listed: number | undefined, verified: number): string {
+  if (listed === undefined || listed <= verified) return reviewCount(verified)
+  return `${reviewCount(listed)} · ${verified} verified`
+}
+
 /** True when the API sent an average (3+ reviews, D-52); otherwise the UI shows "New". */
 export function hasAverage(rating: RatingSummary | null | undefined): rating is RatingSummary & {
   average: number
