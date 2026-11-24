@@ -13,6 +13,8 @@ import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
 import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.location.LocationStatus;
+import com.rentrix.rentrixserver.location.NameMatch;
+import com.rentrix.rentrixserver.location.PlaceMatcher;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
 import com.rentrix.rentrixserver.property.dto.CityRef;
@@ -74,6 +76,8 @@ public class PropertyService {
 	private final LocationService locations;
 	private final JdbcTemplate jdbc;
 	private final GreenTicks greenTicks;
+	private final PlaceMatcher placeMatcher;
+	private final FlatFinder flats;
 	
 	// ---------------------------------------------------------------- reads
 	
@@ -83,7 +87,57 @@ public class PropertyService {
 	
 	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, LocationFilter location,
 		AuthenticatedUser caller, Pageable pageable) {
-		return search(withLocation(criteria, location, caller), pageable);
+		return search(withTextPlaces(withLocation(criteria, location, caller), caller), pageable);
+	}
+	
+	/** How many societies (or towers) one search text may resolve to (D-164). */
+	static final int MAX_TEXT_PLACES = 20;
+	
+	/** How many flats one "society + flat number" text may find directly (D-164). */
+	static final int MAX_TEXT_FLATS = 50;
+	
+	/**
+	 * D-164: resolves {@code q} to the societies and towers it names, typos allowed, so their homes are found next to
+	 * the D-162 text matches; only the best-matching tier counts, so a typo-free match never drags in near names.
+	 * When the text ends in a flat number ("Prestige Lakeside 1204") and an open flat of the named place has it, the
+	 * result is that flat. Inside {@code society=} the whole text may be the flat number. A masked flat number is
+	 * never compared (D-57), so it cannot change the result.
+	 */
+	private PropertySearchCriteria withTextPlaces(PropertySearchCriteria criteria, AuthenticatedUser caller) {
+		if (criteria.text() == null) {
+			return criteria;
+		}
+		if (criteria.societyId() != null) {
+			if (criteria.text().chars().noneMatch(Character::isDigit)) {
+				return criteria;
+			}
+			return textHomes(criteria, flats.findIn(List.of(new FlatFinder.Place(criteria.societyId(),
+				criteria.towerId())), criteria.text(), false, MAX_TEXT_FLATS));
+		}
+		PlaceMatcher.Query query = PlaceMatcher.Query.parse(criteria.text());
+		List<PlaceMatcher.SocietyHit> hits = placeMatcher.societies(criteria.cityCode(), query, caller,
+			MAX_TEXT_PLACES);
+		if (hits.isEmpty() && query.unit() != null) {
+			query = new PlaceMatcher.Query(NameMatch.words(criteria.text()), null);
+			hits = placeMatcher.societies(criteria.cityCode(), query, caller, MAX_TEXT_PLACES);
+		}
+		if (hits.isEmpty()) {
+			return criteria;
+		}
+		int best = hits.getFirst().cost();
+		// fewest typos only: "greens" never brings in a "Grens Park" next to "Demo Greens"
+		List<PlaceMatcher.SocietyHit> top = hits.stream().filter(h -> h.cost() == best).toList();
+		List<Long> homeIds = query.unit() == null ? List.of()
+			: flats.find(top, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId).toList();
+		return criteria.withTextPlaces(new PropertySearchCriteria.TextPlaces(
+			top.stream().filter(h -> h.tower() == null).map(h -> h.society().getId()).distinct().toList(),
+			top.stream().filter(h -> h.tower() != null).map(h -> h.tower().getId()).distinct().toList(),
+			homeIds));
+	}
+	
+	private static PropertySearchCriteria textHomes(PropertySearchCriteria criteria, List<Property> homes) {
+		return homes.isEmpty() ? criteria : criteria.withTextPlaces(new PropertySearchCriteria.TextPlaces(List.of(),
+			List.of(), homes.stream().map(Property::getId).toList()));
 	}
 	
 	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, Pageable pageable) {
