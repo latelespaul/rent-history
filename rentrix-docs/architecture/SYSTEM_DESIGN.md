@@ -170,7 +170,7 @@ Common columns on every table: `id BIGINT PK`, `created_at`, `updated_at`. Table
 | `onboarded_at` | null until the first-sign-in role pick (D-73) |
 | `last_login_at` | |
 | `home_city_code` | FK `cities.code`, optional |
-| `preferred_mode` | `TENANT` or `OWNER`, optional (V18): the header's Tenant \| Owner mode (PLAN R10) |
+| `preferred_mode` | `TENANT` or `OWNER`, optional (V19): the header's Tenant \| Owner mode (PLAN R10) |
 | `status` | `ACTIVE`, `SUSPENDED`, `DELETED` |
 | `is_demo` | true only for seed data (D-68) |
 | `deleted_at` | soft delete; see D-58 for anonymisation |

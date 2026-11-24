@@ -96,6 +96,25 @@ describe("ShellRoot mode", () => {
     expect(updateMe).toHaveBeenCalledWith({ preferredMode: "OWNER" })
   })
 
+  it("ends the account on the latest switch when an earlier save lands last", async () => {
+    let finishFirst: (value: unknown) => void = () => {}
+    updateMe.mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
+    renderAt("/me/tenancies")
+    await screen.findByText("Page")
+    const banner = within(screen.getByRole("banner"))
+    const user = userEvent.setup()
+    await user.click(banner.getByRole("button", { name: "Owner" }))
+    await waitFor(() => expect(pressed("Owner")).toBe("true"))
+    await user.click(banner.getByRole("button", { name: "Tenant" }))
+    await waitFor(() => expect(pressed("Tenant")).toBe("true"))
+    expect(updateMe).toHaveBeenCalledTimes(1)
+    expect(updateMe).toHaveBeenLastCalledWith({ preferredMode: "OWNER" })
+
+    finishFirst({})
+    await waitFor(() => expect(updateMe).toHaveBeenCalledTimes(2))
+    expect(updateMe).toHaveBeenLastCalledWith({ preferredMode: "TENANT" })
+  })
+
   it("keeps the switch when the account cannot be saved", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     updateMe.mockRejectedValue(new Error("offline"))
