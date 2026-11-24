@@ -195,8 +195,8 @@ export default function OnboardingPage() {
             Until you finish this step, only your profile and public pages are available.
           </p>
           <Notice tone="teal" className="mt-3.5">
-            <b>Next: verify with any one: phone, Aadhaar or LinkedIn.</b> A phone code takes a
-            minute, and then you can post right away. You can read every review meanwhile.
+            <b>Next: you can post right away.</b> Verifying with any one of phone, Aadhaar or
+            LinkedIn is optional and gets you a green tick.
           </Notice>
         </form>
       </Container>

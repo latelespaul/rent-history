@@ -164,4 +164,4 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/identi
 
 ### Headline ratings (`RATINGS_HEADLINE`)
 
-`RATINGS_HEADLINE=all` (the default) makes the headline ratings count every published review. `verified` counts only reviews an admin gave the green tick (D-135); switch to it once admin approvals (W9) ship. After a switch, the nightly rating repair rebuilds the stored aggregates.
+`RATINGS_HEADLINE=verified` (the default since D-163) makes the headline ratings count only reviews an admin gave the green tick (D-135): anyone signed in may post, so unverified reviews are listed with their "Not verified yet" badge but stay out of the average. `all` counts every published review (the interim default before D-163). After a switch, the nightly rating repair rebuilds the stored aggregates.

@@ -392,7 +392,7 @@ public class PropertyService {
 	
 	/**
 	 * Applies {@code PATCH /me/homes/{id}} to a home its creator is changing (D-156) and returns the changed fields; the
-	 * caller checks the creator and the posting gate, resets the green tick and keeps the history. The add-home rules
+	 * caller checks the creator and the role (D-163), resets the green tick and keeps the history. The add-home rules
 	 * hold: the PIN code fits the city (a hard error, D-84) and may leave its area (only a warning there); a standalone
 	 * apartment is named by its building; size "Other" needs its words. With {@code addressLocked} (other people have
 	 * records on the home) only the size may change.

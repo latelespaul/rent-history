@@ -25,10 +25,12 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** The headline mode {@code app.ratings.headline} (D-135): {@code all} by default, {@code verified} for the tick. */
+/** The headline mode {@code app.ratings.headline} (D-135): {@code verified} by default (D-163), {@code all} on request. */
 @IntegrationTest
 @Transactional
 class RatingHeadlineModeTest {
@@ -58,9 +60,9 @@ class RatingHeadlineModeTest {
 	RatingProperties properties;
 	
 	@Test
-	void defaultModeIsAll() {
-		assertThat(properties.headline()).isEqualTo(RatingProperties.Headline.ALL);
-		assertThat(new RatingProperties(null).headline()).isEqualTo(RatingProperties.Headline.ALL);
+	void defaultModeIsVerified() {
+		assertThat(properties.headline()).isEqualTo(RatingProperties.Headline.VERIFIED);
+		assertThat(new RatingProperties(null).headline()).isEqualTo(RatingProperties.Headline.VERIFIED);
 	}
 	
 	@Test
@@ -78,10 +80,16 @@ class RatingHeadlineModeTest {
 					 "body": "Clean home, fair landlord and a quick reply to every repair request we made."}
 					"""))
 			.andExpect(status().isCreated());
-		RatingRecomputer verifiedOnly = new RatingRecomputer(source, aggregates,
-			new RatingProperties(RatingProperties.Headline.VERIFIED));
+		// The default (D-163): the review is listed, but the headline counts none until the tick.
+		mvc.perform(get("/properties/" + home.getPublicId() + "/rating"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.reviewCount").value(0));
+		mvc.perform(get("/properties/" + home.getPublicId() + "/reviews"))
+			.andExpect(jsonPath("$.items[0].verification").value("UNVERIFIED"));
+		RatingRecomputer verifiedOnly = recomputer;
+		RatingRecomputer all = new RatingRecomputer(source, aggregates, new RatingProperties(RatingProperties.Headline.ALL));
 		
-		assertThat(recomputer.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
+		assertThat(all.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
 			.as("all: the unverified published review counts").isEqualTo(1);
 		assertThat(verifiedOnly.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
 			.as("verified: not without the tick").isZero();
@@ -92,7 +100,7 @@ class RatingHeadlineModeTest {
 		jdbc.update("update reviews set verification_status = 'REJECTED' where tenancy_id = ?", tenancy.getId());
 		assertThat(verifiedOnly.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
 			.as("verified: rejected reviews stay visible but never count").isZero();
-		assertThat(recomputer.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
+		assertThat(all.recompute(RatingSubjectType.PROPERTY, home.getId()).getReviewCount())
 			.as("all: still counted").isEqualTo(1);
 	}
 	

@@ -159,7 +159,7 @@ describe("top bar", () => {
 })
 
 describe("verification row", () => {
-  it("shows the any-one hint on the Verify to post row of the menu", async () => {
+  it("shows the optional any-one hint on the green-tick row of the menu", async () => {
     renderShell("/", {
       shortName: "New T.",
       roles: ["TENANT"],
@@ -183,9 +183,9 @@ describe("verification row", () => {
     const user = userEvent.setup()
     await user.click(within(banner()).getByRole("button", { name: "Menu" }))
     const row = within(await screen.findByRole("dialog")).getByRole("link", {
-      name: /Verify to post/,
+      name: /Verify to get a green tick/,
     })
-    expect(row.textContent).toContain("Any one: phone, Aadhaar or LinkedIn")
+    expect(row.textContent).toContain("Optional · phone, Aadhaar or LinkedIn")
   })
 })
 

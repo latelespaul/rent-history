@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { devLogin } from "./support"
+import { approveReview, devLogin } from "./support"
 
 /**
  * The review form (captain 2026-11-23 21:29, SYSTEM_DESIGN D-157, D-158) at 390 px: fill every
@@ -9,8 +9,9 @@ import { devLogin } from "./support"
  * Seed data (DemoSeeder): Demo Tenant BLR-3's current tenancy of Demo Villa C started in 2024, so
  * the 60-day lock has passed; only the landlord has reviewed it, so both tenant reviews are still
  * to write. The home's two earlier tenants rated every parameter, so this review is the third
- * rating of each and its average shows (D-52). It changes that seed tenancy, which exists once, so
- * the spec runs in the mobile project only.
+ * rating of each and its average shows (D-52) once the team ticks it: only verified reviews count
+ * in the headline and the averages (D-163), so the spec approves both new reviews as the demo admin.
+ * It changes that seed tenancy, which exists once, so the spec runs in the mobile project only.
  */
 const HOME = {
   WATER_SUPPLY: 5,
@@ -42,6 +43,7 @@ test("fill every parameter, submit, and see the averages on the home and landlor
   test.setTimeout(testInfo.timeout * 2)
   const pros = `Steady water and a calm lane ${Date.now().toString(36)}`
   const cons = "The road outside gets noisy in the evening."
+  const reviewIds: string[] = []
   const step = page.getByTestId("review-step")
 
   await devLogin(page, "Demo Tenant BLR-3", "/me/tenancies")
@@ -101,7 +103,16 @@ test("fill every parameter, submit, and see the averages on the home and landlor
     await expect(page.getByTestId("review-summary-landlord")).not.toContainText("Skipped")
     await expect(page.getByTestId("review-summary-pros-cons")).toContainText(pros)
     await shot(page, testInfo, "05-check")
+    const answer = page.waitForResponse(
+      (r) => r.request().method() === "POST" && /\/review-form$/.test(new URL(r.url()).pathname),
+    )
     await page.getByTestId("review-submit").click()
+    const written = (await (await answer).json()) as {
+      home?: { id: string }
+      landlord?: { id: string }
+    }
+    expect(written.home?.id && written.landlord?.id, "both reviews are written").toBeTruthy()
+    reviewIds.push(written.home!.id, written.landlord!.id)
   })
 
   await test.step("success: both reviews are published", async () => {
@@ -115,8 +126,15 @@ test("fill every parameter, submit, and see the averages on the home and landlor
     await submitted.getByTestId("review-view-home").click()
   })
 
-  await test.step("the home's page shows the per-parameter averages and the review", async () => {
+  await test.step("the new review shows Not verified yet until the team ticks it", async () => {
     await expect(page).toHaveURL(/\/p\//)
+    const mine = page.getByTestId("property-review").filter({ hasText: pros })
+    await expect(mine.getByTestId("tick-unverified")).toBeVisible()
+    for (const id of reviewIds) await approveReview(page, id)
+    await page.reload()
+  })
+
+  await test.step("the home's page shows the per-parameter averages and the review", async () => {
     const breakdown = page.getByTestId("home-breakdown").filter({ visible: true })
     await expect(breakdown).toBeVisible()
     for (const criterion of Object.keys(HOME))
@@ -127,7 +145,7 @@ test("fill every parameter, submit, and see the averages on the home and landlor
     const mine = page.getByTestId("property-review").filter({ hasText: pros })
     await expect(mine).toContainText("Would recommend")
     await expect(mine).toContainText(cons)
-    await expect(mine.getByTestId("tick-unverified")).toBeVisible()
+    await expect(mine.getByTestId("tick-verified")).toBeVisible()
     await breakdown.scrollIntoViewIfNeeded()
     await shot(page, testInfo, "07-home-averages")
   })

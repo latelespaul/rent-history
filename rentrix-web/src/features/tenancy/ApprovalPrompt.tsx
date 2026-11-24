@@ -6,11 +6,11 @@ import { errorMessage } from "@/components/ui/states"
 import { AskTeam } from "@/features/edit/AskTeam"
 import { isBlocked, type ChangeTarget } from "@/features/edit/blocked"
 import { monthLabel } from "@/features/property/labels"
-import { isGateError, usePhoneStepHref } from "./gate"
 
 /**
- * A friendly prompt for a gated write (DESIGN.md screen 20 pattern): what blocks the action and
- * where to go next. Any other error shows as a plain danger notice.
+ * A friendly prompt for a refused write (DESIGN.md screen 20 pattern): what blocks the action and
+ * where to go next. Posting needs no verification (D-163), so there is no "verify first" prompt.
+ * Any other error shows as a plain danger notice.
  */
 export function ActionError({
   error,
@@ -23,23 +23,8 @@ export function ActionError({
   /** The caller's own item: a rule protecting others' records then offers "Ask our team" (D-156). */
   changeTarget?: ChangeTarget
 }) {
-  const phoneStep = usePhoneStepHref()
   if (!error) return null
   if (changeTarget && isBlocked(error)) return <AskTeam error={error} target={changeTarget} />
-  if (isGateError(error)) {
-    return (
-      <Notice tone="warn" icon="shield-check">
-        <p className="font-semibold">Verify to post</p>
-        <p className="mt-1">
-          Any one is enough: phone, Aadhaar or LinkedIn. A phone code takes a minute. What you typed
-          here is kept, and you come straight back. Viewing stays open to everyone.
-        </p>
-        <Button asChild size="sm" variant="outline" className="mt-2">
-          <Link to={phoneStep}>Verify now</Link>
-        </Button>
-      </Notice>
-    )
-  }
   if (isApiError(error) && error.code === "tenancy_overlap" && error.problem.conflict) {
     const conflict = error.problem.conflict
     const period = `${monthLabel(conflict.from)} – ${monthLabel(conflict.to) ?? "now"}`

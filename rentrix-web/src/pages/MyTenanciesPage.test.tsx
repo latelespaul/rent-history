@@ -134,7 +134,7 @@ describe("MyTenanciesPage", () => {
     )
   })
 
-  it("sends a user without a verified method to the verify step and back when a confirm is refused", async () => {
+  it("never sends a refused confirm to a verify step: posting needs no verification (D-163)", async () => {
     api.confirm = new ApiError({
       status: 403,
       code: "id_verification_required",
@@ -143,10 +143,11 @@ describe("MyTenanciesPage", () => {
     })
     renderPage()
     await userEvent.click(await screen.findByRole("button", { name: /Confirm tenancy/ }))
-    expect(await screen.findByText("Verify to post")).toBeTruthy()
-    expect(screen.getByRole("link", { name: "Verify now" }).getAttribute("href")).toBe(
-      "/verify/phone?next=%2Fme%2Ftenancies",
-    )
+    expect(
+      await screen.findByText("Verify with any one: phone, Aadhaar or LinkedIn to continue."),
+    ).toBeTruthy()
+    expect(screen.queryByText("Verify to post")).toBeNull()
+    expect(screen.queryByRole("link", { name: "Verify now" })).toBeNull()
   })
 
   it("lets a pending account decline with a reason, never gated", async () => {

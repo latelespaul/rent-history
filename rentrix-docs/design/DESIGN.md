@@ -139,6 +139,7 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
                                                      [Submitted · waiting]  account menu "Waiting for review" until an admin decides
 ```
 - Phone is the only required check, and it is required only to post; the ID cards and LinkedIn are extra badges with "Skip". PAN and Aadhaar show "Coming soon" until PLAN B12.
+- *Changed by D-163 (captain 2026-11-24)*: posting needs no verification. Every "Verify to post" below now reads as the optional nudge "Verify to get a green tick"; the welcome screen leads with "Add your home" and offers verifying second.
 - *Changed by D-144*: step 2 is "Verify (any one)": any one verified phone, masked Aadhaar or LinkedIn lets the user post, and step 3 "Aadhaar, LinkedIn, PAN" holds the other methods as extra badges. Read "Verify to post" for "Verify your phone to post" below and in §8.3.
 - *Open by default* (D-132, D-133): verification is optional. With a verified phone the user adds homes, tenancies, rent and reviews at once; they show "Not verified yet". The last button reads "Request verification". When an admin approves, the profile gets the green tick "Verified by Doorway Living" (D-134); a rejection keeps everything visible without the tick.
 - Rental details (both roles): upload the agreement of the home you rent now or rent out, type its key fields, see the first checks (§2.10).

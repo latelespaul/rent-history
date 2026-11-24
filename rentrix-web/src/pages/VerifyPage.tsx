@@ -6,7 +6,7 @@ import { AlertIcon, ClockIcon } from "@/components/ui/icons.gen"
 import { Notice } from "@/components/ui/notice"
 import { ErrorState, EmptyState } from "@/components/ui/states"
 import { BRAND } from "@/lib/brand"
-import { canPost, nextStep } from "@/features/verification/progress"
+import { nextStep } from "@/features/verification/progress"
 import { roleWords, useNext, useWithNext } from "@/features/verification/next"
 import {
   IdStep,
@@ -105,13 +105,11 @@ function VerifyHome({ entries }: { entries: VerificationEntry[] }) {
           <RoleStatus key={entry.role} entry={entry} />
         ))}
       </div>
-      {canPost(entries) && (
-        <Notice tone="teal" className="mt-4">
-          <b>Now:</b> record or confirm a tenancy, add rent, write reviews. They show as &ldquo;Not
-          verified yet&rdquo; until the review. <b>After review:</b> your profile gets the green
-          tick &ldquo;Verified by {BRAND.name}&rdquo;.
-        </Notice>
-      )}
+      <Notice tone="teal" className="mt-4">
+        <b>Now:</b> record or confirm a tenancy, add rent, write reviews. They show as &ldquo;Not
+        verified yet&rdquo; until the review. <b>After review:</b> your profile gets the green tick
+        &ldquo;Verified by {BRAND.name}&rdquo;.
+      </Notice>
       {next && (
         <Button asChild className="mt-4">
           <Link to={next}>Back to where you were</Link>

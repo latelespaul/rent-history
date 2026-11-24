@@ -217,7 +217,7 @@ const TRUST = [
     tag: "Any one",
     icon: <LinkIcon size={22} />,
     title: "LinkedIn",
-    text: "Link your LinkedIn profile. Any one of these three lets you post; the others add extra badges.",
+    text: "Link your LinkedIn profile. Any one of these three leads to the green tick; the others add extra badges.",
     badge: (
       <Badge variant="info">
         <LinkIcon />
@@ -237,11 +237,11 @@ const TRUST = [
 const FAQ = [
   [
     "Do I need an account?",
-    "No. Anyone can search homes and read their reviews. Sign in with Google (one step) for rent history and landlord profiles. To post, verify with any one: phone, Aadhaar or LinkedIn.",
+    "No. Anyone can search homes and read their reviews. Sign in with Google (one step) for rent history and landlord profiles. Signed in, you can post at once; verifying with any one of phone, Aadhaar or LinkedIn gets you a green tick.",
   ],
   [
     "Who can post a review?",
-    "A tenant or landlord verified with any one of phone, Aadhaar or LinkedIn, about a tenancy they add. Tenants rate the home and the landlord; landlords rate the tenant.",
+    'Any signed-in tenant or landlord, about a tenancy they add. It shows as "Not verified yet" until our team verifies it, and only verified reviews count in the headline rating. Tenants rate the home and the landlord; landlords rate the tenant.',
   ],
   [
     "What does the green tick mean?",
@@ -513,9 +513,9 @@ export default function HomePage() {
                 Open to everyone. Verified where it counts.
               </h2>
               <p className={cn(LEAD, "text-[#c4e4df]")}>
-                Verify with any one: phone, Aadhaar or LinkedIn. Then you can post, and posts show
-                at once as "Not verified yet". Green tick = approved by the {BRAND.name} team after
-                an ID check.
+                Sign in and post at once: posts show as "Not verified yet". Verify with any one of
+                phone, Aadhaar or LinkedIn to get the green tick = approved by the {BRAND.name} team
+                after an ID check.
               </p>
             </div>
             <ul className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4.5">

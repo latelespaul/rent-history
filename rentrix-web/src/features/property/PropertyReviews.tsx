@@ -365,16 +365,26 @@ export function PropertyReviews({
       <EmptyState
         icon="star"
         title="No reviews yet"
-        description="Anyone signed in who verified their phone or email can review this home. Each review shows Verified or Not verified yet."
+        description="Anyone signed in can review this home. Each review shows Verified or Not verified yet; only verified ones count in the rating."
       />
     )
   } else {
     body = (
-      <ul className="divide-y divide-line">
-        {reviews.data.map((review) => (
-          <ReviewItem key={review.id} review={review} propertyId={propertyId} />
-        ))}
-      </ul>
+      <>
+        {reviews.data.some(
+          (review) => review.verification && review.verification !== "VERIFIED",
+        ) && (
+          <p className="text-sm text-ink-500" data-testid="unverified-note">
+            Reviews marked &ldquo;Not verified yet&rdquo; are listed here but count in the rating
+            only once our team verifies them.
+          </p>
+        )}
+        <ul className="divide-y divide-line">
+          {reviews.data.map((review) => (
+            <ReviewItem key={review.id} review={review} propertyId={propertyId} />
+          ))}
+        </ul>
+      </>
     )
   }
 

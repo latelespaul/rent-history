@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom"
-import { ClockIcon } from "@/components/ui/icons.gen"
+import { ShieldCheckIcon } from "@/components/ui/icons.gen"
 import { Container } from "./Container"
 
 /**
- * "Verify to post" (D-120, D-132, D-144): on every page while the signed-in user has no verified
- * method (phone, masked Aadhaar or LinkedIn), except inside the stepper and the welcome screens. The link brings the user back
- * here afterwards (`?next=`, D-119).
+ * "Verify to get a green tick" (D-120, D-144, D-163): an optional nudge on every page while the
+ * signed-in user has no verified method (phone, masked Aadhaar or LinkedIn), except inside the
+ * stepper and the welcome screens. Posting never waits for it (D-163). The link brings the user
+ * back here afterwards (`?next=`, D-119).
  */
 export function PhoneBanner() {
   const location = useLocation()
@@ -17,15 +18,15 @@ export function PhoneBanner() {
     <div
       role="region"
       aria-label="Verification"
-      className="border-b border-line bg-warn-100 text-[#6f4608]"
+      className="border-b border-line bg-teal-50 text-teal-800"
     >
       <Container className="flex items-start gap-2 py-2.5 text-sm">
-        <ClockIcon size={18} className="mt-0.5 shrink-0" />
+        <ShieldCheckIcon size={18} className="mt-0.5 shrink-0" />
         <p>
-          <b>Verify to post: any one of phone, Aadhaar or LinkedIn.</b> What you post shows at once
-          as &ldquo;Not verified yet&rdquo; until our team checks it.{" "}
+          You can post now. What you post shows as &ldquo;Not verified yet&rdquo;. <b>Optional:</b>{" "}
+          verify with any one of phone, Aadhaar or LinkedIn to get a green tick.{" "}
           <Link to={`/verify/phone?next=${next}`} className="font-semibold text-inherit underline">
-            Verify now
+            Verify to get a green tick
           </Link>
         </p>
       </Container>

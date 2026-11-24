@@ -126,9 +126,7 @@ export function testPhone(): string {
  * Verifies the signed-in user's phone through the stepper. The e2e stack holds codes for admins
  * (`SMS_BACKEND=admin-relay`, D-137), so the code is read at `GET /admin/sms-relay` as the demo
  * admin, through its own API session (a separate cookie jar, so the page keeps its own sign-in),
- * the way an admin passes it on in a preview. Admin calls work only on the admin host
- * (SYSTEM_DESIGN §13.3): on a deployed stack they go to `ADMIN_BASE_URL`; on the local stack they
- * carry `X-Forwarded-Host: admin.<host>`, which the API honours from loopback and Docker peers only.
+ * the way an admin passes it on in a preview ({@link adminSession}).
  */
 export async function verifyPhone(page: Page, digits: string) {
   expect(
@@ -140,6 +138,25 @@ export async function verifyPhone(page: Page, digits: string) {
   await page.getByRole("button", { name: /send code/i }).click()
   // Under the relay the step says the team sends the code ("Code requested"), else "Code sent".
   await expect(page.getByText(/^Code (sent|requested)$/)).toBeVisible()
+  const admin = await adminSession(page)
+  const relayed = (await (await admin.get("/admin/sms-relay")).json()) as Array<{
+    phone: string
+    code: string
+  }>
+  const code = relayed.find((c) => c.phone.endsWith(digits))?.code
+  await admin.dispose()
+  expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
+  await page.getByLabel(/enter the 6-digit code/i).fill(code!)
+  await page.getByRole("button", { name: /verify and continue/i }).click()
+}
+
+/**
+ * An API session as the seed's Demo Admin, apart from the page's own sign-in (a separate cookie
+ * jar). Admin calls work only on the admin host (SYSTEM_DESIGN §13.3): on a deployed stack they go
+ * to `ADMIN_BASE_URL`; on the local stack they carry `X-Forwarded-Host: admin.<host>`, which the
+ * API honours from loopback and Docker peers only. The caller disposes it.
+ */
+export async function adminSession(page: Page) {
   const apiBase = await apiBaseUrl(page)
   // A deployed stack has a real admin host: `ADMIN_BASE_URL` names it, and the admin calls go
   // there. The local e2e stack has none, so they carry the admin host header the API trusts from
@@ -165,16 +182,23 @@ export async function verifyPhone(page: Page, digits: string) {
   const session = (await (
     await api.post(`${adminApi}/auth/admin/dev-login`, { data: { userId: admin!.id } })
   ).json()) as { accessToken: string }
-  const relayed = (await (
-    await api.get(`${adminApi}/admin/sms-relay`, {
-      headers: { Authorization: `Bearer ${session.accessToken}` },
-    })
-  ).json()) as Array<{ phone: string; code: string }>
-  const code = relayed.find((c) => c.phone.endsWith(digits))?.code
-  await api.dispose()
-  expect(code, `a relayed code for …${digits.slice(-4)}`).toBeTruthy()
-  await page.getByLabel(/enter the 6-digit code/i).fill(code!)
-  await page.getByRole("button", { name: /verify and continue/i }).click()
+  const headers = { Authorization: `Bearer ${session.accessToken}` }
+  return {
+    get: (path: string) => api.get(`${adminApi}${path}`, { headers }),
+    post: (path: string, data?: unknown) => api.post(`${adminApi}${path}`, { headers, data }),
+    dispose: () => api.dispose(),
+  }
+}
+
+/**
+ * The team's green tick on a review (D-134), as the demo admin approves it in the queue
+ * (`POST /admin/reviews/{id}/approve`): only ticked reviews count in the headline ratings (D-163).
+ */
+export async function approveReview(page: Page, reviewId: string) {
+  const admin = await adminSession(page)
+  const answer = await admin.post(`/admin/reviews/${reviewId}/approve`, {})
+  expect(answer.ok(), `approve review ${reviewId}: HTTP ${answer.status()}`).toBe(true)
+  await admin.dispose()
 }
 
 /** Loopback names and single-label Docker service names (the compose and CI stacks). */

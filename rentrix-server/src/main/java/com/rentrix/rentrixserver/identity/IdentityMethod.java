@@ -1,8 +1,8 @@
 package com.rentrix.rentrixserver.identity;
 
 /**
- * A way to verify a user (§5.15). A verified phone is required to post (D-117, D-132): {@code PHONE_OTP} (SMS
- * code), {@code TRUECALLER} (the number Truecaller verified) or {@code TELEGRAM} (a code sent to the number's
+ * A way to verify a user (§5.15). None is needed to post (D-163); a verified one leads to the green tick. The phone
+ * is verified by {@code PHONE_OTP} (SMS code), {@code TRUECALLER} (the number Truecaller verified) or {@code TELEGRAM} (a code sent to the number's
  * Telegram through the Telegram Gateway), whichever came first. {@code AADHAAR} and
  * {@code PAN} are the optional extra ID: either one {@code VERIFIED} gives the "ID verified" badge (D-100).
  * {@code LINKEDIN} is a bonus badge only and never counts as ID.

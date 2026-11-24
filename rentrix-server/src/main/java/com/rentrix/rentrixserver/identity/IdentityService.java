@@ -26,11 +26,12 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 /**
- * Identity checks per user (§5.15, D-99 – D-106, D-117, D-144). The two rules the gate and the badge use live here: a
- * user may post when any one posting method is {@code VERIFIED}: the phone (SMS code or Truecaller), masked Aadhaar or
- * LinkedIn ({@link #hasPostingMethod}, D-144, which replaces phone-only D-117), and is <b>ID verified</b> (the public
- * badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED} ({@link #isIdVerified}, D-100). The methods the user
- * did not need to post stay optional extra badges. The same rules hold for tenants and landlords.
+ * Identity checks per user (§5.15, D-99 – D-106, D-117, D-144, D-163). Two rules live here: a user has a <b>verified
+ * method</b> when any one of the phone (SMS code, Truecaller or Telegram), masked Aadhaar or LinkedIn is
+ * {@code VERIFIED} ({@link #hasPostingMethod}, D-144), which the stepper's "Verify (any one)" step and an admin's
+ * approval (the green tick, D-134) need, but posting no longer does (D-163); and a user is <b>ID verified</b> (the
+ * public badge) when {@code AADHAAR} or {@code PAN} is {@code VERIFIED} ({@link #isIdVerified}, D-100). The same rules
+ * hold for tenants and landlords.
  */
 @Slf4j
 @Service
@@ -48,8 +49,9 @@ public class IdentityService {
 		IdentityMethod.TRUECALLER, IdentityMethod.TELEGRAM);
 	
 	/**
-	 * The methods that let a user post (D-144, captain 2026-11-22): any one of phone (SMS code, Truecaller or Telegram), masked
-	 * Aadhaar or LinkedIn, {@code VERIFIED}. PAN is not one of them; it only gives the "ID verified" badge.
+	 * The verified methods (D-144, captain 2026-11-22): any one of phone (SMS code, Truecaller or Telegram), masked
+	 * Aadhaar or LinkedIn, {@code VERIFIED}. They once gated posting; since D-163 they only lead to the green tick. PAN is
+	 * not one of them; it only gives the "ID verified" badge.
 	 */
 	public static final Set<IdentityMethod> POSTING_METHODS = EnumSet.of(IdentityMethod.PHONE_OTP,
 		IdentityMethod.TRUECALLER, IdentityMethod.TELEGRAM, IdentityMethod.AADHAAR, IdentityMethod.LINKEDIN);
@@ -83,7 +85,7 @@ public class IdentityService {
 		return checks.existsByUserAndMethodInAndStatus(user, ID_METHODS, IdentityStatus.VERIFIED);
 	}
 	
-	/** The posting rule (D-144): any one of {@link #POSTING_METHODS} is verified and not revoked. */
+	/** Any one of {@link #POSTING_METHODS} is verified and not revoked (D-144); no longer needed to post (D-163). */
 	@Transactional(readOnly = true)
 	public boolean hasPostingMethod(User user) {
 		return user.getId() != null && checks.existsByUserAndMethodInAndStatus(user, POSTING_METHODS,

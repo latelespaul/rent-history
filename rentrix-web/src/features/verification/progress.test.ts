@@ -5,15 +5,15 @@ import { doneSteps, nextStep, progressOf } from "./progress"
 const phoneDone = { phone: "DONE", method: "DONE" } as const
 
 describe("account-menu progress row (D-121)", () => {
-  it("asks for any one verified method first, whatever the application status", () => {
+  it("nudges for any one verified method first, as an optional green-tick step (D-163)", () => {
     expect(progressOf([entry({ status: "PENDING" })])).toMatchObject({
       kind: "phone",
-      label: "Verify to post",
+      label: "Verify to get a green tick",
       to: "/verify/phone",
-      hint: "Any one: phone, Aadhaar or LinkedIn",
+      hint: "Optional · phone, Aadhaar or LinkedIn",
     })
     expect(progressOf([entry({ status: "APPROVED" })])?.kind).toBe("phone")
-    // A LinkedIn still waiting for a check does not open posting yet.
+    // A LinkedIn still waiting for a check is not a verified method yet.
     expect(progressOf([entry({ steps: { method: "PENDING" } })])?.kind).toBe("phone")
   })
 

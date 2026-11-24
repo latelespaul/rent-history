@@ -35,7 +35,6 @@ import {
 } from "@/features/review/form"
 import { StarPicker } from "@/features/review/StarPicker"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
-import { isGateError } from "@/features/tenancy/gate"
 import { dateLabel, tenancyHome, today } from "@/features/tenancy/labels"
 import { reviewWindow } from "@/features/tenancy/reviewWindow"
 import { useTenancy } from "@/features/tenancy/useTenancies"
@@ -642,14 +641,13 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
                 {draft.cons.trim() && <SummaryRow label="Cons">{draft.cons.trim()}</SummaryRow>}
               </SummaryBlock>
             )}
-            {ruleError && !isGateError(ruleError) ? (
+            {ruleError ? (
               <p className="text-sm text-danger-600" data-testid="review-refused">
                 {ruleError.problem.detail}
               </p>
             ) : (
-              !ruleError && submit.error && <ActionError error={submit.error} />
+              submit.error && <ActionError error={submit.error} />
             )}
-            {ruleError && isGateError(ruleError) && <ActionError error={ruleError} />}
           </div>
         )}
 

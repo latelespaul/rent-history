@@ -185,7 +185,7 @@ describe("verification stepper", () => {
     renderApp("/verify/phone")
     expect(await screen.findByText(/linkedin verified\./i)).toBeTruthy()
     expect(
-      screen.getByText(/that is all you need to post\. a phone is an optional extra/i),
+      screen.getByText(/that is all you need for the green tick\. a phone is an optional/i),
     ).toBeTruthy()
   })
 
@@ -367,14 +367,17 @@ describe("verification stepper", () => {
 })
 
 describe("phone banner and menu dot (D-121, D-132)", () => {
-  it("shows the banner with a way back on pages, while the phone is not verified", async () => {
+  it("shows the optional green-tick nudge with a way back, while no method is verified", async () => {
     renderApp("/settings")
 
     const banner = await screen.findByRole("region", { name: "Verification" })
-    expect(banner.textContent).toContain("Verify to post: any one of phone, Aadhaar or LinkedIn.")
-    expect(within(banner).getByRole("link", { name: "Verify now" }).getAttribute("href")).toBe(
-      "/verify/phone?next=%2Fsettings",
+    expect(banner.textContent).toContain("You can post now.")
+    expect(banner.textContent).toContain(
+      "Optional: verify with any one of phone, Aadhaar or LinkedIn to get a green tick.",
     )
+    expect(
+      within(banner).getByRole("link", { name: "Verify to get a green tick" }).getAttribute("href"),
+    ).toBe("/verify/phone?next=%2Fsettings")
     expect(screen.getByTestId("progress-dot")).toBeTruthy()
   })
 

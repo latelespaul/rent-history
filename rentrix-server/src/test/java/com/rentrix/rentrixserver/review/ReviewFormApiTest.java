@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** The review form (D-157) and its per-parameter averages (D-158). */
 @IntegrationTest
+// The rating math here runs over reviews without the green tick, so it counts every published review
+// ("all"); the default "verified" headline (D-163) is covered by RatingHeadlineModeTest.
+@TestPropertySource(properties = "app.ratings.headline=all")
 @Transactional
 class ReviewFormApiTest {
 
