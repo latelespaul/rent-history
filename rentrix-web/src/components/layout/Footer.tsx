@@ -8,7 +8,7 @@ import { Container } from "./Container"
 
 /**
  * Site footer. The launch line comes from the city list, never from a typed city name (D-85).
- * "Search" is a teal pill with a 44 px tap target, so it is easy to see and tap at 390 px.
+ * "Contact us" opens `/contact`. "Search" is a teal pill with a 44 px tap target, so it is easy to see and tap at 390 px.
  */
 export function Footer() {
   const cities = useCities()
@@ -21,6 +21,13 @@ export function Footer() {
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <p>{BRAND.tagline}</p>
+          <Link
+            to="/contact"
+            data-testid="footer-contact"
+            className="inline-flex min-h-11 items-center font-medium text-teal-700"
+          >
+            Contact us
+          </Link>
           <Button
             asChild
             variant="outline"

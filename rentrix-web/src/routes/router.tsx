@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom"
 import { RequireAuth } from "@/features/auth/RequireAuth"
 import { ShellRoot } from "@/features/auth/ShellRoot"
 import AddHomePage from "@/pages/AddHomePage"
+import ContactPage from "@/pages/ContactPage"
 import DeleteAccountPage from "@/pages/DeleteAccountPage"
 import EditHomePage from "@/pages/EditHomePage"
 import EditTenancyPage from "@/pages/EditTenancyPage"
@@ -36,6 +37,7 @@ export const routes = [
       // Search is open to everyone, signed in or not (captain 2026-11-24 00:31, D-162).
       { path: "/search", element: <SearchPage /> },
       { path: "/login", element: <LoginPage /> },
+      { path: "/contact", element: <ContactPage /> },
       { path: "/terms", element: <LegalPage title="Terms" /> },
       { path: "/privacy", element: <LegalPage title="Privacy" /> },
       {
