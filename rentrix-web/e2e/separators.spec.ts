@@ -8,7 +8,10 @@ import { daysAgo, freshLogin, pickRole, writeHomeReview } from "./support"
  * now spaced by the row's gap or sit on their own line.
  */
 
-/** Texts in `scope` that open their element with "·": a separator with nothing before it. */
+/**
+ * Texts in `scope` that can open a line with "·": a separator with nothing before it, or one that
+ * is its own item in a wrapping flex row, where any item can start the wrapped line.
+ */
 async function leadingDots(scope: Locator): Promise<string[]> {
   return scope.evaluateAll((roots) =>
     roots.flatMap((root) => {
@@ -16,9 +19,12 @@ async function leadingDots(scope: Locator): Promise<string[]> {
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (!(node.textContent ?? "").trim().startsWith("·")) continue
+        const parent = node.parentElement
+        const style = parent ? getComputedStyle(parent) : undefined
+        const wrapsItems = !!style && style.display.includes("flex") && style.flexWrap === "wrap"
         let before = node.previousSibling
         while (before && !(before.textContent ?? "").trim()) before = before.previousSibling
-        if (!before) found.push((node.parentElement?.textContent ?? "").trim().slice(0, 60))
+        if (!before || wrapsItems) found.push((parent?.textContent ?? "").trim().slice(0, 60))
       }
       return found
     }),
@@ -67,6 +73,7 @@ test("a tenant's tenancy card and review row never start a line with a separator
 
   await page.goto("/me/tenancies")
   const card = page.getByRole("article").filter({ hasText: building })
+  await expect(card.getByTestId("tenancy-unit")).toHaveText(`Flat S-${tag.slice(-3)}`)
   await expect(card.getByTestId("tenancy-counterparty")).toHaveText(
     "Landlord Not on Doorway Living yet",
   )
