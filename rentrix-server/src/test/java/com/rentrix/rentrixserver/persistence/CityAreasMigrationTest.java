@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * proposal) and dev (the demo seed's rows) do: an ACTIVE or demo place is never added twice, under its own name,
  * one of the new row's aliases, or an alias of the existing row, and those rows stay as they are. A PENDING or
  * HIDDEN row does not hide the reference locality: it is added next to it, or, when the row has the locality's
- * exact name, made ACTIVE in place with the reference aliases and PIN codes.
+ * exact name, made ACTIVE in place with the reference aliases and only the reference PIN codes.
  */
 class CityAreasMigrationTest {
 
@@ -60,6 +60,14 @@ class CityAreasMigrationTest {
 		jdbc.update(ROW, 9007199254740105L, "00000000-0000-7000-8000-000000000105", "BLR", "Jayanagar", "jayanagar",
 			null, "HIDDEN", null, false);
 		jdbc.update(PIN, 9007199254740105L, "560011");
+		// a user's PENDING Malleswaram with a PIN the India Post list does not give it (560047)
+		jdbc.update(ROW, 9007199254740106L, "00000000-0000-7000-8000-000000000106", "BLR", "Malleswaram",
+			"malleswaram", null, "PENDING", PROPOSER, false);
+		jdbc.update(PIN, 9007199254740106L, "560047");
+		jdbc.update(PIN, 9007199254740106L, "560003");
+		// PINs of other areas are never removed
+		jdbc.update(PIN, 9007199254740101L, "560047");
+		jdbc.update(PIN, 9007199254740103L, "560047");
 		String kept = "select * from areas where id in (9007199254740101, 9007199254740102, 9007199254740103)"
 			+ " order by id";
 		List<Map<String, Object>> before = jdbc.queryForList(kept);
@@ -82,12 +90,18 @@ class CityAreasMigrationTest {
 			row(9007199254740105L, "Jayanagar", null, "ACTIVE", null));
 		assertThat(pins(jdbc, "BLR", "indiranagar")).containsExactly("560038");
 		assertThat(pins(jdbc, "BLR", "jayanagar")).containsExactly("560011", "560041");
+		assertThat(jdbc.queryForObject("select status from areas where id = 9007199254740106", String.class))
+			.isEqualTo("ACTIVE");
+		assertThat(pins(jdbc, "BLR", "malleswaram")).containsExactly("560003", "560055");
+		assertThat(jdbc.queryForList("select area_id from area_pincodes where pincode = '560047'"
+			+ " and area_id > 9007199254740000 order by area_id",
+			Long.class)).containsExactly(9007199254740101L, 9007199254740103L);
 
 		List<String> counts = jdbc.queryForList("select city_code || ':' || count(*) from areas"
 			+ " where id between 201 and 381 group by city_code order by city_code", String.class);
-		assertThat(counts).containsExactly("BLR:79", "PNQ:80");
+		assertThat(counts).containsExactly("BLR:78", "PNQ:80");
 		Integer pinsOfSkipped = jdbc.queryForObject("select count(*) from area_pincodes where area_id in (203, 204, 205,"
-			+ " 301)", Integer.class);
+			+ " 206, 301)", Integer.class);
 		assertThat(pinsOfSkipped).isZero();
 		assertThat(pins(jdbc, "BLR", "hsr layout")).containsExactly("560102");
 
