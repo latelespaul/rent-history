@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -24,9 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FlatFinder {
-
-	/** Words people put before a flat number. */
-	private static final Set<String> UNIT_WORDS = Set.of("flat", "unit", "no", "number", "apt", "house", "villa");
 
 	private final PropertyRepository properties;
 
@@ -74,7 +70,7 @@ public class FlatFinder {
 	/** Letters and digits of a flat number, lower case, without a leading "Flat" / "Unit" / "No.". */
 	static String key(String unit) {
 		List<String> words = new ArrayList<>(NameMatch.words(unit));
-		while (words.size() > 1 && UNIT_WORDS.contains(words.getFirst())) {
+		while (words.size() > 1 && NameMatch.UNIT_WORDS.contains(words.getFirst())) {
 			words.removeFirst();
 		}
 		return String.join("", words);

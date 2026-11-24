@@ -12,7 +12,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -30,9 +29,6 @@ public class PlaceMatcher {
 
 	/** Upper bound on candidate rows per search; far above any city's societies today. */
 	static final int MAX_CANDIDATES = 5000;
-
-	/** Filler words a user may type before the flat number: "Lakeside flat 1204". */
-	private static final Set<String> UNIT_WORDS = Set.of("flat", "unit", "no", "number", "apt", "house");
 
 	private static final Pattern PINCODE = Pattern.compile("\\d{6}");
 
@@ -54,7 +50,7 @@ public class PlaceMatcher {
 				if (last.chars().anyMatch(Character::isDigit) && !PINCODE.matcher(last).matches()) {
 					List<String> place = new ArrayList<>(NameMatch.words(
 						trimmed.substring(0, trimmed.length() - last.length())));
-					while (!place.isEmpty() && UNIT_WORDS.contains(place.getLast())) {
+					while (!place.isEmpty() && NameMatch.UNIT_WORDS.contains(place.getLast())) {
 						place.removeLast();
 					}
 					if (!place.isEmpty() && !NameMatch.words(last).isEmpty()) {
@@ -65,6 +61,20 @@ public class PlaceMatcher {
 			return new Query(NameMatch.words(trimmed), null);
 		}
 
+		/** The whole text as a place name, without a flat number: "Godrej 24" is a society too. */
+		public static Query whole(String text) {
+			return new Query(NameMatch.words(text), null);
+		}
+
+	}
+
+	/**
+	 * Whether the place words before the flat number ({@code split}) name a place with fewer typos than the whole
+	 * text does ({@code whole}); on a tie the whole name wins, so "Godrej 24" is that society, not flat 24 of another
+	 * Godrej. Both lists are best first.
+	 */
+	public static boolean unitFirst(List<SocietyHit> split, List<SocietyHit> whole) {
+		return !split.isEmpty() && (whole.isEmpty() || split.getFirst().cost() < whole.getFirst().cost());
 	}
 
 	/** One society the text names; {@code tower} when the words after the society's name name one of its towers. */

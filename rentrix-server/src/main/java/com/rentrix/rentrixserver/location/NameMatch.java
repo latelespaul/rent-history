@@ -19,6 +19,9 @@ public final class NameMatch {
 	/** Words that only say what a level is ("Tower B", "Block C", "Wing A"), so they never decide a tower match. */
 	public static final Set<String> LEVEL_WORDS = Set.of("tower", "towers", "block", "blk", "wing", "phase");
 
+	/** Words people put before a flat number: "Lakeside flat 1204", "Villa 12". */
+	public static final Set<String> UNIT_WORDS = Set.of("flat", "unit", "no", "number", "apt", "house", "villa");
+
 	private NameMatch() {
 	}
 

@@ -45,13 +45,16 @@ public class SearchSuggestionService {
 			return SearchSuggestions.NONE;
 		}
 		PlaceMatcher.Query query = PlaceMatcher.Query.parse(text);
+		// "Sector 21 Heights" ends in a number too: the whole text is tried as a place name first
+		List<PlaceMatcher.SocietyHit> societies = matcher.societies(cityCode, PlaceMatcher.Query.whole(text), caller,
+			MAX_SOCIETIES);
 		List<PlaceMatcher.SocietyHit> named = query.unit() == null ? List.of()
 			: matcher.societies(cityCode, query, caller, MAX_SOCIETIES);
+		if (!PlaceMatcher.unitFirst(named, societies)) {
+			named = List.of();
+		}
 		List<SearchSuggestions.HomeSuggestion> homes = flats.find(named, query.unit(), true, MAX_HOMES).stream()
 			.map(SearchSuggestionService::home).toList();
-		// "Sector 21 Heights" ends in a number too: the whole text is also tried as a place name
-		List<PlaceMatcher.SocietyHit> societies = matcher.societies(cityCode,
-			new PlaceMatcher.Query(NameMatch.words(text), null), caller, MAX_SOCIETIES);
 		if (societies.isEmpty()) {
 			societies = named;
 		}

@@ -132,6 +132,23 @@ class PropertySocietySearchTest {
 		mvc.perform(get("/properties").param("city", CITY).param("q", "Prestige Lakeside 1205"))
 			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(b1205).toArray())));
 	}
+
+	@Test
+	void aSocietyNameEndingInANumberBeatsAFlatWithThatNumberInANearName() throws Exception {
+		Property numbered = flat(locations.society(area, "Prestige Lakeside 2"), null, "101", FieldVisibility.OPEN);
+		flat(lakeside, towerA, "2", FieldVisibility.OPEN);
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Prestige Lakeside 2"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(numbered).toArray())));
+		mvc.perform(get("/search/suggestions").param("city", CITY).param("q", "Prestige Lakeside 2"))
+			.andExpect(jsonPath("$.societies[0].name").value("Prestige Lakeside 2"))
+			.andExpect(jsonPath("$.homes", empty()));
+	}
+
+	@Test
+	void villaBeforeTheFlatNumberIsAFillerWord() throws Exception {
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Lakeside villa 1205"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(b1205).toArray())));
+	}
 	
 	@Test
 	void aMaskedFlatNumberIsNeverMatchedSoItCannotBeProbed() throws Exception {

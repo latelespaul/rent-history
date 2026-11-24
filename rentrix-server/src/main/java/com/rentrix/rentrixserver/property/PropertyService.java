@@ -13,7 +13,6 @@ import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
 import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.location.LocationStatus;
-import com.rentrix.rentrixserver.location.NameMatch;
 import com.rentrix.rentrixserver.location.PlaceMatcher;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyTower;
@@ -100,7 +99,7 @@ public class PropertyService {
 	 * D-164: resolves {@code q} to the societies and towers it names, typos allowed, so their homes are found next to
 	 * the D-162 text matches; only the best-matching tier counts, so a typo-free match never drags in near names.
 	 * When the text ends in a flat number ("Prestige Lakeside 1204") and an open flat of the named place has it, the
-	 * result is that flat. Inside {@code society=} the whole text may be the flat number. A masked flat number is
+	 * result is that flat, unless the whole text names a place with as few typos ("Godrej 24"). Inside {@code society=} the whole text may be the flat number. A masked flat number is
 	 * never compared (D-57), so it cannot change the result.
 	 */
 	private PropertySearchCriteria withTextPlaces(PropertySearchCriteria criteria, AuthenticatedUser caller) {
@@ -115,15 +114,18 @@ public class PropertyService {
 				criteria.towerId())), criteria.text(), false, MAX_TEXT_FLATS));
 		}
 		PlaceMatcher.Query query = PlaceMatcher.Query.parse(criteria.text());
-		List<PlaceMatcher.SocietyHit> top = fewestTypos(placeMatcher.societies(criteria.cityCode(), query, caller,
-			MAX_TEXT_PLACES));
-		List<Long> homeIds = query.unit() == null ? List.of()
-			: flats.find(top, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId).toList();
-		if (query.unit() != null && homeIds.isEmpty()) {
-			List<PlaceMatcher.SocietyHit> whole = fewestTypos(placeMatcher.societies(criteria.cityCode(),
-				new PlaceMatcher.Query(NameMatch.words(criteria.text()), null), caller, MAX_TEXT_PLACES));
-			if (!whole.isEmpty()) {
-				top = whole;
+		List<PlaceMatcher.SocietyHit> top = fewestTypos(placeMatcher.societies(criteria.cityCode(),
+			PlaceMatcher.Query.whole(criteria.text()), caller, MAX_TEXT_PLACES));
+		List<Long> homeIds = List.of();
+		if (query.unit() != null) {
+			List<PlaceMatcher.SocietyHit> split = fewestTypos(placeMatcher.societies(criteria.cityCode(), query,
+				caller, MAX_TEXT_PLACES));
+			if (PlaceMatcher.unitFirst(split, top)) {
+				homeIds = flats.find(split, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId)
+					.toList();
+				if (!homeIds.isEmpty() || top.isEmpty()) {
+					top = split;
+				}
 			}
 		}
 		if (top.isEmpty()) {
