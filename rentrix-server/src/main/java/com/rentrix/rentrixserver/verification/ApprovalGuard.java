@@ -22,9 +22,4 @@ public class ApprovalGuard {
 		// Open to every signed-in user (D-163): nothing to refuse here.
 	}
 
-	/** Whether {@link #require} lets the user write: always, for any signed-in user (D-163). */
-	public boolean canWrite(User user, Role role) {
-		return true;
-	}
-
 }
