@@ -11,14 +11,14 @@ Decisions proposed here are labelled **LT-1 … LT-12**. Each build PR records t
 
 ## 0. v1 in short
 
-1. An owner adds a tenant to a home they own, at "I own it" or later from the home. Every field is optional: name, email, phone, rent, and (last slice) the dates.
+1. An owner adds a tenant to a home they own, at "I own it" or later from the home. Every field is optional: name, email, phone, dates and rent (from slice S3 on).
 2. The tenancy stands at once (`ACTIVE` or `ENDED`), one-sided, "Not verified yet", as rule B already decided for both sides (D-149).
 3. The email and phone are private. They are used only to link the tenancy to the tenant's account by a **verified** email or phone. The phone is stored only as an HMAC (`ID_HASH_KEY`). The owner never learns whether a link happened.
 4. No account matches? The tenancy keeps `tenant_id = NULL`: that is the **unclaimed tenant**. The tenant claims it later by signing in with that email or by verifying that phone.
 5. The owner reviews the tenant with the existing review form: a new `tenant` part, `LANDLORD_TO_TENANT`, with 5 parameters.
 6. A review about a tenant goes public only when the tenant stands behind the tenancy: they added it, confirmed it, or the team verified it. Then the double-blind reveal of D-46 runs as today.
 7. The tenant profile (`/u/:id`, tenant side) shows the tenant's rating, parameter averages and the reviews from owners, to the people D-54 allows.
-8. The home page gets one "Stays at this home" list: per tenancy, the home review, the owner review and the tenant review, each with its existing visibility rule.
+8. The home page gets one "Stays at this home" list for signed-in viewers: per tenancy, the home review, the owner review and the tenant review, each with its existing visibility rule. Outsiders see only stays with a published review, as a year range. Signed-out viewers see no stays, only the home reviews (as today's rent history, which is signed-in only). The two parties of a stay always see it in full.
 
 ---
 
@@ -99,8 +99,8 @@ The captain lists four reviews: tenant → home, tenant → owner, owner → ten
 | G6 | Linking needs the emailed link, which is never delivered | silent match on a verified email or phone, at add and later | `users.email`, `identity_verifications.value_hmac` |
 | G7 | A fake owner could attach reviews to a real person | a tenant review publishes only on a tenancy the tenant stands behind (LT-7) | D-46 job, `confirmed_at`, the tenancy tick |
 | G8 | The same stay recorded twice | `409 tenancy_exists` with the tenancy to confirm instead | `requireHomeFree`, `requireNoOverlap`, confirm |
-| G9 | The home page shows only home reviews | one read, `GET /properties/{id}/stays`, grouped per stay | `ReviewView`, `ProfileAccess.canSeeTenant` |
-| G10 | Dates are required (`start_date NOT NULL`) | last, optional slice: nullable `start_date`, undated rules (LT-12) | the V12 vendor rebuild pattern |
+| G9 | The home page shows only home reviews | one signed-in read, `GET /properties/{id}/stays`, grouped per stay | `ReviewView`, `ProfileAccess.canSeeTenant` |
+| G10 | Dates are required (`start_date NOT NULL`) | in S3: nullable `start_date`, undated rules (LT-12) | the V12 vendor rebuild pattern |
 
 No new review table, aggregate table or system account is needed. The only new columns are four on `tenancies` (§8).
 
@@ -111,7 +111,7 @@ No new review table, aggregate table or system account is needed. The only new c
 ### 4.1 Linking the tenant
 
 ```
- owner adds tenant {name?, email?, phone?, dates, rent?}
+ owner adds tenant {name?, email?, phone?, dates?, rent?}
         │
         ▼
  tenancy ACTIVE / ENDED at once, one-sided, "Not verified yet"     (LT-1)
@@ -123,6 +123,7 @@ No new review table, aggregate table or system account is needed. The only new c
         │                 ├── "Yes, I rented it" ─▶ confirmed_at: "Tenant confirmed",
         │                 │                         TENANT role added, contact cleared
         │                 └── "Not me" ─▶ unlinked again, link_refused_by = user,
+        │                                 contact frozen, never matched again,
         │                                 their reviews here detach                (LT-4)
         └── no match ─▶ tenant_id NULL = unclaimed tenant                          (LT-5)
                           │ later: Google sign-in with that email, or the same phone verified,
@@ -142,7 +143,7 @@ No new review table, aggregate table or system account is needed. The only new c
 | Matched account lacks the `TENANT` role | Linked anyway. The role is added when they answer "Yes, I rented it" (fresh `accessToken`, as `POST /me/homes` does). Until then no tenant profile exists for them (`tenantVisible` needs the role) |
 | The owner typed their own email or phone | `422 invite_self` on the field, as today |
 | Matched account is deleted, suspended or the unclaimed-homes account | Never linked |
-| Wrong person linked | The person answers "Not me" (LT-4). They are never linked to that tenancy again. The owner sees "Not linked yet", the same words as "no match", so the answer reveals nothing |
+| Wrong person linked | The person answers "Not me" (LT-4). The tenancy is then never matched again, and its contact is frozen: the owner cannot point it at another email or phone, so a refused address can never be re-linked to that stay. To try a new contact, the owner deletes the stay and adds a new one (D-35 add limits apply). The owner sees "Not linked yet", the same words as "no match" |
 | Tenant disputes the facts (dates or rent are wrong) | They answer "Yes, I rented it" only if the stay is theirs, then "Report a problem" (`FAKE_TENANCY` or `OTHER`, SYSTEM_DESIGN §8), or ask the owner to edit. No counter-offer flow (D-34) |
 | Tenant declines a correct link to dodge a bad review | The review detaches and waits, unpublished. The owner can upload the rental agreement so the team verifies the tenancy (D-147), but re-linking that tenant needs an admin link tool, which is not in v1 (§12). v1 accepts this gap: wrongly attaching a review to someone is the worse failure |
 
@@ -170,10 +171,10 @@ No one can add a tenant on an unclaimed home: its owner is the system account, s
 
 | Event | Effect |
 |---|---|
-| Owner edits the tenant contact (LT-9) | Allowed while the tenant has not confirmed. A changed email or phone drops an unconfirmed link and matches again. After "Tenant confirmed": `422 tenant_confirmed` on the contact fields |
+| Owner edits the tenant contact (LT-9) | Allowed while the tenant has not confirmed and no one answered "Not me" (`link_refused_by` is NULL). A changed email or phone drops an unconfirmed link and matches again. After "Tenant confirmed": `422 tenant_confirmed` on the contact fields. After "Not me": `422 contact_frozen`; the owner may delete the stay and add a new one |
 | Owner edits dates or rent | D-156 as today: the creator edits, the tick resets, the edit history keeps it |
 | Owner deletes the tenancy | D-156: refused once the tenant confirmed (`409 confirmed_by_other_side`) or reviewed (`409 tenancy_has_reviews`); otherwise `CANCELLED` and the owner's own tenant review is withdrawn |
-| Tenant answers "Not me" | Unlinked; `link_refused_by` set; a review about them on this tenancy gets `subject_user_id = NULL` and waits again; their own reviews on it are withdrawn (they say they never lived there) |
+| Tenant answers "Not me" | Unlinked; `link_refused_by` set, which freezes the contact and stops all later matching on this tenancy; a review about them on this tenancy gets `subject_user_id = NULL` and waits again; their own reviews on it are withdrawn (they say they never lived there) |
 | Tenant deletes their account | D-58 unchanged: tenancies and reviews stay; the tenant shows as "Deleted user" |
 | Owner deletes their account | D-58: the home moves to the unclaimed account; tenancies stay with "Deleted user". New: `tenant_name`, `invite_phone_hmac` and `invite_phone_last4` are cleared with `invite_email`, so an unclaimed tenancy of a deleted owner can never be linked |
 | Admin voids the tenancy | D-36 unchanged: all its reviews leave the aggregates and the stays list |
@@ -189,7 +190,7 @@ No one can add a tenant on an unclaimed home: its owner is the system account, s
 | Tenant name the owner typed | `tenant_name`, ≤ 80 characters | the owner and admins only. The public never sees it; the linked tenant sees "as you were named: …" so they can recognise the stay | as the email |
 | Who matched | `tenant_id` | the linked tenant; the owner only after "Tenant confirmed" (then the tenant's short name, D-28) | — |
 
-- Matching is silent. No answer, status or timing tells the owner whether an email or phone has an account. "Not linked yet" covers no match, two matches and "Not me".
+- Matching is silent. No answer, status or timing tells the owner whether an email or phone has an account. "Not linked yet" covers no match, two matches and "Not me". One exception: after "Not me" a contact edit answers `422 contact_frozen`, so an owner who tries to edit learns that someone refused. v1 accepts this, because it is what stops an owner from re-pointing a stay at a person who refused it.
 - No `ID_HASH_KEY` set: the phone field is hidden, like the Truecaller button (D-138).
 - Logs never hold the typed email or phone; they log the tenancy id only (as D-65 masks recipients).
 - Contact is used only to link (and later to send one invite when `SmtpEmailSender` exists). It is never in a public response, a search, a card or a review (D-57).
@@ -217,16 +218,22 @@ No one can add a tenant on an unclaimed home: its owner is the system account, s
 
 ## 7. What the home page shows
 
-`GET /properties/{id}/stays` (public; LT-11) returns the standing, dated tenancies of the home (`ACTIVE`, `ENDED`; not `CANCELLED` or `VOIDED`), newest first, 20 per page. Each stay is keyed by its period, never by a tenancy id (D-28): `{period, verification, ownerConfirmed, tenantConfirmed, addedBy: OWNER|TENANT, home, owner, tenant, mine}`. Each review is the existing `ReviewView` under its existing rule. The web section "Stays at this home" replaces "What tenants say about the home" and keeps the `#reviews` anchor of D-161.
+`GET /properties/{id}/stays` (signed in only, `401` signed out, as rent history; LT-11) returns the standing tenancies of the home (`ACTIVE`, `ENDED`; not `CANCELLED` or `VOIDED`; undated ones only to their parties), newest first, 20 per page. Each stay is keyed by its period, never by a tenancy id (D-28): `{period, verification, ownerConfirmed, tenantConfirmed, addedBy: OWNER|TENANT, home, owner, tenant, mine}`. Each review is the existing `ReviewView` under its existing rule. The web section "Stays at this home" replaces "What tenants say about the home" for signed-in viewers and keeps the `#reviews` anchor of D-161.
 
-| Viewer | ① home review | ② review of the owner | ③ review of the tenant | Tenant identity |
-|---|---|---|---|---|
-| Signed out | full (D-161) | `{exists}`: "Sign in to read the review of the owner" | `{exists}` only | never |
-| Signed in, no relation | full | full once published (D-55) | `{exists}`: "The owner reviewed this tenant. Only the tenant and their landlords can read it." | never |
-| The stay's tenant | full; "Your review" actions | full; their own review with actions | full once published; while it waits only "A review about you is waiting" (D-46) | themselves |
-| The home's owner | full; reply action | full; reply action | full; "Your review" actions | after "Tenant confirmed": short name |
-| A landlord D-54 allows (an open enquiry from this tenant, or this tenant's landlord elsewhere) | full | full | full | never on the home page; the tenant profile shows it |
-| Admin (admin host only) | full | full | full | full |
+What a viewer sees of the stays themselves (the period is the part that could identify a tenant, §12):
+
+- **The stay's two parties** (its tenant and the home's owner) and admins: every stay they are party to, in full. `period` is month-precise with `current: true` for a running stay ("Mar 2025 – now · Current"). An undated stay shows "Dates not given".
+- **Every other signed-in viewer**: only stays with at least one published review. `period` is a year range `{fromYear, toYear}` ("2023 – 2025"), never a month and never `current`. A running stay shows the current year as `toYear`, so it reads like any stay that ended this year.
+- **Signed out**: no stays list, no periods and no current occupancy. The page keeps today's "What tenants say about the home" list (D-161) with "Sign in to see the stays at this home".
+
+| Viewer | Stays listed | ① home review | ② review of the owner | ③ review of the tenant | Tenant identity |
+|---|---|---|---|---|---|
+| Signed out | none | full, in today's list (D-161) | not shown | not shown | never |
+| Signed in, no relation | with a published review; year range | full | full once published (D-55) | `{exists}`: "The owner reviewed this tenant. Only the tenant and their landlords can read it." | never |
+| The stay's tenant | their own in full; others as "no relation" | full; "Your review" actions | full; their own review with actions | full once published; while it waits only "A review about you is waiting" (D-46) | themselves |
+| The home's owner | all stays on the home, in full | full; reply action | full; reply action | full; "Your review" actions | after "Tenant confirmed": short name |
+| A landlord D-54 allows (an open enquiry from this tenant, or this tenant's landlord elsewhere) | as "no relation" | full | full | full | never on the home page; the tenant profile shows it |
+| Admin (admin host only) | all, in full | full | full | full | full |
 
 `{exists}` is sent only for published reviews. A waiting review is invisible to everyone except its author and the bare "pending" stub for its subject (D-46).
 
@@ -241,14 +248,16 @@ No one can add a tenant on an unclaimed home: its owner is the system account, s
 | `POST /tenancies/{id}/review-form` takes `tenant?: Part` (landlord side); `ReviewFormView.tenant`. At least one part, as today | S1 |
 | `ReviewCriterion` gains the 5 tenant parameters; `GET /users/{id}` `tenantRating` gains `criteria` and `recommend` (`RatingBreakdowns.forTenant`) | S1, S2 |
 | `GET /me/review-tasks`: a task's `counterparty` may be `{id: null, shortName: "Your tenant"}` for an unclaimed tenant | S1 guard, S3 |
-| `POST /tenancies` by the home's owner: `counterpartyEmail` and `initialRentInr` optional; new optional `counterpartyPhone`, `counterpartyName`; answers `ACTIVE`/`ENDED`, no invite expiry | S3 |
+| `POST /tenancies` by the home's owner: `counterpartyEmail`, `initialRentInr`, `startDate` and `endDate` optional; new optional `counterpartyPhone`, `counterpartyName`; answers `ACTIVE`/`ENDED`, no invite expiry | S3 |
 | `409 tenancy_exists {tenancyId}` from owner add and from `recordOwn`, only to a party of that tenancy | S3 (owner), S4 (tenant) |
 | `POST /tenancies/{id}/confirm` also works on a one-sided `ACTIVE`/`ENDED` tenancy by the other party: sets `confirmed_at` ("Tenant confirmed" / "Owner confirmed", D-149) | S3 |
-| `POST /tenancies/{id}/not-me` by a linked tenant who has not confirmed, on a tenancy without the tick: unlink (§4.4); never gated | S3 |
+| `POST /tenancies/{id}/not-me` only on a tenancy with `initiated_by = LANDLORD` that the caller was linked to by matching the owner's typed contact (silent match or invite claim), not yet confirmed by the caller and without the tick: unlink (§4.4); never gated. On a tenancy the tenant started: `409 invalid_transition` | S3 |
 | `TenancyView` gains `tenantLabel` (the typed name, owner only), `invitePhone` (masked, next to the existing masked `inviteEmail`), `linkState: NONE \| WAITING \| CONFIRMED` (owner: `WAITING` covers both "linked, not confirmed" and "not linked"), `actions.confirm`, `actions.notMe` | S3 |
-| `PATCH /tenancies/{id}` takes `tenant {name?, email?, phone?}` (LT-9) | S3 |
-| Link on sign-in and on phone verify: a `ContactVerified(userId)` event from `AuthService` and the phone methods; a `TenantLinker` listener links matching unclaimed tenancies in the same transaction | S4 |
-| `GET /properties/{id}/stays` (§7) | S5 |
+| `PATCH /tenancies/{id}` takes `tenant {name?, email?, phone?}` (LT-9). A changed email or phone answers `422 tenant_confirmed` after the tenant confirmed and `422 contact_frozen` after "Not me" (`link_refused_by` set) | S3 |
+| `POST /tenancy-invites/claim` also accepts a one-sided `ACTIVE`/`ENDED` owner-started tenancy with `tenant_id` NULL, so invite tokens sent before S3 keep working. It refuses a tenancy with `link_refused_by` set | S3 |
+| An undated tenancy (no `startDate`): left out of rent history, overlap checks and the stays of non-parties; its review needs a move-in month first (`422 start_date_required`; the form's Stay step asks for it) | S3 |
+| Link on sign-in and on phone verify: a `ContactVerified(userId)` event from `AuthService` and the phone methods; a `TenantLinker` listener links matching unclaimed tenancies in the same transaction, skipping any with `link_refused_by` set | S4 |
+| `GET /properties/{id}/stays` (§7), signed in only; periods as year ranges and only reviewed stays for non-parties | S5 |
 | `POST /me/homes` with `relation=OWN` stays address-only; the web continues to "Add your tenant (optional)" with `POST /tenancies` | S4 |
 
 ### 8.2 Database (Flyway, next free version when each PR merges; master is at V17)
@@ -259,9 +268,10 @@ No one can add a tenant on an unclaimed home: its owner is the system account, s
   - `ALTER TABLE tenancies ADD COLUMN invite_phone_hmac CHAR(64);`
   - `ALTER TABLE tenancies ADD COLUMN invite_phone_last4 VARCHAR(4);`
   - `ALTER TABLE tenancies ADD COLUMN link_refused_by BIGINT REFERENCES users (id);` plus `db/vendor/mysql/V<n>_1__tenant_contact_fks.sql` for the foreign key (MySQL ignores inline `REFERENCES`, D-114)
+  - `start_date` nullable through the vendor rebuild files, as V12 did for the rent
   - `CREATE INDEX ix_tenancies_invite_email ON tenancies (invite_email);` and `ix_tenancies_invite_phone ON tenancies (invite_phone_hmac);` for the later match
-  - data: owner-started `PENDING_CONFIRMATION` rows become `ACTIVE`, or `ENDED` with an end date, without `confirmed_at` (the owner half of B20's planned move). Their invite tokens stay usable as links.
-- **S6** (optional) `V<n>__optional_tenancy_start.sql`: `start_date` nullable through the vendor rebuild files, as V12 did for the rent.
+  - data: owner-started `PENDING_CONFIRMATION` rows become `ACTIVE`, or `ENDED` with an end date, without `confirmed_at` (the owner half of B20's planned move). Their invite tokens stay usable as links: S3 widens the claim to these rows (§8.1).
+- **S6**: no migration.
 
 ---
 
@@ -273,12 +283,12 @@ Each slice is small, ships alone, needs no flag and no flag day, and keeps every
 |---|---|---|---|---|
 | **S1** (a) Owner reviews own tenants | "Review your tenant" on tenancies the owner already has: tenant-recorded stays on their home and confirmed invites | `tenant` form part, 5 criteria, review-task and recompute NULL guards | form part "The tenant" (owner copy), CTA on `TenancyPage` / `TenancyCard` in Owner mode, draft key `rx-review-draft:<tenancyId>:LANDLORD` | none |
 | **S2** (b) Tenant profile | `/u/:id` shows the tenant side: rating, "The tenant by topic", "Would rent to them again", "What owners say"; links from the owner's confirmed tenancy and from the tenant's MyReviews | `RatingBreakdowns.forTenant` in `GET /users/{id}` | `UserProfile.tenantRating`, a tenant section in `LandlordPage` | none |
-| **S3** (c1) Owner adds a tenant | the "Add a tenant" form with every field optional except the dates; stands at once; silent link at add; "Is this you?" for the tenant; LT-7 reveal; `409 tenancy_exists` on owner add | `TenancyService.create` owner branch, `not-me`, confirm on one-sided rows, contact columns, reveal filter, deletion erase list | `TenancyRequestPage` becomes "Add a tenant"; tenant card "Is this you?"; copy of D-153 ("Nothing is public until both sides confirm" goes) | `V<n>__tenant_contact.sql` |
+| **S3** (c1) Owner adds a tenant | the "Add a tenant" form with every field optional, dates included; stands at once; silent link at add; "Is this you?" for the tenant; LT-7 reveal; `409 tenancy_exists` on owner add; undated stays (LT-12) | `TenancyService.create` owner branch, `not-me`, confirm on one-sided rows, claim on one-sided owner rows, contact columns and freeze, reveal filter, undated guards, deletion erase list | `TenancyRequestPage` becomes "Add a tenant" with optional dates; tenant card "Is this you?"; move-in month in the review form's Stay step; copy of D-153 ("Nothing is public until both sides confirm" goes) | `V<n>__tenant_contact.sql` (with nullable `start_date`) |
 | **S4** (c2) Unclaimed tenant claims later | link at Google sign-in and phone verify; the tenant's add-home dedupe; "Add your tenant (optional)" after "I own it" | `ContactVerified` + `TenantLinker`; `recordOwn` `409 tenancy_exists` | add-home OWN continues to the tenant step; "Your owner already added this stay" | none |
 | **S5** (d) Whole picture on the home page | "Stays at this home": every direction per stay (§7) | `GET /properties/{id}/stays` | stays section replaces the home review list, keeps `#reviews` and the author actions | none |
-| **S6** (e, optional) Dates optional | an owner may skip the dates; an undated stay holds no dates, is not listed in stays or rent history, and must get a move-in month before its review (the form's first step asks for it) | nullable `start_date` and the undated guards | date fields optional | `V<n>__optional_tenancy_start.sql` |
+| **S6** (e, later) Undated polish | "Add the move-in month" nudge on undated tenancy cards and the owner dashboard. Nothing in v1 needs it | none | the nudge | none |
 
-S1 and S2 can ship in either order. S3 needs S1 only for the owner's CTA copy. S5 needs S3 for owner-added stays but works with today's data too. Master may drop S6: it touches every date rule (D-23, D-39, rent history) for one optional field.
+S1 and S2 can ship in either order. S3 needs S1 only for the owner's CTA copy. S5 needs S3 for owner-added stays but works with today's data too.
 
 ---
 
@@ -310,13 +320,13 @@ API tests in `rentrix-server` for each rule above, and Playwright e2e at 390 px 
 |---|---|
 | `owner-reviews-tenant.spec.ts` (S1) | Owner mode → tenancy → "Review your tenant" → 5 parameters → overall → submit → "Waiting for the other side"; tenant reviews the owner → both publish; owner's "Reviews you wrote of tenants" lists it; no horizontal scroll at 390 px |
 | `tenant-profile.spec.ts` (S2) | owner with access opens `/u/:id` and sees "What owners say"; a stranger gets the not-found page (D-54, D-60); the tenant sees their own |
-| `add-tenant.spec.ts` (S3) | add with no contact → `ACTIVE`, "Not linked yet"; add with a seeded tenant's email → the owner still sees the masked email; tenant signs in → "Is this you?" → "Yes, I rented it" → "Tenant confirmed" and the owner sees the short name; "Not me" → unlinked; old "Invite a tenant" deep link still works |
+| `add-tenant.spec.ts` (S3) | add with no contact and no dates → `ACTIVE`, "Not linked yet", "Dates not given"; add with a seeded tenant's email → the owner still sees the masked email; tenant signs in → "Is this you?" → "Yes, I rented it" → "Tenant confirmed" and the owner sees the short name; "Not me" → unlinked; old "Invite a tenant" deep link still works |
 | `tenant-review-backing.spec.ts` (S3) | owner reviews an unlinked tenant → "Waiting for the other side" and nothing on the tenant's side; after link and "Yes, I rented it" the tenant sees "A review about you is waiting"; the tenant reviews the owner → both publish. The 14-day path is an API test (the reveal job is called directly, D-08) |
 | `claim-later.spec.ts` (S4) | owner adds an email with no account; a new user signs up with it → linked; the tenant's "Add your home" on that home → "Your owner already added this stay"; "I own it" → "Add your tenant (optional)" |
-| `home-stays.spec.ts` (S5) | the §7 matrix: signed out, signed-in stranger, tenant, owner; the tenant's name never appears for outsiders; `#reviews` still opens the author's review |
+| `home-stays.spec.ts` (S5) | the §7 matrix: signed out sees no stays and no periods; a signed-in stranger sees only reviewed stays, as year ranges, with no "Current"; the tenant and the owner see their stays in full; the tenant's name never appears for outsiders; `#reviews` still opens the author's review |
 | existing specs | `invite-form`, `review-form`, `review-visible`, `tenancy-overlap`, `edit-own-entries`, `delete-account`, `mode-switch` stay green in every slice |
 
-API tests to add, beyond the e2e: phone match with one, two and zero accounts; email and phone on different accounts; `invite_self`; deleted or suspended match; `link_refused_by` blocks re-link; pros/cons `not_allowed` on the tenant part; `wrong_direction` for a tenant using the tenant part; NULL-subject review edit and withdraw; the S3 data migration on `PENDING_CONFIRMATION` owner rows; owner deletion clears the new columns; logs never contain the typed contact.
+API tests to add, beyond the e2e: phone match with one, two and zero accounts; email and phone on different accounts; `invite_self`; deleted or suspended match; after "Not me" no later match or invite claim re-links the tenancy, and a contact `PATCH` answers `422 contact_frozen` (owner edits A → B → A cannot re-link A); `not-me` on a tenant-started tenancy answers `409 invalid_transition` and leaves its owner review published; an invite token issued before S3 still claims the migrated `ACTIVE` row; an undated stay is left out of rent history, overlap and a stranger's stays, and its review answers `422 start_date_required` until a move-in month is set; `GET /properties/{id}/stays` answers `401` signed out and returns year ranges without `current` to a stranger; pros/cons `not_allowed` on the tenant part; `wrong_direction` for a tenant using the tenant part; NULL-subject review edit and withdraw; the S3 data migration on `PENDING_CONFIRMATION` owner rows; owner deletion clears the new columns; logs never contain the typed contact.
 
 ---
 
@@ -326,7 +336,8 @@ API tests to add, beyond the e2e: phone match with one, two and zero accounts; e
 - **For master to confirm** (the design assumes the first option):
   1. Tenant reviews publish only on tenant-backed tenancies (LT-7). The mirror for owners, where a review about an owner who never confirmed publishes after 14 days, stays as today.
   2. Outsiders see only "The owner reviewed this tenant" on the home page, not its stars or text (§7, D-54). The open flat number (D-140) and the stay period would let neighbours identify the tenant.
-  3. Undated stays (S6) are optional and last.
+  3. Stays on the home page are signed-in only, and outsiders see only stays with a published review, as year ranges, never "Current" (§7, LT-11). This is the conservative default, matching today's signed-in-only rent history. Master can loosen it.
+- **Later option**: a per-user refusal list, so a person who answered "Not me" is never matched to any stay of that owner again. v1 freezes only the refused stay's contact (LT-4, LT-9).
 
 ---
 
@@ -335,12 +346,12 @@ API tests to add, beyond the e2e: phone match with one, two and zero accounts; e
 - **LT-1** An owner's tenancy stands at once, one-sided (owner half of D-149); the tenant's confirmation is the optional `confirmed_at`.
 - **LT-2** Tenant contact is optional and private: email as today, phone only as HMAC + last 4, a private name label; cleared when the tenant confirms.
 - **LT-3** Silent matching on a verified email or phone, exactly one account, no clash, never the owner; the owner cannot tell whether it matched.
-- **LT-4** The linked tenant answers "Yes, I rented it" (adds `TENANT`) or "Not me" (unlink, never re-linked to them).
+- **LT-4** The linked tenant answers "Yes, I rented it" (adds `TENANT`) or "Not me". "Not me" exists only on owner-started tenancies (`initiated_by = LANDLORD`) the tenant was linked to by matching. It unlinks, freezes the contact and stops all later matching on that tenancy.
 - **LT-5** An unclaimed tenant is `tenant_id = NULL`; no system account.
 - **LT-6** The review form's `tenant` part with `RENT_ON_TIME`, `CARE_OF_HOME`, `COMMUNICATION`, `HOUSE_RULES`, `MOVE_OUT`; no pros or cons on it.
 - **LT-7** An owner → tenant review publishes only on a tenant-backed tenancy; then D-46.
 - **LT-8** The same stay recorded twice answers `409 tenancy_exists`, and the other side confirms instead.
-- **LT-9** The owner edits the tenant contact until the tenant confirms.
+- **LT-9** The owner edits the tenant contact until the tenant confirms or anyone answers "Not me" (`422 contact_frozen`); then the owner can only delete the stay and add a new one.
 - **LT-10** Account deletion also clears `tenant_name` and the phone columns.
-- **LT-11** `GET /properties/{id}/stays` shows every direction per stay under its existing visibility rule; tenant identity never on the home page for outsiders.
-- **LT-12** (optional) Undated stays: no dates held, no listing, a move-in month before the review.
+- **LT-11** `GET /properties/{id}/stays` (signed in only) shows every direction per stay under its existing visibility rule. Outsiders see only stays with a published review, as year ranges without month or "Current"; the two parties see their own stays in full; tenant identity never on the home page for outsiders.
+- **LT-12** Dates are optional from S3: an undated stay holds no dates, is left out of rent history, overlap checks and the stays of non-parties, and needs a move-in month before its review.
