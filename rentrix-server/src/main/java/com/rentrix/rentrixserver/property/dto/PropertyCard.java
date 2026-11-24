@@ -35,6 +35,21 @@ public record PropertyCard(
 	 * The home's green tick (D-134, D-148): {@code UNVERIFIED} homes are listed like any other and the web tags them
 	 * "Not verified yet", never hidden (open by default, D-162).
 	 */
-	VerificationState verification
+	VerificationState verification,
+	/**
+	 * Where the home sits (D-107): area, and society / tower / wing when in one, for the card's title line
+	 * "Society · Tower B · Flat 1204" (D-165). Building-level data, public like the property page's.
+	 */
+	@JsonInclude(JsonInclude.Include.NON_NULL) PropertyLocation location,
+	/**
+	 * The flat number, only when it is {@code OPEN} to everyone (D-140); absent for a {@code MASKED} one (D-57), so
+	 * a card never shows more than the property page shows a stranger.
+	 */
+	@JsonInclude(JsonInclude.Include.NON_NULL) String unitLabel,
+	/**
+	 * Every published review the home's page lists, verified or not (D-165); {@code rating.reviewCount} counts only
+	 * the verified ones behind the headline average (D-163).
+	 */
+	int listedReviews
 ) {
 }

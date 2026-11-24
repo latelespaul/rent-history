@@ -29,6 +29,7 @@ import com.rentrix.rentrixserver.review.RatingAggregate;
 import com.rentrix.rentrixserver.review.RatingAggregateId;
 import com.rentrix.rentrixserver.review.RatingAggregateRepository;
 import com.rentrix.rentrixserver.review.RatingSubjectType;
+import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
@@ -77,6 +78,7 @@ public class PropertyService {
 	private final GreenTicks greenTicks;
 	private final PlaceMatcher placeMatcher;
 	private final FlatFinder flats;
+	private final ReviewRepository reviews;
 	
 	// ---------------------------------------------------------------- reads
 	
@@ -163,7 +165,8 @@ public class PropertyService {
 		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
 		List<Property> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
 		Page<Property> page = new PageImpl<>(ordered, pageable, total);
-		return PageResponse.of(page, p -> card(p, ratings.get(p.getId())));
+		Map<Long, Long> listed = listedReviews(ids);
+		return PageResponse.of(page, p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), true));
 	}
 	
 	public PropertyDetail get(UUID publicId, AuthenticatedUser caller) {
@@ -287,7 +290,10 @@ public class PropertyService {
 			.toList();
 		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY,
 			found.stream().map(Property::getId).toList());
-		return found.stream().map(p -> card(p, ratings.get(p.getId()))).toList();
+		Map<Long, Long> listed = listedReviews(found.stream().map(Property::getId).toList());
+		// "Is it this one?" never shows a flat number (D-139)
+		return found.stream().map(p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), false))
+			.toList();
 	}
 	
 	private static boolean sameSociety(Property p, UUID societyId, String societyKey) {
@@ -715,12 +721,31 @@ public class PropertyService {
 			VerificationState.of(p.getVerificationStatus()), null, editable);
 	}
 	
-	private static PropertyCard card(Property p, RatingAggregate rating) {
+	/**
+	 * A search card: public fields only (D-56). {@code withUnit} adds the flat number when it is {@code OPEN}
+	 * (D-140, D-165); a {@code MASKED} one never shows on a card (D-57).
+	 */
+	private static PropertyCard card(Property p, RatingAggregate rating, long listedReviews, boolean withUnit) {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getHomeSize(), p.getHomeSizeOther(), p.getBathrooms(),
 			p.getAreaSqft(), p.getFurnishing(),
 			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p),
-			VerificationState.of(p.getVerificationStatus()));
+			VerificationState.of(p.getVerificationStatus()),
+			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()),
+			withUnit && p.getUnitLabelVisibility() == FieldVisibility.OPEN ? blankToNull(p.getUnitLabel()) : null,
+			(int) listedReviews);
+	}
+	
+	/** {@code [property id → published home reviews]} for the cards of one page (D-165). */
+	private Map<Long, Long> listedReviews(Collection<Long> propertyIds) {
+		Map<Long, Long> counts = new java.util.HashMap<>();
+		if (propertyIds.isEmpty()) {
+			return counts;
+		}
+		for (Object[] row : reviews.countListedForProperties(propertyIds)) {
+			counts.put((Long) row[0], ((Number) row[1]).longValue());
+		}
+		return counts;
 	}
 	
 	/** True when any level of the home's place is a {@code PENDING} proposal (see {@link PropertyCard}). */

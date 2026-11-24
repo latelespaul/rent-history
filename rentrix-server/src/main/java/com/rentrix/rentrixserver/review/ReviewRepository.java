@@ -35,6 +35,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	Page<Review> findBySubjectUserIdAndDirectionInAndStatusIn(Long subjectUserId, Collection<ReviewDirection> directions,
 		Collection<ReviewStatus> statuses, Pageable pageable);
 
+	/**
+	 * {@code [property id, published home reviews]}: every review a home's page lists, verified or not, for the count
+	 * on its search card (D-165; the headline rating counts only verified ones, D-163).
+	 */
+	@Query("select r.property.id, count(r) from Review r where r.property.id in :ids"
+		+ " and r.direction = com.rentrix.rentrixserver.review.ReviewDirection.TENANT_TO_PROPERTY"
+		+ " and r.status = com.rentrix.rentrixserver.review.ReviewStatus.PUBLISHED group by r.property.id")
+	List<Object[]> countListedForProperties(@Param("ids") Collection<Long> ids);
+	
 	/** Reviews about a property (index ix_reviews_property). */
 	Page<Review> findByPropertyIdAndDirectionAndStatus(Long propertyId, ReviewDirection direction,
 		ReviewStatus status, Pageable pageable);

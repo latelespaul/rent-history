@@ -188,6 +188,12 @@ export interface PropertyCard {
   locationPending?: boolean
   /** The home's green tick (D-148); anything but `VERIFIED` shows "Not verified yet" (D-162). */
   verification?: VerificationState
+  /** Area, and society / tower / wing when in one: the card's title line (D-165). */
+  location?: PropertyLocation
+  /** The flat number, only when it is open to everyone (D-140); never a masked one (D-57). */
+  unitLabel?: string
+  /** Every published review the home's page lists, verified or not (D-165). */
+  listedReviews?: number
 }
 
 /**

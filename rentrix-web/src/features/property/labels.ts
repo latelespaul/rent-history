@@ -109,6 +109,28 @@ export function propertyTitle(p: {
   return p.buildingName?.trim() || p.street?.trim() || p.locality
 }
 
+/**
+ * A home card's title line (D-165): "Prestige Lakeside · Tower B · Flat 1204" for a home in a
+ * society, else the building (or street, or locality) with its flat number. The flat number is
+ * there only when the API sent it, i.e. when it is open to everyone (D-140).
+ */
+export function homeTitle(p: {
+  buildingName: string | null
+  street: string | null
+  locality: string
+  location?: {
+    society?: { name: string }
+    tower?: { name: string }
+    wing?: { name: string }
+  }
+  unitLabel?: string | null
+}): string {
+  const society = p.location?.society?.name.trim()
+  const place = unitLine(p.location, p.unitLabel)
+  if (society) return [society, place].filter(Boolean).join(" · ")
+  return [propertyTitle(p), unitLine(undefined, p.unitLabel)].filter(Boolean).join(" · ")
+}
+
 /** "Koramangala, Bangalore · 560034" */
 export function placeLine(p: {
   locality: string
