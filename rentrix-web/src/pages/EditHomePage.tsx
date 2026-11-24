@@ -161,6 +161,7 @@ function EditForm({ property }: { property: PropertyDetail }) {
       {placed && (
         <LocationPickers
           city={property.city.code}
+          pincode={draft.pincode}
           value={draft.location}
           onChange={setLocation}
           error={error("area")}
