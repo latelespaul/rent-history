@@ -92,7 +92,12 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
         </span>
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link to={`/tenancies/${tenancy.id}`} className="text-lg font-semibold text-ink-900">
+            {/* The home's name opens the home's page; "Open" opens the tenancy (captain 2026-11-24 09:44). */}
+            <Link
+              to={`/p/${tenancy.property.id}`}
+              data-testid="tenancy-home-link"
+              className="text-lg font-semibold text-ink-900"
+            >
               {tenancyHome(tenancy)}
             </Link>
             <Badge variant={status.variant}>{status.label}</Badge>

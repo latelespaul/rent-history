@@ -34,7 +34,8 @@ export function PropertyResult({ property }: { property: PropertyCard }) {
         <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-700">
           <MapPinIcon size={16} className="text-ink-500" />
           {placeLine(property)}
-          {property.locationPending && <LocationPendingBadge className="relative z-10" />}
+          {/* Under the card's link, so a tap on the badge opens the home too (captain 2026-11-24 09:44). */}
+          {property.locationPending && <LocationPendingBadge />}
           {property.verification !== undefined && property.verification !== "VERIFIED" && (
             <Badge data-testid="card-not-verified">Not verified yet</Badge>
           )}

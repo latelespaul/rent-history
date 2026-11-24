@@ -6,7 +6,7 @@ import { fetchReviewTasks, myReviewKeys, reviewKeys, submitReviewForm } from "@/
 import { tenancyKeys } from "@/api/tenancies"
 import { Container } from "@/components/layout/Container"
 import { Button } from "@/components/ui/button"
-import { CheckIcon } from "@/components/ui/icons.gen"
+import { BuildingIcon, CheckIcon, ChevronRightIcon } from "@/components/ui/icons.gen"
 import { Label } from "@/components/ui/label"
 import { ErrorState } from "@/components/ui/states"
 import { Textarea } from "@/components/ui/textarea"
@@ -256,8 +256,13 @@ function SummaryBlock({
   )
 }
 
-/** "You submitted this review" (captain 21:38): what was published, with its tick state. */
-function Submitted({ result, propertyId }: { result: ReviewFormResult; propertyId: string }) {
+/**
+ * "You submitted this review" (captain 21:38): what was published, with its tick state, under the
+ * home it is about. The home's name and place open its page, as the button does (captain
+ * 2026-11-24 09:44: a tap on the home after submitting must open it).
+ */
+function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Tenancy }) {
+  const propertyId = tenancy.property.id
   const home = result.home
   const landlord = result.landlord
   return (
@@ -277,8 +282,24 @@ function Submitted({ result, propertyId }: { result: ReviewFormResult; propertyI
           {BRAND.name} team verifies it later.
         </p>
       </div>
+      <Link
+        to={`/p/${propertyId}`}
+        data-testid="review-home-link"
+        className="mt-5 flex items-center gap-3 rounded-lg border border-line p-3 text-ink-900 no-underline hover:border-teal-600 hover:no-underline"
+      >
+        <span className="rx-placeholder grid size-11 shrink-0 place-items-center rounded-md">
+          <BuildingIcon size={20} className="text-ink-300" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{tenancyHome(tenancy)}</span>
+          <span className="block truncate text-sm text-ink-500">
+            {tenancy.property.locality}, {tenancy.property.city.name}
+          </span>
+        </span>
+        <ChevronRightIcon size={20} className="shrink-0 text-ink-500" />
+      </Link>
       {home && (
-        <figure className="mt-5 space-y-1 rounded-lg border border-line p-4">
+        <figure className="mt-3 space-y-1 rounded-lg border border-line p-4">
           <p className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-ink-900">Home: {home.ratingOverall} / 5</span>
             <ReviewTick state={home.verification} />
@@ -344,7 +365,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
   })
 
   if (submit.data) {
-    return <Submitted result={submit.data} propertyId={tenancy.property.id} />
+    return <Submitted result={submit.data} tenancy={tenancy} />
   }
 
   function goTo(next: number) {
