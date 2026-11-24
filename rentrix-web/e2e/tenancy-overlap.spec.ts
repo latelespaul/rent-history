@@ -74,6 +74,7 @@ test("landlord adds a home, invites a tenant who confirms, and a second tenancy 
     const form = page.getByRole("form", { name: "Property" })
     await form.getByLabel("City").selectOption({ label: cast.city })
     await form.getByLabel("PIN code").fill(cast.pincode)
+    await page.locator("#pf-area").fill(cast.area)
     await form
       .getByRole("list", { name: "Areas" })
       .getByRole("button", { name: new RegExp(`^${cast.area}`) })

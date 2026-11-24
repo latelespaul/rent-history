@@ -16,6 +16,7 @@ test("a new landlord picks the role, adds a property and sees its page", async (
   const form = page.getByRole("form", { name: "Property" })
   await form.getByLabel("City").selectOption({ label: "Bangalore" })
   await form.getByLabel("PIN code").fill("560034")
+  await page.locator("#pf-area").fill("Koramangala")
   await form
     .getByRole("list", { name: "Areas" })
     .getByRole("button", { name: /^Koramangala/ })
