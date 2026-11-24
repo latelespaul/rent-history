@@ -99,6 +99,27 @@ class SqliteMigrationTest {
 	}
 	
 	@Test
+	void bangaloreAndPuneHaveActiveAreasWithSixDigitPincodesOfTheCity() {
+		// V18: main residential localities of BLR and PNQ, the only live cities, with India Post PIN codes
+		List<String> counts = jdbc.queryForList("select city_code || ':' || count(*) from areas"
+			+ " where is_demo = false and status = 'ACTIVE' and created_by is null and id between 201 and 381"
+			+ " group by city_code order by city_code", String.class);
+		assertThat(counts).containsExactly("BLR:82", "PNQ:81");
+		Integer unpinned = jdbc.queryForObject("select count(*) from areas a where a.id between 201 and 381"
+			+ " and not exists (select 1 from area_pincodes p where p.area_id = a.id)", Integer.class);
+		assertThat(unpinned).isZero();
+		List<String> badPins = jdbc.queryForList("select a.name || ' ' || p.pincode from areas a"
+			+ " join area_pincodes p on p.area_id = a.id where a.id between 201 and 381"
+			+ " and (length(p.pincode) <> 6 or p.pincode glob '*[^0-9]*'"
+			+ " or (a.city_code = 'BLR' and p.pincode not like '560%')"
+			+ " or (a.city_code = 'PNQ' and substr(p.pincode, 1, 3) not in ('410', '411', '412')))", String.class);
+		assertThat(badPins).isEmpty();
+		assertThat(jdbc.queryForList("select p.pincode from areas a join area_pincodes p on p.area_id = a.id"
+			+ " where a.city_code = 'BLR' and a.name_key = 'koramangala' order by p.pincode", String.class))
+			.containsExactly("560034", "560095");
+	}
+	
+	@Test
 	@Transactional
 	void locationHierarchyTablesIndexesAndForeignKeys() {
 		List<String> indexes = jdbc.queryForList("select name from sqlite_master where type = 'index'", String.class);
