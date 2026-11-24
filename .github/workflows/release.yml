@@ -1,0 +1,135 @@
+name: Release
+
+# Publishes a build pre-release (build-<shortsha>) after CI passes on master.
+# The Mac deploy path does not use this workflow.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build & Publish Pre-release
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'master')
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      CI_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || github.run_id }}
+
+    steps:
+      - name: Resolve tag
+        id: meta
+        run: |
+          set -eu
+          short="${SHA:0:7}"
+          tag="build-${short}"
+          echo "short=${short}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if gh api "repos/${GH_REPO}/git/ref/tags/${tag}" >/dev/null 2>&1 \
+             || gh release view "${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists; nothing to publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.meta.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Set up JDK 21
+        if: steps.meta.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build Jar
+        if: steps.meta.outputs.exists == 'false'
+        working-directory: rentrix-server
+        run: mvn clean package -DskipTests
+
+      - name: Set up Node.js
+        if: steps.meta.outputs.exists == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: rentrix-web/package-lock.json
+
+      - name: Build Web
+        if: steps.meta.outputs.exists == 'false'
+        working-directory: rentrix-web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package
+        if: steps.meta.outputs.exists == 'false'
+        env:
+          SHORT: ${{ steps.meta.outputs.short }}
+        run: |
+          set -eu
+          jar=$(find rentrix-server/target -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n1)
+          test -n "$jar"
+          stage="$RUNNER_TEMP/doorway"
+          mkdir -p "$stage/web"
+          cp "$jar" "$stage/app.jar"
+          cp -R rentrix-web/dist/. "$stage/web/"
+          {
+            echo "sha=${SHA}"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "ci_run_id=${CI_RUN_ID}"
+            echo "release_run_id=${GITHUB_RUN_ID}"
+          } > "$stage/BUILD"
+          name="doorway-${SHORT}.tar.gz"
+          tar -czf "$RUNNER_TEMP/$name" -C "$stage" app.jar web BUILD
+          ( cd "$RUNNER_TEMP" && sha256sum "$name" > "$name.sha256" )
+          cat "$RUNNER_TEMP/$name.sha256"
+
+      - name: Publish pre-release
+        if: steps.meta.outputs.exists == 'false'
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          SHORT: ${{ steps.meta.outputs.short }}
+        run: |
+          set -eu
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/doorway-${SHORT}.tar.gz" \
+            "$RUNNER_TEMP/doorway-${SHORT}.tar.gz.sha256" \
+            --target "$SHA" \
+            --prerelease \
+            --title "$TAG" \
+            --notes "Build of ${SHA} (CI run ${CI_RUN_ID})."
+
+      - name: Prune old build releases
+        run: |
+          set -eu
+          gh release list --limit 1000 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("build-"))] | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' \
+          | while read -r old; do
+              [ -n "$old" ] || continue
+              case "$old" in build-*) ;; *) continue ;; esac
+              echo "Deleting $old"
+              gh release delete "$old" --cleanup-tag --yes
+            done
