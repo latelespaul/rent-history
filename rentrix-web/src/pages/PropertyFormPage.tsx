@@ -166,6 +166,7 @@ function PropertyForm({ property }: { property?: PropertyDetail }) {
         </div>
         <LocationPickers
           city={values.city}
+          pincode={values.pincode}
           value={values.location}
           onChange={(location) => set("location", location)}
           disabled={!editable}

@@ -35,6 +35,11 @@ interface Props {
   levelErrors?: Partial<Record<"society" | "tower" | "wing", string>>
   /** The line under the area; the landlord form's default says its listing is checked first. */
   hint?: string
+  /**
+   * The form's own PIN code field. While the area box is empty, a 6-digit PIN here lists that
+   * PIN's areas instead of the city's first areas A–Z.
+   */
+  pincode?: string
 }
 
 function LevelError({ id, error }: { id: string; error?: string }) {
@@ -46,12 +51,15 @@ function LevelError({ id, error }: { id: string; error?: string }) {
   )
 }
 
-function AreaPicker({ city, value, onChange, disabled }: Props) {
+function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
   const { viewer } = useSignedIn()
   const [text, setText] = useState("")
+  const pin = pincode?.trim() ?? ""
+  // What the box holds, else the form's PIN code when it is a whole one.
+  const search = text.trim() || (/^\d{6}$/.test(pin) ? pin : "")
   const areas = useQuery({
-    queryKey: locationKeys.areas(city, text.trim(), viewer),
-    queryFn: ({ signal }) => searchAreas(city, text, signal),
+    queryKey: locationKeys.areas(city, search, viewer),
+    queryFn: ({ signal }) => searchAreas(city, search, signal),
     enabled: Boolean(city) && value.area.kind === "none" && !disabled,
     staleTime: 30_000,
   })
@@ -122,6 +130,14 @@ function AreaPicker({ city, value, onChange, disabled }: Props) {
           {typed.length > 0 && areas.isSuccess && areas.data.length === 0 && (
             <li className="text-sm text-ink-500">No area matches “{typed}”.</li>
           )}
+          {typed.length === 0 &&
+            search.length > 0 &&
+            areas.isSuccess &&
+            areas.data.length === 0 && (
+              <li className="text-sm text-ink-500">
+                No area has PIN {search} yet. Type the area name.
+              </li>
+            )}
           {/* Only once the search answered: a tap before that would propose an area that exists. */}
           {typed.length >= 2 &&
             !/^\d+$/.test(typed) &&
