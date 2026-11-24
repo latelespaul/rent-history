@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Review your tenant</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .mode-row { background: var(--rx-surface); border-bottom: var(--rx-border); }
+  .mode-row .container { display: flex; align-items: center; gap: 10px; height: 44px; }
+  .mode-row .segmented span.on.owner { color: var(--rx-landlord-600); }
+  .progress { height: 6px; border-radius: 3px; background: var(--rx-sunk); overflow: hidden; margin-top: 8px; }
+  .progress i { display: block; height: 100%; width: 50%; background: var(--rx-teal-600); }
+  .crit { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: var(--rx-border); }
+  .crit:last-of-type { border-bottom: 0; }
+  .crit .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .crit .q { font-weight: 600; font-size: var(--rx-text-sm); color: var(--rx-ink-900); }
+  .crit .skip { font-size: var(--rx-text-xs); color: var(--rx-ink-500); white-space: nowrap; }
+  .crit .stars svg { width: 30px; height: 30px; }
+  .crit .stars { gap: 6px; }
+  .nav-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Review your tenant</b> · Owner mode · step 2 of 4 · <code>POST /tenancies/{id}/review-form {tenant}</code> · LT-6 LT-7 · D-39 D-46 D-157</div>
+<header data-topbar data-as="landlord" data-active="tenancies"></header>
+<div class="mode-row"><div class="container"><span class="xs muted">Viewing as</span><span class="segmented"><span>Tenant</span><span class="on owner">Owner</span></span></div></div>
+
+<main class="container section stack">
+  <div>
+    <h1 class="h1">Review your tenant</h1>
+    <p class="muted" style="margin-top:6px">Rahul K. · Demo Heights B · Mar 2025 – now</p>
+  </div>
+  <div>
+    <div class="row between"><span class="small" style="font-weight:600">Step 2 of 4 · The tenant</span><span class="xs muted">Draft saved on this device</span></div>
+    <div class="progress"><i></i></div>
+  </div>
+
+  <div class="card">
+    <h2 class="h3"><i data-icon="tenant"></i> How was the tenant?</h2>
+    <p class="xs muted" style="margin-top:-6px">Rate what you know. Skip the rest.</p>
+    <div class="crit"><div class="top"><span class="q">Paid rent on time</span><span class="skip">5 of 5</span></div><span class="stars" data-stars="5"></span></div>
+    <div class="crit"><div class="top"><span class="q">Took care of the home</span><span class="skip">4 of 5</span></div><span class="stars" data-stars="4"></span></div>
+    <div class="crit"><div class="top"><span class="q">Easy to reach and clear</span><span class="skip">4 of 5</span></div><span class="stars" data-stars="4"></span></div>
+    <div class="crit"><div class="top"><span class="q">Respected the society rules and neighbours</span><span class="skip">4 of 5</span></div><span class="stars" data-stars="4"></span></div>
+    <div class="crit"><div class="top"><span class="q">Moved out as agreed (notice, keys, condition)</span><span class="skip">Skipped · still living there</span></div><span class="stars" data-stars="0"></span></div>
+    <hr class="divider">
+    <div class="field">
+      <label class="label">Comment <span class="muted" style="font-weight:400">optional</span></label>
+      <textarea class="textarea">Rent always came by the 5th. Tells me early about repairs and keeps the home clean.</textarea>
+      <span class="hint">No phone numbers, emails or flat numbers. 83 / 2000 <span class="spec">D-43</span></span>
+    </div>
+  </div>
+
+  <div class="notice notice-warn"><i data-icon="eye-off" data-size="18"></i><span>Hidden until your tenant reviews you too, or for 14 days after they confirm this stay, so neither side can react to the other. If they never confirm and our team has not verified the stay, only you see it. <span class="spec">D-46 · LT-7</span></span></div>
+
+  <div class="sunk small"><b>Next: Overall.</b> Your overall rating is worked out from these (4.25 → 4 stars), and you can change it. Then: <i>Would you rent to them again?</i> <span class="spec">D-157</span></div>
+
+  <div class="nav-actions">
+    <button class="btn btn-secondary">Back</button>
+    <button class="btn btn-primary">Next<i data-icon="arrow-right" data-size="18"></i></button>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

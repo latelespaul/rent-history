@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Tenant profile</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .topic { display: grid; grid-template-columns: minmax(0, 1fr) 72px 34px; gap: 8px 10px; align-items: center; font-size: var(--rx-text-sm); }
+  .topic .bar { height: 8px; border-radius: 4px; background: var(--rx-sunk); overflow: hidden; }
+  .topic .bar i { display: block; height: 100%; background: var(--rx-star); border-radius: 4px; }
+  .topic .v { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .topic .new { grid-column: 2 / 4; text-align: right; font-size: var(--rx-text-xs); color: var(--rx-ink-500); }
+  .crits { font-size: var(--rx-text-xs); color: var(--rx-ink-500); margin-top: 6px; }
+</style>
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Tenant profile</b> · signed in as an owner who got an enquiry · <code>GET /users/{id}</code> (tenantRating + criteria), <code>/users/{id}/reviews?as=TENANT</code> · LT-6 · D-52 D-54 D-135 D-158</div>
+<header data-topbar data-as="landlord" data-active="dashboard"></header>
+
+<main class="container section stack">
+  <div class="notice"><i data-icon="eye" data-size="18"></i><span>You see this profile because <b>Priya S.</b> enquired about <b>Demo Heights B</b>. Tenants are not searchable. <span class="spec">D-54</span></span></div>
+
+  <div class="card">
+    <div class="row" style="gap:14px;align-items:flex-start">
+      <span class="avatar avatar-lg avatar-tenant">PS</span>
+      <div style="flex:1;min-width:0">
+        <h1 class="h1">Priya S.</h1>
+        <div class="row" style="gap:6px;margin-top:8px">
+          <span class="badge badge-tenant"><i data-icon="tenant"></i>Tenant</span>
+          <span class="badge badge-verified"><i data-icon="shield-check"></i>Verified tenant</span>
+          <span class="badge badge-verified"><i data-icon="shield-check"></i>ID verified</span>
+        </div>
+        <p class="small muted" style="margin-top:8px">On Doorway Living since Jun 2023 · 3 stays</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Rating as tenant</p>
+    <div class="row" style="margin-top:6px;gap:10px"><span class="score">4.7</span><span class="stars lg" data-stars="5"></span></div>
+    <p class="small muted">from 3 verified reviews · 1 not verified yet, 4.0 ★ <span class="spec">D-135</span></p>
+    <hr class="divider">
+    <h3 class="h3" style="font-size:var(--rx-text-md)">The tenant by topic</h3>
+    <div class="topic">
+      <span>Paid rent on time</span><span class="bar"><i style="width:94%"></i></span><span class="v">4.7</span>
+      <span>Took care of the home</span><span class="bar"><i style="width:86%"></i></span><span class="v">4.3</span>
+      <span>Easy to reach and clear</span><span class="bar"><i style="width:94%"></i></span><span class="v">4.7</span>
+      <span>Respected the society rules and neighbours</span><span class="new">New · 2 ratings</span>
+      <span>Moved out as agreed</span><span class="new">New · 2 ratings</span>
+    </div>
+    <p class="small" style="margin-top:12px"><b>100%</b> of owners would rent to them again <span class="muted">· 3 answers</span></p>
+  </div>
+
+  <div class="card">
+    <h2 class="h3">What owners say</h2>
+    <div class="review">
+      <div class="meta"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">DL</span><span class="who">Demo L.</span><span>Jul 2023 – Jun 2025</span></div>
+      <div class="row" style="gap:6px;margin-top:6px"><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified by Doorway Living</span><span class="badge badge-info">Tenant confirmed</span></div>
+      <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="5"></span><span class="small muted">Would rent to them again</span></div>
+      <p class="text">Rent always came on time. Kept the flat spotless and told me early about a leak, so it got fixed fast.</p>
+      <p class="crits">Rent on time 5 · Care of the home 5 · Easy to reach 5 · Moved out as agreed 5</p>
+      <div class="actions"><span>Published Jul 2025</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+    </div>
+    <div class="review">
+      <div class="meta"><span class="avatar avatar-landlord" style="width:28px;height:28px;font-size:11px">AK</span><span class="who">Anil K.</span><span>Jun 2023 – Jun 2023</span></div>
+      <div class="row" style="gap:6px;margin-top:6px"><span class="badge badge-warn"><i data-icon="clock"></i>Not verified yet</span></div>
+      <div class="row" style="margin-top:8px;gap:8px"><span class="stars" data-stars="4"></span></div>
+      <p class="text">Short stay while their new flat got ready. No issues.</p>
+      <div class="response"><b>Reply from Priya S.</b> · It was a one-month stay between flats.</div>
+      <div class="actions"><span>Published Aug 2023</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+    </div>
+  </div>
+
+  <div class="card card-tight"><p class="small"><i data-icon="lock" data-size="16"></i> <b>Not shown to you:</b> email and phone (not shared), exact dates, addresses, deposits, and the reviews this tenant wrote. <span class="spec">D-57</span></p></div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Add a tenant</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .mode-row { background: var(--rx-surface); border-bottom: var(--rx-border); }
+  .mode-row .container { display: flex; align-items: center; gap: 10px; height: 44px; }
+  .mode-row .segmented span.on.owner { color: var(--rx-landlord-600); }
+  .back { display: inline-flex; gap: 4px; align-items: center; font-size: var(--rx-text-sm); color: var(--rx-ink-700); }
+  .opt { font-weight: 400; color: var(--rx-ink-500); }
+  .match { border: 1.5px solid var(--rx-teal-600); }
+  .match .who { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .input.ph-val { color: var(--rx-ink-500); }
+  .form-actions { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Add a tenant</b> · Owner mode · <code>POST /tenancies</code> (owner: every tenant field optional) · LT-1 LT-2 LT-3 LT-8 · D-149 D-57</div>
+<header data-topbar data-as="landlord" data-active="tenancies"></header>
+<div class="mode-row"><div class="container"><span class="xs muted">Viewing as</span><span class="segmented"><span>Tenant</span><span class="on owner">Owner</span></span></div></div>
+
+<main class="container section stack">
+  <a class="back" href="#"><i data-icon="chevron-right" data-size="16" style="transform:rotate(180deg)"></i>Demo Heights B</a>
+  <div>
+    <h1 class="h1">Add a tenant</h1>
+    <p class="muted" style="margin-top:6px">Demo Heights B · HSR Layout, Bangalore. The stay shows at once, marked <b>Not verified yet</b>.</p>
+  </div>
+
+  <div class="card match">
+    <div class="row" style="gap:8px"><i data-icon="info" data-size="18"></i><b class="small">A tenant already recorded a stay here</b></div>
+    <div class="who">
+      <span class="avatar avatar-tenant">PS</span>
+      <div style="flex:1">
+        <div style="font-weight:600">Priya S.</div>
+        <div class="xs muted">Mar 2025 – now · added by the tenant</div>
+      </div>
+    </div>
+    <p class="xs muted" style="margin-top:10px">Is this the tenant you want to add? Confirming it shows <b>Owner confirmed</b> on their stay. No second stay is made.</p>
+    <div class="form-actions" style="margin-top:12px">
+      <a class="btn btn-primary btn-block" href="#"><i data-icon="check" data-size="18"></i>Yes, confirm this stay</a>
+      <a class="btn btn-secondary btn-block" href="#">No, add someone else</a>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <h2 class="h3"><i data-icon="tenant"></i> Who rented it <span class="opt small">all optional</span></h2>
+    <div class="field"><label class="label">Name</label><input class="input" value="Rahul K."><span class="hint">Only you see this name.</span></div>
+    <div class="field"><label class="label">Email</label><div class="input-icon"><i data-icon="mail" data-size="18"></i><input class="input" value="rahul.k@gmail.com"></div></div>
+    <div class="field"><label class="label">Phone</label><div class="input-icon"><i data-icon="message" data-size="18"></i><input class="input" value="+91 98765 43210"></div></div>
+    <div class="notice notice-teal"><i data-icon="lock" data-size="18"></i><span>Private. We use the email or phone only to link this stay to your tenant's Doorway Living account, if they have one. Nobody else sees them. We keep the phone only as a code we cannot read back. <span class="spec">LT-2 · LT-3</span></span></div>
+  </div>
+
+  <div class="card stack">
+    <h2 class="h3"><i data-icon="calendar"></i> The stay</h2>
+    <div class="split">
+      <div class="field"><label class="label">Moved in</label><input class="input" value="Mar 2025"></div>
+      <div class="field"><label class="label">Moved out</label><input class="input ph-val" value="—" disabled></div>
+    </div>
+    <div class="checkrow"><span class="box on"><i data-icon="check"></i></span><span>They still live here</span></div>
+    <div class="split">
+      <div class="field"><label class="label">Rent / month <span class="opt">optional</span></label><div class="input-icon"><i data-icon="rupee" data-size="18"></i><input class="input" value="32,000"></div></div>
+      <div class="field"><label class="label">Deposit <span class="opt">optional</span></label><div class="input-icon"><i data-icon="rupee" data-size="18"></i><input class="input ph-val" value=""></div></div>
+    </div>
+  </div>
+
+  <div class="notice"><i data-icon="eye-off" data-size="18"></i><span>You can review your tenant 60 days after they move in, or once they move out. Your review stays private until your tenant confirms this stay, or our team verifies it from the rental agreement. <span class="spec">D-39 · LT-7</span></span></div>
+
+  <div class="form-actions">
+    <button class="btn btn-primary btn-lg btn-block"><i data-icon="plus" data-size="18"></i>Save tenant</button>
+    <button class="btn btn-ghost btn-block">Cancel</button>
+  </div>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
