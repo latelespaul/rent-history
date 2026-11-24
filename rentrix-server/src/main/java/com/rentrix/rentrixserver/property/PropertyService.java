@@ -99,8 +99,9 @@ public class PropertyService {
 	 * D-164: resolves {@code q} to the societies and towers it names, typos allowed, so their homes are found next to
 	 * the D-162 text matches; only the best-matching tier counts, so a typo-free match never drags in near names.
 	 * When the text ends in a flat number ("Prestige Lakeside 1204") and an open flat of the named place has it, the
-	 * result is that flat, unless the whole text names a place with as few typos ("Godrej 24"). Inside {@code society=} the whole text may be the flat number. A masked flat number is
-	 * never compared (D-57), so it cannot change the result.
+	 * result is that flat, unless a society whose own name holds that number exactly takes the whole text with as few
+	 * typos ("Godrej 24"; see {@link PlaceMatcher#unitFirst}). Inside {@code society=} the whole text may be the flat
+	 * number. A masked flat number is never compared (D-57), so it cannot change the result.
 	 */
 	private PropertySearchCriteria withTextPlaces(PropertySearchCriteria criteria, AuthenticatedUser caller) {
 		if (criteria.text() == null) {
