@@ -125,6 +125,15 @@ class PropertySocietySearchTest {
 	}
 
 	@Test
+	void aSocietyNameEndingInANumberFindsOnlyThatSociety() throws Exception {
+		Property numbered = flat(locations.society(area, "Prestige Lakeside 2"), null, "101", FieldVisibility.OPEN);
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Prestige Lakeside 2"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(numbered).toArray())));
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Prestige Lakeside 1205"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(b1205).toArray())));
+	}
+	
+	@Test
 	void aMaskedFlatNumberIsNeverMatchedSoItCannotBeProbed() throws Exception {
 		// no open flat has 1301 (only a masked one does) and none has 9999: both give the society's homes alike
 		for (String q : List.of("Prestige Lakeside 1301", "Prestige Lakeside 9999")) {

@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.location;
 
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.regex.Pattern;
  * the city (every live city without one); a society is offered when it is {@code ACTIVE}, holds a published home
  * (whose card already names it, D-162) or the viewer may list it (D-109).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -86,6 +88,7 @@ public class PlaceMatcher {
 		PageRequest bound = PageRequest.of(0, MAX_CANDIDATES);
 		List<Society> candidates = cityCode == null ? societies.findCandidatesInLiveCities(bound)
 			: societies.findCandidatesInCity(cityCode, bound);
+		warnIfCapped("societies", cityCode, candidates.size());
 		List<SocietyHit> whole = new ArrayList<>();
 		// societies whose name takes the first k typed words; the rest may name a tower
 		Map<Long, Integer> prefixCost = new HashMap<>();
@@ -161,6 +164,7 @@ public class PlaceMatcher {
 		PageRequest bound = PageRequest.of(0, MAX_CANDIDATES);
 		List<Area> candidates = cityCode == null ? areas.findCandidatesInLiveCities(bound)
 			: areas.findCandidatesInCity(cityCode, bound);
+		warnIfCapped("areas", cityCode, candidates.size());
 		List<AreaHit> hits = new ArrayList<>();
 		for (Area area : candidates) {
 			if (!viewer.lists(area.getStatus(), area.getCreatedBy())) {
@@ -188,6 +192,13 @@ public class PlaceMatcher {
 	private static boolean offered(LocationStatus status, com.rentrix.rentrixserver.user.User createdBy,
 		long publishedHomes, Viewer viewer) {
 		return status == LocationStatus.ACTIVE || publishedHomes > 0 || viewer.lists(status, createdBy);
+	}
+
+	private static void warnIfCapped(String kind, String cityCode, int loaded) {
+		if (loaded >= MAX_CANDIDATES) {
+			log.warn("Place search loaded the full cap of {} {} candidates in {}; newer {} are not matched",
+				MAX_CANDIDATES, kind, cityCode == null ? "all live cities" : cityCode, kind);
+		}
 	}
 
 	private static void counts(Map<Long, Long> into, List<Object[]> rows) {

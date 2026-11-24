@@ -115,24 +115,29 @@ public class PropertyService {
 				criteria.towerId())), criteria.text(), false, MAX_TEXT_FLATS));
 		}
 		PlaceMatcher.Query query = PlaceMatcher.Query.parse(criteria.text());
-		List<PlaceMatcher.SocietyHit> hits = placeMatcher.societies(criteria.cityCode(), query, caller,
-			MAX_TEXT_PLACES);
-		if (hits.isEmpty() && query.unit() != null) {
-			query = new PlaceMatcher.Query(NameMatch.words(criteria.text()), null);
-			hits = placeMatcher.societies(criteria.cityCode(), query, caller, MAX_TEXT_PLACES);
-		}
-		if (hits.isEmpty()) {
-			return criteria;
-		}
-		int best = hits.getFirst().cost();
-		// fewest typos only: "greens" never brings in a "Grens Park" next to "Demo Greens"
-		List<PlaceMatcher.SocietyHit> top = hits.stream().filter(h -> h.cost() == best).toList();
+		List<PlaceMatcher.SocietyHit> top = fewestTypos(placeMatcher.societies(criteria.cityCode(), query, caller,
+			MAX_TEXT_PLACES));
 		List<Long> homeIds = query.unit() == null ? List.of()
 			: flats.find(top, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId).toList();
+		if (query.unit() != null && homeIds.isEmpty()) {
+			List<PlaceMatcher.SocietyHit> whole = fewestTypos(placeMatcher.societies(criteria.cityCode(),
+				new PlaceMatcher.Query(NameMatch.words(criteria.text()), null), caller, MAX_TEXT_PLACES));
+			if (!whole.isEmpty()) {
+				top = whole;
+			}
+		}
+		if (top.isEmpty()) {
+			return criteria;
+		}
 		return criteria.withTextPlaces(new PropertySearchCriteria.TextPlaces(
 			top.stream().filter(h -> h.tower() == null).map(h -> h.society().getId()).distinct().toList(),
 			top.stream().filter(h -> h.tower() != null).map(h -> h.tower().getId()).distinct().toList(),
 			homeIds));
+	}
+	
+	/** Fewest typos only: "greens" never brings in a "Grens Park" next to "Demo Greens". */
+	private static List<PlaceMatcher.SocietyHit> fewestTypos(List<PlaceMatcher.SocietyHit> hits) {
+		return hits.isEmpty() ? hits : hits.stream().filter(h -> h.cost() == hits.getFirst().cost()).toList();
 	}
 	
 	private static PropertySearchCriteria textHomes(PropertySearchCriteria criteria, List<Property> homes) {
