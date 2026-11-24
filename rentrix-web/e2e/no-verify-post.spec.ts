@@ -106,6 +106,11 @@ test.describe("post with no verification (390 px)", () => {
       await expect(page.getByTestId("unverified-note")).toBeVisible()
       // The list's count names the listed review, not the verified-only "0 reviews".
       await expect(page.getByTestId("reviews-count")).toHaveText("1 review · 0 verified")
+      // On one line beside the heading, never broken as "0 / verified" at 390 px.
+      const countHeight = await page
+        .getByTestId("reviews-count")
+        .evaluate((el) => el.getBoundingClientRect().height)
+      expect(countHeight).toBeLessThanOrEqual(24)
       await expect(
         page.getByRole("region", { name: "Property rating" }).filter({ visible: true }),
       ).toContainText("No verified reviews yet")
