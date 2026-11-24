@@ -17,6 +17,7 @@ import {
   ClockIcon,
   LoginIcon,
   LogoutIcon,
+  MailIcon,
   MenuIcon,
   MessageIcon,
   PlusIcon,
@@ -142,7 +143,7 @@ function ProgressRow({ progress }: { progress: Progress }) {
   )
 }
 
-/** The viewer chip as a menu: the verification row, settings and sign out. */
+/** The viewer chip as a menu: the verification row, settings, contact and sign out. */
 function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: () => void }) {
   return (
     <DropdownMenu>
@@ -175,6 +176,12 @@ function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: (
           <Link to="/settings">
             <UserIcon />
             Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/contact">
+            <MailIcon />
+            Contact us
           </Link>
         </DropdownMenuItem>
         {onSignOut && (
