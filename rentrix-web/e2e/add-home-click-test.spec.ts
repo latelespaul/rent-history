@@ -120,7 +120,7 @@ test("a new tenant adds a Hyderabad flat in Tower 4 · Wing B, tagged pending re
     ).toBeVisible()
     await expect(page.getByTestId("unit-line")).toHaveText(`Tower 4 · Wing B · Flat ${flat}`)
     await expect(page.getByText(/only tenants with a confirmed tenancy/i)).toHaveCount(0)
-    await expect(page.getByText(/anyone signed in .* can review this home/i)).toBeVisible()
+    await expect(page.getByText(/anyone signed in can review this home/i)).toBeVisible()
     await shot("property-page")
     const noScroll = await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
