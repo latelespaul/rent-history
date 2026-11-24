@@ -77,7 +77,7 @@ export function CardReviews({
       <span
         data-testid="card-reviews"
         className={cn("inline-flex items-center gap-1.5 text-sm whitespace-nowrap", className)}
-        aria-label={`Rated ${rating.average.toFixed(1)} out of 5 from ${reviewCount(verified)} verified, ${reviewCount(all)} in all`}
+        aria-label={`Rated ${rating.average.toFixed(1)} out of 5 from ${verified} verified of ${reviewCount(all)}`}
       >
         <Stars value={rating.average} />
         <span className="font-semibold text-ink-900">{rating.average.toFixed(1)}</span>

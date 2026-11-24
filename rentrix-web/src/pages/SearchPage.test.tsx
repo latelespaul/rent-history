@@ -66,7 +66,7 @@ describe("SearchPage", () => {
     expect(await screen.findByRole("heading", { name: "12 properties in Bangalore" })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Demo Residency A" }).getAttribute("href")).toBe("/p/a")
     expect(
-      screen.getByLabelText("Rated 4.3 out of 5 from 4 reviews verified, 4 reviews in all"),
+      screen.getByLabelText("Rated 4.3 out of 5 from 4 verified of 4 reviews"),
     ).toBeTruthy()
     // one verified review is no average yet (D-52): the card counts it
     expect(screen.getByText("1 review")).toBeTruthy()
