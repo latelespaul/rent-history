@@ -24,7 +24,7 @@ One form writes the existing two review rows of the tenant: `TENANT_TO_PROPERTY`
 
 ## API
 
-- `POST /tenancies/{id}/review-form` `{home: Part, landlord?: Part}`, with `Part = {ratingOverall, criteria: {PARAM: 1–5}, wouldRecommend?, body?, pros?, cons?}`. It writes both reviews in one transaction, so both are saved or neither is. It runs every create rule per direction (D-37 to D-45), then publishes as today: the home at once; the landlord review at once only when the landlord's review already waits (D-46). The answer is `201 {home: ReviewView, landlord?: ReviewView}`.
+- `POST /tenancies/{id}/review-form` `{home?: Part, landlord?: Part}` (at least one part), with `Part = {ratingOverall, criteria: {PARAM: 1–5}, wouldRecommend?, body?, pros?, cons?}`. It writes both reviews in one transaction, so both are saved or neither is. It runs every create rule per direction (D-37 to D-45), then publishes as today: the home at once; the landlord review at once only when the landlord's review already waits (D-46). The answer is `201 {home: ReviewView, landlord?: ReviewView}`.
 - `POST /tenancies/{id}/reviews` and `PATCH /reviews/{id}` take no form fields. `PATCH` edits the overall rating and the text; a form review keeps its parameter ratings, `wouldRecommend`, pros and cons.
 - `ReviewView` gains `formReview` (true for a form review), `criteria`, `wouldRecommend`, `pros` and `cons`. They are hidden with the text while a review awaits reveal or its text is hidden (D-46, D-50).
 - `RatingDetail` (`GET /properties/{id}/rating`, `landlordRating` on `GET /users/{id}`) gains `criteria: [{criterion, ratingCount, average?}]` and `recommend: {answered, yes}`.
