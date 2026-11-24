@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { DemoBadge } from "@/components/ui/badge"
+import { Badge, DemoBadge } from "@/components/ui/badge"
 import { BuildingIcon, MapPinIcon } from "@/components/ui/icons.gen"
 import type { PropertyCard } from "@/types/api"
 import { placeLine, propertyTitle } from "./labels"
@@ -35,6 +35,9 @@ export function PropertyResult({ property }: { property: PropertyCard }) {
           <MapPinIcon size={16} className="text-ink-500" />
           {placeLine(property)}
           {property.locationPending && <LocationPendingBadge className="relative z-10" />}
+          {property.verification !== undefined && property.verification !== "VERIFIED" && (
+            <Badge data-testid="card-not-verified">Not verified yet</Badge>
+          )}
         </p>
         <PropertyFacts property={property} />
         <p className="mt-auto border-t border-line pt-2.5 text-sm text-ink-700">

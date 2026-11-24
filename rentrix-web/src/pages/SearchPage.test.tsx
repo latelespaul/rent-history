@@ -98,6 +98,27 @@ describe("SearchPage", () => {
     expect(router.state.location.search).toBe("?city=BLR&sort=newest")
   })
 
+  it("sends the search box as q, so a society name or a PIN code finds the home (D-162)", async () => {
+    api.respond = (search) =>
+      search.size === 50
+        ? page(BLR_HOMES)
+        : page([card({ id: "s", buildingName: "Sobha", verification: "UNVERIFIED" })])
+    const user = userEvent.setup()
+    const router = renderAt("/search?city=BLR&locality=HSR%20Layout")
+    const box = await screen.findByRole("textbox", { name: /Locality, society, building or PIN/ })
+    expect((box as HTMLInputElement).value).toBe("HSR Layout")
+
+    await user.clear(box)
+    await user.type(box, "560102")
+    await user.click(screen.getByRole("button", { name: "Search" }))
+
+    expect(router.state.location.search).toBe("?city=BLR&q=560102")
+    await vi.waitFor(() =>
+      expect(resultCalls().at(-1)).toMatchObject({ city: "BLR", q: "560102", locality: undefined }),
+    )
+    expect(await screen.findByTestId("card-not-verified")).toBeTruthy()
+  })
+
   it("pages through results with a 1-based page in the URL", async () => {
     const user = userEvent.setup()
     const router = renderAt("/search?city=BLR")

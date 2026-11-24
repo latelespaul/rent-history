@@ -657,7 +657,8 @@ public class PropertyService {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getHomeSize(), p.getHomeSizeOther(), p.getBathrooms(),
 			p.getAreaSqft(), p.getFurnishing(),
-			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p));
+			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p),
+			VerificationState.of(p.getVerificationStatus()));
 	}
 	
 	/** True when any level of the home's place is a {@code PENDING} proposal (see {@link PropertyCard}). */

@@ -155,6 +155,8 @@ export interface PropertyCard {
   landlordName: string
   /** The area, society, tower or wing is a new name the team has not reviewed yet; shown tagged. */
   locationPending?: boolean
+  /** The home's green tick (D-148); anything but `VERIFIED` shows "Not verified yet" (D-162). */
+  verification?: VerificationState
 }
 
 /**
@@ -388,6 +390,9 @@ export type TenancyStatus =
 
 export type TenancyParty = "LANDLORD" | "TENANT"
 
+/** Review lifecycle (§7.2). */
+export type ReviewStatus = "AWAITING_REVEAL" | "PUBLISHED" | "HIDDEN" | "WITHDRAWN"
+
 /** The other side of a tenancy: public id and short name only (D-57). */
 export interface PartyRef {
   id: string
@@ -444,6 +449,8 @@ export interface Tenancy {
   actions: TenancyActions
   /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
   reviewed?: boolean
+  /** The caller's home review on this tenancy; only a PUBLISHED one shows on the home's page. */
+  homeReviewStatus?: ReviewStatus | null
   /** The team's green tick on the tenancy (D-134, D-147). */
   verificationStatus?: VerificationState
   /** Set only when an edit gave the caller a new role ("I own it" makes a tenant a landlord). */

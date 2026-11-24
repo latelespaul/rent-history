@@ -70,13 +70,16 @@ export function useRentHistory(id: string, enabled: boolean) {
   })
 }
 
-/** Property reviews: signed-in only for text (D-56); `null` until the API serves them (B6). */
-export function usePropertyReviews(id: string, enabled: boolean) {
-  const { viewer } = useSignedIn()
+/**
+ * Property reviews, full text for everyone (D-161), cached per viewer because only the author gets
+ * edit and delete; `null` until the API serves them (B6).
+ */
+export function usePropertyReviews(id: string) {
+  const { ready, viewer } = useSignedIn()
   return useQuery({
     queryKey: propertyKeys.reviews(id, viewer),
     queryFn: ({ signal }) => fetchPropertyReviews(id, signal),
-    enabled,
+    enabled: ready && Boolean(id),
     retry: false,
   })
 }

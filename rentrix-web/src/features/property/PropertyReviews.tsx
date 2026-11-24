@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useLocation } from "react-router-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { deleteReview, respondToReview, updateReview } from "@/api/properties"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +19,6 @@ import type { PropertyReview, RatingSummary } from "@/types/api"
 import { dayLabel, monthLabel, reviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { PersonTick } from "./PersonTick"
-import { SignInPrompt } from "./SignInPrompt"
 import { ReviewTick } from "./ReviewTick"
 import { usePropertyReviews } from "./useProperties"
 
@@ -205,9 +205,20 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
 
 function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
+  // Only the author gets edit or withdraw (D-156): that marks their own review.
+  const mine = Boolean(review.actions?.edit || review.actions?.withdraw)
   return (
-    <li className="space-y-1.5 py-4 first:pt-0" data-testid="property-review">
+    <li
+      className="space-y-1.5 py-4 first:pt-0"
+      data-testid="property-review"
+      data-mine={mine || undefined}
+    >
       <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+        {mine && (
+          <Badge variant="tenant" data-testid="my-review">
+            Your review
+          </Badge>
+        )}
         <span className="font-semibold text-ink-900">{review.author?.shortName ?? "Tenant"}</span>
         {review.author && <PersonTick verified={review.author.verified} role="tenant" />}
         {review.author?.badges?.idVerified && <Badge>ID verified</Badge>}
@@ -253,32 +264,29 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
 }
 
 /**
- * What tenants say about the home. Review text is for signed-in users (D-56); anonymous visitors
- * see the count. Until the API serves reviews (B6) the card says so.
+ * What tenants say about the home: full text and ratings for everyone, signed in or not (captain
+ * 2026-11-24 00:31, D-161). The author sees "Your review" with Edit and Delete. Until the API
+ * serves reviews (B6) the card says so.
  */
 export function PropertyReviews({
   propertyId,
   rating,
-  signedIn,
 }: {
   propertyId: string
   rating: RatingSummary
-  signedIn: boolean
 }) {
-  const reviews = usePropertyReviews(propertyId, signedIn)
+  const reviews = usePropertyReviews(propertyId)
+  const { hash } = useLocation()
+  const section = useRef<HTMLElement>(null)
+  const loaded = reviews.isSuccess
+  // "See my review" and "Read n reviews" link to #reviews; the list loads after the page, so scroll
+  // to it once it is there.
+  useEffect(() => {
+    if (loaded && hash === "#reviews") section.current?.scrollIntoView?.({ block: "start" })
+  }, [loaded, hash])
 
   let body
-  if (!signedIn) {
-    body = (
-      <SignInPrompt
-        what={
-          rating.reviewCount > 0
-            ? `Sign in to read ${reviewCount(rating.reviewCount)} from verified tenants.`
-            : "Sign in to read reviews from verified tenants."
-        }
-      />
-    )
-  } else if (reviews.isPending) {
+  if (reviews.isPending) {
     body = <p className="text-sm text-ink-500">Loading reviews…</p>
   } else if (reviews.isError) {
     body = (
@@ -316,6 +324,7 @@ export function PropertyReviews({
 
   return (
     <section
+      ref={section}
       id="reviews"
       aria-labelledby="reviews-heading"
       className="space-y-3 rounded-xl border border-line bg-surface p-5 shadow-sm"

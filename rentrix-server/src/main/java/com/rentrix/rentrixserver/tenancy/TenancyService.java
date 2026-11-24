@@ -15,6 +15,7 @@ import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.review.Review;
+import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.security.AccessTokenService;
@@ -901,6 +902,8 @@ public class TenancyService {
 			t.getEndedAt(),
 			actions,
 			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()),
+			side == TenancyParty.TENANT ? reviews.findByTenancyIdAndDirection(t.getId(),
+				ReviewDirection.TENANT_TO_PROPERTY).map(Review::getStatus).orElse(null) : null,
 			VerificationState.of(t.getVerificationStatus()),
 			null);
 	}

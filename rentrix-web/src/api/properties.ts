@@ -89,7 +89,7 @@ export async function fetchRentHistory(
   }
 }
 
-/** `GET /properties/{id}/reviews` (text only when signed in, D-56); null until the API serves it. */
+/** `GET /properties/{id}/reviews` (public, full text, D-161); null until the API serves it. */
 export function fetchPropertyReviews(id: string, signal?: AbortSignal) {
   return optionalList<PropertyReview>(`/properties/${encodeURIComponent(id)}/reviews`, signal)
 }

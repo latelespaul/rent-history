@@ -237,7 +237,7 @@ const TRUST = [
 const FAQ = [
   [
     "Do I need an account?",
-    "To search homes and read full reviews, sign in with Google; it is one step. A home's page and its ratings open for anyone with the link. To post, verify with any one: phone, Aadhaar or LinkedIn.",
+    "No. Anyone can search homes and read their reviews. Sign in with Google (one step) for rent history and landlord profiles. To post, verify with any one: phone, Aadhaar or LinkedIn.",
   ],
   [
     "Who can post a review?",
