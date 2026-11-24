@@ -32,6 +32,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useLoginHref } from "@/features/auth/useLoginHref"
+import { addHomePath, type Mode } from "@/features/mode/mode"
+import { ModeSwitch } from "@/features/mode/ModeSwitch"
 import { STEPS, type Progress } from "@/features/verification/progress"
 import { cn } from "@/lib/utils"
 import { Brand } from "./Brand"
@@ -195,14 +197,18 @@ function SignIn({ block }: { block?: boolean }) {
 /**
  * The sticky top bar (DESIGN.md §4.4 `.topbar`): brand, role-aware nav, the city picker,
  * the "Demo data" badge, and the viewer or "Sign in". Under 860 px the nav, picker and
- * sign-in fold into a menu sheet behind the hamburger.
+ * sign-in fold into a menu sheet behind the hamburger. A signed-in viewer gets a slim second row
+ * with the Tenant | Owner switch (PLAN R10), at every width, so the 390 px bar never overflows.
  */
 export function TopBar({
   viewer,
   onSignOut,
+  onModeChange,
 }: {
   viewer: ShellViewer | null
   onSignOut?: () => void
+  /** Draws the Tenant | Owner switch for a viewer who picked a role (PLAN R10). */
+  onModeChange?: (mode: Mode) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const items = navFor(viewer)
@@ -236,7 +242,7 @@ export function TopBar({
           {viewer && (
             // "+ Add your home" (D-139, captain 22:22): in both modes, on every page.
             <Button asChild size="sm" data-testid="add-home-button">
-              <Link to="/homes/new">
+              <Link to={addHomePath(viewer.mode ?? "TENANT")}>
                 <PlusIcon />
                 <span className="max-[420px]:sr-only">Add your home</span>
               </Link>
@@ -334,6 +340,14 @@ export function TopBar({
           </Sheet>
         </div>
       </Container>
+      {viewer && viewer.mode && viewer.roles.length > 0 && onModeChange && (
+        <div className="border-t border-line bg-background">
+          <Container className="flex h-11 items-center gap-3">
+            <span className="text-xs font-semibold text-ink-500">Viewing as</span>
+            <ModeSwitch mode={viewer.mode} onChange={onModeChange} />
+          </Container>
+        </div>
+      )}
     </header>
   )
 }

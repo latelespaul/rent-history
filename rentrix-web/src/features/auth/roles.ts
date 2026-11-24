@@ -1,3 +1,4 @@
+import { modeHome, readMode } from "@/features/mode/mode"
 import type { CurrentUser } from "@/types/api"
 
 export type PickableRole = "TENANT" | "LANDLORD"
@@ -15,9 +16,12 @@ export const ROLE_COPY: Record<PickableRole, { title: string; badge: string; tex
   },
 }
 
-/** Where a newly onboarded user lands without `?next=` (DESIGN.md §2.2). */
-export function roleHome(roles: CurrentUser["roles"]): string {
-  return roles.includes("LANDLORD") ? "/me/dashboard" : "/me/tenancies"
+/**
+ * Where a signed-in user lands without `?next=` (DESIGN.md §2.2): the home of their saved
+ * Tenant | Owner mode (PLAN R10), Tenant by default and Owner for an owner-only account.
+ */
+export function roleHome(user: Pick<CurrentUser, "id" | "roles">): string {
+  return modeHome(readMode(user))
 }
 
 export interface Group {

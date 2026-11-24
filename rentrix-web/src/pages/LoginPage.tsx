@@ -66,9 +66,7 @@ export default function LoginPage() {
   if (state.status === "signedIn") {
     const { user } = state
     // The role pick keeps a plain `next`; a returning user without one goes to their role home.
-    const next = user.needsOnboarding
-      ? safeNext(nextParam)
-      : safeNext(nextParam, roleHome(user.roles))
+    const next = user.needsOnboarding ? safeNext(nextParam) : safeNext(nextParam, roleHome(user))
     return <Navigate to={afterSignInPath(user, next)} replace />
   }
 

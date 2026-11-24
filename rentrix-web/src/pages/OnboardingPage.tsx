@@ -57,7 +57,7 @@ export default function OnboardingPage() {
 
   if (!user) return null
   if (!user.needsOnboarding && !submit.isPending && !submit.isSuccess) {
-    return <Navigate to={safeNext(params.get("next"), roleHome(user.roles))} replace />
+    return <Navigate to={safeNext(params.get("next"), roleHome(user))} replace />
   }
 
   const toggle = (role: PickableRole, on: boolean) =>

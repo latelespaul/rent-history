@@ -189,7 +189,7 @@ Routes are proposals for the React app. "Mockup" and "Screenshot" paths are rela
 | 5 | Tenant profile | `/u/:id?as=tenant`, `/share/:token` | self, own landlords, enquiry grant, share link | `GET /users/{id}`, `/reviews?as=TENANT` | D-31, D-54 | `mockups/tenant-profile.html` | `screenshots/tenant-profile-desktop.png` |
 | 6 | Write review | `/tenancies/:id/review` | tenancy party, window open | `POST /tenancies/{id}/reviews` | D-29, D-37–D-43, D-46, D-47 | `mockups/write-review.html` | `screenshots/write-review-desktop.png` |
 | 7 | My tenancies | `/me/tenancies` | signed in | `GET /me/tenancies`, `/me/review-tasks` | D-25, D-34, D-39 | `mockups/my-tenancies.html` | `screenshots/my-tenancies-desktop.png` |
-| 8 | Landlord dashboard | `/me/dashboard` | `LANDLORD` | `GET /me/properties`, `/me/tenancies?role=LANDLORD`, `/me/enquiries?as=LANDLORD` | D-21, D-34, D-42 | `mockups/landlord-dashboard.html` | `screenshots/landlord-dashboard-desktop.png` |
+| 8 | Landlord dashboard | `/me/dashboard` (Owner mode's home) | any signed-in user (without `LANDLORD`: how to add a home you own; PLAN R10) | `GET /me/properties`, `/me/tenancies?role=LANDLORD`, `/me/enquiries?as=LANDLORD` | D-21, D-34, D-42 | `mockups/landlord-dashboard.html` | `screenshots/landlord-dashboard-desktop.png` |
 | 9 | Sign in / sign up (+ dev login) | `/login` | anonymous | `GET /auth/config`, `POST /auth/google`, dev: `/auth/dev-users`, `/auth/dev-login` | D-70–D-77 | `mockups/login.html` | `screenshots/login-desktop.png` |
 | 10 | First sign-in role pick | `/welcome` | signed in, not onboarded | `POST /me/onboarding` | D-16, D-73 | `mockups/onboarding.html` | `screenshots/onboarding-desktop.png` |
 | – | Icon sheet | – | design | – | §5 | `icons.html` | `screenshots/icons-desktop.png` |
