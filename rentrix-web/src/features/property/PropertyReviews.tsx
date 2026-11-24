@@ -309,7 +309,7 @@ export function PropertyReviews({
       <EmptyState
         icon="star"
         title="No reviews yet"
-        description="Anyone who rents or rented this home can review it after verifying their phone. Each review shows Verified or Not verified yet."
+        description="Anyone signed in who verified their phone or email can review this home. Each review shows Verified or Not verified yet."
       />
     )
   } else {
