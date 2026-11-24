@@ -264,7 +264,7 @@ What a viewer sees of the stays themselves (the period is the part that could id
 
 #### Undated stays: code that reads `start_date`
 
-S3 makes `start_date` nullable. Every server site that reads it gets one undated rule (LT-12). A site not in this list must not read it.
+S3 makes `start_date` nullable. Every server site that reads it gets one undated rule (LT-12). This list is the readers known on 2026-11-24. The S3 PR searches the server and the web for `startDate`, `getStartDate` and `start_date`, gives every new reader its undated rule here, and adds a test for it.
 
 | Site (today's code) | Undated rule |
 |---|---|
@@ -284,6 +284,22 @@ S3 makes `start_date` nullable. Every server site that reads it gets one undated
 | `TenancyNotifier` (lines 46, 57, 89: email text) | leaves the date out when there is none |
 | `AdminQueueService` (line 284: queue card text) | "Dates not given" |
 | `HomeService` (add-home tenant path, three reads) | unchanged: the tenant's add-home still asks for the move-in date (D-139) |
+| `TenancyController.MINE_SORTS` (`GET /me/tenancies?sort=start`) | undated stays sort last, whatever the database's NULL order: order by the start date with NULLs last |
+
+Web readers (`rentrix-web/src`):
+
+| Site (today's code) | Undated rule |
+|---|---|
+| `types/api.ts` (`TenancyView` and the other tenancy types) | `startDate: string \| null` |
+| `features/tenancy/labels.ts` (lines 103, 116: rent "from" label, period label) | "Dates not given"; never slice a null |
+| `features/tenancy/TenancyCard.tsx` | no "Since …" line |
+| `features/tenancy/reviewWindow.ts` | follows the server rule: open when `ENDED`, needs a move-in month when `ACTIVE` |
+| `features/tenancy/TenancyActions.tsx` (end-date `min`) | no minimum |
+| `features/tenancy/tenancyForm.ts`, `pages/TenancyRequestPage.tsx` | the owner's "Add a tenant" form accepts empty dates; "They still live here" sends `livesThere` |
+| `features/edit/tenancyEdit.ts`, `pages/EditTenancyPage.tsx` | the dates may stay empty |
+| `features/tenancy/ApprovalPrompt.tsx` | already null-safe (`startDate?.slice`); unchanged |
+| `pages/WriteReviewPage.tsx` (Stay step) | asks for the move-in month only for an undated `ACTIVE` stay, with the short reason |
+| `features/home/addHome.ts`, `pages/AddHomePage.tsx` | unchanged: the tenant's add-home still asks for the move-in date (D-139) |
 
 ### 8.2 Database (Flyway, next free version when each PR merges; master is at V17)
 
@@ -348,6 +364,7 @@ API tests in `rentrix-server` for each rule above, and Playwright e2e at 390 px 
 | `add-tenant.spec.ts` (S3) | add with no contact and no dates → `ACTIVE`, "Not linked yet", "Dates not given"; add with a seeded tenant's email → the owner still sees the masked email; tenant signs in → "Is this you?" → "Yes, I rented it" → "Tenant confirmed" and the owner sees the short name; "Not me" → unlinked; old "Invite a tenant" deep link still works |
 | `tenant-review-backing.spec.ts` (S3) | owner reviews an unlinked tenant → "Waiting for the other side" and nothing on the tenant's side; after link and "Yes, I rented it" the tenant sees "A review about you is waiting"; the tenant reviews the owner → both publish. The 14-day path is an API test (the reveal job is called directly, D-08) |
 | `claim-later.spec.ts` (S4) | owner adds an email with no account; a new user signs up with it → linked; the tenant's "Add your home" on that home → "Your owner already added this stay"; "I own it" → "Add your tenant (optional)" |
+| `undated-stay.spec.ts` (S3) | an owner adds a tenant with no dates; the stay's card, tenancy page and edit page render at 390 px with "Dates not given" and no error |
 | `home-stays.spec.ts` (S5) | the §7 matrix: signed out sees no stays and no periods; a signed-in stranger sees only reviewed stays, as year ranges, with no "Current"; the tenant and the owner see their stays in full; the tenant's name never appears for outsiders; `#reviews` still opens the author's review |
 | existing specs | `invite-form`, `review-form`, `review-visible`, `tenancy-overlap`, `edit-own-entries`, `delete-account`, `mode-switch` stay green in every slice |
 
