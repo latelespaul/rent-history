@@ -55,13 +55,15 @@ export const routes = [
           { path: "/tenancies/:id/edit", element: <EditTenancyPage /> },
           { path: "/tenancies/:id", element: <TenancyPage /> },
           { path: "/tenancy-invite", element: <TenancyInvitePage /> },
+          // Owner mode's home (PLAN R10): open to every signed-in user; without the landlord
+          // role it shows how to add a home you own. The listing pages stay landlord-only.
+          { path: "/me/dashboard", element: <LandlordDashboardPage /> },
           { path: "/me/*", element: <NotFoundPage /> },
         ],
       },
       {
         element: <RequireAuth role="LANDLORD" />,
         children: [
-          { path: "/me/dashboard", element: <LandlordDashboardPage /> },
           { path: "/me/properties", element: <LandlordDashboardPage /> },
           { path: "/me/properties/new", element: <PropertyFormPage /> },
           { path: "/me/properties/:id/edit", element: <PropertyFormPage /> },

@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { PencilIcon, PlusIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
+import { addHomePath } from "@/features/mode/mode"
+import { MyReviews } from "@/features/review/MyReviews"
+import { BRAND } from "@/lib/brand"
 import { propertyTitle, sizeLabel, typeLabel } from "@/features/property/labels"
 import { RatingLine } from "@/features/property/Rating"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
@@ -138,6 +141,43 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
  */
 export default function LandlordDashboardPage() {
   const { state } = useAuth()
+  const isLandlord = state.user?.roles.includes("LANDLORD") ?? false
+  if (!isLandlord) return <NoOwnedHomes />
+  return <OwnerDashboard />
+}
+
+/**
+ * Owner mode for an account without the landlord role (PLAN R10): nothing is owned yet, so the
+ * page says how to start. Adding a home with "I own it" gives the role (D-139).
+ */
+function NoOwnedHomes() {
+  return (
+    <main>
+      <Container className="space-y-6 py-8">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-ink-900">Homes you own</h1>
+          <p className="mt-1 text-ink-500">Your homes, their tenants and the reviews about you.</p>
+        </div>
+        <EmptyState
+          icon="home"
+          title="No homes you own yet"
+          description={`Add a home you own and you become its landlord on ${BRAND.name}. Its tenancies and reviews then show here.`}
+          action={
+            <Button asChild>
+              <Link to={addHomePath("OWNER")} data-testid="owner-add-home">
+                <PlusIcon />
+                Add a home you own
+              </Link>
+            </Button>
+          }
+        />
+      </Container>
+    </main>
+  )
+}
+
+function OwnerDashboard() {
+  const { state } = useAuth()
   const properties = useMyProperties()
   const tenancies = useMyTenancies("LANDLORD")
   const items = properties.data?.items ?? []
@@ -249,6 +289,42 @@ export default function LandlordDashboardPage() {
             </ul>
           )}
         </section>
+
+        {tenancies.isSuccess && (
+          <section
+            aria-labelledby="lets-heading"
+            className="space-y-3"
+            data-testid="owner-tenancies"
+          >
+            <h2 id="lets-heading" className="text-xl font-semibold">
+              Tenancies on your homes ({lets.length})
+            </h2>
+            {lets.length === 0 ? (
+              <EmptyState
+                icon="tenancy"
+                title="No tenancies yet"
+                description="Invite a tenant from one of your published properties."
+              />
+            ) : (
+              lets.map((t) => <TenancyCard key={t.id} tenancy={t} />)
+            )}
+          </section>
+        )}
+
+        <MyReviews
+          kind="received"
+          side="LANDLORD"
+          title="Reviews about you"
+          empty="Reviews your tenants write about you as a landlord show here."
+          testId="owner-reviews-received"
+        />
+        <MyReviews
+          kind="written"
+          side="LANDLORD"
+          title="Reviews you wrote of tenants"
+          empty="Review a tenant from their tenancy once it has run for a while."
+          testId="owner-reviews-written"
+        />
       </Container>
     </main>
   )

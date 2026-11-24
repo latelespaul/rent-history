@@ -222,3 +222,59 @@ describe("nav helpers", () => {
     expect(initials("")).toBe("?")
   })
 })
+
+describe("mode switch", () => {
+  const both: ShellViewer = { shortName: "Demo B.", roles: ["TENANT", "LANDLORD"], isDemo: false }
+
+  function renderWithMode(viewer: ShellViewer, onModeChange = vi.fn()) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createMemoryRouter(
+      [
+        {
+          element: <AppLayout viewer={viewer} onModeChange={onModeChange} />,
+          children: [{ path: "*", element: <main>Page</main> }],
+        },
+      ],
+      { initialEntries: ["/search"] },
+    )
+    render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+    return onModeChange
+  }
+
+  it("shows Tenant | Owner in the header and reports a switch", async () => {
+    const onModeChange = renderWithMode({ ...both, mode: "TENANT" })
+    const group = within(banner()).getByRole("group", { name: "Mode" })
+    expect(within(group).getByRole("button", { name: "Tenant" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    )
+    await userEvent.setup().click(within(group).getByRole("button", { name: "Owner" }))
+    expect(onModeChange).toHaveBeenCalledWith("OWNER")
+  })
+
+  it("draws the nav and the add-home action for the mode", () => {
+    renderWithMode({ ...both, mode: "OWNER" })
+    const nav = within(banner()).getByRole("navigation", { name: "Main" })
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual(["Search", "Dashboard", "Tenancies"])
+    expect(screen.getByTestId("add-home-button").getAttribute("href")).toBe("/homes/new?own=1")
+  })
+
+  it("gives Tenant mode the tenant nav even to a landlord", () => {
+    expect(navFor({ ...both, mode: "TENANT" }).map((i) => i.label)).toEqual([
+      "Search",
+      "My tenancies",
+    ])
+  })
+
+  it("has no switch before a role is picked", () => {
+    renderWithMode({ ...both, roles: [], mode: "TENANT" })
+    expect(within(banner()).queryByRole("group", { name: "Mode" })).toBeNull()
+  })
+})

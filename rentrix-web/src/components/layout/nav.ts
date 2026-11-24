@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/icon"
+import type { Mode } from "@/features/mode/mode"
 import type { Progress } from "@/features/verification/progress"
 
 /** Who the shell is drawn for. `null` is an anonymous visitor. */
@@ -10,6 +11,8 @@ export interface ShellViewer {
   isDemo: boolean
   /** The verification row of the account menu and the chip's dot (D-121); null when done. */
   progress?: Progress | null
+  /** The header's Tenant | Owner mode (PLAN R10); absent draws the role-based nav. */
+  mode?: Mode
 }
 
 export interface NavItem {
@@ -20,12 +23,16 @@ export interface NavItem {
   end?: boolean
 }
 
-/** The role-aware top bar links (DESIGN.md §3 routes, mockups' top bar). */
+/**
+ * The top bar links (DESIGN.md §3 routes, mockups' top bar): by the viewer's mode, else by role.
+ * Owner mode gets the dashboard and the tenancies on their homes; Tenant mode their own tenancies.
+ */
 export function navFor(viewer: ShellViewer | null): NavItem[] {
   const search: NavItem = { to: "/search", label: "Search", icon: "search" }
   // Anonymous, or signed in but no role picked yet (D-73): only the public pages.
   if (!viewer || viewer.roles.length === 0) return [search]
-  if (viewer.roles.includes("LANDLORD")) {
+  const owner = viewer.mode ? viewer.mode === "OWNER" : viewer.roles.includes("LANDLORD")
+  if (owner) {
     return [
       search,
       { to: "/me/dashboard", label: "Dashboard", icon: "chart" },
@@ -45,9 +52,10 @@ export function initials(name: string): string {
 }
 
 /**
- * The side a viewer's avatar is coloured for: landlord clay, tenant indigo. The main site never
+ * The side a viewer's avatar is coloured for: landlord clay, tenant indigo; the mode when there is one. The main site never
  * shows an admin (the admin console has its own host, SYSTEM_DESIGN §13.3).
  */
 export function viewerTone(viewer: ShellViewer): "landlord" | "tenant" {
+  if (viewer.mode) return viewer.mode === "OWNER" ? "landlord" : "tenant"
   return viewer.roles.includes("LANDLORD") ? "landlord" : "tenant"
 }

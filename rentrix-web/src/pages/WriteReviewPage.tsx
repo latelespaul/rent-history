@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link, useParams } from "react-router-dom"
 import { writeReview } from "@/api/homes"
 import { isApiError } from "@/api/errors"
+import { myReviewKeys } from "@/api/reviews"
 import { tenancyKeys } from "@/api/tenancies"
 import { Container } from "@/components/layout/Container"
 import { Button } from "@/components/ui/button"
@@ -108,6 +109,7 @@ export default function WriteReviewPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["properties"] }),
         queryClient.invalidateQueries({ queryKey: tenancyKeys.all }),
+        queryClient.invalidateQueries({ queryKey: myReviewKeys.all }),
       ])
       window.scrollTo?.({ top: 0 })
     },

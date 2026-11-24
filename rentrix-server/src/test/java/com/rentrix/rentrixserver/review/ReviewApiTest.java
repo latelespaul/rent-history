@@ -624,4 +624,30 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.items[0].editUntil").exists());
 	}
 
+	@Test
+	void writtenNarrowsToOneSideForTheModeSwitch() throws Exception {
+		// one account on both sides: tenant of one home, landlord of another
+		User owner = approved("Lata Landlord", Role.LANDLORD);
+		User both = aged(data.approved("Bina Both", Role.TENANT, Role.LANDLORD));
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		Tenancy renting = active(home(owner), both);
+		Tenancy letting = active(home(both), tenant);
+		written(both, renting, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		written(both, renting, ReviewDirection.TENANT_TO_LANDLORD, 4);
+		written(both, letting, ReviewDirection.LANDLORD_TO_TENANT, 5);
+
+		mvc.perform(get("/me/reviews/written").header("Authorization", support.bearer(both)))
+			.andExpect(jsonPath("$.items", hasSize(3)));
+		mvc.perform(get("/me/reviews/written?as=TENANT").header("Authorization", support.bearer(both)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items", hasSize(2)))
+			.andExpect(jsonPath("$.items[*].direction", hasItem("TENANT_TO_PROPERTY")))
+			.andExpect(jsonPath("$.items[*].direction", hasItem("TENANT_TO_LANDLORD")));
+		mvc.perform(get("/me/reviews/written?as=LANDLORD").header("Authorization", support.bearer(both)))
+			.andExpect(jsonPath("$.items", hasSize(1)))
+			.andExpect(jsonPath("$.items[0].direction").value("LANDLORD_TO_TENANT"));
+		mvc.perform(get("/me/reviews/written?as=OWNER").header("Authorization", support.bearer(both)))
+			.andExpect(status().isBadRequest());
+	}
+
 }

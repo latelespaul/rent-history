@@ -336,7 +336,8 @@ describe("onboarding", () => {
     expect(auth.updateMe).not.toHaveBeenCalled()
   })
 
-  it("sends a new landlord who picks Not now to the dashboard without next", async () => {
+  // Both roles start in Tenant mode (PLAN R10); the header switch moves them to the dashboard.
+  it("sends a new tenant-and-landlord who picks Not now to My tenancies without next", async () => {
     h.restored = NEW_USER
     vi.mocked(auth.completeOnboarding).mockResolvedValue({
       user: makeUser({ ...NEW_USER, roles: ["LANDLORD", "TENANT"], needsOnboarding: false }),
@@ -353,7 +354,7 @@ describe("onboarding", () => {
 
     await screen.findByText("Your account is created.")
     await user.click(screen.getByRole("link", { name: /not now/i }))
-    await waitFor(() => expect(where(router)).toBe("/me/dashboard"))
+    await waitFor(() => expect(where(router)).toBe("/me/tenancies"))
     expect(auth.updateMe).not.toHaveBeenCalled()
   })
 })

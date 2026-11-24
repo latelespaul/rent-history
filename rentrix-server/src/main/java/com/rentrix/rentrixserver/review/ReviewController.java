@@ -98,11 +98,12 @@ public class ReviewController {
 		return reviews.propertyRating(id, caller);
 	}
 	
+	/** {@code GET /me/reviews/written?as=TENANT|LANDLORD}: both sides when {@code as} is absent (the mode switch). */
 	@GetMapping("/me/reviews/written")
-	public PageResponse<ReviewView> written(@RequestParam(required = false) Integer page,
-		@RequestParam(required = false) Integer size, @RequestParam(required = false) String sort,
-		@AuthenticationPrincipal AuthenticatedUser caller) {
-		return reviews.written(caller, PageRequests.of(page, size, sort, WRITTEN_SORTS, DEFAULT_WRITTEN_SORT));
+	public PageResponse<ReviewView> written(@RequestParam(required = false, name = "as") TenancyParty as,
+		@RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
+		@RequestParam(required = false) String sort, @AuthenticationPrincipal AuthenticatedUser caller) {
+		return reviews.written(caller, as, PageRequests.of(page, size, sort, WRITTEN_SORTS, DEFAULT_WRITTEN_SORT));
 	}
 	
 	/** {@code GET /me/reviews/received?as=LANDLORD|TENANT}: both capacities when {@code as} is absent. */

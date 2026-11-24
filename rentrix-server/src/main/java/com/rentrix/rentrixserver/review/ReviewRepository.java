@@ -42,6 +42,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 	/** {@code /me/reviews/written} (index ix_reviews_author). */
 	Page<Review> findByAuthorIdAndStatusIn(Long authorId, Collection<ReviewStatus> statuses, Pageable pageable);
 
+	/** {@code /me/reviews/written?as=}: the caller's reviews written from one side of their tenancies. */
+	Page<Review> findByAuthorIdAndDirectionInAndStatusIn(Long authorId, Collection<ReviewDirection> directions,
+		Collection<ReviewStatus> statuses, Pageable pageable);
+
 	/** D-45: whether the author ever submitted a review (the first one needs a 7-day-old account). */
 	boolean existsByAuthorId(Long authorId);
 	

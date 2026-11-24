@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { deleteReview, respondToReview, updateReview } from "@/api/properties"
+import { myReviewKeys } from "@/api/reviews"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -93,6 +94,7 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
     setEditing(false)
     void queryClient.invalidateQueries({ queryKey: ["properties"] })
     void queryClient.invalidateQueries({ queryKey: ["tenancies"] })
+    void queryClient.invalidateQueries({ queryKey: myReviewKeys.all })
   }
   const save = useMutation({
     mutationFn: () =>

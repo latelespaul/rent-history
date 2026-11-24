@@ -36,10 +36,10 @@ export default function WelcomeCreatedPage() {
   if (!isCreatedState(location.state)) {
     if (verification.isPending && verification.fetchStatus !== "idle") return null
     const open = progressOf(verification.data) !== null
-    return <Navigate to={open ? "/verify" : roleHome(user.roles)} replace />
+    return <Navigate to={open ? "/verify" : roleHome(user)} replace />
   }
 
-  const later = safeNext(location.state.next, roleHome(user.roles))
+  const later = safeNext(location.state.next, roleHome(user))
   const roles = user.roles.filter((r): r is PickableRole => r === "TENANT" || r === "LANDLORD")
   // The new user's first job (captain 21:38): add their home, as its tenant or, for a landlord, its
   // owner ("I own it" picked), which publishes it at once (open by default, D-132).

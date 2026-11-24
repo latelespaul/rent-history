@@ -6,6 +6,9 @@ import { PlusIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { useAuth } from "@/features/auth/authContext"
 import { NextSteps } from "@/features/home/NextSteps"
+import { modeSide } from "@/features/mode/mode"
+import { useMode } from "@/features/mode/useMode"
+import { MyReviews } from "@/features/review/MyReviews"
 import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { TenancyCard } from "@/features/tenancy/TenancyCard"
 import {
@@ -16,24 +19,20 @@ import {
 } from "@/features/tenancy/labels"
 import { useMyTenancies } from "@/features/tenancy/useTenancies"
 import { cn } from "@/lib/utils"
-import type { TenancyParty } from "@/types/api"
-
-const SIDES: Array<{ value: TenancyParty | null; label: string }> = [
-  { value: null, label: "Both sides" },
-  { value: "TENANT", label: "As tenant" },
-  { value: "LANDLORD", label: "As landlord" },
-]
 
 /**
  * `/me/tenancies` (DESIGN.md screen 7) for tenants and landlords: what needs the caller's action
- * first, then every tenancy by state. Dual-role users can narrow to one side.
+ * first, then every tenancy by state. The header's Tenant | Owner mode (PLAN R10) picks the side:
+ * Tenant mode lists the homes the caller rents and the reviews they wrote of homes and landlords,
+ * Owner mode the tenancies on the homes they own.
  */
 export default function MyTenanciesPage() {
   const { state } = useAuth()
   const roles = state.user?.roles ?? []
-  const isLandlord = roles.includes("LANDLORD")
-  const both = isLandlord && roles.includes("TENANT")
-  const [side, setSide] = useState<TenancyParty | null>(null)
+  const [mode] = useMode()
+  const side = modeSide(mode)
+  // The landlord side's buttons need the role; an owner-mode tenant only gets "Add your home".
+  const isLandlord = side === "LANDLORD" && roles.includes("LANDLORD")
   const [tab, setTab] = useState<TenancyGroupKey>("current")
   const query = useMyTenancies(side)
 
@@ -49,7 +48,11 @@ export default function MyTenanciesPage() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold text-ink-900">My tenancies</h1>
-            <p className="mt-1 text-ink-500">Homes you rent or let through confirmed tenancies.</p>
+            <p className="mt-1 text-ink-500">
+              {side === "LANDLORD"
+                ? "Tenancies on the homes you own."
+                : "Homes you rent or rented, and your reviews of them."}
+            </p>
           </div>
           <Button asChild>
             {isLandlord ? (
@@ -65,22 +68,6 @@ export default function MyTenanciesPage() {
             )}
           </Button>
         </div>
-
-        {both && (
-          <div role="group" aria-label="Side" className="flex flex-wrap gap-2">
-            {SIDES.map((s) => (
-              <Button
-                key={s.label}
-                size="sm"
-                variant={side === s.value ? "default" : "outline"}
-                aria-pressed={side === s.value}
-                onClick={() => setSide(s.value)}
-              >
-                {s.label}
-              </Button>
-            ))}
-          </div>
-        )}
 
         {query.isPending ? (
           <p className="text-sm text-ink-500">Loading your tenancies…</p>
@@ -160,12 +147,17 @@ export default function MyTenanciesPage() {
                   description={
                     isLandlord
                       ? "Invite a tenant from one of your published properties."
-                      : "Add the home you rent or rented: your tenancy shows at once."
+                      : side === "LANDLORD"
+                        ? "Add a home you own: its tenancies show here."
+                        : "Add the home you rent or rented: your tenancy shows at once."
                   }
                   action={
                     !isLandlord && (
                       <Button asChild>
-                        <Link to="/homes/new" data-testid="empty-add-home">
+                        <Link
+                          to={side === "LANDLORD" ? "/homes/new?own=1" : "/homes/new"}
+                          data-testid="empty-add-home"
+                        >
                           Add your home
                         </Link>
                       </Button>
@@ -177,6 +169,16 @@ export default function MyTenanciesPage() {
               )}
             </div>
           </>
+        )}
+
+        {side === "TENANT" && (
+          <MyReviews
+            kind="written"
+            side="TENANT"
+            title="Reviews you wrote"
+            empty="Review a home and its landlord from your tenancy."
+            testId="tenant-reviews-written"
+          />
         )}
       </Container>
     </main>

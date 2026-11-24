@@ -526,6 +526,8 @@ export interface PropertyReview {
     /** The author's green tick for the role they wrote as (D-134). */
     verified?: boolean
   }
+  /** The reviewed person (landlord or tenant); absent on a home review. */
+  subject?: { id?: string; shortName: string }
   /** The reviewed home; no unit label (D-57). */
   property?: { id: string; buildingName: string; locality: string; city: CityRef }
   period?: { from: string; to?: string }

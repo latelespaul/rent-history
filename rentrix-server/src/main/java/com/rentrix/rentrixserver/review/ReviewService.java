@@ -358,11 +358,16 @@ public class ReviewService {
 		return views(page, viewer, admin);
 	}
 
-	/** {@code GET /me/reviews/written}: the caller's own reviews in every state except withdrawn. */
-	public PageResponse<ReviewView> written(AuthenticatedUser caller, Pageable pageable) {
+	/**
+	 * {@code GET /me/reviews/written?as=}: the caller's own reviews in every state except withdrawn; {@code as} keeps
+	 * the ones written from that side ({@code TENANT}: of homes and landlords, {@code LANDLORD}: of tenants).
+	 */
+	public PageResponse<ReviewView> written(AuthenticatedUser caller, TenancyParty as, Pageable pageable) {
 		User me = currentUser(caller);
-		Page<Review> page = reviews.findByAuthorIdAndStatusIn(me.getId(),
-			EnumSet.of(ReviewStatus.AWAITING_REVEAL, ReviewStatus.PUBLISHED, ReviewStatus.HIDDEN), pageable);
+		Set<ReviewStatus> visible = EnumSet.of(ReviewStatus.AWAITING_REVEAL, ReviewStatus.PUBLISHED, ReviewStatus.HIDDEN);
+		Page<Review> page = as == null
+			? reviews.findByAuthorIdAndStatusIn(me.getId(), visible, pageable)
+			: reviews.findByAuthorIdAndDirectionInAndStatusIn(me.getId(), DIRECTIONS.get(as), visible, pageable);
 		return views(page, me, caller.hasRole(Role.ADMIN));
 	}
 

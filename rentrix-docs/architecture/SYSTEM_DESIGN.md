@@ -857,7 +857,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET / PATCH / DELETE | `/me` | profile (display name, phone, home city), add role, account deletion (D-58): `DELETE {confirm: "DELETE"}` → `204` and the refresh cookie cleared; `422 confirm_mismatch`, `403 reauth_required` (D-157). A `PATCH` returns `{user, accessToken}`; the token carries the current roles, so an added role takes effect at once (D-73). The phone is returned masked only (`+91 XXXXXX3210`, D-106); a `PATCH` that changes or clears it revokes a verified `PHONE_OTP` check (`PHONE_CHANGED`, D-101) |
 | POST | `/me/onboarding` | once, first sign-in: `{roles:[TENANT|LANDLORD], homeCity?, acceptTerms:true}` → `{user, accessToken}` with the new roles (D-73) |
 | GET | `/me/tenancies?role=&status=` | the caller's tenancies, either side or `role=LANDLORD|TENANT`; `status` is a comma list; D-59 paging, `sort` = `newest` (default, desc), `start`, `updated`. Each item is the tenancy view of `GET /tenancies/{id}` |
-| GET | `/me/reviews/written`, `/me/reviews/received?as=LANDLORD|TENANT` | received includes own `AWAITING_REVEAL` state only as "pending" |
+| GET | `/me/reviews/written?as=LANDLORD|TENANT`, `/me/reviews/received?as=LANDLORD|TENANT` | received includes own `AWAITING_REVEAL` state only as "pending"; `as` on written keeps one side (`TENANT`: of homes and landlords, `LANDLORD`: of tenants) for the header mode switch (PLAN R10) |
 | GET | `/me/review-tasks` | tenancies with an open review window and missing reviews |
 | GET | `/me/enquiries?as=TENANT|LANDLORD` | |
 | GET / POST / DELETE | `/me/share-links` | tenant reputation share links |
