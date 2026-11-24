@@ -15,6 +15,9 @@ vi.mock("./authContext", () => ({
   useAuth: () => ({ state: { status: "signedIn", user: BOTH }, signOut: vi.fn() }),
 }))
 
+const updateMe = vi.hoisted(() => vi.fn())
+vi.mock("@/api/auth", () => ({ updateMe }))
+
 vi.mock("@/features/verification/useVerification", () => ({
   useVerificationProgress: () => null,
 }))
@@ -52,6 +55,8 @@ const pressed = (name: string) =>
   within(screen.getByRole("banner")).getByRole("button", { name }).getAttribute("aria-pressed")
 
 beforeEach(() => {
+  updateMe.mockReset()
+  updateMe.mockResolvedValue({})
   window.localStorage.clear()
   saveMode(BOTH.id, "TENANT")
 })
@@ -79,6 +84,30 @@ describe("ShellRoot mode", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/me/tenancies"))
     expect(pressed("Tenant")).toBe("true")
     expect(window.localStorage.getItem(MODE_KEY_PREFIX + BOTH.id)).toBe("TENANT")
+  })
+
+  it("saves a switch to the account", async () => {
+    renderAt("/me/tenancies")
+    await screen.findByText("Page")
+    await userEvent
+      .setup()
+      .click(within(screen.getByRole("banner")).getByRole("button", { name: "Owner" }))
+    await waitFor(() => expect(pressed("Owner")).toBe("true"))
+    expect(updateMe).toHaveBeenCalledWith({ preferredMode: "OWNER" })
+  })
+
+  it("keeps the switch when the account cannot be saved", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    updateMe.mockRejectedValue(new Error("offline"))
+    renderAt("/me/tenancies")
+    await screen.findByText("Page")
+    await userEvent
+      .setup()
+      .click(within(screen.getByRole("banner")).getByRole("button", { name: "Owner" }))
+    await waitFor(() => expect(warn).toHaveBeenCalled())
+    expect(pressed("Owner")).toBe("true")
+    expect(window.localStorage.getItem(MODE_KEY_PREFIX + BOTH.id)).toBe("OWNER")
+    warn.mockRestore()
   })
 
   it("keeps the saved mode on a page both modes share", async () => {

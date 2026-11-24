@@ -18,6 +18,8 @@ export const MODE_KEY_PREFIX = "doorway.mode."
 interface ModeUser {
   id: string
   roles: ReadonlyArray<Role>
+  /** What the account remembers on the server; null or absent if never chosen. */
+  preferredMode?: Mode | null
 }
 
 /** What a browser without storage (private window, blocked site data) remembers for this tab. */
@@ -55,6 +57,16 @@ export function saveMode(userId: string, mode: Mode) {
     memory.set(userId, mode)
   }
   listeners.forEach((listener) => listener())
+}
+
+/**
+ * On sign-in: the account's own mode, when it has one, becomes this browser's cache, so the
+ * choice follows the user from phone to laptop. Without one, today's local value or default stays.
+ */
+export function adoptServerMode(user: ModeUser) {
+  if (isMode(user.preferredMode) && readMode(user) !== user.preferredMode) {
+    saveMode(user.id, user.preferredMode)
+  }
 }
 
 /** Subscribes to mode changes in this tab and, through the `storage` event, in other tabs. */

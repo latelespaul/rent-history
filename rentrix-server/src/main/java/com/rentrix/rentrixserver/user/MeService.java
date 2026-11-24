@@ -13,8 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -30,6 +32,7 @@ public class MeService {
 	private final CityRepository cities;
 	private final CityService cityService;
 	private final UserViews userViews;
+	private final UserRoles userRoles;
 	private final AuthService auth;
 	private final IdentityService identity;
 	private final Clock clock;
@@ -71,8 +74,16 @@ public class MeService {
 			errors.add(new ApiProblem.FieldError("phone", "phone_needs_otp",
 				"Verify a new number with a code (POST /me/identity/phone/start)."));
 		}
+		String mode = request.preferredMode();
+		if (mode != null && !modeAllowed(user, request.addRoles(), mode)) {
+			errors.add(new ApiProblem.FieldError("preferredMode", "mode_not_allowed",
+				"Pick TENANT or OWNER, one your account has the role for."));
+		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
+		}
+		if (mode != null) {
+			user.setPreferredMode(mode);
 		}
 		if (request.addRoles() != null) {
 			requireSelfServiceRoles(request.addRoles(), "addRoles");
@@ -101,6 +112,20 @@ public class MeService {
 	private MeController.MeUpdate changed(User user) {
 		User saved = users.save(user);
 		return new MeController.MeUpdate(userViews.of(saved), auth.accessToken(saved));
+	}
+	
+	/** TENANT mode needs the TENANT role, OWNER mode the LANDLORD role (the web's mode.ts rules), counting roles added in the same call. */
+	private boolean modeAllowed(User user, List<Role> added, String mode) {
+		Set<Role> roles = EnumSet.noneOf(Role.class);
+		roles.addAll(userRoles.effective(user));
+		if (added != null) {
+			roles.addAll(added);
+		}
+		return switch (mode) {
+			case "TENANT" -> roles.contains(Role.TENANT);
+			case "OWNER" -> roles.contains(Role.LANDLORD);
+			default -> false;
+		};
 	}
 	
 	private User load(UUID publicId) {

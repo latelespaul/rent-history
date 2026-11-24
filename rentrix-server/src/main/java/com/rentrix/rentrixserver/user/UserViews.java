@@ -26,6 +26,7 @@ public class UserViews {
 			PhoneMasks.mask(user.getPhone()),
 			userRoles.effective(user).stream().sorted().toList(),
 			user.getHomeCity() == null ? null : user.getHomeCity().getCode(),
+			user.getPreferredMode(),
 			user.getStatus(),
 			user.isDemo(),
 			user.getOnboardedAt() == null,

@@ -15,6 +15,7 @@ import java.util.UUID;
  *
  * @param shortName       the public short name ({@link PublicNames#shortName}), shown as-is by the web
  * @param needsOnboarding true until the first-sign-in role pick is done (D-73)
+ * @param preferredMode  {@code TENANT} or {@code OWNER}, the header mode the user last picked; null if never (PLAN R10)
  * @param verification    approval status per held {@code TENANT} / {@code LANDLORD} role (D-89, D-91)
  * @param badges          "ID verified" (any one of Aadhaar, PAN or phone OTP) and the optional "LinkedIn verified"
  *                        (D-99, D-100); the same for both roles
@@ -29,6 +30,7 @@ public record UserView(
 	String phone,
 	List<Role> roles,
 	String homeCity,
+	String preferredMode,
 	UserStatus status,
 	boolean demo,
 	boolean needsOnboarding,

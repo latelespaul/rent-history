@@ -4,6 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import {
   addHomePath,
+  adoptServerMode,
   defaultMode,
   isOwnerPath,
   MODE_KEY_PREFIX,
@@ -68,6 +69,16 @@ describe("mode", () => {
     saveMode("u-tabs", "TENANT")
     window.localStorage.setItem(`${MODE_KEY_PREFIX}u-tabs`, "OWNER")
     expect(readMode({ id: "u-tabs", roles: ["TENANT", "LANDLORD"] })).toBe("OWNER")
+  })
+
+  it("takes the account's mode on sign-in, and keeps the local one when the account has none", () => {
+    saveMode(BOTH.id, "TENANT")
+    adoptServerMode({ ...BOTH, preferredMode: "OWNER" })
+    expect(readMode(BOTH)).toBe("OWNER")
+    expect(window.localStorage.getItem(MODE_KEY_PREFIX + BOTH.id)).toBe("OWNER")
+    adoptServerMode({ ...BOTH, preferredMode: null })
+    adoptServerMode(BOTH)
+    expect(readMode(BOTH)).toBe("OWNER")
   })
 
   it("treats only the dashboard and the listing pages as owner pages", () => {

@@ -68,6 +68,10 @@ public class User extends PublicEntity {
 	@JoinColumn(name = "home_city_code")
 	private City homeCity;
 	
+	/** The header's Tenant | Owner mode; null until the user picks one. */
+	@Column(name = "preferred_mode", length = 8)
+	private String preferredMode;
+	
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(name = "status", nullable = false, length = 16)
