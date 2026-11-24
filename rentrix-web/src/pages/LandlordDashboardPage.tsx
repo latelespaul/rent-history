@@ -61,7 +61,9 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
               {propertyTitle(property)}
             </Link>
             {property.unitLabel && (
-              <span className="text-sm text-ink-500">· {property.unitLabel}</span>
+              <span className="text-sm text-ink-500" data-testid="owner-property-unit">
+                Flat {property.unitLabel}
+              </span>
             )}
             <Badge variant={status.variant}>{status.label}</Badge>
             {property.demo && <DemoBadge />}

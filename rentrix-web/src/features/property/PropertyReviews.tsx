@@ -246,7 +246,8 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
       data-testid="property-review"
       data-mine={mine || undefined}
     >
-      <p className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+      {/* Flex items wrap on a phone, so they are spaced by the gap, never by a "·" that would start a line. */}
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
         {mine && (
           <Badge variant="tenant" data-testid="my-review">
             Your review
@@ -257,8 +258,8 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
         {review.author?.badges?.idVerified && <Badge>ID verified</Badge>}
         {review.author?.badges?.linkedinVerified && <Badge>LinkedIn verified</Badge>}
         {review.period && (
-          <span className="text-ink-500">
-            · stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
+          <span className="text-ink-500" data-testid="review-stay">
+            Stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
           </span>
         )}
         {review.verification && <ReviewTick state={review.verification} />}

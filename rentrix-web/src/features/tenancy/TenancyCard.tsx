@@ -114,7 +114,9 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
                 <LockIcon size={12} aria-label="private" />
               </>
             )}
-            {" · "}
+          </p>
+          {/* Its own line: a " · " before it started the wrapped line on a phone. */}
+          <p className="text-sm text-ink-500" data-testid="tenancy-counterparty">
             {counterparty(tenancy)}
           </p>
           <TenancyFacts tenancy={tenancy} />
