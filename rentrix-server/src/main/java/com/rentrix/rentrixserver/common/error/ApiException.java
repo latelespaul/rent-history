@@ -23,8 +23,8 @@ public class ApiException extends RuntimeException {
 	/** {@code {role, status}} of a verification that blocks a write; unused since open by default (D-132). */
 	private final Map<String, String> approval;
 	/**
-	 * The steps still to do: on {@code 422 verification_incomplete} (D-105) and {@code 403 id_verification_required}
-	 * ({@code phone}, D-117); empty otherwise.
+	 * The steps still to do on {@code 422 verification_incomplete} (D-105); empty otherwise. ({@code 403
+	 * id_verification_required} also set it until D-163 opened posting to every signed-in user.)
 	 */
 	private final List<String> missing;
 	/** The clashing tenancy's period on {@code 409 tenancy_overlap}; empty otherwise. */
@@ -58,17 +58,6 @@ public class ApiException extends RuntimeException {
 		this.approval = Map.copyOf(approval);
 		this.missing = List.copyOf(missing);
 		this.conflict = Map.copyOf(conflict);
-	}
-
-	/**
-	 * 403 {@code id_verification_required} (D-132, D-144): posting needs any one verified method (phone, masked Aadhaar
-	 * or LinkedIn), and the caller has none (never verified, or the only one revoked by a phone change). The body names
-	 * it in {@code missing: ["method"]}; a verified phone lifts it at once, with no admin step.
-	 */
-	public static ApiException idVerificationRequired() {
-		return new ApiException(HttpStatus.FORBIDDEN, "id_verification_required",
-			"Verify with any one: phone, Aadhaar or LinkedIn to continue.", List.of(), HttpHeaders.EMPTY, Map.of(),
-			List.of("method"));
 	}
 
 	/** 422 {@code verification_incomplete}: submit with steps still missing, listed in {@code missing} (D-105). */

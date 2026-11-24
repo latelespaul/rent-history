@@ -43,7 +43,6 @@ import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
-import com.rentrix.rentrixserver.verification.ApprovalGuard;
 import com.rentrix.rentrixserver.verification.VerificationApplication;
 import com.rentrix.rentrixserver.verification.VerificationApplicationRepository;
 import com.rentrix.rentrixserver.verification.VerificationEventRepository;
@@ -143,9 +142,6 @@ class DemoSeederTest {
 	
 	@Autowired
 	IdentityService identity;
-	
-	@Autowired
-	ApprovalGuard guard;
 	
 	@Test
 	void seedsAnEmptyDatabaseOnceWithClearlyFakeData() {
@@ -344,7 +340,6 @@ class DemoSeederTest {
 		assertThat(application).isNotNull();
 		assertThat(application.getStatus()).isEqualTo(VerificationStatus.APPROVED);
 		assertThat(identity.isPhoneVerified(application.getUser())).as(application.getUser().getDisplayName()).isTrue();
-		assertThat(guard.canWrite(application.getUser(), application.getRole())).isTrue();
 	}
 	
 }

@@ -38,14 +38,17 @@ export function nextStep(entry: VerificationEntry): (typeof STEPS)[number] | nul
   )
 }
 
-/** Whether the user may post (D-144): any one of phone, masked Aadhaar or LinkedIn is verified. */
-export function canPost(entries: VerificationEntry[]): boolean {
+/**
+ * Whether any one of phone, masked Aadhaar or LinkedIn is verified (D-144): the way to the green
+ * tick. Posting no longer needs it (D-163).
+ */
+export function hasVerifiedMethod(entries: VerificationEntry[]): boolean {
   return entries.some((entry) => entry.steps.method === "DONE")
 }
 
 export type ProgressKind = "phone" | "rejected" | "draft" | "pending"
 
-/** The account-menu status row (D-121); null once every held role is approved and can post. */
+/** The account-menu status row (D-121); null once every held role is approved. */
 export interface Progress {
   kind: ProgressKind
   label: string
@@ -66,19 +69,19 @@ const RANK: Record<VerificationEntry["status"], number> = {
 }
 
 /**
- * The one row the account menu shows (D-121, D-133, D-144): no verified method first ("Verify to
- * post"), then the role that needs the user first: `REJECTED` ("Changes needed"), `DRAFT`
+ * The one row the account menu shows (D-121, D-133, D-144, D-163): no verified method first (the
+ * optional "Verify to get a green tick"), then the role that needs the user first: `REJECTED` ("Changes needed"), `DRAFT`
  * ("Get verified: n of 4 steps"), `PENDING` ("Waiting for review"). Null when nothing is open,
  * including for users who hold no tenant or landlord role.
  */
 export function progressOf(entries: VerificationEntry[] | undefined): Progress | null {
   if (!entries || entries.length === 0) return null
-  if (!canPost(entries)) {
+  if (!hasVerifiedMethod(entries)) {
     return {
       kind: "phone",
-      label: "Verify to post",
+      label: "Verify to get a green tick",
       to: "/verify/phone",
-      hint: "Any one: phone, Aadhaar or LinkedIn",
+      hint: "Optional · phone, Aadhaar or LinkedIn",
     }
   }
   const open = entries

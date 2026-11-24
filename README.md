@@ -103,7 +103,7 @@ Lists show only `ACTIVE` rows, plus the signed-in landlord's own `PENDING` propo
 
 ## Identity verification
 
-Every tenant and landlord verifies **any one** method before they can post (tenancies, rent records, reviews, listings): a **phone number** by a code sent to Telegram or by SMS, masked **Aadhaar** or **LinkedIn** (a method counts only once it is verified; Aadhaar and LinkedIn wait for an admin check). Without one the account is read-only and those writes answer `403 id_verification_required` with `missing: ["method"]`. Nothing else gates posting: what a user posts shows at once, and an admin review later gives it the green tick. "Request verification" (`POST /api/v1/me/verification/{role}/submit`) is optional and needs a finished profile and one method verified or waiting for its check; the admin approve then needs one verified (`422 no_verified_method`). PAN is never a posting method, only a badge. A new number is stored only by a confirmed code: `PATCH /api/v1/me` can clear the phone but answers `422 phone_needs_otp` for a new one. The web walks users through all of this at `/verify`.
+Any user signed in with Google can post (tenancies, rent records, reviews, listings) with no verification at all (SYSTEM_DESIGN D-163): what a user posts shows at once as "Not verified yet", and an admin review later gives it the green tick. Verifying **any one** method is optional and only leads to the green tick: a **phone number** by a code sent to Telegram or by SMS, masked **Aadhaar** or **LinkedIn** (a method counts only once it is verified; Aadhaar and LinkedIn wait for an admin check). "Request verification" (`POST /api/v1/me/verification/{role}/submit`) is optional and needs a finished profile and one method verified or waiting for its check; the admin approve then needs one verified (`422 no_verified_method`). PAN is never a posting method, only a badge. A new number is stored only by a confirmed code: `PATCH /api/v1/me` can clear the phone but answers `422 phone_needs_otp` for a new one. The web walks users through all of this at `/verify`.
 
 A profile is **ID verified** (the public badge) when PAN or masked Aadhaar is verified; a phone alone gives no badge. LinkedIn is optional: a verified LinkedIn profile adds a second "LinkedIn verified" badge but never counts as ID. `GET /api/v1/me` carries `badges: {idVerified, linkedinVerified}`; `GET /api/v1/me/identity` lists each method with masked values only (PAN `XXXXXX234F`, Aadhaar `XXXX XXXX 1234`, phone `+91 XXXXXX3210`). Full PAN, Aadhaar numbers and OTP codes are never stored; PAN and masked Aadhaar uploads come with PLAN B12.
 
@@ -164,4 +164,11 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/identi
 
 ### Headline ratings (`RATINGS_HEADLINE`)
 
-`RATINGS_HEADLINE=all` (the default) makes the headline ratings count every published review. `verified` counts only reviews an admin gave the green tick (D-135); switch to it once admin approvals (W9) ship. After a switch, the nightly rating repair rebuilds the stored aggregates.
+`RATINGS_HEADLINE=verified` (the default since D-163) makes the headline ratings count only reviews an admin gave the green tick (D-135): anyone signed in may post, so unverified reviews are listed with their "Not verified yet" badge but stay out of the average. `all` counts every published review (the interim default before D-163). After a switch, the nightly rating repair rebuilds the stored aggregates.
+
+**One-time step after deploying D-163** (DEV, then LIVE): rebuild the stored aggregates at once, so no home keeps a headline that counts unverified reviews until the nightly repair. Sign in to the admin console, copy its access token, and run:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://<admin host>/api/v1/admin/ratings/recompute
+# {"rebuilt":123}
+```

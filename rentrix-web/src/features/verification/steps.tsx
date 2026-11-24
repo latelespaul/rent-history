@@ -48,8 +48,8 @@ function phoneMethod(identity: IdentityView | undefined) {
 }
 
 /**
- * The posting method other than the phone that is verified (D-144): masked Aadhaar or LinkedIn,
- * else null.
+ * The verified method other than the phone (D-144): masked Aadhaar or LinkedIn, else null. No
+ * method is needed to post (D-163); one leads to the green tick.
  */
 function otherPostingMethod(identity: IdentityView | undefined): string | null {
   if (method(identity, "AADHAAR")?.status === "VERIFIED") return "Aadhaar"
@@ -57,20 +57,25 @@ function otherPostingMethod(identity: IdentityView | undefined): string | null {
   return null
 }
 
-/** Pick any one (D-144): the phone form is on this step; Aadhaar and LinkedIn on the next one. */
+/**
+ * Pick any one (D-144): the phone form is on this step; Aadhaar and LinkedIn on the next one. It is
+ * optional: posting needs no verification (D-163), a verified method leads to the green tick.
+ */
 function AnyOneNotice({ identity }: { identity: IdentityView | undefined }) {
   const withNext = useWithNext()
   const other = otherPostingMethod(identity)
   if (other) {
     return (
       <Notice tone="teal" icon="shield-check">
-        <b>{other} verified.</b> That is all you need to post. A phone is an optional extra.
+        <b>{other} verified.</b> That is all you need for the green tick. A phone is an optional
+        extra.
       </Notice>
     )
   }
   return (
     <p className="text-sm text-ink-700">
-      Pick any one: phone, Aadhaar or LinkedIn. Verify your phone here, or{" "}
+      Optional: you can post without it. Pick any one: phone, Aadhaar or LinkedIn, to get a green
+      tick. Verify your phone here, or{" "}
       <Link to={withNext("/verify/id")}>use Aadhaar or LinkedIn</Link> instead. The others are
       optional extra badges.
     </p>
@@ -264,8 +269,8 @@ export function PhoneStep({
     return (
       <StepFrame step="phone" entries={entries}>
         <Notice tone="teal" icon="shield-check">
-          <b>Phone verified · {phone.masked}.</b> That is all you need to post. Your number is
-          private: it is never shown on your profile.
+          <b>Phone verified · {phone.masked}.</b> That is all you need for the green tick. Your
+          number is private: it is never shown on your profile.
         </Notice>
         <StepActions back="/verify/profile">
           <Button variant="outline" onClick={() => setChanging(true)}>
@@ -489,12 +494,13 @@ export function IdStep({
               ? `Phone verified · ${phone.masked}.`
               : `${otherPostingMethod(identity)} verified.`}
           </b>{" "}
-          That is all you need to post. The others below are optional extra badges.
+          That is all you need for the green tick. The others below are optional extra badges.
         </Notice>
       ) : (
         <Notice tone="info">
-          Any one is enough to post: Aadhaar or LinkedIn below once our team checks it, or{" "}
-          <Link to={withNext("/verify/phone")}>your phone</Link> at once.
+          Optional: you can post without it. Any one gets you the green tick: Aadhaar or LinkedIn
+          below once our team checks it, or <Link to={withNext("/verify/phone")}>your phone</Link>{" "}
+          at once.
         </Notice>
       )}
       <div className="mt-4 grid grid-cols-1 gap-3 nav:grid-cols-3">
@@ -618,8 +624,8 @@ const MISSING_STEP: Record<string, { label: string; path: string }> = {
 }
 
 /**
- * Submit · "Request verification" (D-133): optional, because posting is already open with any one
- * verified method (D-132, D-144). Sends every held role still in `DRAFT` or `REJECTED`.
+ * Submit · "Request verification" (D-133): optional, because posting is open to every signed-in
+ * user (D-163). Sends every held role still in `DRAFT` or `REJECTED`.
  */
 export function SubmitStep({
   entries,
@@ -661,9 +667,8 @@ export function SubmitStep({
         Request verification
       </h1>
       <p className="mt-1.5 text-ink-500">
-        Optional. You can already post with any one verified method. Our team checks your ID and
-        gives your profile the green tick &ldquo;Verified by {BRAND.name}&rdquo;, usually within 48
-        hours.
+        Optional. You can already post without it. Our team checks your ID and gives your profile
+        the green tick &ldquo;Verified by {BRAND.name}&rdquo;, usually within 48 hours.
       </p>
       <ul className="mt-4 space-y-2 text-sm">
         <li>

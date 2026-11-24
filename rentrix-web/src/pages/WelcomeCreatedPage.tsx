@@ -24,8 +24,9 @@ function isCreatedState(value: unknown): value is CreatedState {
 /**
  * `/welcome/created` (D-118, mockup `welcome-created.html`): shown once, right after the first
  * sign-in's role pick. It says the account exists, shows what the user gave (name, email, roles)
- * and offers one next step, verifying the phone. Opened any other way it forwards to `/verify`
- * while verification is open, else to the role home.
+ * and offers the next step, adding their home, which needs no verification (D-163); verifying for
+ * the green tick is an optional second button. Opened any other way it forwards to `/verify` while
+ * verification is open, else to the role home.
  */
 export default function WelcomeCreatedPage() {
   const { state } = useAuth()
@@ -106,31 +107,30 @@ export default function WelcomeCreatedPage() {
           </div>
 
           <Notice tone="teal" className="mt-6">
-            <b>Next: verify with any one: phone, Aadhaar or LinkedIn.</b> A phone code takes a
-            minute, then you can post right away. The others and your rental details are optional
-            extra badges.
+            <b>You can post right away.</b> What you post shows as &ldquo;Not verified yet&rdquo;.
+            Optional: verify with any one of phone, Aadhaar or LinkedIn to get a green tick.
           </Notice>
           <Button asChild size="lg" className="mt-5 w-full">
+            <Link to={firstJob} data-testid="welcome-add-home">
+              <PlusIcon />
+              {firstJob === "/homes/new" ? "Add your home" : "Add your property"}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="mt-2 w-full">
             <Link
               to={`/verify/phone?next=${encodeURIComponent(firstJob)}`}
               data-testid="welcome-verify"
             >
               <MessageIcon />
-              Verify to post
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="mt-2 w-full">
-            <Link to={firstJob} data-testid="welcome-add-home">
-              <PlusIcon />
-              {firstJob === "/homes/new" ? "Add your home" : "Add your property"}
+              Verify to get a green tick
             </Link>
           </Button>
           <Button asChild variant="ghost" className="mt-2 w-full">
             <Link to={later}>Not now, take me back</Link>
           </Button>
           <p className="mt-3 text-center text-xs text-ink-500">
-            You can read every review and the rent history now. Posting opens once your phone is
-            verified.
+            You can read every review and the rent history, and post reviews, homes and rent, right
+            away.
           </p>
         </section>
       </Container>

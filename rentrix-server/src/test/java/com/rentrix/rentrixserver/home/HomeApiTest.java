@@ -314,11 +314,12 @@ class HomeApiTest {
 	}
 
 	@Test
-	void addingAHomeNeedsAVerifiedPhoneAndTheTenancyFields() throws Exception {
+	void addingAHomeNeedsNoVerificationButTheTenancyFields() throws Exception {
+		// No phone, Aadhaar or LinkedIn verified: posting is open to every signed-in user (D-163).
 		User noPhone = data.verified("No Phone", Role.TENANT);
 		add(noPhone, rentBody(newHome("Flat 1"), TODAY.minusMonths(8)))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"));
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.property.verification").value("UNVERIFIED"));
 
 		User tenant = tenant("Half Form");
 		add(tenant, """

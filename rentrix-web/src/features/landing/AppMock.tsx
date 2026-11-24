@@ -154,9 +154,9 @@ export function AppMock() {
           <span className="grid size-8 place-items-center rounded-[10px] bg-teal-50 text-teal-700">
             <ShieldCheckIcon size={18} />
           </span>
-          Verified to post
+          Verified gets the tick
         </span>
-        <span>Everyone who posts verifies with any one: phone, Aadhaar or LinkedIn.</span>
+        <span>Verify with any one of phone, Aadhaar or LinkedIn to get the green tick.</span>
       </div>
       <figcaption className="absolute bottom-0 text-xs text-ink-500">
         Sample screen, not a real home

@@ -53,10 +53,7 @@ export interface ProblemDetails {
   traceId?: string
   /** Unused since open by default (D-132): the API no longer answers `403 approval_required`. */
   approval?: { role: Role; status: VerificationStatus }
-  /**
-   * The steps still to do: on `422 verification_incomplete` (e.g. `["profile", "phone"]`) and
-   * `["phone"]` on `403 id_verification_required` (D-117).
-   */
+  /** The steps still to do on `422 verification_incomplete` (e.g. `["profile", "method"]`). */
   missing?: string[]
   /**
    * On `409 tenancy_overlap` only: the tenancy already on the home, as months (`to` absent while

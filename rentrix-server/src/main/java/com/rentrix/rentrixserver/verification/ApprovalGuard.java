@@ -1,38 +1,25 @@
 package com.rentrix.rentrixserver.verification;
 
-import com.rentrix.rentrixserver.common.error.ApiException;
-import com.rentrix.rentrixserver.identity.IdentityService;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * The gate on trust writes, open by default (D-132, D-144): the caller needs any one verified posting method (phone,
- * masked Aadhaar or LinkedIn), else {@code 403 id_verification_required} with {@code missing: ["method"]}. An admin approval is no longer required:
- * it gives the green tick instead (D-134), so {@code approval_required} is never returned. The role the caller acts
- * as is checked by each write itself ({@code role_required}); it is passed here so the call sites read the same as
- * before. The methods are read from the database on each call, never from the token, so a revoked phone (a phone
- * change, D-101) closes writes at once unless another method is verified, and a newly verified method opens them. Safety exits
- * (decline, cancel an own request, end a confirmed tenancy, withdraw, report, delete the account) never call it;
- * admins are not gated in their admin actions. Not transactional itself: it joins the caller's transaction, so a
- * refusal never marks that transaction rollback-only on its own.
+ * The seam every trust write calls before it changes anything (D-132, D-163). Since D-163 (captain 2026-11-24 17:35,
+ * superseding the posting gate of D-144 and D-117) it needs <b>no verification at all</b>: a signed-in user (Google,
+ * the only login) may add a home, a tenancy, rent records, reviews and responses with no phone, Aadhaar or LinkedIn
+ * verified. What they post shows "Not verified yet" until the team gives it the green tick (D-134); verifying a
+ * method only upgrades the badge. So {@code 403 id_verification_required} is never returned any more. What still
+ * holds is checked elsewhere: the role the caller acts as by each write itself ({@code role_required}, passed here so
+ * the call sites read the same), the sign-in by the security filter, the rate limits (D-32, D-35, D-45), reports
+ * (D-49) and admin moderation (D-36, D-51). Safety exits (decline, cancel, end, withdraw, report, delete the account)
+ * never called it; admins are not gated in their admin actions.
  */
 @Component
-@RequiredArgsConstructor
 public class ApprovalGuard {
-	
-	private final IdentityService identity;
-	
+
 	public void require(User user, Role role) {
-		if (!canWrite(user, role)) {
-			throw ApiException.idVerificationRequired();
-		}
+		// Open to every signed-in user (D-163): nothing to refuse here.
 	}
-	
-	/** The same check as {@link #require} without throwing. */
-	public boolean canWrite(User user, Role role) {
-		return identity.hasPostingMethod(user);
-	}
-	
+
 }

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Reviews and rating aggregates (PLAN B6): trust rules D-37–D-45, reveal D-46, D-47, aggregates D-33, D-52, D-53. */
 @IntegrationTest
+// The rating math here runs over reviews without the green tick, so it counts every published review
+// ("all"); the default "verified" headline (D-163) is covered by RatingHeadlineModeTest.
+@TestPropertySource(properties = "app.ratings.headline=all")
 @Transactional
 class ReviewApiTest {
 	
@@ -232,7 +236,7 @@ class ReviewApiTest {
 	}
 
 	@Test
-	void authorWithoutAVerifiedPhoneIs403WhileTheyStillGetTheText() throws Exception {
+	void authorWithoutAVerifiedMethodPostsAndReadsTheText() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);
@@ -240,10 +244,10 @@ class ReviewApiTest {
 
 		User pending = aged(data.verified("Pia Pending", Role.TENANT));
 		Tenancy own = active(home(landlord), pending);
+		// No phone, Aadhaar or LinkedIn verified: the review posts, without the green tick (D-163).
 		write(pending, own, ReviewDirection.TENANT_TO_PROPERTY, 4, GOOD)
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("method"));
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.verification").value("UNVERIFIED"));
 
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews")
 				.header("Authorization", support.bearer(pending)))
@@ -472,16 +476,17 @@ class ReviewApiTest {
 				.contentType(MediaType.APPLICATION_JSON).content("{\"body\": \"Thanks, the pump and lift are fixed.\"}"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.response.body").value("Thanks, the pump and lift are fixed."));
+		// Losing the only verified method no longer closes writes (D-163).
 		revokePhone(landlord);
 		mvc.perform(patch("/reviews/" + id + "/response").header("Authorization", support.bearer(landlord))
 				.contentType(MediaType.APPLICATION_JSON).content(reply))
-			.andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("id_verification_required"));
+			.andExpect(status().isOk());
 	}
 
 	// ----------------------------------------------------------- aggregates
 
 	@Test
-	void defaultHeadlineCountsUnverifiedPublishedReviews() throws Exception {
+	void allHeadlineCountsUnverifiedPublishedReviews() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = active(home(landlord), tenant);

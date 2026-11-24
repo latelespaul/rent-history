@@ -300,9 +300,13 @@ describe("onboarding", () => {
     expect(screen.getByText("Neha User")).toBeTruthy()
     expect(screen.getByText("new.user@example.test")).toBeTruthy()
     expect(screen.getByText("Landlord")).toBeTruthy()
-    expect(screen.getByRole("link", { name: /verify to post/i }).getAttribute("href")).toBe(
-      "/verify/phone?next=%2Fhomes%2Fnew%3Fown%3D1",
+    // Posting needs no verification (D-163): adding the property comes first, verifying is optional.
+    expect(screen.getByRole("link", { name: /add your property/i }).getAttribute("href")).toBe(
+      "/homes/new?own=1",
     )
+    expect(
+      screen.getByRole("link", { name: /verify to get a green tick/i }).getAttribute("href"),
+    ).toBe("/verify/phone?next=%2Fhomes%2Fnew%3Fown%3D1")
     await user.click(screen.getByRole("link", { name: /not now/i }))
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeTruthy()
     expect(auth.completeOnboarding).toHaveBeenCalledWith({

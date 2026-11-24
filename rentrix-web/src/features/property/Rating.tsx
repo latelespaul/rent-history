@@ -22,7 +22,8 @@ export function Stars({ value, className }: { value: number; className?: string 
 
 /**
  * A rating as the API sends it: stars and the one-decimal average from 3 reviews on, else
- * "New · n reviews" (D-52), and "No reviews yet" at zero.
+ * "New · n reviews" (D-52), and "No verified reviews yet" at zero: the rating counts only reviews
+ * our team verified (D-163), so a home can list unverified reviews and still have none counted.
  */
 export function RatingLine({
   rating,
@@ -45,7 +46,7 @@ export function RatingLine({
     )
   }
   if (count === 0) {
-    return <span className={cn("text-sm text-ink-500", className)}>No reviews yet</span>
+    return <span className={cn("text-sm text-ink-500", className)}>No verified reviews yet</span>
   }
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-sm", className)}>

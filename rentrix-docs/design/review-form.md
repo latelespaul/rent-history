@@ -2,7 +2,7 @@
 
 Captain 2026-11-23 21:29: the review is a structured form, not a bare text box. This note extends the review model of SYSTEM_DESIGN §5.6 and §7 (D-37 to D-48); the rules there stay unless a line below says otherwise. Decisions D-157 and D-158.
 
-**Unchanged.** The 60-day lock before the first review (`ReviewWindow.OPENS_AFTER_DAYS`, D-39), the double-blind reveal of the landlord review (D-46), the property review publishing at once (D-47), one review per direction per tenancy (D-38), the volume guard (D-45), the posting gate (D-132), "Not verified yet" until the green tick (D-134), and the author's own edits (D-156).
+**Unchanged.** The 60-day lock before the first review (`ReviewWindow.OPENS_AFTER_DAYS`, D-39), the double-blind reveal of the landlord review (D-46), the property review publishing at once (D-47), one review per direction per tenancy (D-38), the volume guard (D-45), open posting with no verification (D-132, D-163), "Not verified yet" until the green tick (D-134), and the author's own edits (D-156).
 
 ## Data model (D-157)
 

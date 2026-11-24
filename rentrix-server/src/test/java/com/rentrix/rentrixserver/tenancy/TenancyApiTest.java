@@ -244,19 +244,16 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.errors[0].code").value("required"));
 	}
 
-	// ------------------------------------------- phone gate (open by default, D-132)
+	// ------------------------------------------- no verification gate (D-163)
 
 	@Test
-	void initiatorWithoutAVerifiedPhoneIsRefused() throws Exception {
+	void initiatorWithoutAnyVerifiedMethodCanPost() throws Exception {
 		User landlord = data.approved("Gate Landlord", Role.LANDLORD);
 		User tenant = data.verified("Waiting Tenant", Role.TENANT);
 		create(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("method"))
-			.andExpect(jsonPath("$.approval").doesNotExist());
+			.andExpect(status().isCreated());
 		assertThat(tenancies.findByTenantIdAndStatusIn(tenant.getId(), java.util.List.of(TenancyStatus.values())))
-			.isEmpty();
+			.hasSize(1);
 	}
 
 	@Test
@@ -269,19 +266,18 @@ class TenancyApiTest {
 	}
 
 	@Test
-	void counterpartyWithoutAVerifiedPhoneCannotConfirmButCanDecline() throws Exception {
+	void counterpartyWithoutAVerifiedMethodCanConfirmOrDecline() throws Exception {
 		User landlord = data.verified("Waiting Landlord", Role.LANDLORD);
 		User tenant = data.approved("Keen Tenant", Role.TENANT);
 		String id = createdId(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000));
-		act(landlord, id, "confirm")
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"))
-			.andExpect(jsonPath("$.missing[0]").value("method"));
 		act(landlord, id, "decline", "{\"reason\": \"Never rented to this person.\"}")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.status").value("DECLINED"))
 			.andExpect(jsonPath("$.declineReason").value("Never rented to this person."));
 		assertThat(mail.last(tenant.getEmail()).body()).contains("Never rented to this person.");
+		// No verified method needed to confirm either (D-163).
+		String again = createdId(tenant, request(home(landlord), null, TODAY.minusMonths(2), null, 20_000));
+		act(landlord, again, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
 	}
 
 	@Test
@@ -534,10 +530,7 @@ class TenancyApiTest {
 			.andExpect(jsonPath("$.inviteEmail").doesNotExist())
 			.andExpect(jsonPath("$.actions.confirm").value(true));
 		claim(invitee, token).andExpect(status().isNotFound());
-		// The invitee has no verified phone yet: confirming waits for it, declining does not.
-		act(invitee, id, "confirm").andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"));
-		data.approve(invitee);
+		// The invitee has no verified method yet and confirms anyway (D-163).
 		act(invitee, id, "confirm").andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ACTIVE"));
 		mvc.perform(get("/tenancies/" + id).header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.tenant.id").value(invitee.getPublicId().toString()))
@@ -714,7 +707,7 @@ class TenancyApiTest {
 	}
 
 	@Test
-	void rentRecordsNeedAConfirmedTenancyAndAPartyWithAVerifiedPhone() throws Exception {
+	void rentRecordsNeedAConfirmedTenancyButNoVerifiedMethod() throws Exception {
 		User landlord = data.verified("Unapproved Rent Landlord", Role.LANDLORD);
 		User tenant = data.verified("Unapproved Rent Tenant", Role.TENANT);
 		Property property = home(landlord);
@@ -724,10 +717,10 @@ class TenancyApiTest {
 				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON).content(rent))
 			.andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("tenancy_not_confirmed"));
 		Tenancy active = data.tenancy(property, tenant, TODAY.minusMonths(4), null, TenancyStatus.ACTIVE);
+		// No verified method needed to record rent (D-163).
 		mvc.perform(post("/tenancies/" + active.getPublicId() + "/rent-records")
 				.header("Authorization", support.bearer(tenant)).contentType(MediaType.APPLICATION_JSON).content(rent))
-			.andExpect(status().isForbidden())
-			.andExpect(jsonPath("$.code").value("id_verification_required"));
+			.andExpect(status().isCreated());
 	}
 
 	@Test
