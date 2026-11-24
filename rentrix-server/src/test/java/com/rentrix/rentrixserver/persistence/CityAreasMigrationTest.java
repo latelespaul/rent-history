@@ -65,6 +65,12 @@ class CityAreasMigrationTest {
 			"malleswaram", null, "PENDING", PROPOSER, false);
 		jdbc.update(PIN, 9007199254740106L, "560047");
 		jdbc.update(PIN, 9007199254740106L, "560003");
+		// the proposer's DRAFT home on it, at another PIN outside that list (560020), which stays
+		jdbc.update(PIN, 9007199254740106L, "560020");
+		jdbc.update("insert into properties (id, public_id, landlord_id, city_code, locality, locality_key, pincode,"
+			+ " property_type, status, is_demo, created_at, updated_at, area_id) values (9007199254740201,"
+			+ " '00000000-0000-7000-8000-000000000201', ?, 'BLR', 'Malleswaram', 'malleswaram', '560020', 'APARTMENT',"
+			+ " 'DRAFT', false, current_timestamp, current_timestamp, 9007199254740106)", PROPOSER);
 		// PINs of other areas are never removed
 		jdbc.update(PIN, 9007199254740101L, "560047");
 		jdbc.update(PIN, 9007199254740103L, "560047");
@@ -92,7 +98,9 @@ class CityAreasMigrationTest {
 		assertThat(pins(jdbc, "BLR", "jayanagar")).containsExactly("560011", "560041");
 		assertThat(jdbc.queryForObject("select status from areas where id = 9007199254740106", String.class))
 			.isEqualTo("ACTIVE");
-		assertThat(pins(jdbc, "BLR", "malleswaram")).containsExactly("560003", "560055");
+		assertThat(pins(jdbc, "BLR", "malleswaram")).containsExactly("560003", "560020", "560055");
+		assertThat(jdbc.queryForObject("select count(*) from properties h join area_pincodes p on p.area_id = h.area_id"
+			+ " and p.pincode = h.pincode where h.id = 9007199254740201", Integer.class)).isOne();
 		assertThat(jdbc.queryForList("select area_id from area_pincodes where pincode = '560047'"
 			+ " and area_id > 9007199254740000 order by area_id",
 			Long.class)).containsExactly(9007199254740101L, 9007199254740103L);
