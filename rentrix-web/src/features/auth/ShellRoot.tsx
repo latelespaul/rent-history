@@ -15,10 +15,9 @@ export function ShellRoot() {
   const progress = useVerificationProgress()
   const [mode, setMode] = useMode()
   const { pathname } = useLocation()
-  const ownerPage = Boolean(user) && isOwnerPath(pathname)
   useEffect(() => {
-    if (ownerPage && mode !== "OWNER") setMode("OWNER")
-  }, [ownerPage, mode, setMode])
+    if (isOwnerPath(pathname)) setMode("OWNER")
+  }, [pathname, setMode])
   const viewer: ShellViewer | null = user
     ? { shortName: user.shortName, roles: user.roles, isDemo: user.demo, progress, mode }
     : null

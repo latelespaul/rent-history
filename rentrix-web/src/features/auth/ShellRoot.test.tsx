@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { LAUNCH_CITIES, SEED_STATS } from "@/test/cities"
 import { makeUser } from "@/test/users"
@@ -44,6 +45,7 @@ function renderAt(path: string) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return router
 }
 
 const pressed = (name: string) =>
@@ -67,6 +69,19 @@ describe("ShellRoot mode", () => {
       expect(window.localStorage.getItem(MODE_KEY_PREFIX + BOTH.id)).toBe("OWNER")
     },
   )
+
+  it("lets an Owner-mode user switch to Tenant from the dashboard", async () => {
+    saveMode(BOTH.id, "OWNER")
+    const router = renderAt("/me/dashboard")
+    await screen.findByText("Page")
+    await userEvent
+      .setup()
+      .click(within(screen.getByRole("banner")).getByRole("button", { name: "Tenant" }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/me/tenancies"))
+    expect(pressed("Tenant")).toBe("true")
+    expect(window.localStorage.getItem(MODE_KEY_PREFIX + BOTH.id)).toBe("TENANT")
+  })
 
   it("keeps the saved mode on a page both modes share", async () => {
     renderAt("/me/tenancies")
