@@ -70,7 +70,7 @@ export function MyReviewLink({
   tenancy: Tenancy
   size?: "sm" | "default"
 }) {
-  if (tenancy.myRole !== "TENANT" || !tenancy.reviewed) return null
+  if (tenancy.myRole !== "TENANT" || !tenancy.homeReviewPublished) return null
   return (
     <Button asChild variant="outline" size={size} data-testid="tenancy-my-review">
       <Link to={`/p/${tenancy.property.id}#reviews`}>

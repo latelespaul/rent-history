@@ -446,6 +446,8 @@ export interface Tenancy {
   actions: TenancyActions
   /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
   reviewed?: boolean
+  /** True while the caller's home review on this tenancy is published on the home's page. */
+  homeReviewPublished?: boolean
   /** The team's green tick on the tenancy (D-134, D-147). */
   verificationStatus?: VerificationState
   /** Set only when an edit gave the caller a new role ("I own it" makes a tenant a landlord). */

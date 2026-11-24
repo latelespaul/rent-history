@@ -51,6 +51,8 @@ public record TenancyView(
 	 * until then (captain 2026-11-23 14:53).
 	 */
 	boolean reviewed,
+	/** True while the caller's home review on this tenancy is published, so it shows on the home's page. */
+	boolean homeReviewPublished,
 	VerificationState verificationStatus,
 	@JsonInclude(JsonInclude.Include.NON_NULL) String accessToken
 ) {
@@ -58,7 +60,7 @@ public record TenancyView(
 	public TenancyView withAccessToken(String token) {
 		return new TenancyView(id, property, myRole, landlord, tenant, inviteEmail, startDate, endDate, initialRentInr,
 			currentRentInr, currentRentFrom, depositInr, depositRefundedInr, status, initiatedBy, declineReason,
-			evidenceLevel, createdAt, expiresAt, confirmedAt, endedAt, actions, reviewed, verificationStatus, token);
+			evidenceLevel, createdAt, expiresAt, confirmedAt, endedAt, actions, reviewed, homeReviewPublished, verificationStatus, token);
 	}
 	
 }

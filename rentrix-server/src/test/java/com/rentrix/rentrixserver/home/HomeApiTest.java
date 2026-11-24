@@ -30,6 +30,7 @@ import java.time.YearMonth;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -154,12 +155,14 @@ class HomeApiTest {
 		String tenancyId = tenancy.get("id").asString();
 		// "Rate and review" stays an open next step until the tenant writes one (captain 2026-11-23 14:53).
 		assertThat(tenancy.get("reviewed").asBoolean()).isFalse();
-		mvc.perform(post("/tenancies/" + tenancyId + "/reviews").header("Authorization", support.bearer(tenant))
+		String reviewId = json.readTree(mvc.perform(post("/tenancies/" + tenancyId + "/reviews")
+				.header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"direction\": \"TENANT_TO_PROPERTY\", \"ratingOverall\": 4, \"body\": \"" + GOOD + "\"}"))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
-			.andExpect(jsonPath("$.verification").value("UNVERIFIED"));
+			.andExpect(jsonPath("$.verification").value("UNVERIFIED"))
+			.andReturn().getResponse().getContentAsString()).get("id").asString();
 		mvc.perform(post("/tenancies/" + tenancyId + "/reviews").header("Authorization", support.bearer(tenant))
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"direction\": \"TENANT_TO_LANDLORD\", \"ratingOverall\": 4, \"body\": \"" + GOOD + "\"}"))
@@ -167,7 +170,15 @@ class HomeApiTest {
 			.andExpect(jsonPath("$.code").value("landlord_not_on_platform"));
 		mvc.perform(get("/tenancies/" + tenancyId).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.reviewed").value(true));
+			.andExpect(jsonPath("$.reviewed").value(true))
+			.andExpect(jsonPath("$.homeReviewPublished").value(true));
+		// A withdrawn review leaves the home's page, so "See my review" has nothing to open; it cannot be rewritten.
+		mvc.perform(delete("/reviews/" + reviewId).header("Authorization", support.bearer(tenant)))
+			.andExpect(status().is2xxSuccessful());
+		mvc.perform(get("/tenancies/" + tenancyId).header("Authorization", support.bearer(tenant)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.reviewed").value(true))
+			.andExpect(jsonPath("$.homeReviewPublished").value(false));
 	}
 
 	@Test

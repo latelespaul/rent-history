@@ -70,7 +70,7 @@ function VerificationNote({ tenancy }: { tenancy: Tenancy }) {
  */
 function ReviewCta({ tenancy }: { tenancy: Tenancy }) {
   if (tenancy.myRole !== "TENANT") return null
-  if (tenancy.reviewed) return <MyReviewLink tenancy={tenancy} size="default" />
+  if (tenancy.homeReviewPublished) return <MyReviewLink tenancy={tenancy} size="default" />
   const reviews = reviewWindow(tenancy, today())
   if (reviews.state === "none") return null
   if (reviews.state === "open")
