@@ -1,5 +1,6 @@
-import { useNavigate } from "react-router-dom"
-import { modeHome, type Mode } from "@/features/mode/mode"
+import { useEffect } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { isOwnerPath, modeHome, type Mode } from "@/features/mode/mode"
 import { useMode } from "@/features/mode/useMode"
 import { useVerificationProgress } from "@/features/verification/useVerification"
 import { AppLayout } from "@/components/layout/AppLayout"
@@ -13,6 +14,11 @@ export function ShellRoot() {
   const user = state.user
   const progress = useVerificationProgress()
   const [mode, setMode] = useMode()
+  const { pathname } = useLocation()
+  const ownerPage = Boolean(user) && isOwnerPath(pathname)
+  useEffect(() => {
+    if (ownerPage && mode !== "OWNER") setMode("OWNER")
+  }, [ownerPage, mode, setMode])
   const viewer: ShellViewer | null = user
     ? { shortName: user.shortName, roles: user.roles, isDemo: user.demo, progress, mode }
     : null

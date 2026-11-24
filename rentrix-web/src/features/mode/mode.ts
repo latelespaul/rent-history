@@ -35,22 +35,24 @@ export function defaultMode(roles: ReadonlyArray<Role>): Mode {
 
 /** The saved mode of this user, else the default. Never throws. */
 export function readMode(user: ModeUser): Mode {
+  const remembered = memory.get(user.id)
+  if (remembered) return remembered
   try {
     const saved = window.localStorage.getItem(MODE_KEY_PREFIX + user.id)
     if (isMode(saved)) return saved
   } catch {
-    // Storage can be blocked; the in-memory choice below still holds for this tab.
+    // Storage can be blocked.
   }
-  return memory.get(user.id) ?? defaultMode(user.roles)
+  return defaultMode(user.roles)
 }
 
 /** Saves the mode for this user and tells every `useMode` reader. Never throws. */
 export function saveMode(userId: string, mode: Mode) {
-  memory.set(userId, mode)
   try {
     window.localStorage.setItem(MODE_KEY_PREFIX + userId, mode)
+    memory.delete(userId)
   } catch {
-    // Kept in memory only.
+    memory.set(userId, mode)
   }
   listeners.forEach((listener) => listener())
 }
@@ -68,6 +70,11 @@ export function subscribeMode(listener: () => void): () => void {
 /** Where a mode starts: My tenancies for a tenant, the dashboard for an owner. */
 export function modeHome(mode: Mode): string {
   return mode === "OWNER" ? "/me/dashboard" : "/me/tenancies"
+}
+
+/** Owner-only pages: opening one puts the header in Owner mode. */
+export function isOwnerPath(pathname: string): boolean {
+  return /^\/me\/(dashboard|properties)(\/|$)/.test(pathname)
 }
 
 /** The tenancy side (`?role=`, `?as=`) a mode lists. */

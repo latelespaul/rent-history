@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 import {
   addHomePath,
   defaultMode,
+  isOwnerPath,
   MODE_KEY_PREFIX,
   modeHome,
   modeSide,
@@ -52,6 +53,30 @@ describe("mode", () => {
     })
     expect(() => saveMode("u-private", "OWNER")).not.toThrow()
     expect(readMode({ id: "u-private", roles: ["TENANT"] })).toBe("OWNER")
+  })
+
+  it("keeps the new choice when storage reads but cannot write", () => {
+    window.localStorage.setItem(`${MODE_KEY_PREFIX}u-full`, "TENANT")
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota")
+    })
+    saveMode("u-full", "OWNER")
+    expect(readMode({ id: "u-full", roles: ["TENANT", "LANDLORD"] })).toBe("OWNER")
+  })
+
+  it("follows a choice another tab stored", () => {
+    saveMode("u-tabs", "TENANT")
+    window.localStorage.setItem(`${MODE_KEY_PREFIX}u-tabs`, "OWNER")
+    expect(readMode({ id: "u-tabs", roles: ["TENANT", "LANDLORD"] })).toBe("OWNER")
+  })
+
+  it("treats only the dashboard and the listing pages as owner pages", () => {
+    expect(isOwnerPath("/me/dashboard")).toBe(true)
+    expect(isOwnerPath("/me/properties")).toBe(true)
+    expect(isOwnerPath("/me/properties/p1/edit")).toBe(true)
+    expect(isOwnerPath("/me/tenancies")).toBe(false)
+    expect(isOwnerPath("/me/propertiesx")).toBe(false)
+    expect(isOwnerPath("/homes/new")).toBe(false)
   })
 
   it("tells subscribers about a change", () => {
