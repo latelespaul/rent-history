@@ -91,6 +91,8 @@ export interface CurrentUser {
   roles: Role[]
   /** City code, as in `City.code`. */
   homeCity?: string | null
+  /** The header's Tenant | Owner mode the user last picked; null or absent if never. */
+  preferredMode?: "TENANT" | "OWNER" | null
   status: UserStatus
   /** Seed user (D-68): the shell shows "Demo data". */
   demo: boolean
@@ -647,6 +649,7 @@ export interface UpdateMeRequest {
   phone?: string
   homeCity?: string
   addRoles?: Array<"TENANT" | "LANDLORD">
+  preferredMode?: "TENANT" | "OWNER"
 }
 
 /** `PATCH /me` and `POST /me/onboarding`: the account plus a fresh access token (D-62). */

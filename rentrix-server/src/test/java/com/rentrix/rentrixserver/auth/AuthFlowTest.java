@@ -392,6 +392,33 @@ class AuthFlowTest {
 	}
 	
 	@Test
+	void patchMeRemembersTheModeTheRolesAllow() throws Exception {
+		JsonNode onboarded = onboard(signIn(sub(), email()), "[\"TENANT\"]");
+		mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded)))
+			.andExpect(jsonPath("$.preferredMode").doesNotExist());
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"preferredMode\":\"OWNER\"}"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("preferredMode"))
+			.andExpect(jsonPath("$.errors[0].code").value("mode_not_allowed"));
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"preferredMode\":\"ADMIN\"}"))
+			.andExpect(status().isUnprocessableContent());
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"preferredMode\":\"TENANT\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.user.preferredMode").value("TENANT"));
+		// Owner mode opens once the account holds the landlord role.
+		mvc.perform(patch("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"addRoles\":[\"LANDLORD\"],\"preferredMode\":\"OWNER\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.user.preferredMode").value("OWNER"));
+		mvc.perform(get("/me").header(HttpHeaders.AUTHORIZATION, bearer(onboarded)))
+			.andExpect(jsonPath("$.preferredMode").value("OWNER"));
+	}
+	
+	@Test
 	void meNeedsAToken() throws Exception {
 		mvc.perform(get("/me")).andExpect(status().isUnauthorized());
 	}

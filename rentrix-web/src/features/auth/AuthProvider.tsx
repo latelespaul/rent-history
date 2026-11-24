@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { fetchMe, logout } from "@/api/auth"
+import { adoptServerMode } from "@/features/mode/mode"
 import { api, setSessionExpiredHandler } from "@/api/client"
 import { clearSessionDrafts } from "@/lib/draft"
 import type { AuthSession, MeUpdate } from "@/types/api"
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const user = (await api.restoreSession()) ? await fetchMe() : null
+        if (user) adoptServerMode(user)
         if (!cancelled) setState(user ? { status: "signedIn", user } : ANONYMOUS)
       } catch {
         if (!cancelled) setState(ANONYMOUS)
@@ -40,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const acceptSession = useCallback(async (session: AuthSession) => {
     api.setAccessToken(session.accessToken)
     const user = session.user ?? (await fetchMe())
+    adoptServerMode(user)
     setState({ status: "signedIn", user })
     return user
   }, [])

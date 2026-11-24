@@ -32,9 +32,10 @@ public class MeController {
 	/**
 	 * Profile edits and role adds (D-16). Absent fields are left as they are; an empty {@code phone} or
 	 * {@code homeCity} clears it. Roles are only ever added.
+	 * {@code preferredMode} is {@code TENANT} or {@code OWNER}, and needs the TENANT or LANDLORD role.
 	 */
 	public record UpdateMeRequest(@Size(max = 60) String displayName, @Size(max = 20) String phone,
-		@Size(max = 8) String homeCity, @Size(max = 2) List<Role> addRoles) {
+		@Size(max = 8) String homeCity, @Size(max = 2) List<Role> addRoles, @Size(max = 8) String preferredMode) {
 	}
 	
 	/** A change to the account, with a fresh access token carrying the current roles (D-62, D-73). */
