@@ -13,10 +13,13 @@ import { freshLogin, pickRole } from "./support"
 /** The brand link's height and the top bar row's overflow, at the current viewport. */
 async function headerFit(page: Page) {
   return page.evaluate(() => {
-    const brand = document.querySelector("header a[href='/']")!.getBoundingClientRect()
+    const link = document.querySelector("header a[href='/']")!
+    const brand = link.getBoundingClientRect()
+    const wordmark = link.querySelector("span:last-child")!.getBoundingClientRect()
     const row = document.querySelector("header > div")!
     return {
       brandHeight: brand.height,
+      wordmarkWidth: wordmark.width,
       rowOverflow: row.scrollWidth - row.clientWidth,
       pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
     }
@@ -38,6 +41,8 @@ test("the wordmark stays on one line in both modes and the header never overflow
       const fit = await headerFit(page)
       // One line of the 20 px display face sits inside the 30 px mark; two lines are ~56 px.
       expect(fit.brandHeight, `${mode} at ${width} px: brand on one line`).toBeLessThanOrEqual(32)
+      // The visible "Doorway Living" text is well over 100 px wide; a hidden or clipped name is ~1 px.
+      expect(fit.wordmarkWidth, `${mode} at ${width} px: wordmark visible`).toBeGreaterThan(100)
       expect(fit.rowOverflow, `${mode} at ${width} px: top bar fits`).toBeLessThanOrEqual(0)
       expect(fit.pageOverflow, `${mode} at ${width} px: no sideways scroll`).toBeLessThanOrEqual(0)
       await expect(

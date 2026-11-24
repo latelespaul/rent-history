@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils"
 /**
  * The brand mark: the tenancy icon in a teal tile, because the product is about confirmed tenancies.
  * The wordmark never wraps or shrinks: the top bar gives way around it, so it stays on one line in
- * both modes, at 390 px and on desktop.
+ * both modes, at 390 px and on desktop. Under 390 px the wordmark steps down one size so the whole
+ * row still fits on smaller phones.
  */
 export function Brand({ className }: { className?: string }) {
   return (
@@ -20,8 +21,7 @@ export function Brand({ className }: { className?: string }) {
       <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] bg-teal-600 text-white">
         <TenancyIcon size={20} />
       </span>
-      {/* Under 360 px only the mark shows; the name stays for screen readers. */}
-      <span className="max-[359px]:sr-only">{BRAND.name}</span>
+      <span>{BRAND.name}</span>
     </Link>
   )
 }
