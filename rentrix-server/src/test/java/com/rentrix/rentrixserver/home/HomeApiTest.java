@@ -171,14 +171,14 @@ class HomeApiTest {
 		mvc.perform(get("/tenancies/" + tenancyId).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.reviewed").value(true))
-			.andExpect(jsonPath("$.homeReviewPublished").value(true));
+			.andExpect(jsonPath("$.homeReviewStatus").value("PUBLISHED"));
 		// A withdrawn review leaves the home's page, so "See my review" has nothing to open; it cannot be rewritten.
 		mvc.perform(delete("/reviews/" + reviewId).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().is2xxSuccessful());
 		mvc.perform(get("/tenancies/" + tenancyId).header("Authorization", support.bearer(tenant)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.reviewed").value(true))
-			.andExpect(jsonPath("$.homeReviewPublished").value(false));
+			.andExpect(jsonPath("$.homeReviewStatus").value("WITHDRAWN"));
 	}
 
 	@Test

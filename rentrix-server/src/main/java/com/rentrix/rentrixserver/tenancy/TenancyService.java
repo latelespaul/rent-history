@@ -902,8 +902,8 @@ public class TenancyService {
 			t.getEndedAt(),
 			actions,
 			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndAuthorId(t.getId(), me.getId()),
-			side == TenancyParty.TENANT && reviews.existsByTenancyIdAndDirectionAndStatus(t.getId(),
-				ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED),
+			side == TenancyParty.TENANT ? reviews.findByTenancyIdAndDirection(t.getId(),
+				ReviewDirection.TENANT_TO_PROPERTY).map(Review::getStatus).orElse(null) : null,
 			VerificationState.of(t.getVerificationStatus()),
 			null);
 	}

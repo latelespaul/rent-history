@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.tenancy.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.rentrix.rentrixserver.review.ReviewStatus;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
@@ -51,8 +52,11 @@ public record TenancyView(
 	 * until then (captain 2026-11-23 14:53).
 	 */
 	boolean reviewed,
-	/** True while the caller's home review on this tenancy is published, so it shows on the home's page. */
-	boolean homeReviewPublished,
+	/**
+	 * State of the caller's home review on this tenancy, null when there is none (or for the landlord side). Only a
+	 * {@code PUBLISHED} one shows on the home's page; a withdrawn or hidden one cannot be written again.
+	 */
+	ReviewStatus homeReviewStatus,
 	VerificationState verificationStatus,
 	@JsonInclude(JsonInclude.Include.NON_NULL) String accessToken
 ) {
@@ -60,7 +64,7 @@ public record TenancyView(
 	public TenancyView withAccessToken(String token) {
 		return new TenancyView(id, property, myRole, landlord, tenant, inviteEmail, startDate, endDate, initialRentInr,
 			currentRentInr, currentRentFrom, depositInr, depositRefundedInr, status, initiatedBy, declineReason,
-			evidenceLevel, createdAt, expiresAt, confirmedAt, endedAt, actions, reviewed, homeReviewPublished, verificationStatus, token);
+			evidenceLevel, createdAt, expiresAt, confirmedAt, endedAt, actions, reviewed, homeReviewStatus, verificationStatus, token);
 	}
 	
 }

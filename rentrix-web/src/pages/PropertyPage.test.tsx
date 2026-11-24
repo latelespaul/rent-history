@@ -81,7 +81,7 @@ function myTenancy(overrides: Partial<Tenancy> = {}): Tenancy {
     endedAt: null,
     actions: { confirm: false, decline: false, cancel: false, end: true, addRentRecord: true },
     reviewed: true,
-    homeReviewPublished: true,
+    homeReviewStatus: "PUBLISHED",
     ...overrides,
   }
 }
@@ -200,7 +200,7 @@ describe("PropertyPage", () => {
     cleanup()
 
     // A withdrawn or hidden review is not on the page, so there is no "My review" to jump to.
-    api.tenancies = [myTenancy({ homeReviewPublished: false })]
+    api.tenancies = [myTenancy({ homeReviewStatus: "WITHDRAWN" })]
     api.reviews = []
     renderPage()
     expect(await screen.findByTestId("home-my-tenancy")).toBeTruthy()
@@ -208,7 +208,7 @@ describe("PropertyPage", () => {
     cleanup()
 
     // A declined request does not count as living here.
-    api.tenancies = [myTenancy({ status: "DECLINED", reviewed: false, homeReviewPublished: false })]
+    api.tenancies = [myTenancy({ status: "DECLINED", reviewed: false, homeReviewStatus: null })]
     renderPage()
     expect(await screen.findByTestId("i-rent-this-home")).toBeTruthy()
   })

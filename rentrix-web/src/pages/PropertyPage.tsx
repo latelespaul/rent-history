@@ -187,7 +187,7 @@ function MyEdits({ property }: { property: PropertyDetail }) {
   const here = mine.data?.items.filter((t) => livesHere(t, property.id)) ?? []
   const tenancy = here.find((t) => t.actions.edit)
   const own = here[0]
-  const reviewed = here.some((t) => t.homeReviewPublished)
+  const reviewed = here.some((t) => t.homeReviewStatus === "PUBLISHED")
   return (
     <>
       {own && !tenancy && (

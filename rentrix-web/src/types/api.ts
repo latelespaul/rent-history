@@ -390,6 +390,9 @@ export type TenancyStatus =
 
 export type TenancyParty = "LANDLORD" | "TENANT"
 
+/** Review lifecycle (§7.2). */
+export type ReviewStatus = "AWAITING_REVEAL" | "PUBLISHED" | "HIDDEN" | "WITHDRAWN"
+
 /** The other side of a tenancy: public id and short name only (D-57). */
 export interface PartyRef {
   id: string
@@ -446,8 +449,8 @@ export interface Tenancy {
   actions: TenancyActions
   /** True once the caller wrote a review on this tenancy (the "Rate and review" next step). */
   reviewed?: boolean
-  /** True while the caller's home review on this tenancy is published on the home's page. */
-  homeReviewPublished?: boolean
+  /** The caller's home review on this tenancy; only a PUBLISHED one shows on the home's page. */
+  homeReviewStatus?: ReviewStatus | null
   /** The team's green tick on the tenancy (D-134, D-147). */
   verificationStatus?: VerificationState
   /** Set only when an edit gave the caller a new role ("I own it" makes a tenant a landlord). */
