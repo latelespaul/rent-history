@@ -49,9 +49,13 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
   const published = property.status === "PUBLISHED"
 
   return (
-    <li className="space-y-2 border-b border-line px-5 py-4 last:border-0">
+    <li
+      className="space-y-2 border-b border-line px-5 py-4 last:border-0"
+      data-testid="owner-property"
+    >
       <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1 space-y-1">
+        {/* At least 15 rem wide: on a phone the rating line wraps under the details. */}
+        <div className="min-w-0 flex-1 basis-60 space-y-1" data-testid="owner-property-details">
           <p className="flex flex-wrap items-center gap-2">
             <Link to={`/p/${property.id}`} className="font-semibold text-ink-900">
               {propertyTitle(property)}
@@ -82,7 +86,9 @@ function PropertyRow({ property, tenancy }: { property: PropertyDetail; tenancy?
             )}
           </p>
         </div>
-        <RatingLine rating={property.rating} className="text-sm" />
+        <span data-testid="owner-property-rating">
+          <RatingLine rating={property.rating} className="text-sm" />
+        </span>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm" variant="outline">
