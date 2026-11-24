@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorway Living · Home page, stays</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .stay { padding: 0; overflow: hidden; }
+  .stay-h { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; background: var(--rx-sunk); border-bottom: var(--rx-border); }
+  .stay-h .when { display: flex; gap: 8px; align-items: center; font-weight: 600; color: var(--rx-ink-900); }
+  .stay-b { padding: 4px 16px 12px; }
+  .dir { display: flex; gap: 8px; align-items: center; font-size: var(--rx-text-xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rx-ink-500); }
+  .dir .arrow { color: var(--rx-ink-300); }
+  .dir.t { color: var(--rx-tenant-600); }
+  .dir.l { color: var(--rx-landlord-600); }
+  .lockrow { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; padding: 10px 12px; border-radius: var(--rx-radius-md); background: var(--rx-sunk); font-size: var(--rx-text-sm); color: var(--rx-ink-700); }
+  .none { margin-top: 6px; font-size: var(--rx-text-sm); color: var(--rx-ink-500); }
+  .more { font-size: var(--rx-text-xs); }
+  .owner-line { display: flex; gap: 10px; align-items: center; }
+  .badge-plain { background: var(--rx-surface); color: var(--rx-ink-700); border: var(--rx-border); }
+</style>
+</head>
+<body data-brand="Doorway Living">
+<div class="mock-banner"><b>Mockup · Home page, stays</b> · signed in, no relation to these tenants · <code>GET /properties/{id}/stays</code> · LT-7 LT-11 · D-28 D-54 D-55 D-135 D-161</div>
+<header data-topbar data-as="tenant" data-active="search"></header>
+
+<main class="container section stack">
+  <div>
+    <div class="row" style="gap:8px"><h1 class="h1">Demo Heights B</h1></div>
+    <p class="muted" style="margin-top:6px"><i data-icon="map-pin" data-size="16"></i> HSR Layout, Bangalore 560102</p>
+    <div class="facts" style="margin-top:10px"><span><i data-icon="bed"></i>2 BHK</span><span><i data-icon="area"></i>1,150 sq ft</span><span><i data-icon="sofa"></i>Semi-furnished</span></div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">Home rating</p>
+    <div class="row" style="margin-top:6px;gap:10px"><span class="score">4.3</span><span class="stars lg" data-stars="4"></span></div>
+    <p class="small muted">from 3 verified reviews · 1 not verified yet <span class="spec">D-135</span></p>
+    <hr class="divider">
+    <div class="owner-line">
+      <span class="avatar avatar-landlord">DL</span>
+      <div style="flex:1">
+        <div class="row" style="gap:6px"><b>Demo L.</b><span class="badge badge-landlord"><i data-icon="landlord"></i>Landlord</span></div>
+        <div class="row" style="gap:6px;margin-top:4px"><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified landlord</span><span class="small muted">4.2 ★ as landlord</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section id="reviews" class="stack">
+    <div>
+      <h2 class="h2">Stays at this home</h2>
+      <p class="small muted" style="margin-top:4px">Stays with a published review, with what the tenant and the owner said. Years only; tenants' names are never shown here. <span class="spec">D-28 · D-54 · LT-11</span></p>
+    </div>
+
+    <div class="card stay">
+      <div class="stay-h">
+        <div class="when"><i data-icon="calendar" data-size="18"></i>2023 – 2025</div>
+        <div class="row" style="gap:6px"><span class="badge badge-verified"><i data-icon="shield-check"></i>Verified by Doorway Living</span><span class="badge badge-info">Tenant confirmed</span></div>
+      </div>
+      <div class="stay-b">
+        <div class="review">
+          <div class="dir t"><i data-icon="tenant" data-size="16"></i>Tenant <span class="arrow">→</span> Home</div>
+          <div class="row" style="margin-top:6px;gap:8px"><span class="stars" data-stars="4"></span><span class="small muted">Would recommend</span></div>
+          <p class="text">Good water supply and quick repairs. Power backup covers only lights and fans.</p>
+          <div class="response"><b>Reply from Demo L.</b> · Full backup was added in 2025.</div>
+          <div class="actions"><span><a class="more" href="#">Ratings by topic (7)</a></span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="dir t"><i data-icon="tenant" data-size="16"></i>Tenant <span class="arrow">→</span> Owner</div>
+          <div class="row" style="margin-top:6px;gap:8px"><span class="stars" data-stars="5"></span><span class="small muted">Would recommend</span></div>
+          <p class="text">Answered every message the same day. Deposit came back in full within a week.</p>
+          <div class="actions"><span>Published Jul 2025</span><span><i data-icon="flag" data-size="14"></i>Report</span></div>
+        </div>
+        <div class="review">
+          <div class="dir l"><i data-icon="landlord" data-size="16"></i>Owner <span class="arrow">→</span> Tenant</div>
+          <div class="lockrow"><i data-icon="eye-off" data-size="18"></i><span>The owner reviewed this tenant. Only the tenant and their landlords can read it. <span class="spec">D-54 · LT-11</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stay">
+      <div class="stay-h">
+        <div class="when"><i data-icon="calendar" data-size="18"></i>2022 – 2023</div>
+        <div class="row" style="gap:6px"><span class="badge badge-warn"><i data-icon="clock"></i>Not verified yet</span><span class="badge badge-plain">Added by the tenant</span></div>
+      </div>
+      <div class="stay-b">
+        <div class="review">
+          <div class="dir t"><i data-icon="tenant" data-size="16"></i>Tenant <span class="arrow">→</span> Home</div>
+          <div class="row" style="margin-top:6px;gap:8px"><span class="stars" data-stars="3"></span><span class="badge badge-warn">Not verified yet</span></div>
+          <p class="text">Nice society, but the lift was often down in the monsoon.</p>
+        </div>
+        <div class="review">
+          <div class="dir t"><i data-icon="tenant" data-size="16"></i>Tenant <span class="arrow">→</span> Owner</div>
+          <p class="none">The tenant did not review the owner.</p>
+        </div>
+        <div class="review">
+          <div class="dir l"><i data-icon="landlord" data-size="16"></i>Owner <span class="arrow">→</span> Tenant</div>
+          <p class="none">The owner did not review this tenant.</p>
+        </div>
+      </div>
+    </div>
+
+    <a class="btn btn-secondary btn-block" href="#">Show older stays</a>
+  </section>
+</main>
+<footer data-footer></footer>
+<script src="mock.js"></script>
+<script src="../icons/icons.js"></script>
+</body>
+</html>
