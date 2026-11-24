@@ -216,6 +216,22 @@ class LocationApiTest {
 	}
 	
 	@Test
+	void bangaloreAndPuneAreasComeFromTheMigrationWithoutTheDemoSeed() throws Exception {
+		// V18 (captain 2026-11-24, LIVE bug): BLR and PNQ had areas only from the dev demo seed, so on LIVE the
+		// area search was empty and no PIN code filled in. The test context never runs the demo seed.
+		mvc.perform(get("/areas").param("city", "BLR").param("q", "kor"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[*].name", contains("Koramangala")))
+			.andExpect(jsonPath("$.items[0].status").value("ACTIVE"))
+			.andExpect(jsonPath("$.items[0].pincodes", contains("560034", "560095")));
+		mvc.perform(get("/areas").param("city", "PNQ").param("q", "hinjaw"))
+			.andExpect(jsonPath("$.items[*].name", contains("Hinjewadi")))
+			.andExpect(jsonPath("$.items[0].pincodes", contains("411057")));
+		mvc.perform(get("/areas").param("city", "PNQ").param("pincode", "411045"))
+			.andExpect(jsonPath("$.items[*].name", contains("Balewadi", "Baner")));
+	}
+	
+	@Test
 	void hiddenAreaLeavesListsButKeepsItsPropertiesReadable() throws Exception {
 		Area hidden = locations.area(CITY, "Hidden Area", null, LocationStatus.HIDDEN, null, "100020");
 		Property home = locations.home(landlord, "Hidden Home", PropertyStatus.PUBLISHED, hidden, null, null, null);

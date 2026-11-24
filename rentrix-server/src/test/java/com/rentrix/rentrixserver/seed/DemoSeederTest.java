@@ -168,8 +168,10 @@ class DemoSeederTest {
 				.containsExactlyInAnyOrder("Demo Landlord BLR-1", "Demo Landlord BLR-2", "Demo Landlord PNQ-1",
 					"Demo Landlord PNQ-2");
 			assertThat(homes).allMatch(p -> p.getPincode().startsWith(p.getCity().getCode().equals("BLR") ? "56" : "41"));
-			// D-115: every home points at its area, whose PIN codes include the home's; the society homes match
-			assertThat(homes).allMatch(p -> p.getArea() != null && p.getArea().isDemo()
+			// D-115: every home points at its area, whose PIN codes include the home's; the society homes match.
+			// V18 already has every seed locality, so the seed uses those reference rows instead of demo ones.
+			assertThat(homes).allMatch(p -> p.getArea() != null && !p.getArea().isDemo()
+				&& p.getArea().getId() >= 201 && p.getArea().getId() <= 381
 				&& p.getArea().getCity().getCode().equals(p.getCity().getCode())
 				&& p.getArea().pincodeList().contains(p.getPincode())
 				&& p.getArea().getName().equals(p.getLocality()));
@@ -193,8 +195,9 @@ class DemoSeederTest {
 				assertThat(its).allSatisfy(t -> assertThat(t.getWings()).extracting(SocietyWing::getName)
 					.containsExactly("Wing A", "Wing B"));
 			}
-			List<Area> seededAreas = areas.findAll().stream().filter(Area::isDemo).toList();
-			assertThat(seededAreas).hasSize(9)
+			assertThat(areas.findAll().stream().filter(Area::isDemo)).isEmpty();
+			List<Area> seedAreas = homes.stream().map(Property::getArea).distinct().toList();
+			assertThat(seedAreas).hasSize(8)
 				.allMatch(a -> a.getStatus() == LocationStatus.ACTIVE && !a.pincodeList().isEmpty())
 				.allMatch(a -> a.pincodeList().stream()
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));

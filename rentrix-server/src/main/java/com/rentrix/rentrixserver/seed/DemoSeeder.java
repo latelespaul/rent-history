@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.admin.ModerationActionRepository;
 import com.rentrix.rentrixserver.city.CityRepository;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.AreaRepository;
+import com.rentrix.rentrixserver.location.LocationNames;
 import com.rentrix.rentrixserver.location.LocationStatus;
 import com.rentrix.rentrixserver.location.Society;
 import com.rentrix.rentrixserver.location.SocietyKind;
@@ -199,8 +200,8 @@ public class DemoSeeder implements ApplicationRunner {
 	/** Seeds an empty database; returns false (and changes nothing) when any user, property or demo area exists. */
 	public boolean seed() {
 		Boolean seeded = tx.execute(status -> {
-			// The unclaimed-homes account (D-139) is created at startup and the launch-city areas (V11) by Flyway;
-			// neither counts as data.
+			// The unclaimed-homes account (D-139) is created at startup and the launch-city areas (V11, V18) by
+			// Flyway; neither counts as data.
 			if (users.countByEmailNot(UnclaimedLandlord.EMAIL) > 0 || properties.count() > 0 || areas.existsByDemoTrue()) {
 				log.info("Demo seed skipped: the database is not empty.");
 				return false;
@@ -279,7 +280,15 @@ public class DemoSeeder implements ApplicationRunner {
 		users.save(user);
 	}
 	
+	/**
+	 * The seed locality's area: the reference row of that name when Flyway already added one (V18 has every
+	 * {@link #AREAS} locality, with the same PIN codes), else a new demo row.
+	 */
 	private Area area(DemoArea seed) {
+		Area existing = areas.findByCityCodeAndNameKey(seed.city(), LocationNames.key(seed.name())).orElse(null);
+		if (existing != null) {
+			return existing;
+		}
 		Area area = new Area();
 		area.setCity(cities.getReferenceById(seed.city()));
 		area.setName(seed.name());

@@ -45,7 +45,8 @@ class MigrationVendorParseTest {
 		assertThat(jdbc.queryForObject("select pincode_prefixes from cities where code = 'BLR'", String.class))
 			.isEqualTo("56");
 		// V5 location hierarchy, plus the MySQL-only V5.1 foreign keys (D-114); V11 seeds the launch-city PINs
-		assertThat(jdbc.queryForObject("select count(*) from area_pincodes", Integer.class)).isEqualTo(58);
+		// (58) and V18 those of Bangalore and Pune (174)
+		assertThat(jdbc.queryForObject("select count(*) from area_pincodes", Integer.class)).isEqualTo(232);
 		boolean mysql = product.equals("MySQL");
 		List<String> versions = result.migrations.stream().map(m -> m.version).toList();
 		assertThat(versions).contains("5");
