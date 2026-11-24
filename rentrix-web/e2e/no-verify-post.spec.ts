@@ -104,6 +104,8 @@ test.describe("post with no verification (390 px)", () => {
       await expect(mine).toBeVisible()
       await expect(mine.getByTestId("tick-unverified")).toHaveText("Not verified yet")
       await expect(page.getByTestId("unverified-note")).toBeVisible()
+      // The list's count names the listed review, not the verified-only "0 reviews".
+      await expect(page.getByTestId("reviews-count")).toHaveText("1 review · 0 verified")
       await expect(
         page.getByRole("region", { name: "Property rating" }).filter({ visible: true }),
       ).toContainText("No verified reviews yet")

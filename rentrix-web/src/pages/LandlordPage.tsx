@@ -6,7 +6,7 @@ import { initials } from "@/components/layout/nav"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState } from "@/components/ui/states"
-import { monthLabel, reviewCount } from "@/features/property/labels"
+import { listedReviewCount, monthLabel } from "@/features/property/labels"
 import { ReviewItem } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
 import { RatingBreakdown } from "@/features/review/RatingBreakdown"
@@ -141,7 +141,9 @@ export default function LandlordPage() {
           <h2 id="landlord-reviews-heading" className="text-lg font-semibold">
             What tenants say about this landlord
           </h2>
-          <span className="text-sm text-ink-500">{reviewCount(rating.reviewCount)}</span>
+          <span className="text-sm text-ink-500" data-testid="landlord-reviews-count">
+            {listedReviewCount(reviews.data?.page.totalItems, rating.reviewCount)}
+          </span>
         </div>
         {list}
       </section>

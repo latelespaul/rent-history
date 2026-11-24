@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { cleanup, configure, fireEvent, render, screen, within } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import type { PropertyReview } from "@/types/api"
+import type { PropertyReview, RatingSummary } from "@/types/api"
 import { RECORDED_REVIEWS } from "@/test/reviews"
 import { PropertyReviews } from "./PropertyReviews"
 
@@ -21,15 +21,12 @@ vi.mock("@/api/properties", async (importOriginal) => ({
 
 const { respondToReview } = await import("@/api/properties")
 
-function renderReviews() {
+function renderReviews(rating: RatingSummary = { reviewCount: 3, average: 4.7 }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PropertyReviews
-          propertyId="01a20329-dcd1-7a5a-8ab0-1c35736d3aaa"
-          rating={{ reviewCount: 3, average: 4.7 }}
-        />
+        <PropertyReviews propertyId="01a20329-dcd1-7a5a-8ab0-1c35736d3aaa" rating={rating} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -80,6 +77,19 @@ describe("PropertyReviews", () => {
     expect(within(verified).queryByText("LinkedIn verified")).toBeNull()
     expect(within(unverified).getByText("Tenant not verified yet")).toBeTruthy()
     expect(within(unverified).queryByText("Verified tenant")).toBeNull()
+  })
+
+  it("counts every listed review and says how many are verified, never 0 above a listed one", async () => {
+    // Two reviews listed, neither verified yet: the rating counts verified ones only (D-163).
+    renderReviews({ reviewCount: 0, average: null })
+    await screen.findAllByRole("listitem")
+    expect(screen.getByTestId("reviews-count").textContent).toBe("2 reviews · 0 verified")
+  })
+
+  it("keeps the plain count when every listed review is verified", async () => {
+    renderReviews({ reviewCount: 2, average: null })
+    await screen.findAllByRole("listitem")
+    expect(screen.getByTestId("reviews-count").textContent).toBe("2 reviews")
   })
 
   it("hides Respond when the API does not offer it", async () => {

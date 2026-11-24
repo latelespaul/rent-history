@@ -18,7 +18,7 @@ import {
 import { criterionLabel } from "@/features/review/form"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
-import { dayLabel, monthLabel, reviewCount } from "./labels"
+import { dayLabel, listedReviewCount, monthLabel } from "./labels"
 import { Stars } from "./Rating"
 import { PersonTick } from "./PersonTick"
 import { ReviewTick } from "./ReviewTick"
@@ -400,7 +400,12 @@ export function PropertyReviews({
           <StarIcon size={20} />
           What tenants say about the home
         </h2>
-        <span className="text-sm text-ink-500">{reviewCount(rating.reviewCount)}</span>
+        <span className="text-sm text-ink-500" data-testid="reviews-count">
+          {listedReviewCount(
+            Array.isArray(reviews.data) ? reviews.data.length : undefined,
+            rating.reviewCount,
+          )}
+        </span>
       </div>
       {body}
     </section>
