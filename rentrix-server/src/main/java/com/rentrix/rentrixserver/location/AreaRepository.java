@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.location;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -19,6 +20,14 @@ public interface AreaRepository extends JpaRepository<Area, Long>, JpaSpecificat
 	Optional<Area> findByCityCodeAndNameKey(String cityCode, String nameKey);
 	
 	boolean existsByDemoTrue();
+	
+	/** Every area of one city, the suggestion candidates of {@link PlaceMatcher} (D-164). */
+	@Query("select a from Area a join fetch a.city c left join fetch a.createdBy where c.code = :city order by a.id")
+	List<Area> findCandidatesInCity(@Param("city") String city, Pageable limit);
+	
+	/** {@link #findCandidatesInCity} for every live city. */
+	@Query("select a from Area a join fetch a.city c left join fetch a.createdBy where c.live = true order by a.id")
+	List<Area> findCandidatesInLiveCities(Pageable limit);
 	
 	/** Whether the landlord with {@code landlord} public id has a non-deleted home on this area. */
 	@Query("select count(p) > 0 from Property p where p.area.id = :id and p.landlord.publicId = :landlord"

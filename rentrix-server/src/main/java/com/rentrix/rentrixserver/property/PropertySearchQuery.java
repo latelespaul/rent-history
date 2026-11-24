@@ -92,10 +92,17 @@ public final class PropertySearchQuery {
 			params.add(MIN_REVIEWS_FOR_AVERAGE);
 			params.add(criteria.minRating().subtract(SHOWN_AVERAGE_HALF_STEP));
 		}
-		if (criteria.text() != null) {
+		PropertySearchCriteria.TextPlaces places = criteria.textPlaces() == null
+			? PropertySearchCriteria.TextPlaces.NONE : criteria.textPlaces();
+		if (criteria.text() != null && !places.homeIds().isEmpty()) {
+			// D-164: the text named a society (or tower) and a flat number, and these are its open flats
+			sql.append(" AND p.id IN (").append(placeholders(places.homeIds().size())).append(")");
+			params.addAll(places.homeIds());
+		} else if (criteria.text() != null) {
 			// D-162: one box finds a home by its area (locality), building, street, society (a typed, still pending
 			// name too), PIN code or city name. Society and city are matched through id subqueries, so no join
-			// multiplies rows and the range index above still drives the query.
+			// multiplies rows and the range index above still drives the query. D-164 adds the societies and
+			// towers the text names with typos allowed, as ids the service resolved.
 			String pattern = "%" + escapeLike(criteria.text()) + "%";
 			String like = " LIKE ? ESCAPE '" + LIKE_ESCAPE + "'";
 			sql.append(" AND (p.locality_key").append(like)
@@ -103,10 +110,19 @@ public final class PropertySearchQuery {
 				.append(" OR LOWER(p.street)").append(like)
 				.append(" OR p.pincode").append(like)
 				.append(" OR p.society_id IN (SELECT s.id FROM societies s WHERE s.name_key").append(like).append(")")
-				.append(" OR p.city_code IN (SELECT c.code FROM cities c WHERE LOWER(c.name)").append(like).append("))");
+				.append(" OR p.city_code IN (SELECT c.code FROM cities c WHERE LOWER(c.name)").append(like).append(")");
 			for (int i = 0; i < 6; i++) {
 				params.add(pattern);
 			}
+			if (!places.societyIds().isEmpty()) {
+				sql.append(" OR p.society_id IN (").append(placeholders(places.societyIds().size())).append(")");
+				params.addAll(places.societyIds());
+			}
+			if (!places.towerIds().isEmpty()) {
+				sql.append(" OR p.tower_id IN (").append(placeholders(places.towerIds().size())).append(")");
+				params.addAll(places.towerIds());
+			}
+			sql.append(")");
 		}
 		return new PropertySearchQuery(sql.toString(), params);
 	}
@@ -144,6 +160,10 @@ public final class PropertySearchQuery {
 			case NEWEST -> "p.id" + dir;
 			default -> throw new IllegalArgumentException("Unknown sort " + sort);
 		};
+	}
+	
+	private static String placeholders(int count) {
+		return String.join(", ", java.util.Collections.nCopies(count, "?"));
 	}
 	
 	static String escapeLike(String value) {

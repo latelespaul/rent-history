@@ -46,4 +46,12 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 	List<Property> findByCityCodeAndPincodeAndStatusAndDeletedAtIsNull(String cityCode, String pincode,
 		PropertyStatus status);
 	
+	/**
+	 * The published homes of the given societies whose flat number is {@code visibility}; {@link FlatFinder} asks
+	 * only for {@code OPEN} ones, so a masked flat number is never matched (D-57, D-164).
+	 */
+	@EntityGraph(attributePaths = {"city", "society", "tower", "wing"})
+	List<Property> findBySocietyIdInAndStatusAndUnitLabelVisibilityAndDeletedAtIsNull(Collection<Long> societyIds,
+		PropertyStatus status, FieldVisibility visibility);
+	
 }

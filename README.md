@@ -97,7 +97,11 @@ curl -s "$API/societies?city=PNQ"                    # Demo Meadows card
 curl -s "$API/societies/<societyId>"                 # towers → wings with published-home counts
 curl -s "$API/properties?society=<societyId>&tower=<towerId>"
 curl -s "$API/properties?area=<areaId>&standalone=true"
+curl -s "$API/search/suggestions?city=BLR&q=demo%20grens"   # search box hints: societies, areas, open flats
+curl -s "$API/properties?city=BLR&q=demo%20grens%20tower%201" # a society (typos allowed) and its tower
 ```
+
+The search box (`q`) finds a society and its tower by name with a typo or two, and a flat directly from "society + flat number" ("Prestige Lakeside 1204", "Lakeside B-1204"). Only flats whose number is open to everyone (a tenant-added home, SYSTEM_DESIGN D-140) are ever matched or suggested; a landlord's masked flat number never is (D-164).
 
 Lists show only `ACTIVE` rows, plus the signed-in landlord's own `PENDING` proposals. Ratings per area and society and the rating sorts come with PLAN B16.
 
