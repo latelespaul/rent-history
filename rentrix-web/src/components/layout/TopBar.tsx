@@ -68,7 +68,13 @@ function ViewerChip({ viewer, compact }: { viewer: ShellViewer; compact?: boolea
           />
         )}
       </span>
-      <span className={cn("text-sm font-semibold text-ink-900", compact && "max-sm:sr-only")}>
+      <span
+        className={cn(
+          "text-sm font-semibold text-ink-900",
+          // The compact chip shows only the avatar on phones and beside the full nav under 1280 px.
+          compact && "max-sm:sr-only nav:max-xl:sr-only",
+        )}
+      >
         {viewer.shortName}
       </span>
     </span>
@@ -199,6 +205,8 @@ function SignIn({ block }: { block?: boolean }) {
  * the "Demo data" badge, and the viewer or "Sign in". Under 860 px the nav, picker and
  * sign-in fold into a menu sheet behind the hamburger. A signed-in viewer gets a slim second row
  * with the Tenant | Owner switch (PLAN R10), at every width, so the 390 px bar never overflows.
+ * The brand stays on one line: beside the full nav under 1280 px the "Add your home" label and the
+ * viewer's name fold to their icon and avatar, and the city picker narrows.
  */
 export function TopBar({
   viewer,
@@ -215,7 +223,7 @@ export function TopBar({
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
-      <Container className="flex h-topbar items-center gap-6">
+      <Container className="flex h-topbar items-center gap-3 nav:gap-6">
         <Brand />
         <nav aria-label="Main" className="hidden items-center gap-5 nav:flex">
           {items.map((item) => (
@@ -235,16 +243,16 @@ export function TopBar({
             </NavLink>
           ))}
         </nav>
-        <ShellCityPicker className="hidden w-56 nav:block" />
+        <ShellCityPicker className="hidden w-44 min-w-0 nav:block xl:w-56" />
         <span className="flex-1" />
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {viewer?.isDemo && <DemoBadge className="max-sm:hidden" />}
           {viewer && (
             // "+ Add your home" (D-139, captain 22:22): in both modes, on every page.
             <Button asChild size="sm" data-testid="add-home-button">
               <Link to={addHomePath(viewer.mode ?? "TENANT")}>
                 <PlusIcon />
-                <span className="max-[420px]:sr-only">Add your home</span>
+                <span className="max-[420px]:sr-only nav:max-xl:sr-only">Add your home</span>
               </Link>
             </Button>
           )}
