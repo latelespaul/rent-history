@@ -49,9 +49,7 @@ function renderAt(path: string) {
 }
 
 const pressed = (name: string) =>
-  within(screen.getByRole("banner"))
-    .getByRole("button", { name })
-    .getAttribute("aria-pressed")
+  within(screen.getByRole("banner")).getByRole("button", { name }).getAttribute("aria-pressed")
 
 beforeEach(() => {
   window.localStorage.clear()
