@@ -132,7 +132,7 @@ test.describe("review visible and home findable release gate (390 px)", () => {
       const card = page.locator("article").filter({ hasText: society })
       await expect(card.getByTestId("tenancy-my-review")).toBeVisible()
       await shot(page, testInfo, "05-my-tenancies")
-      await card.getByRole("link", { name: society }).click()
+      await card.getByRole("link", { name: "Open", exact: true }).click()
       await expect(page).toHaveURL(/\/tenancies\//)
       await expect(page.getByTestId("tenancy-write-review")).toHaveCount(0)
       await shot(page, testInfo, "06-tenancy-page")

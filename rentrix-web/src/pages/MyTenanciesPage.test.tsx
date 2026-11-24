@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { cleanup, configure, render, screen } from "@testing-library/react"
+import { cleanup, configure, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ApiError } from "@/api/errors"
@@ -126,6 +126,12 @@ describe("MyTenanciesPage", () => {
     )
     expect(screen.getByText("Demo Heights F")).toBeTruthy()
     expect(screen.getByRole("tab", { name: "Pending (1)" })).toBeTruthy()
+    // The home's name opens the home's page; "Open" opens the tenancy (captain 2026-11-24 09:44).
+    const card = screen.getByText("Demo Heights F").closest("article")!
+    expect(within(card).getByTestId("tenancy-home-link").getAttribute("href")).toMatch(/^\/p\//)
+    expect(within(card).getByRole("link", { name: "Open" }).getAttribute("href")).toMatch(
+      /^\/tenancies\//,
+    )
   })
 
   it("sends a user without a verified method to the verify step and back when a confirm is refused", async () => {

@@ -221,5 +221,9 @@ describe("new-user journey", () => {
         .getByRole("link", { name: /see it on the home/i })
         .getAttribute("href"),
     ).toBe("/p/p9#reviews")
+    // The home it is about is named and opens its page (captain 2026-11-24 09:44).
+    const home = within(submitted).getByTestId("review-home-link")
+    expect(home.textContent).toMatch(/Gokulam.*Gokulam, Mysuru/)
+    expect(home.getAttribute("href")).toBe("/p/p9")
   })
 })
