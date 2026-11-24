@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
-import { daysAgo, freshLogin, testPhone, verifyPhone } from "./support"
+import { daysAgo, freshLogin, testPhone, verifyPhone, writeHomeReview } from "./support"
 
 /**
  * Captain 2026-11-24 09:44, at 390 px with touch: after a new tenant submits a review, a tap on the
@@ -57,10 +57,11 @@ test.describe("open the home after a review (390 px, touch)", () => {
       await page.getByTestId("ah-save").click()
       await expect(page.getByTestId("add-home-done")).toBeVisible()
       await page.getByTestId("add-home-done").getByTestId("add-home-write-review").tap()
-      await page.getByTestId("review-star-4").tap()
-      await page
-        .getByLabel(/your review/i)
-        .fill("Steady water all year, a lift that works and a quiet lane. Repairs were quick.")
+      await writeHomeReview(
+        page,
+        4,
+        "Steady water all year, a lift that works and a quiet lane. Repairs were quick.",
+      )
       await page.getByTestId("review-submit").tap()
       await expect(page.getByTestId("review-submitted")).toBeVisible()
     })
