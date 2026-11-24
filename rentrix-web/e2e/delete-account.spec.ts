@@ -1,7 +1,14 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, request, test, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, devLogin, recordNewUsers, testPhone, verifyPhone } from "./support"
+import {
+  apiBaseUrl,
+  devLogin,
+  recordNewUsers,
+  testPhone,
+  verifyPhone,
+  writeHomeReview,
+} from "./support"
 
 /**
  * Delete my account (captain 2026-11-23 14:49; D-58, D-157 – D-160) at 390 px: a new tenant adds
@@ -107,8 +114,7 @@ test.describe("delete my account (390 px)", () => {
       await page.locator("#ah-owner-name").fill("Ramesh Owner")
       await page.getByTestId("ah-save").click()
       await page.getByTestId("add-home-done").getByTestId("add-home-write-review").click()
-      await page.getByTestId("review-star-4").click()
-      await page.getByLabel(/your review/i).fill(review)
+      await writeHomeReview(page, 4, review)
       await page.getByTestId("review-submit").click()
       await page.getByTestId("review-submitted").getByTestId("review-view-home").click()
       await expect(page).toHaveURL(/\/p\//)
