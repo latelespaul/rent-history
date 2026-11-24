@@ -106,15 +106,18 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
             </Badge>
           </div>
           <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-500">
-            {tenancy.property.locality}, {tenancy.property.city.name}
+            <span>
+              {tenancy.property.locality}, {tenancy.property.city.name}
+            </span>
             {tenancy.property.unitLabel && (
-              <>
-                {" · Flat "}
-                {tenancy.property.unitLabel}
+              <span className="inline-flex items-center gap-1" data-testid="tenancy-unit">
+                Flat {tenancy.property.unitLabel}
                 <LockIcon size={12} aria-label="private" />
-              </>
+              </span>
             )}
-            {" · "}
+          </p>
+          {/* Its own line: a " · " before it started the wrapped line on a phone. */}
+          <p className="text-sm text-ink-500" data-testid="tenancy-counterparty">
             {counterparty(tenancy)}
           </p>
           <TenancyFacts tenancy={tenancy} />

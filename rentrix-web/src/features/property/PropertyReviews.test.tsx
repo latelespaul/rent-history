@@ -56,10 +56,10 @@ describe("PropertyReviews", () => {
     expect(within(answered).getByText("Demo B.")).toBeTruthy()
     expect(within(answered).getByRole("img", { name: "Rated 5 out of 5" })).toBeTruthy()
     expect(within(answered).getByText(/Well maintained building/)).toBeTruthy()
-    expect(within(answered).getByText(/stayed Mar 2024 – now/)).toBeTruthy()
+    expect(within(answered).getByText(/^Stayed Mar 2024 – now$/)).toBeTruthy()
     expect(within(answered).getByText(/The water pump was replaced/)).toBeTruthy()
     expect(within(answered).queryByRole("button", { name: "Respond" })).toBeNull()
-    expect(within(open).getByText(/stayed Jun 2022 – Jan 2024/)).toBeTruthy()
+    expect(within(open).getByText(/^Stayed Jun 2022 – Jan 2024$/)).toBeTruthy()
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
   })
 
