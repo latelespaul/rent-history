@@ -7,7 +7,10 @@ import type { PropertyReview, RatingSummary } from "@/types/api"
 import { RECORDED_REVIEWS } from "@/test/reviews"
 import { PropertyReviews } from "./PropertyReviews"
 
-const api = vi.hoisted(() => ({ reviews: [] as PropertyReview[] }))
+const api = vi.hoisted(() => ({
+  reviews: [] as PropertyReview[],
+  total: undefined as number | undefined,
+}))
 
 vi.mock("@/features/auth/authContext", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
@@ -15,7 +18,10 @@ vi.mock("@/features/auth/authContext", async (importOriginal) => ({
 }))
 vi.mock("@/api/properties", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/properties")>()),
-  fetchPropertyReviews: vi.fn(async () => api.reviews),
+  fetchPropertyReviews: vi.fn(async () => ({
+    items: api.reviews,
+    total: api.total ?? api.reviews.length,
+  })),
   respondToReview: vi.fn(async () => ({})),
 }))
 
@@ -35,6 +41,7 @@ function renderReviews(rating: RatingSummary = { reviewCount: 3, average: 4.7 })
 beforeEach(() => {
   vi.clearAllMocks()
   api.reviews = RECORDED_REVIEWS
+  api.total = undefined
 })
 afterEach(cleanup)
 configure({ asyncUtilTimeout: 10000 })
@@ -90,6 +97,14 @@ describe("PropertyReviews", () => {
     renderReviews({ reviewCount: 2, average: null })
     await screen.findAllByRole("listitem")
     expect(screen.getByTestId("reviews-count").textContent).toBe("2 reviews")
+  })
+
+  it("counts every published review across pages, not only the first page", async () => {
+    // The API pages reviews 20 at a time; 30 published, 15 verified must read "30 reviews".
+    api.total = 30
+    renderReviews({ reviewCount: 15, average: 4.2 })
+    await screen.findAllByRole("listitem")
+    expect(screen.getByTestId("reviews-count").textContent).toBe("30 reviews · 15 verified")
   })
 
   it("hides Respond when the API does not offer it", async () => {

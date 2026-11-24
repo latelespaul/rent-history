@@ -36,7 +36,9 @@ vi.mock("@/api/properties", async (importOriginal) => ({
     return api.property
   }),
   fetchRentHistory: vi.fn(async () => api.rent),
-  fetchPropertyReviews: vi.fn(async () => api.reviews),
+  fetchPropertyReviews: vi.fn(
+    async () => api.reviews && { items: api.reviews, total: api.reviews.length },
+  ),
 }))
 
 vi.mock("@/api/tenancies", async (importOriginal) => ({

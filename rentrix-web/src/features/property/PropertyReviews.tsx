@@ -360,7 +360,7 @@ export function PropertyReviews({
         description="Reviews will show here once reviews are live."
       />
     )
-  } else if (reviews.data.length === 0) {
+  } else if (reviews.data.items.length === 0) {
     body = (
       <EmptyState
         icon="star"
@@ -371,7 +371,7 @@ export function PropertyReviews({
   } else {
     body = (
       <>
-        {reviews.data.some(
+        {reviews.data.items.some(
           (review) => review.verification && review.verification !== "VERIFIED",
         ) && (
           <p className="text-sm text-ink-500" data-testid="unverified-note">
@@ -380,7 +380,7 @@ export function PropertyReviews({
           </p>
         )}
         <ul className="divide-y divide-line">
-          {reviews.data.map((review) => (
+          {reviews.data.items.map((review) => (
             <ReviewItem key={review.id} review={review} propertyId={propertyId} />
           ))}
         </ul>
@@ -401,10 +401,7 @@ export function PropertyReviews({
           What tenants say about the home
         </h2>
         <span className="text-sm text-ink-500" data-testid="reviews-count">
-          {listedReviewCount(
-            Array.isArray(reviews.data) ? reviews.data.length : undefined,
-            rating.reviewCount,
-          )}
+          {listedReviewCount(reviews.data?.total, rating.reviewCount)}
         </span>
       </div>
       {body}

@@ -51,17 +51,24 @@ export function fetchProperty(id: string, signal?: AbortSignal): Promise<Propert
   return api.get<PropertyDetail>(`/properties/${encodeURIComponent(id)}`, { signal })
 }
 
-/** Rows of a list endpoint that may answer with a bare array or a D-59 page. */
-function rowsOf<T>(body: T[] | Page<T> | undefined): T[] {
-  if (Array.isArray(body)) return body
-  return body?.items ?? []
+/** The rows of a list and how many there are in all, across every page. */
+export interface Listed<T> {
+  items: T[]
+  total: number
+}
+
+/** Rows and total of a list endpoint that may answer with a bare array or a D-59 page. */
+function rowsOf<T>(body: T[] | Page<T> | undefined): Listed<T> {
+  if (Array.isArray(body)) return { items: body, total: body.length }
+  const items = body?.items ?? []
+  return { items, total: body?.page?.totalItems ?? items.length }
 }
 
 /**
  * Lists the API may not serve yet (rent history comes with B5, reviews with B6). A `404` or
  * `405` means "not available", so the page shows its empty state instead of an error.
  */
-async function optionalList<T>(path: string, signal?: AbortSignal): Promise<T[] | null> {
+async function optionalList<T>(path: string, signal?: AbortSignal): Promise<Listed<T> | null> {
   try {
     return rowsOf(await api.get<T[] | Page<T>>(path, { signal }))
   } catch (error) {
