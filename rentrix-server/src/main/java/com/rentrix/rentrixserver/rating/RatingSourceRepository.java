@@ -28,6 +28,16 @@ interface RatingSourceRepository extends Repository<Review, Long> {
 	String VERIFIED_ONLY = "and (:verifiedOnly = false "
 		+ "or r.verificationStatus = com.rentrix.rentrixserver.verification.VerificationState.VERIFIED)";
 	
+	/** Counted reviews of one subject: a person in one direction, or a property (D-158 shares the §9 rules). */
+	String COUNTED = "r.direction = :direction and r.status = :status and r.countsInAggregate = true " + VERIFIED_ONLY;
+	
+	/** Per parameter: rating count and sum (D-158). */
+	String CRITERIA = "select key(c), count(c), sum(value(c)) from Review r join r.criteria c ";
+	
+	/** "Would you recommend": answers and yeses (D-158). */
+	String RECOMMEND = "select count(r.wouldRecommend), "
+		+ "coalesce(sum(case when r.wouldRecommend = true then 1 else 0 end), 0) from Review r ";
+	
 	/** Totals of a person subject (index ix_reviews_subject_user). */
 	@Query(TOTALS + "where r.subjectUser.id = :userId and r.direction = :direction and r.status = :status "
 		+ "and r.countsInAggregate = true " + VERIFIED_ONLY)
@@ -38,6 +48,22 @@ interface RatingSourceRepository extends Repository<Review, Long> {
 	@Query(TOTALS + "where r.property.id = :propertyId and r.direction = :direction and r.status = :status "
 		+ "and r.countsInAggregate = true " + VERIFIED_ONLY)
 	List<Object[]> propertyTotals(@Param("propertyId") Long propertyId, @Param("direction") ReviewDirection direction,
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
+	
+	@Query(CRITERIA + "where r.subjectUser.id = :userId and " + COUNTED + " group by key(c)")
+	List<Object[]> personCriteria(@Param("userId") Long userId, @Param("direction") ReviewDirection direction,
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
+	
+	@Query(CRITERIA + "where r.property.id = :propertyId and " + COUNTED + " group by key(c)")
+	List<Object[]> propertyCriteria(@Param("propertyId") Long propertyId, @Param("direction") ReviewDirection direction,
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
+	
+	@Query(RECOMMEND + "where r.subjectUser.id = :userId and " + COUNTED)
+	List<Object[]> personRecommend(@Param("userId") Long userId, @Param("direction") ReviewDirection direction,
+		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
+	
+	@Query(RECOMMEND + "where r.property.id = :propertyId and " + COUNTED)
+	List<Object[]> propertyRecommend(@Param("propertyId") Long propertyId, @Param("direction") ReviewDirection direction,
 		@Param("status") ReviewStatus status, @Param("verifiedOnly") boolean verifiedOnly);
 	
 	/** Person reviews of one landlord–tenant pair in one direction, across all their tenancies (D-44). */

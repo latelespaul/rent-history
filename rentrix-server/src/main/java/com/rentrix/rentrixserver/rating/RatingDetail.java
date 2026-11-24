@@ -2,6 +2,7 @@ package com.rentrix.rentrixserver.rating;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.rentrix.rentrixserver.review.RatingAggregate;
+import com.rentrix.rentrixserver.review.ReviewCriterion;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -12,14 +13,35 @@ import java.util.List;
  * A stored aggregate as a rating card shows it (§9): the count always; the one-decimal average, the 1–5
  * distribution and the sub-rating averages (D-29) only from {@value #MIN_REVIEWS_FOR_AVERAGE} counted reviews
  * on (D-52), so the UI shows "New · n reviews" below that and one review never defines anyone.
- * {@code distribution} lists the counts of 1 to 5 stars in that order.
+ * {@code distribution} lists the counts of 1 to 5 stars in that order. On a home or landlord page (D-158) it also
+ * carries {@code criteria}, the review form's parameters with their counts and, from 3 ratings each, their averages,
+ * and {@code recommend}, the "would you recommend" answers ({@link RatingBreakdowns}).
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RatingDetail(int reviewCount, BigDecimal average, List<Integer> distribution, SubRatings subRatings,
-	Instant lastReviewAt) {
+	Instant lastReviewAt, List<CriterionRating> criteria, Recommend recommend) {
 	
 	public static final int MIN_REVIEWS_FOR_AVERAGE = 3;
 	public static final RatingDetail NONE = new RatingDetail(0, null, null, null, null);
+	
+	public RatingDetail(int reviewCount, BigDecimal average, List<Integer> distribution, SubRatings subRatings,
+		Instant lastReviewAt) {
+		this(reviewCount, average, distribution, subRatings, lastReviewAt, null, null);
+	}
+	
+	/** One form parameter (D-158): {@code average} only from {@value #MIN_REVIEWS_FOR_AVERAGE} ratings (D-52). */
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public record CriterionRating(ReviewCriterion criterion, int ratingCount, BigDecimal average) {
+	}
+	
+	/** "Would you recommend" (D-158): how many answered and how many said yes. */
+	public record Recommend(int answered, int yes) {
+	}
+	
+	/** This rating with the form's per-parameter figures. */
+	public RatingDetail withBreakdown(List<CriterionRating> criteria, Recommend recommend) {
+		return new RatingDetail(reviewCount, average, distribution, subRatings, lastReviewAt, criteria, recommend);
+	}
 	
 	/** Averages of the optional sub-ratings a, b and c; their meaning depends on the direction (D-29). */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
@@ -39,7 +61,7 @@ public record RatingDetail(int reviewCount, BigDecimal average, List<Integer> di
 			row.getLastReviewAt());
 	}
 	
-	private static BigDecimal shown(BigDecimal value) {
+	static BigDecimal shown(BigDecimal value) {
 		return value == null ? null : value.setScale(1, RoundingMode.HALF_UP);
 	}
 	

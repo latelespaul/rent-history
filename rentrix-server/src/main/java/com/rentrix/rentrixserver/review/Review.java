@@ -5,24 +5,32 @@ import com.rentrix.rentrixserver.common.persistence.PublicEntity;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.user.User;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A rating tied to a confirmed tenancy (§5.6). At most one per direction per tenancy (D-38).
- * Sub-ratings a/b/c mean different things per direction (D-29).
+ * Sub-ratings a/b/c mean different things per direction (D-29). A review written with the form (D-157) has a 1–5
+ * rating per parameter it rated in {@link #criteria}, and may have "would you recommend", pros and cons.
  */
 @Entity
 @Table(name = "reviews")
@@ -65,6 +73,30 @@ public class Review extends PublicEntity {
 	@Column(name = "rating_c")
 	private Integer ratingC;
 	
+	/** D-157: the parameters the author rated, 1–5 each; empty for a review written before the form. */
+	@ElementCollection
+	@CollectionTable(name = "review_criterion_ratings", joinColumns = @JoinColumn(name = "review_id"))
+	@MapKeyColumn(name = "criterion", length = 32)
+	@MapKeyEnumerated(EnumType.STRING)
+	@Column(name = "rating", nullable = false)
+	@BatchSize(size = 50)
+	private Map<ReviewCriterion, Integer> criteria = new HashMap<>();
+	
+	/** D-157: written with the review form, so the comment stays optional on every edit. */
+	@Column(name = "form_review", nullable = false)
+	private boolean formReview;
+	
+	/** D-157: "would you recommend"; null when not answered. */
+	@Column(name = "would_recommend")
+	private Boolean wouldRecommend;
+	
+	@Column(name = "pros", length = 1000)
+	private String pros;
+	
+	@Column(name = "cons", length = 1000)
+	private String cons;
+	
+	/** The text; empty for a form review without a comment (D-157). */
 	@Column(name = "body", nullable = false, length = 2000)
 	private String body;
 	

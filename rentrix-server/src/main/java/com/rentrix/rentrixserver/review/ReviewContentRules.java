@@ -12,13 +12,16 @@ import java.util.regex.Pattern;
 /**
  * D-43 content rules, checked at submit and on every edit so personal data stays out of public text: length,
  * no phone numbers, emails, web addresses or flat / house numbers, and a basic profanity list. A broken rule is
- * {@code 422 validation_failed} with one field error per rule on {@code body}.
+ * {@code 422 validation_failed} with one field error per rule on {@code body} (or, for the review form, on the field
+ * that broke it, D-157).
  */
 public final class ReviewContentRules {
 
 	public static final int REVIEW_MIN = 30;
 	public static final int REVIEW_MAX = 2000;
 	public static final int RESPONSE_MAX = 1000;
+	/** D-157: pros and cons of a form review, each optional. */
+	public static final int PROS_CONS_MAX = 1000;
 
 	/** A run of 10 or more digits, allowing spaces, dots, dashes and brackets between them (phone numbers). */
 	private static final Pattern DIGIT_RUN = Pattern.compile("\\+?\\d[\\d\\s().-]{8,}\\d");
@@ -57,35 +60,49 @@ public final class ReviewContentRules {
 	}
 
 	private static String check(String raw, int min, int max, String unitLabel) {
-		String body = raw == null ? "" : raw.strip();
-		List<ApiProblem.FieldError> errors = new ArrayList<>();
-		int length = body.codePointCount(0, body.length());
-		if (length < min) {
-			errors.add(error("too_short", "Write at least " + min + " characters."));
-		} else if (length > max) {
-			errors.add(error("too_long", "Keep it to " + max + " characters."));
-		}
-		if (containsPhone(body)) {
-			errors.add(error("contains_phone", "Remove the phone number; reviews are public."));
-		}
-		if (EMAIL.matcher(body).find()) {
-			errors.add(error("contains_email", "Remove the email address; reviews are public."));
-		}
-		if (URL.matcher(body).find()) {
-			errors.add(error("contains_url", "Remove the web address."));
-		}
-		if (UNIT.matcher(body).find() || containsUnitLabel(body, unitLabel)) {
-			errors.add(error("contains_unit_number", "Remove the flat or house number; it identifies the tenant."));
-		}
-		if (PROFANITY.matcher(body).find()) {
-			errors.add(error("profanity", "Remove the offensive words."));
-		}
+		List<ApiProblem.FieldError> errors = problems("body", raw, min, max, unitLabel);
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		return body;
+		return strip(raw);
 	}
-
+	
+	/**
+	 * The broken rules of one text field, each as a field error on {@code field}, so a form can collect the errors of
+	 * all its fields into one answer (D-157). {@code min} 0 makes the text optional.
+	 */
+	public static List<ApiProblem.FieldError> problems(String field, String raw, int min, int max, String unitLabel) {
+		String body = strip(raw);
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		int length = body.codePointCount(0, body.length());
+		if (length < min) {
+			errors.add(error(field, "too_short", "Write at least " + min + " characters."));
+		} else if (length > max) {
+			errors.add(error(field, "too_long", "Keep it to " + max + " characters."));
+		}
+		if (containsPhone(body)) {
+			errors.add(error(field, "contains_phone", "Remove the phone number; reviews are public."));
+		}
+		if (EMAIL.matcher(body).find()) {
+			errors.add(error(field, "contains_email", "Remove the email address; reviews are public."));
+		}
+		if (URL.matcher(body).find()) {
+			errors.add(error(field, "contains_url", "Remove the web address."));
+		}
+		if (UNIT.matcher(body).find() || containsUnitLabel(body, unitLabel)) {
+			errors.add(error(field, "contains_unit_number", "Remove the flat or house number; it identifies the tenant."));
+		}
+		if (PROFANITY.matcher(body).find()) {
+			errors.add(error(field, "profanity", "Remove the offensive words."));
+		}
+		return errors;
+	}
+	
+	/** The text trimmed; null reads as empty. */
+	public static String strip(String raw) {
+		return raw == null ? "" : raw.strip();
+	}
+	
 	private static boolean containsPhone(String body) {
 		Matcher m = DIGIT_RUN.matcher(body);
 		while (m.find()) {
@@ -105,8 +122,8 @@ public final class ReviewContentRules {
 			.matcher(body.toLowerCase(Locale.ROOT)).find();
 	}
 
-	private static ApiProblem.FieldError error(String code, String message) {
-		return new ApiProblem.FieldError("body", code, message);
+	private static ApiProblem.FieldError error(String field, String code, String message) {
+		return new ApiProblem.FieldError(field, code, message);
 	}
 
 }

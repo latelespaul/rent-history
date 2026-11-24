@@ -25,6 +25,8 @@ New files only. Each takes the next free `V<n>` when its PR merges; no merged mi
 | `V<n>__verification_state.sql` (design v4, open by default) | **B17** | `properties.verification_status`; `tenancies` and `reviews` + `verification_status`, `verification_decided_by`, `verification_decided_at`, `verification_reason`; 3 queue indexes | §7; all nullable, null = `UNVERIFIED`, no backfill; the PR recomputes every `rating_aggregates` row once after it (D-114, D-135) |
 | `V9__home_records.sql` (built in the journey PR, J1) | J1 | `properties` + `added_by`, `owner_name`, `owner_email`, `owner_phone`, `unit_label_visibility` (default `MASKED`), `owner_contact_visibility` (default `PRIVATE`), `ix_properties_added_by`; `tenancies` + `rent_visibility` (default `OPEN`) | SYSTEM_DESIGN D-139, D-140 ("Add your home"); plus `db/vendor/mysql/V9_1__home_records_fks.sql` for `added_by` |
 | `V10__telegram_phone_codes.sql` (built in the Telegram phone code PR) | — | `phone_otp_challenges` + `channel` (default `SMS`), `gateway_request_id` | SYSTEM_DESIGN D-146 |
+| `V16__review_form.sql` (built in the review form PR) | — | `review_criterion_ratings`; `reviews` + `would_recommend`, `pros`, `cons`; `review_revisions` + `criteria`, `would_recommend`, `pros`, `cons` | §9, SYSTEM_DESIGN D-157 |
+| `V17__review_form_marker.sql` (built in the review form PR) | — | `reviews` + `form_review` (default `FALSE`) | SYSTEM_DESIGN D-157 |
 
 Order on master is whatever order the PRs merge; the plan's intended order is B14 → B11 → B15 → B12 (PLAN.md). Tests run every migration on SQLite, and from O2 on also MySQL 8 and Postgres 15.
 
@@ -454,3 +456,39 @@ CREATE INDEX ix_edit_history_target ON edit_history (target_type, target_ref, cr
 | Query | Index |
 |---|---|
 | one item's history, newest first (`GET /admin/edit-history`), and the queue card's `EDITED` flag | `ix_edit_history_target` |
+
+---
+
+## 9. Review form (D-157)
+
+The review form rates each parameter of the home or the landlord 1–5 (design note [`../design/review-form.md`](../design/review-form.md)). One row per parameter the author rated; a skipped parameter has no row. The table has no `id`, `public_id` or timestamps: a row belongs to its review, is rewritten with it on an edit, and is never addressed on its own (the JPA mapping is an element collection of `Review`). Existing reviews gain no rows and keep `rating_overall` and `rating_a/b/c`.
+
+```sql
+CREATE TABLE review_criterion_ratings (
+    review_id       BIGINT            NOT NULL,
+    criterion       VARCHAR(32)       NOT NULL,   -- ReviewCriterion: WATER_SUPPLY … VALUE_FOR_RENT, RESPONSIVENESS … BEHAVIOUR
+    rating          INTEGER           NOT NULL,
+    CONSTRAINT pk_review_criterion_ratings PRIMARY KEY (review_id, criterion),
+    CONSTRAINT fk_review_criterion_ratings_review FOREIGN KEY (review_id) REFERENCES reviews (id),
+    CONSTRAINT ck_review_criterion_ratings_rating CHECK (rating BETWEEN 1 AND 5)
+);
+
+ALTER TABLE reviews ADD COLUMN would_recommend BOOLEAN;      -- null = not answered
+ALTER TABLE reviews ADD COLUMN pros VARCHAR(1000);
+ALTER TABLE reviews ADD COLUMN cons VARCHAR(1000);
+
+ALTER TABLE review_revisions ADD COLUMN criteria VARCHAR(500);  -- "WATER_SUPPLY=4,NOISE=2"
+ALTER TABLE review_revisions ADD COLUMN would_recommend BOOLEAN;
+ALTER TABLE review_revisions ADD COLUMN pros VARCHAR(1000);
+ALTER TABLE review_revisions ADD COLUMN cons VARCHAR(1000);
+
+-- V17: written with the review form; its comment stays optional on every edit
+ALTER TABLE reviews ADD COLUMN form_review BOOLEAN DEFAULT FALSE NOT NULL;
+```
+
+The foreign key is a table constraint inside `CREATE TABLE`, which MySQL enforces like SQLite and PostgreSQL, so no vendor file is needed. `reviews.body` stays `NOT NULL`: a form review without a comment stores an empty string, so SQLite needs no table rebuild.
+
+| Query | Index |
+|---|---|
+| a review's parameter ratings | the primary key `(review_id, criterion)` |
+| per-parameter averages of one home or landlord (D-158): counted reviews joined to their rows, grouped by `criterion` | `ix_reviews_property`, `ix_reviews_subject_user`, then the primary key |

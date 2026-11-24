@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, recordNewUsers, verifyPhone, testPhone } from "./support"
+import { apiBaseUrl, recordNewUsers, testPhone, verifyPhone, writeHomeReview } from "./support"
 
 /**
  * Release gate (captain 2026-11-23 13:26): the complete new-user chain at 390 px. Landing, sign
@@ -131,8 +131,7 @@ test.describe("new-user sign-up release gate (390 px)", () => {
 
     await test.step("7 rate and review it from the next-steps screen", async () => {
       await page.getByTestId("add-home-done").getByTestId("add-home-write-review").click()
-      await page.getByTestId("review-star-4").click()
-      await page.getByLabel(/your review/i).fill(review)
+      await writeHomeReview(page, 4, review)
       await shot(page, testInfo, "13-review")
       await page.getByTestId("review-submit").click()
       await page.getByTestId("review-submitted").getByTestId("review-view-home").click()

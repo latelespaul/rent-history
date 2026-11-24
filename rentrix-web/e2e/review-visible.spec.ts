@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test"
-import { daysAgo, freshLogin, pickRole, testPhone, verifyPhone } from "./support"
+import { daysAgo, freshLogin, pickRole, testPhone, verifyPhone, writeHomeReview } from "./support"
 
 /**
  * Release gate (captain 2026-11-24 00:31, D-161, D-162), at 390 px: a new tenant adds a home in a
@@ -111,8 +111,7 @@ test.describe("review visible and home findable release gate (390 px)", () => {
 
     await test.step("3 write the review, then see it on the home's page", async () => {
       await page.getByTestId("add-home-done").getByTestId("add-home-write-review").click()
-      await page.getByTestId("review-star-4").click()
-      await page.getByLabel(/your review/i).fill(review)
+      await writeHomeReview(page, 4, review)
       await page.getByTestId("review-submit").click()
       await expect(page.getByTestId("review-submitted")).toBeVisible()
       await shot(page, testInfo, "03-review-submitted")

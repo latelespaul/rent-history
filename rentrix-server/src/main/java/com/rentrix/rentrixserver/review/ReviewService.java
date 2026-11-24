@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.review;
 
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.edit.EditHistory;
 import com.rentrix.rentrixserver.edit.EditTarget;
@@ -10,9 +11,12 @@ import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
 import com.rentrix.rentrixserver.property.dto.CityRef;
+import com.rentrix.rentrixserver.rating.RatingBreakdowns;
 import com.rentrix.rentrixserver.rating.RatingDetail;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.review.dto.CreateReviewRequest;
+import com.rentrix.rentrixserver.review.dto.ReviewFormRequest;
+import com.rentrix.rentrixserver.review.dto.ReviewFormView;
 import com.rentrix.rentrixserver.review.dto.ReviewTask;
 import com.rentrix.rentrixserver.review.dto.ReviewView;
 import com.rentrix.rentrixserver.review.dto.UpdateReviewRequest;
@@ -44,10 +48,13 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,6 +104,7 @@ public class ReviewService {
 	private final GreenTicks greenTicks;
 	private final ProfileAccess access;
 	private final RatingRecomputer recomputer;
+	private final RatingBreakdowns breakdowns;
 	private final ReviewNotifier notifier;
 	private final EditHistory history;
 	private final Clock clock;
@@ -106,15 +114,76 @@ public class ReviewService {
 	/** {@code POST /tenancies/{id}/reviews}. */
 	@Transactional
 	public ReviewView create(UUID tenancyId, CreateReviewRequest request, AuthenticatedUser caller) {
-		// The user row lock serialises one author's submits (volume guard); the tenancy lock serialises the reveal.
-		User me = users.lockByPublicId(caller.publicId())
+		User me = lockAuthor(caller);
+		Tenancy tenancy = lockTenancy(tenancyId, me, caller);
+		ReviewDirection direction = request.direction();
+		requireCanWrite(tenancy, me, direction);
+		requireVolume(me, 1);
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		Content content = content("", direction, false, request.ratingOverall(), request.ratingA(),
+			request.ratingB(), request.ratingC(), null, null, request.body(), null, null,
+			tenancy.getProperty().getUnitLabel(), errors);
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		return view(write(tenancy, me, direction, content), me, caller.hasRole(Role.ADMIN));
+	}
+
+	/**
+	 * {@code POST /tenancies/{id}/review-form} (D-157): the tenant's home and landlord reviews, both saved or neither.
+	 * Each part passes the same rules as {@link #create}; every broken field rule of both parts comes back in one
+	 * {@code 422}, each on its own path.
+	 */
+	@Transactional
+	public ReviewFormView form(UUID tenancyId, ReviewFormRequest request, AuthenticatedUser caller) {
+		User me = lockAuthor(caller);
+		Tenancy tenancy = lockTenancy(tenancyId, me, caller);
+		Map<ReviewDirection, ReviewFormRequest.Part> parts = new LinkedHashMap<>();
+		if (request.home() != null) {
+			parts.put(ReviewDirection.TENANT_TO_PROPERTY, request.home());
+		}
+		if (request.landlord() != null) {
+			parts.put(ReviewDirection.TENANT_TO_LANDLORD, request.landlord());
+		}
+		if (parts.isEmpty()) {
+			throw ApiException.validation(List.of(new ApiProblem.FieldError("home", "not_null",
+				"Rate the home or the landlord.")));
+		}
+		parts.keySet().forEach(direction -> requireCanWrite(tenancy, me, direction));
+		requireVolume(me, parts.size());
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		Map<ReviewDirection, Content> contents = new EnumMap<>(ReviewDirection.class);
+		parts.forEach((direction, part) -> contents.put(direction, content(prefixOf(direction), direction, true,
+			part.ratingOverall(), null, null, null, part.criteria(), part.wouldRecommend(), part.body(), part.pros(),
+			part.cons(), tenancy.getProperty().getUnitLabel(), errors)));
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
+		boolean admin = caller.hasRole(Role.ADMIN);
+		Map<ReviewDirection, ReviewView> written = new EnumMap<>(ReviewDirection.class);
+		contents.forEach((direction, content) -> written.put(direction,
+			view(write(tenancy, me, direction, content), me, admin)));
+		return new ReviewFormView(written.get(ReviewDirection.TENANT_TO_PROPERTY),
+			written.get(ReviewDirection.TENANT_TO_LANDLORD));
+	}
+
+	/** The author row, locked: it serialises one author's submits (volume guard). */
+	private User lockAuthor(AuthenticatedUser caller) {
+		return users.lockByPublicId(caller.publicId())
 			.filter(user -> user.getDeletedAt() == null)
 			.orElseThrow(ReviewService::unauthenticated);
-		Tenancy tenancy = tenancies.lockByPublicId(tenancyId)
+	}
+
+	/** The tenancy row, locked: it serialises the reveal (D-46). */
+	private Tenancy lockTenancy(UUID tenancyId, User me, AuthenticatedUser caller) {
+		return tenancies.lockByPublicId(tenancyId)
 			.filter(t -> sideOf(t, me) != null || caller.hasRole(Role.ADMIN))
 			.orElseThrow(() -> ApiException.notFound("Tenancy"));
+	}
+
+	/** The trust rules of a new review in one direction: D-37, D-38, D-39, D-45 (account), D-91, D-139. */
+	private void requireCanWrite(Tenancy tenancy, User me, ReviewDirection direction) {
 		TenancyParty side = sideOf(tenancy, me);
-		ReviewDirection direction = request.direction();
 		if (side == null || !DIRECTIONS.get(side).contains(direction)) {
 			throw new ApiException(HttpStatus.FORBIDDEN, "wrong_direction",
 				"As the tenant you review the landlord and the home; as the landlord you review the tenant.");
@@ -139,9 +208,10 @@ public class ReviewService {
 				? "You withdrew your review of this tenancy; it cannot be written again."
 				: "You already reviewed this tenancy in this direction. Edit that review instead.");
 		}
-		requireVolume(me);
-		String body = ReviewContentRules.review(request.body(), tenancy.getProperty().getUnitLabel());
+	}
 
+	/** Saves a checked review and publishes what D-46 and D-47 allow now. */
+	private Review write(Tenancy tenancy, User me, ReviewDirection direction, Content content) {
 		Instant now = now();
 		Review review = new Review();
 		review.setTenancy(tenancy);
@@ -153,11 +223,7 @@ public class ReviewService {
 			case TENANT_TO_PROPERTY -> null;
 		});
 		review.setProperty(tenancy.getProperty());
-		review.setRatingOverall(request.ratingOverall());
-		review.setRatingA(request.ratingA());
-		review.setRatingB(request.ratingB());
-		review.setRatingC(request.ratingC());
-		review.setBody(body);
+		apply(review, content);
 		review.setSubmittedAt(now);
 		review.setEditUntil(now.plus(EDIT_WINDOW));
 
@@ -178,7 +244,7 @@ public class ReviewService {
 		review.setStatus(ReviewStatus.AWAITING_REVEAL);
 		reviews.saveAndFlush(review);
 		published.forEach(r -> publish(r, now));
-		return view(review, me, caller.hasRole(Role.ADMIN));
+		return review;
 	}
 
 	/**
@@ -196,13 +262,25 @@ public class ReviewService {
 		}
 		approvals.require(me, authorRole(review));
 		Instant now = now();
-		String body = ReviewContentRules.review(request.body(), review.getProperty().getUnitLabel());
+		// D-157: the form fields keep their value; a form review keeps its optional comment.
+		List<ApiProblem.FieldError> errors = new ArrayList<>();
+		Content content = content("", review.getDirection(), review.isFormReview(), request.ratingOverall(),
+			request.ratingA(), request.ratingB(), request.ratingC(), names(review.getCriteria()),
+			review.getWouldRecommend(), request.body(), review.getPros(), review.getCons(),
+			review.getProperty().getUnitLabel(), errors);
+		if (!errors.isEmpty()) {
+			throw ApiException.validation(errors);
+		}
 		EditHistory.Changes changes = new EditHistory.Changes()
-			.field("ratingOverall", review.getRatingOverall(), request.ratingOverall())
-			.field("ratingA", review.getRatingA(), request.ratingA())
-			.field("ratingB", review.getRatingB(), request.ratingB())
-			.field("ratingC", review.getRatingC(), request.ratingC())
-			.field("body", review.getBody(), body);
+			.field("ratingOverall", review.getRatingOverall(), content.ratingOverall())
+			.field("ratingA", review.getRatingA(), content.ratingA())
+			.field("ratingB", review.getRatingB(), content.ratingB())
+			.field("ratingC", review.getRatingC(), content.ratingC())
+			.field("criteria", criteriaText(review.getCriteria()), criteriaText(content.criteria()))
+			.field("wouldRecommend", review.getWouldRecommend(), content.wouldRecommend())
+			.field("body", review.getBody(), content.body())
+			.field("pros", review.getPros(), content.pros())
+			.field("cons", review.getCons(), content.cons());
 		if (changes.isEmpty()) {
 			return view(review, me, caller.hasRole(Role.ADMIN));
 		}
@@ -215,13 +293,13 @@ public class ReviewService {
 		previous.setRatingB(review.getRatingB());
 		previous.setRatingC(review.getRatingC());
 		previous.setBody(review.getBody());
+		previous.setCriteria(criteriaText(review.getCriteria()));
+		previous.setWouldRecommend(review.getWouldRecommend());
+		previous.setPros(review.getPros());
+		previous.setCons(review.getCons());
 		revisions.save(previous);
 
-		review.setRatingOverall(request.ratingOverall());
-		review.setRatingA(request.ratingA());
-		review.setRatingB(request.ratingB());
-		review.setRatingC(request.ratingC());
-		review.setBody(body);
+		apply(review, content);
 		review.setLastEditedAt(now);
 		// D-134, D-156: an edit of the text or ratings takes the team's decision away; the review is back in the queue.
 		boolean wasVerified = unverify(review);
@@ -343,11 +421,14 @@ public class ReviewService {
 		return views(page, me, admin);
 	}
 
-	/** {@code GET /properties/{id}/rating}: the stored aggregate, public like the property card (D-56). */
+	/**
+	 * {@code GET /properties/{id}/rating}: the stored aggregate, public like the property card (D-56), with the review
+	 * form's per-parameter averages (D-158).
+	 */
 	public RatingDetail propertyRating(UUID propertyId, AuthenticatedUser caller) {
 		Property property = visibleProperty(propertyId, caller);
-		return RatingDetail.of(aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY, property.getId()))
-			.orElse(null));
+		return breakdowns.forProperty(RatingDetail.of(aggregates.findById(
+			new RatingAggregateId(RatingSubjectType.PROPERTY, property.getId())).orElse(null)), property.getId());
 	}
 
 	/**
@@ -480,15 +561,120 @@ public class ReviewService {
 		}
 	}
 
-	/** D-45: at most {@value #MAX_PER_DAY} reviews per rolling 24 hours. */
-	private void requireVolume(User me) {
+	/** D-45: at most {@value #MAX_PER_DAY} reviews per rolling 24 hours, {@code adding} of them now. */
+	private void requireVolume(User me, int adding) {
 		Instant now = now();
 		List<Review> lastDay = reviews.findByAuthorIdAndSubmittedAtAfterOrderBySubmittedAtAsc(me.getId(),
 			now.minus(Duration.ofDays(1)));
-		if (lastDay.size() >= MAX_PER_DAY) {
-			Instant frees = lastDay.get(lastDay.size() - MAX_PER_DAY).getSubmittedAt().plus(Duration.ofDays(1));
+		if (lastDay.size() + adding > MAX_PER_DAY) {
+			// The oldest reviews must leave the window until all new ones fit.
+			Instant frees = lastDay.get(lastDay.size() + adding - 1 - MAX_PER_DAY).getSubmittedAt()
+				.plus(Duration.ofDays(1));
 			throw ApiException.rateLimited(Duration.between(now, frees));
 		}
+	}
+
+	/** A review's checked ratings and text (D-27, D-43, D-157). */
+	private record Content(boolean form, int ratingOverall, Integer ratingA, Integer ratingB, Integer ratingC,
+		Map<ReviewCriterion, Integer> criteria, Boolean wouldRecommend, String body, String pros, String cons) {
+	}
+
+	/**
+	 * Checks one review's ratings and text, adding a field error under {@code prefix} for each broken rule. The
+	 * overall rating is required; parameter ratings are optional, 1–5, and must belong to the direction. A form review
+	 * ({@code form}) has an optional comment; any other review's body is the D-43 review text
+	 * of 30 characters or more. Pros and cons are optional (D-157).
+	 */
+	private static Content content(String prefix, ReviewDirection direction, boolean form, Integer overall,
+		Integer ratingA, Integer ratingB, Integer ratingC, Map<String, Integer> rawCriteria, Boolean wouldRecommend,
+		String body, String pros, String cons, String unitLabel, List<ApiProblem.FieldError> errors) {
+		if (overall == null) {
+			errors.add(new ApiProblem.FieldError(prefix + "ratingOverall", "not_null",
+				"Pick an overall rating from 1 to 5 stars."));
+		} else if (overall < 1 || overall > 5) {
+			errors.add(new ApiProblem.FieldError(prefix + "ratingOverall", "out_of_range", "Pick 1 to 5 stars."));
+		}
+		Map<ReviewCriterion, Integer> criteria = new EnumMap<>(ReviewCriterion.class);
+		if (rawCriteria != null) {
+			rawCriteria.forEach((name, rating) -> {
+				String field = prefix + "criteria." + name;
+				ReviewCriterion criterion = criterionOf(name);
+				if (criterion == null) {
+					errors.add(new ApiProblem.FieldError(field, "unknown_criterion", "This is not a question of the form."));
+				} else if (criterion.direction() != direction) {
+					errors.add(new ApiProblem.FieldError(field, "wrong_direction",
+						"This question belongs to the other part of the form."));
+				} else if (rating != null && (rating < 1 || rating > 5)) {
+					errors.add(new ApiProblem.FieldError(field, "out_of_range", "Pick 1 to 5 stars."));
+				} else if (rating != null) {
+					criteria.put(criterion, rating);
+				}
+			});
+		}
+		errors.addAll(ReviewContentRules.problems(prefix + "body", body, form ? 0 : ReviewContentRules.REVIEW_MIN,
+			ReviewContentRules.REVIEW_MAX, unitLabel));
+		errors.addAll(ReviewContentRules.problems(prefix + "pros", pros, 0, ReviewContentRules.PROS_CONS_MAX, unitLabel));
+		errors.addAll(ReviewContentRules.problems(prefix + "cons", cons, 0, ReviewContentRules.PROS_CONS_MAX, unitLabel));
+		return new Content(form, overall == null ? 0 : overall, ratingA, ratingB, ratingC, criteria, wouldRecommend,
+			ReviewContentRules.strip(body), blankToNull(pros), blankToNull(cons));
+	}
+
+	private static void apply(Review review, Content content) {
+		review.setFormReview(content.form());
+		review.setRatingOverall(content.ratingOverall());
+		review.setRatingA(content.ratingA());
+		review.setRatingB(content.ratingB());
+		review.setRatingC(content.ratingC());
+		review.getCriteria().clear();
+		review.getCriteria().putAll(content.criteria());
+		review.setWouldRecommend(content.wouldRecommend());
+		review.setBody(content.body());
+		review.setPros(content.pros());
+		review.setCons(content.cons());
+	}
+
+	private static ReviewCriterion criterionOf(String name) {
+		try {
+			return name == null ? null : ReviewCriterion.valueOf(name);
+		} catch (IllegalArgumentException unknown) {
+			return null;
+		}
+	}
+
+	private static Map<String, Integer> names(Map<ReviewCriterion, Integer> criteria) {
+		Map<String, Integer> names = new LinkedHashMap<>();
+		criteria.forEach((criterion, rating) -> names.put(criterion.name(), rating));
+		return names;
+	}
+
+	private static String blankToNull(String text) {
+		String stripped = ReviewContentRules.strip(text);
+		return stripped.isEmpty() ? null : stripped;
+	}
+
+	/** The parameter ratings in form order. */
+	private static Map<ReviewCriterion, Integer> criteria(Review review) {
+		Map<ReviewCriterion, Integer> ordered = new LinkedHashMap<>();
+		for (ReviewCriterion criterion : ReviewCriterion.values()) {
+			Integer rating = review.getCriteria().get(criterion);
+			if (rating != null) {
+				ordered.put(criterion, rating);
+			}
+		}
+		return ordered;
+	}
+
+	/** "WATER_SUPPLY=4,NOISE=2" in form order (revisions, edit history); null when none were rated. */
+	private static String criteriaText(Map<ReviewCriterion, Integer> criteria) {
+		if (criteria.isEmpty()) {
+			return null;
+		}
+		return Arrays.stream(ReviewCriterion.values()).filter(criteria::containsKey)
+			.map(c -> c + "=" + criteria.get(c)).collect(Collectors.joining(","));
+	}
+
+		private static String prefixOf(ReviewDirection direction) {
+		return direction == ReviewDirection.TENANT_TO_PROPERTY ? "home." : "landlord.";
 	}
 
 	private static void requireAuthor(Review review, User me) {
@@ -609,7 +795,12 @@ public class ReviewService {
 			r.getRatingA(),
 			r.getRatingB(),
 			r.getRatingC(),
-			textHidden && !privileged ? null : r.getBody(),
+			r.isFormReview() ? Boolean.TRUE : null,
+			r.getCriteria().isEmpty() ? null : criteria(r),
+			r.getWouldRecommend(),
+			textHidden && !privileged ? null : blankToNull(r.getBody()),
+			textHidden && !privileged ? null : r.getPros(),
+			textHidden && !privileged ? null : r.getCons(),
 			textHidden ? Boolean.TRUE : null,
 			authorLine(r, admin),
 			r.getSubjectUser() == null ? null : party(r.getSubjectUser()),
@@ -628,7 +819,7 @@ public class ReviewService {
 	/** A review about the caller that still awaits reveal: no ratings, text or author (D-46). */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
-			null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
+			null, null, null, null, null, null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
 			ReviewView.Actions.NONE, null);
 	}
 

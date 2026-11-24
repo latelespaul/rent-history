@@ -133,6 +133,38 @@ export interface RatingSummary {
   average: number | null
 }
 
+/** The review form's parameters (D-157): nine about the home, five about the landlord. */
+export type HomeCriterion =
+  | "WATER_SUPPLY"
+  | "POWER_BACKUP"
+  | "MAINTENANCE"
+  | "CLEANLINESS"
+  | "SECURITY"
+  | "PARKING"
+  | "NOISE"
+  | "NEIGHBOURHOOD"
+  | "VALUE_FOR_RENT"
+export type LandlordCriterion =
+  "RESPONSIVENESS" | "DEPOSIT_RETURN" | "TRANSPARENCY" | "PRIVACY" | "BEHAVIOUR"
+export type ReviewCriterion = HomeCriterion | LandlordCriterion
+
+/** One parameter of a rating (D-158): `average` only from 3 ratings of it (D-52). */
+export interface CriterionRating {
+  criterion: ReviewCriterion
+  ratingCount: number
+  average?: number
+}
+
+/**
+ * `GET /properties/{id}/rating` and `landlordRating` of `GET /users/{id}`: the summary plus the
+ * review form's per-parameter figures and the "would you recommend" answers (D-158).
+ */
+export interface RatingDetail extends RatingSummary {
+  distribution?: number[]
+  criteria?: CriterionRating[]
+  recommend?: { answered: number; yes: number }
+}
+
 /** One `GET /properties` result: public fields only (D-56, D-57). */
 export interface PropertyCard {
   id: string
@@ -266,6 +298,47 @@ export interface ReviewInput {
   direction: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
   ratingOverall: number
   body: string
+}
+
+/** One part of the review form (D-157): every parameter optional, the overall rating required. */
+export interface ReviewFormPart {
+  ratingOverall: number
+  criteria: Partial<Record<ReviewCriterion, number>>
+  wouldRecommend?: boolean
+  body?: string
+  pros?: string
+  cons?: string
+}
+
+/** `POST /tenancies/{id}/review-form`: the home and landlord reviews, saved together. */
+export interface ReviewFormInput {
+  home?: ReviewFormPart
+  landlord?: ReviewFormPart
+}
+
+export interface ReviewFormResult {
+  home?: PropertyReview
+  landlord?: PropertyReview
+}
+
+/** `GET /me/review-tasks`: a review the caller can write now. */
+export interface ReviewTask {
+  tenancyId: string
+  direction: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
+  property: { id: string; buildingName: string | null; locality: string; city: CityRef }
+  counterparty?: PartyRef
+  period: { from: string; to?: string }
+  otherSideWaiting: boolean
+}
+
+/** `GET /users/{id}`: the landlord part for every signed-in caller (D-55). */
+export interface UserProfile {
+  id: string
+  shortName: string
+  memberSince: string
+  badges?: { idVerified: boolean; linkedinVerified: boolean }
+  landlordRating?: RatingDetail
+  listedHomes?: number
 }
 
 /** Location row state (§5.17): `PENDING` is a landlord's proposal, shown "Pending review" (D-109). */
@@ -524,7 +597,15 @@ export interface PropertyReview {
   ratingA?: number
   ratingB?: number
   ratingC?: number
+  /** Written with the review form (D-157): the comment is optional on edit. */
+  formReview?: boolean
+  /** The review form's parameter ratings (D-157), in form order. */
+  criteria?: Partial<Record<ReviewCriterion, number>>
+  wouldRecommend?: boolean
+  /** The text, or a form review's comment; absent when it has none. */
   body?: string
+  pros?: string
+  cons?: string
   textHidden?: boolean
   author?: {
     id?: string

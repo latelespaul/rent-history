@@ -15,6 +15,7 @@ import {
   VERIFIED_DELETE_WARNING,
   VERIFIED_EDIT_WARNING,
 } from "@/features/edit/verified"
+import { criterionLabel } from "@/features/review/form"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
 import { dayLabel, monthLabel, reviewCount } from "./labels"
@@ -22,6 +23,7 @@ import { Stars } from "./Rating"
 import { PersonTick } from "./PersonTick"
 import { ReviewTick } from "./ReviewTick"
 import { usePropertyReviews } from "./useProperties"
+import { cn } from "@/lib/utils"
 
 /** Longest reply the API accepts (ReviewContentRules.RESPONSE_MAX). */
 const RESPONSE_MAX = 1000
@@ -95,6 +97,7 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
     void queryClient.invalidateQueries({ queryKey: ["properties"] })
     void queryClient.invalidateQueries({ queryKey: ["tenancies"] })
     void queryClient.invalidateQueries({ queryKey: myReviewKeys.all })
+    void queryClient.invalidateQueries({ queryKey: ["users"] })
   }
   const save = useMutation({
     mutationFn: () =>
@@ -148,7 +151,11 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
           />
           {save.isError && <ActionError error={save.error} />}
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={save.isPending || !text.trim()}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={save.isPending || (!text.trim() && !review.formReview)}
+            >
               Save
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
@@ -205,7 +212,31 @@ function MyReviewActions({ review }: { review: PropertyReview }) {
   )
 }
 
-function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
+/** A form review's parameter ratings, folded away so the list stays short on a phone (D-157). */
+function CriteriaList({ review }: { review: PropertyReview }) {
+  const entries = Object.entries(review.criteria ?? {}) as [string, number][]
+  if (entries.length === 0) return null
+  return (
+    <details className="text-sm" data-testid="review-criteria">
+      <summary className="cursor-pointer font-medium text-teal-700">
+        Ratings by topic ({entries.length})
+      </summary>
+      <ul className="mt-2 space-y-1">
+        {entries.map(([key, value]) => (
+          <li key={key} className="flex items-center justify-between gap-3">
+            <span className="text-ink-700">{criterionLabel(key as never)}</span>
+            <span className="inline-flex items-center gap-1" aria-label={`${value} out of 5`}>
+              <Stars value={value} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+/** One review in a list: author line, stars, the form's answers and text, the reply. */
+export function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
   // Only the author gets edit or withdraw (D-156): that marks their own review.
   const mine = Boolean(review.actions?.edit || review.actions?.withdraw)
@@ -237,11 +268,34 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
           <Stars value={rating} />
         </span>
       )}
+      {review.wouldRecommend !== undefined && (
+        <p
+          className={cn(
+            "text-sm font-medium",
+            review.wouldRecommend ? "text-success-600" : "text-ink-700",
+          )}
+        >
+          {review.wouldRecommend ? "Would recommend" : "Would not recommend"}
+        </p>
+      )}
       {review.body ? (
         <p className="whitespace-pre-line text-ink-700">{review.body}</p>
       ) : review.textHidden ? (
         <p className="text-sm text-ink-500 italic">The text is hidden while a report is checked.</p>
       ) : null}
+      {review.pros && (
+        <p className="text-sm whitespace-pre-line text-ink-700">
+          <span className="font-semibold text-ink-900">Pros: </span>
+          {review.pros}
+        </p>
+      )}
+      {review.cons && (
+        <p className="text-sm whitespace-pre-line text-ink-700">
+          <span className="font-semibold text-ink-900">Cons: </span>
+          {review.cons}
+        </p>
+      )}
+      <CriteriaList review={review} />
       {(review.publishedAt || review.editedAt) && (
         <p className="text-xs text-ink-500" data-testid="review-dates">
           {review.publishedAt && `Published ${monthLabel(review.publishedAt)}`}

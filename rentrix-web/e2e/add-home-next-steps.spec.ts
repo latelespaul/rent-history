@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { daysAgo, freshLogin, verifyPhone, testPhone } from "./support"
+import { daysAgo, freshLogin, testPhone, verifyPhone, writeHomeReview } from "./support"
 
 /**
  * After "Save my home" the flow goes on (captain 2026-11-23 14:53): "Home added. 1 optional step
@@ -73,8 +73,7 @@ test("the next steps after adding a home: skip both, then review from My tenanci
 
   await test.step("review it: no next-steps prompt remains", async () => {
     await page.getByTestId("home-next-steps").getByTestId("add-home-write-review").click()
-    await page.getByTestId("review-star-4").click()
-    await page.getByLabel(/your review/i).fill(review)
+    await writeHomeReview(page, 4, review)
     await page.getByTestId("review-submit").click()
     await page.getByTestId("review-submitted").getByTestId("review-view-home").click()
     await expect(page.getByTestId("property-review").filter({ hasText: review })).toBeVisible()
@@ -131,8 +130,7 @@ test("a home left years ago can be reviewed from the next-steps screen", async (
     /home added\. 1 optional step left/i,
   )
   await done.getByTestId("add-home-write-review").click()
-  await page.getByTestId("review-star-4").click()
-  await page.getByLabel(/your review/i).fill(review)
+  await writeHomeReview(page, 4, review)
   await page.getByTestId("review-submit").click()
   await page.getByTestId("review-submitted").getByTestId("review-view-home").click()
   await expect(page.getByTestId("property-review").filter({ hasText: review })).toBeVisible()

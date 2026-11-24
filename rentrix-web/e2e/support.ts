@@ -61,6 +61,26 @@ export async function pickRole(page: Page, role: "I rent a home" | "I rent out a
   await page.getByRole("link", { name: /not now, take me back/i }).click()
 }
 
+/**
+ * The review form (D-157) up to its check screen, for a home whose landlord is not on the
+ * platform: the stay, the home (three parameters at `stars` and the comment), the overall rating
+ * worked out from them. The caller then clicks "Submit review" (`review-submit`).
+ */
+export async function writeHomeReview(page: Page, stars: number, comment: string) {
+  const step = page.getByTestId("review-step")
+  await expect(step).toHaveAttribute("data-section", "stay")
+  await page.getByTestId("review-next").click()
+  await expect(step).toHaveAttribute("data-section", "home")
+  for (const criterion of ["WATER_SUPPLY", "MAINTENANCE", "NOISE"])
+    await page.getByTestId(`rate-${criterion}-${stars}`).click()
+  await page.getByLabel(/anything else about the home/i).fill(comment)
+  await page.getByTestId("review-next").click()
+  await expect(step).toHaveAttribute("data-section", "overall")
+  await expect(page.getByTestId(`overall-home-${stars}`)).toHaveAttribute("aria-checked", "true")
+  await page.getByTestId("review-next").click()
+  await expect(step).toHaveAttribute("data-section", "check")
+}
+
 /** A date `days` before today as `YYYY-MM-DD`, the value a date input takes. */
 export function daysAgo(days: number): string {
   const date = new Date()

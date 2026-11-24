@@ -77,7 +77,19 @@ vi.mock("@/api/cities", () => ({
 vi.mock("@/api/homes", () => ({
   fetchHomeMatches: vi.fn(async () => []),
   addHome: vi.fn(async () => ADDED),
-  writeReview: vi.fn(async () => REVIEW),
+}))
+vi.mock("@/api/reviews", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/reviews")>()),
+  fetchReviewTasks: vi.fn(async () => [
+    {
+      tenancyId: "t9",
+      direction: "TENANT_TO_PROPERTY",
+      property: TENANCY.property,
+      period: { from: "2026-03" },
+      otherSideWaiting: false,
+    },
+  ]),
+  submitReviewForm: vi.fn(async () => ({ home: REVIEW })),
 }))
 vi.mock("@/api/tenancies", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/tenancies")>()),
@@ -85,6 +97,7 @@ vi.mock("@/api/tenancies", async (importOriginal) => ({
 }))
 
 const homes = await import("@/api/homes")
+const reviews = await import("@/api/reviews")
 const { default: AddHomePage } = await import("./AddHomePage")
 const { default: WriteReviewPage } = await import("./WriteReviewPage")
 
@@ -112,6 +125,7 @@ function renderAt(path: string) {
 afterEach(() => {
   cleanup()
   sessionStorage.clear()
+  localStorage.clear()
   vi.clearAllMocks()
 })
 
@@ -185,20 +199,22 @@ describe("new-user journey", () => {
     const user = userEvent.setup({ delay: null })
 
     expect(await screen.findByRole("heading", { name: /gokulam/i })).toBeTruthy()
-    await user.click(screen.getByTestId("review-submit"))
-    expect(screen.getByTestId("review-missing").textContent).toMatch(/pick a rating/i)
-
-    await user.click(screen.getByTestId("review-star-4"))
-    await user.type(screen.getByLabelText("Your review"), REVIEW.body!)
+    // The landlord is not on the platform, so the form is: stay, home, overall, check.
+    expect(screen.getByTestId("review-progress").textContent).toMatch(/step 1 of 4/i)
+    await user.click(screen.getByTestId("review-next"))
+    await user.click(screen.getByTestId("rate-WATER_SUPPLY-4"))
+    await user.click(screen.getByTestId("rate-NOISE-4"))
+    await user.type(screen.getByLabelText(/anything else about the home/i), REVIEW.body!)
+    await user.click(screen.getByTestId("review-next"))
+    expect(screen.getByTestId("overall-home-worked-out")).toBeTruthy()
+    await user.click(screen.getByTestId("review-next"))
     await user.click(screen.getByTestId("review-submit"))
 
     const submitted = await screen.findByTestId("review-submitted")
     expect(within(submitted).getByText("You submitted this review")).toBeTruthy()
     expect(within(submitted).getByTestId("tick-unverified").textContent).toBe("Not verified yet")
-    expect(homes.writeReview).toHaveBeenCalledWith("t9", {
-      direction: "TENANT_TO_PROPERTY",
-      ratingOverall: 4,
-      body: REVIEW.body,
+    expect(reviews.submitReviewForm).toHaveBeenCalledWith("t9", {
+      home: { ratingOverall: 4, criteria: { WATER_SUPPLY: 4, NOISE: 4 }, body: REVIEW.body },
     })
     expect(
       within(submitted)

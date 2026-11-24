@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router-dom"
+import { fetchPropertyRating, reviewKeys } from "@/api/reviews"
 import { isApiError } from "@/api/errors"
 import { Badge, DemoBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +30,7 @@ import { PropertyFacts } from "@/features/property/PropertyFacts"
 import { PropertyReviews } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
 import { RentHistory } from "@/features/property/RentHistory"
+import { RatingBreakdown } from "@/features/review/RatingBreakdown"
 import { useProperty, useSignedIn } from "@/features/property/useProperties"
 import { useAuth } from "@/features/auth/authContext"
 import { PencilIcon, StarIcon, TenancyIcon } from "@/components/ui/icons.gen"
@@ -82,6 +85,11 @@ function Gallery() {
 
 function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn: boolean }) {
   const { landlord } = property
+  // The per-parameter averages of the review form (D-158); public like the rating itself.
+  const detail = useQuery({
+    queryKey: reviewKeys.propertyRating(property.id),
+    queryFn: ({ signal }) => fetchPropertyRating(property.id, signal),
+  })
   return (
     <section
       aria-labelledby="rating-heading"
@@ -100,6 +108,7 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
             An average appears after 3 reviews, so one review cannot define a home.
           </p>
         )}
+        <RatingBreakdown rating={detail.data} title="The home by topic" testId="home-breakdown" />
         {property.rating.reviewCount > 0 && (
           <a
             href="#reviews"
@@ -132,6 +141,15 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
                   ? `${reviewCount(landlord.rating.reviewCount)} as landlord`
                   : "No landlord reviews yet"}
               </p>
+              {signedIn && landlord.id && (
+                <Link
+                  to={`/u/${landlord.id}`}
+                  className="text-sm font-medium text-teal-700"
+                  data-testid="landlord-profile-link"
+                >
+                  See the landlord&rsquo;s ratings and reviews
+                </Link>
+              )}
             </>
           )}
         </div>

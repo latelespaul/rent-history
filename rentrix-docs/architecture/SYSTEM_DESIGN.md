@@ -257,7 +257,9 @@ There is no password column: v1 has no passwords (D-71).
 | `property_id` | always set (denormalised for queries) |
 | `rating_overall` | integer 1–5, required |
 | `rating_{a,b,c}` | optional sub-ratings 1–5, meaning depends on direction (D-29) |
-| `body` | 30–2000 chars |
+| `body` | 30–2000 chars (*D-157*: a form review's comment is optional, empty when none) |
+| `would_recommend`, `pros`, `cons` | *D-157*: the review form's "would you recommend" (null = not answered) and its pros and cons (≤ 1000 each) |
+| `form_review` | *D-157*: true when written with the review form; default false |
 | `status` | see §7.2 |
 | `submitted_at`, `published_at`, `edit_until`, `hidden_at`, `hidden_reason` | |
 | `counts_in_aggregate` | false for superseded repeat-pair reviews (D-44) and hidden reviews |
@@ -270,6 +272,7 @@ There is no password column: v1 has no passwords (D-71).
   - `TENANT_TO_LANDLORD`: responsiveness, fairness (deposit and charges), respect for privacy.
   - `LANDLORD_TO_TENANT`: pays on time, care of property, communication.
   - `TENANT_TO_PROPERTY`: condition and maintenance, utilities (water, power), neighbourhood.
+  - *Changed by D-157*: the tenant's review form rates its own parameters instead (`review_criterion_ratings`); reviews written before it keep these sub-ratings.
 
 ### 5.7 ReviewResponse and ReviewRevision
 - `review_responses(review_id unique, author_id, body ≤ 1000, status, created_at, edit_until)`: the review's **subject** (or the property's landlord for property reviews) may post **one** public reply.
@@ -455,7 +458,7 @@ Indexes: `(tenancy_id)`, `(application_id)`, `(uploader_id, created_at)`, `(sha2
 - **D-40** A review written during an `ACTIVE` tenancy may be **updated once** after the tenancy ends (at any time: there is no closing window, D-39), as long as it is still `AWAITING_REVEAL` (D-41); a published review gets no post-end update. The update creates a revision and resets `edit_until`. *Changed by D-156 (2026-11-23)*: the author edits their review at any time, so the one post-end update no longer limits them; `post_end_update_used` is no longer read.
 - **D-41** Edit window: the author may edit text and ratings for **7 days** after submission, and only while the review is `AWAITING_REVEAL`. Once it or its counter-review publishes (D-46), or a property review publishes at once (D-47), its text and ratings are frozen, so neither side can react to the other's review. Once frozen, only admins can hide a review; the subject's one response (§5.7) is unaffected. Authors may withdraw (delete) their own review at any time; withdrawal removes it from aggregates and cannot be undone for that tenancy+direction. *Changed by D-156 (2026-11-23)*: the author may edit text and ratings at any time while the review is `AWAITING_REVEAL` or `PUBLISHED` (not `HIDDEN` or `WITHDRAWN`); the 7-day window and the freeze on publish are gone. Each edit keeps a revision, resets the review's tick (back to the admin queue), recomputes the ratings and shows a small "edited <date>" (`editedAt`). The D-39 window before the first review is unchanged.
 - **D-42** The subject can never edit, delete or hide a review about them. Their tools are one public response (§5.7) and reporting (§8).
-- **D-43** Content rules checked at submit (rejects with `422`): length 30–2000; no phone numbers, emails, URLs or unit numbers in the body (regex detection); basic profanity list. A unit number is flagged only with an explicit marker (`flat|unit|apt|apartment|house|door|room` followed by `no`, `no.`, `number` or `#`), a block-unit code tied to those words or to `tower|wing|block` (`flat B 402`, `tower C-1204`, `wing #1203`), a bare code of one capital letter, an optional hyphen or space and 3–4 digits (`A-1203`, `B 402`; multi-letter prefixes such as `NH-48` or `SH-17` never match, and neither does `A` or `I` followed by a space, as in `A 1200 sq ft`), or the home's own unit label. Numbers followed by years, months, weeks, days, km or min, and ranks like `#1`, are never flagged. Edge cases lean towards allowing the text; abuse reports (§8) catch what the regex misses. These keep personal data out of public text.
+- **D-43** Content rules checked at submit (rejects with `422`): length 30–2000; no phone numbers, emails, URLs or unit numbers in the body (regex detection); basic profanity list. A unit number is flagged only with an explicit marker (`flat|unit|apt|apartment|house|door|room` followed by `no`, `no.`, `number` or `#`), a block-unit code tied to those words or to `tower|wing|block` (`flat B 402`, `tower C-1204`, `wing #1203`), a bare code of one capital letter, an optional hyphen or space and 3–4 digits (`A-1203`, `B 402`; multi-letter prefixes such as `NH-48` or `SH-17` never match, and neither does `A` or `I` followed by a space, as in `A 1200 sq ft`), or the home's own unit label. Numbers followed by years, months, weeks, days, km or min, and ranks like `#1`, are never flagged. Edge cases lean towards allowing the text; abuse reports (§8) catch what the regex misses. These keep personal data out of public text. *Changed by D-157*: a form review's comment, pros and cons are optional, so the 30-character minimum applies only to reviews written without the form.
 - **D-44** Repeat-pair rule: if the same landlord and tenant have more than one tenancy together, only the **most recent** tenancy's person reviews count in their aggregates (older ones stay visible with `counts_in_aggregate=false`). Property reviews from the same tenant: only the latest counts for that property. This stops a colluding pair from inflating ratings by cycling tenancies.
 - **D-45** Account-age and volume guards: a user's first review needs an email-verified account (*changed by D-141*: the 7-day account age is dropped); at most 10 reviews submitted per user per 24 h. Admin dashboards flag landlords whose tenants are all created through landlord invites to brand-new accounts (signal for fake tenants).
 
@@ -700,6 +703,13 @@ Captain's decision of 2026-11-22 23:30. It supersedes "a tenancy counts only whe
 - **D-162** **Search is open to everyone and finds a home by any part of its address** (captain 2026-11-24 00:31). `/search` on the web needs no session (D-85 changed); `GET /properties` was already public. The search box sends `q`, which now matches the area (locality), building name, street, society name (a typed society still `PENDING` review too, D-109), PIN code and city name, case-insensitive and anywhere in the value; `locality=` stays a prefix filter for links. Every published home shows, verified or not: a card carries `verification` (the home's tick, D-148) and the web tags anything but `VERIFIED` "Not verified yet", next to "Pending review" for a new place name (`locationPending`). Owner contact is never in a card (D-57). Society and city names are matched through id subqueries, so the city or area range index still drives the query.
 ---
 
+### 7.10 Review form (captain 2026-11-23 21:29)
+
+Design note: [`../design/review-form.md`](../design/review-form.md).
+
+- **D-157** **The review is a structured form.** The tenant's form writes the two existing reviews of a tenancy, `TENANT_TO_PROPERTY` and `TENANT_TO_LANDLORD` (the landlord part only when the landlord can be reviewed, D-139), in one transaction: `POST /tenancies/{id}/review-form {home?, landlord?}`, each part `{ratingOverall, criteria: {PARAM: 1–5}, wouldRecommend?, body?, pros?, cons?}`, at least one part. Parameters (`review_criterion_ratings`, one row per rated parameter): home `WATER_SUPPLY`, `POWER_BACKUP`, `MAINTENANCE`, `CLEANLINESS`, `SECURITY`, `PARKING`, `NOISE`, `NEIGHBOURHOOD`, `VALUE_FOR_RENT`; landlord `RESPONSIVENESS`, `DEPOSIT_RETURN`, `TRANSPARENCY`, `PRIVACY`, `BEHAVIOUR`. The overall rating is required; every parameter is optional; the web fills the overall with the part's average, rounded half up, until the user picks their own. A form review's comment, pros and cons are optional (D-43's personal-data and profanity rules still apply; the 30-character minimum applies only to reviews written without the form). A form review is marked by `reviews.form_review`, so its comment stays optional on every edit. Every broken rule is a field error on its own path (`home.criteria.PARKING`, `landlord.ratingOverall`), all in one `422`. The trust rules, the 60-day window (D-39), the reveal (D-46, D-47) and edits (D-156) are unchanged; `POST /tenancies/{id}/reviews` and `PATCH /reviews/{id}` take no form fields, and an edit keeps a form review's parameter ratings, `wouldRecommend`, pros and cons. `ReviewView` gains `formReview`, `criteria`, `wouldRecommend`, `pros` and `cons` (pros and cons hidden with the text, D-50). The draft stays on the user's device; the server keeps no draft.
+- **D-158** **Per-parameter averages.** `GET /properties/{id}/rating` and `landlordRating` on `GET /users/{id}` gain `criteria: [{criterion, ratingCount, average?}]` (every parameter of the direction, in form order) and `recommend: {answered, yes}`. They are computed at read time over the subject's counted reviews (§9, the same ones as its headline, D-135), bounded per subject like the tower figures of D-111, so no stored roll-up has to follow them (D-33). D-52 holds per parameter: an average from 3 ratings of it, else "New · n ratings"; the "would recommend" share from 3 answers. The home page shows the home's parameters; the landlord page `/u/:id` (signed in, D-55) shows the landlord's.
+
 ## 8. Abuse reporting and moderation
 
 - **D-49** Any logged-in user can report a review, response, user, property or tenancy once per target. Parties of the tenancy behind a review may also report it.
@@ -723,6 +733,7 @@ For each subject (landlord user, tenant user, property), over reviews with `stat
 - **D-52** Public display threshold: with `n < 3` the UI shows "New · n reviews" and the individual reviews, but no star average, so one review does not define a person. *Changed in design v4 (open by default)*: `n` counts green-tick reviews only (D-135); the "Not verified yet" group shows its own count, and its average only from 3 reviews.
 - **D-53** Ranking/sorting uses a Bayesian average: `bayes = (C·m + rating_sum) / (C + n)` with `C = 5` and `m` = the mean rating of all counted reviews of that subject type (recomputed nightly; `3.5` until 50 reviews exist). Sort "Top rated" uses `bayes_score`; ties break on `n` then `last_review_at`.
 - Distribution `count_1..count_5` and sub-rating averages (over reviews that filled them) are shown with the aggregate.
+- *D-158*: the review form's per-parameter averages and the "would recommend" share follow the same counting, with the D-52 threshold per parameter.
 - Each tenancy contributes at most one review per direction (D-38), and repeat pairs count once (D-44), so long or renewed relationships cannot outvote others.
 - No recency decay in v1; reviews show their period so readers can judge age.
 
@@ -910,7 +921,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | PATCH / DELETE | `/properties/{id}/images/{imageId}` | order, primary, delete |
 | GET | `/properties/{id}/rent-history` | logged-in (D-56); D-26: `{propertyId, rows: [{fromMonth, toMonth?, monthlyRentInr, maintenanceInr?, share}]}`, months as `YYYY-MM` only (D-57), no tenant identity, confirmed records of `ACTIVE`/`ENDED` tenancies only, oldest first (*design v4 (open by default)*: also `PROPOSED` records, and rows gain `confirmed`, `verified` and `agreementTier`, D-25, D-134). A row runs to the month before the next confirmed record of its tenancy, or to the tenancy's end month; `toMonth` is absent while the rent is current. `share` is true on `ROOM`/`PG` properties |
 | GET | `/properties/{id}/reviews` | public with full text (D-161); `TENANT_TO_PROPERTY` only; `actions` only for the author |
-| GET | `/properties/{id}/rating` | aggregate; public; *design v4 (open by default)*: `{verified: {aggregate}, unverified: {count, average}}` (D-135) |
+| GET | `/properties/{id}/rating` | aggregate; public; *design v4 (open by default)*: `{verified: {aggregate}, unverified: {count, average}}` (D-135); D-158 adds `criteria` and `recommend` |
 | POST | `/properties/{id}/enquiries` | `TENANT` |
 
 **Users (public profiles)**
@@ -935,7 +946,8 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | PATCH / DELETE | `/rent-records/{id}` | D-156: the party who added it (Ⓟ); `PATCH {effectiveFrom, monthlyRentInr, maintenanceInr?}`; not the starting rent (`422 starting_rent`); resets the tenancy's tick |
 | POST | `/me/change-requests` | D-156: the item's creator (`403 not_creator`), no gate; `{targetType: TENANCY|PROPERTY|REVIEW, targetId, note}` → `201 {id}`, an open `CHANGE_REQUEST` report in the admin report queue |
 | GET / POST | `/tenancies/{id}/documents` | private; GET returns signed URLs |
-| POST | `/tenancies/{id}/reviews` | `{direction, ratingOverall, ratingA?, ratingB?, ratingC?, body}` |
+| POST | `/tenancies/{id}/reviews` | `{direction, ratingOverall, ratingA?, ratingB?, ratingC?, body}`; the review form has its own endpoint (D-157) |
+| POST | `/tenancies/{id}/review-form` | D-157: the tenant's review form, `{home?, landlord?}`, both reviews or neither; `201 {home?, landlord?}` |
 | GET | `/tenancies/{id}/agreement` | *design v4*: parties and admin; the live agreement of the tenancy, else `404`. The tenancy view gains `agreementTier` |
 | POST | `/tenancies/{id}/agreement/confirm`, `/dispute` | the party who did not upload it (Ⓟ): confirm `{sha256}` (`409 agreement_changed` on a different hash, `409 file_deleted` once the file is gone) or dispute `{reason}` (D-128) |
 
