@@ -32,7 +32,7 @@ export const routes = [
     errorElement: <RouteError />,
     children: [
       { path: "/p/:id", element: <PropertyPage /> },
-      // Search is open to everyone, signed in or not (captain 2026-11-24 00:31, D-158).
+      // Search is open to everyone, signed in or not (captain 2026-11-24 00:31, D-162).
       { path: "/search", element: <SearchPage /> },
       { path: "/login", element: <LoginPage /> },
       { path: "/terms", element: <LegalPage title="Terms" /> },

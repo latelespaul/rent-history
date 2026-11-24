@@ -139,7 +139,7 @@ describe("PropertyPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: /Demo Residency A/ })).toBeTruthy()
     expect(screen.getByText("Semi-furnished")).toBeTruthy()
     expect(screen.getAllByLabelText("Rated 4.3 out of 5 from 4 reviews").length).toBeGreaterThan(0)
-    // Home reviews are public with full text (captain 2026-11-24 00:31, D-157).
+    // Home reviews are public with full text (captain 2026-11-24 00:31, D-161).
     expect(await screen.findByText("Water supply was steady.")).toBeTruthy()
     expect(screen.queryByText(/Sign in to read/)).toBeNull()
     expect(screen.queryByTestId("my-review")).toBeNull()

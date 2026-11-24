@@ -33,7 +33,7 @@ import java.util.UUID;
 /**
  * Review endpoints (§12.2, §7). Writing needs a signed-in, approved party (D-91); reading needs a signed-in caller
  * and follows the subject's visibility (§10), except {@code GET /properties/{id}/rating} and
- * {@code GET /properties/{id}/reviews}, which are public (D-157).
+ * {@code GET /properties/{id}/reviews}, which are public (D-161).
  */
 @RestController
 @RequiredArgsConstructor
@@ -85,7 +85,7 @@ public class ReviewController {
 		return reviews.updateResponse(id, request.body(), caller);
 	}
 	
-	/** {@code GET /properties/{id}/reviews?page=&size=&sort=newest|rating}: public, full text (D-157). */
+	/** {@code GET /properties/{id}/reviews?page=&size=&sort=newest|rating}: public, full text (D-161). */
 	@GetMapping("/properties/{id}/reviews")
 	public PageResponse<ReviewView> forProperty(@PathVariable UUID id, @RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size, @RequestParam(required = false) String sort,

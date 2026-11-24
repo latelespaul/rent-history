@@ -98,7 +98,7 @@ describe("SearchPage", () => {
     expect(router.state.location.search).toBe("?city=BLR&sort=newest")
   })
 
-  it("sends the search box as q, so a society name or a PIN code finds the home (D-158)", async () => {
+  it("sends the search box as q, so a society name or a PIN code finds the home (D-162)", async () => {
     api.respond = (search) =>
       search.size === 50
         ? page(BLR_HOMES)

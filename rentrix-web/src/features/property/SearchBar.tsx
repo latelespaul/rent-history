@@ -17,7 +17,7 @@ interface Props {
 /**
  * City picker + one search box + Search (mockups `home.html`, `search.html`). The box finds a home
  * by its area, society (a typed one still pending review too), building, street or PIN code, sent
- * as `q` (D-158). The hints are the localities of the chosen city's published homes.
+ * as `q` (D-162). The hints are the localities of the chosen city's published homes.
  */
 export function SearchBar({ city, query, onCityChange, onSubmit, className }: Props) {
   const [text, setText] = useState(query)

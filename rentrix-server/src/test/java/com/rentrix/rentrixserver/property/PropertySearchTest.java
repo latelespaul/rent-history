@@ -193,7 +193,7 @@ class PropertySearchTest {
 	}
 	
 	/**
-	 * D-158 (captain 2026-11-24 00:31): anyone, signed in or not, finds a tenant's new home by its society, even a
+	 * D-162 (captain 2026-11-24 00:31): anyone, signed in or not, finds a tenant's new home by its society, even a
 	 * typed one still pending review, by its PIN code and by its city's name; the card is tagged pending.
 	 */
 	@Test

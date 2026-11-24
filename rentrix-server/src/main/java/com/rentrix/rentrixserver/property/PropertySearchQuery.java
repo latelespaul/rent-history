@@ -93,7 +93,7 @@ public final class PropertySearchQuery {
 			params.add(criteria.minRating().subtract(SHOWN_AVERAGE_HALF_STEP));
 		}
 		if (criteria.text() != null) {
-			// D-158: one box finds a home by its area (locality), building, street, society (a typed, still pending
+			// D-162: one box finds a home by its area (locality), building, street, society (a typed, still pending
 			// name too), PIN code or city name. Society and city are matched through id subqueries, so no join
 			// multiplies rows and the range index above still drives the query.
 			String pattern = "%" + escapeLike(criteria.text()) + "%";

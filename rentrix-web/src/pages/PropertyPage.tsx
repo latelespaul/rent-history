@@ -275,7 +275,7 @@ function IRentThisHome({ propertyId }: { propertyId: string }) {
 
 /**
  * Property page (DESIGN.md screen 3, `/p/:id`). Everyone sees place, facts, ratings and the
- * home's reviews in full (D-157); signed-in users also get rent history (D-56). The flat
+ * home's reviews in full (D-161); signed-in users also get rent history (D-56). The flat
  * number shows only when the API sends it, i.e. to the owner and admins (D-57).
  */
 export default function PropertyPage() {

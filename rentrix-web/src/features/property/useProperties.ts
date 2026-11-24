@@ -71,7 +71,7 @@ export function useRentHistory(id: string, enabled: boolean) {
 }
 
 /**
- * Property reviews, full text for everyone (D-157), cached per viewer because only the author gets
+ * Property reviews, full text for everyone (D-161), cached per viewer because only the author gets
  * edit and delete; `null` until the API serves them (B6).
  */
 export function usePropertyReviews(id: string) {

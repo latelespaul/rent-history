@@ -265,7 +265,7 @@ function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId
 
 /**
  * What tenants say about the home: full text and ratings for everyone, signed in or not (captain
- * 2026-11-24 00:31, D-157). The author sees "Your review" with Edit and Delete. Until the API
+ * 2026-11-24 00:31, D-161). The author sees "Your review" with Edit and Delete. Until the API
  * serves reviews (B6) the card says so.
  */
 export function PropertyReviews({

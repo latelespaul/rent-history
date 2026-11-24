@@ -332,7 +332,7 @@ public class ReviewService {
 
 	/**
 	 * {@code GET /properties/{id}/reviews}: published property reviews with full text and ratings, for everyone,
-	 * signed in or not (D-157). An anonymous caller gets no actions; the author gets edit and withdraw.
+	 * signed in or not (D-161). An anonymous caller gets no actions; the author gets edit and withdraw.
 	 */
 	public PageResponse<ReviewView> forProperty(UUID propertyId, AuthenticatedUser caller, Pageable pageable) {
 		User me = caller == null ? null : currentUser(caller);
@@ -503,7 +503,7 @@ public class ReviewService {
 		}
 	}
 
-	/** {@code me} is null for an anonymous reader (D-157). */
+	/** {@code me} is null for an anonymous reader (D-161). */
 	private static boolean isAuthor(Review review, User me) {
 		return me != null && review.getAuthor().getId().equals(me.getId());
 	}

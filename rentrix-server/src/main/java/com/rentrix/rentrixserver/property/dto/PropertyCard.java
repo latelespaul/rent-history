@@ -33,7 +33,7 @@ public record PropertyCard(
 	boolean locationPending,
 	/**
 	 * The home's green tick (D-134, D-148): {@code UNVERIFIED} homes are listed like any other and the web tags them
-	 * "Not verified yet", never hidden (open by default, D-158).
+	 * "Not verified yet", never hidden (open by default, D-162).
 	 */
 	VerificationState verification
 ) {

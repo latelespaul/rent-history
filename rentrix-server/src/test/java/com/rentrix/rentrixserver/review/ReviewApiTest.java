@@ -250,7 +250,7 @@ class ReviewApiTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[0].body").value(GOOD))
 			.andExpect(jsonPath("$.items[0].submittedAt").doesNotExist());
-		// anonymous: home reviews are public with full text and ratings (D-157), but no actions or private dates
+		// anonymous: home reviews are public with full text and ratings (D-161), but no actions or private dates
 		mvc.perform(get("/properties/" + tenancy.getProperty().getPublicId() + "/reviews"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[0].body").value(GOOD))

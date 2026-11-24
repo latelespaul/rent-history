@@ -155,7 +155,7 @@ export interface PropertyCard {
   landlordName: string
   /** The area, society, tower or wing is a new name the team has not reviewed yet; shown tagged. */
   locationPending?: boolean
-  /** The home's green tick (D-148); anything but `VERIFIED` shows "Not verified yet" (D-158). */
+  /** The home's green tick (D-148); anything but `VERIFIED` shows "Not verified yet" (D-162). */
   verification?: VerificationState
 }
 

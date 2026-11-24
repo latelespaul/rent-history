@@ -4,7 +4,7 @@ import { expect, test, type Browser, type Page, type TestInfo } from "@playwrigh
 import { daysAgo, freshLogin, pickRole, testPhone, verifyPhone } from "./support"
 
 /**
- * Release gate (captain 2026-11-24 00:31, D-157, D-158), at 390 px: a new tenant adds a home in a
+ * Release gate (captain 2026-11-24 00:31, D-161, D-162), at 390 px: a new tenant adds a home in a
  * society they type ("Sobha …", HSR Layout 560102, flat C202) and reviews it; a second user and a
  * logged-out visitor find it by the society name, the area and the PIN code, open it and read the
  * review; the author reopens it from My tenancies and edits it. The tenancy started 120 days ago,
