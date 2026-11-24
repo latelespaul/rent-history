@@ -130,6 +130,14 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
           {typed.length > 0 && areas.isSuccess && areas.data.length === 0 && (
             <li className="text-sm text-ink-500">No area matches “{typed}”.</li>
           )}
+          {typed.length === 0 &&
+            search.length > 0 &&
+            areas.isSuccess &&
+            areas.data.length === 0 && (
+              <li className="text-sm text-ink-500">
+                No area has PIN {search} yet. Type the area name.
+              </li>
+            )}
           {/* Only once the search answered: a tap before that would propose an area that exists. */}
           {typed.length >= 2 &&
             !/^\d+$/.test(typed) &&

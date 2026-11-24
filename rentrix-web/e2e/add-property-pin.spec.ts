@@ -29,3 +29,24 @@ test("the PIN code narrows the Areas list on Add property", async ({ page }) => 
   await form.getByRole("button", { name: "Save as draft" }).click()
   await expect(page).toHaveURL(/\/me\/properties\/[^/]+\/edit\?saved=1$/)
 })
+
+test("a PIN code with no area says so and still lets the user suggest one", async ({ page }) => {
+  const area = `Pin Gap ${Date.now().toString(36)}`
+  await freshLogin(page)
+  await pickRole(page, "I rent out a property")
+  await expect(page).toHaveURL(/\/me\/dashboard$/)
+
+  await page.getByRole("link", { name: "Add property" }).first().click()
+  const form = page.getByRole("form", { name: "Property" })
+  await form.getByLabel("City").selectOption({ label: "Bangalore" })
+  // A valid Bangalore-range PIN that no area in the V18 seed carries.
+  await form.getByLabel("PIN code").fill("560999")
+
+  const areas = form.getByRole("list", { name: "Areas" })
+  await expect(areas.getByText("No area has PIN 560999 yet. Type the area name.")).toBeVisible()
+  await expect(areas.getByRole("button")).toHaveCount(0)
+
+  await form.locator("#pf-area").fill(area)
+  await expect(areas.getByRole("button", { name: `Suggest new area “${area}”` })).toBeVisible()
+  await expect(areas.getByText(/No area has PIN/)).toHaveCount(0)
+})
