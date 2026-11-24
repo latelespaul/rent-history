@@ -69,12 +69,21 @@ public class PlaceMatcher {
 	}
 
 	/**
-	 * Whether the place words before the flat number ({@code split}) name a place with fewer typos than the whole
-	 * text does ({@code whole}); on a tie the whole name wins, so "Godrej 24" is that society, not flat 24 of another
-	 * Godrej. Both lists are best first.
+	 * Whether the place words before the flat number {@code unit} ({@code split}) win over the whole text as a name
+	 * ({@code whole}). Only a society whose own name holds the number exactly competes, and it wins on a tie: "Godrej
+	 * 24" is that society, not flat 24 of another Godrej, while "Godrej 2" is still flat 2 and "Lakeside 1" flat 1, not
+	 * "Godrej 24" or Tower 1. Both lists are best first.
 	 */
-	public static boolean unitFirst(List<SocietyHit> split, List<SocietyHit> whole) {
-		return !split.isEmpty() && (whole.isEmpty() || split.getFirst().cost() < whole.getFirst().cost());
+	public static boolean unitFirst(List<SocietyHit> split, List<SocietyHit> whole, String unit) {
+		if (split.isEmpty()) {
+			return false;
+		}
+		String number = NameMatch.words(unit).getLast();
+		return whole.stream()
+			.filter(hit -> hit.tower() == null && NameMatch.words(hit.society().getName()).contains(number))
+			.findFirst()
+			.map(hit -> split.getFirst().cost() < hit.cost())
+			.orElse(true);
 	}
 
 	/** One society the text names; {@code tower} when the words after the society's name name one of its towers. */

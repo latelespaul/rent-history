@@ -145,6 +145,24 @@ class PropertySocietySearchTest {
 	}
 
 	@Test
+	void aNumberThatOnlyStartsASocietyNameOrNamesATowerStillFindsTheFlat() throws Exception {
+		Society godrej24 = locations.society(area, "Godrej 24");
+		flat(godrej24, null, "101", FieldVisibility.OPEN);
+		Society infinity = locations.society(area, "Godrej Infinity");
+		Property infinity2 = flat(infinity, null, "2", FieldVisibility.OPEN);
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Godrej 2"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(infinity2).toArray())));
+		mvc.perform(get("/search/suggestions").param("city", CITY).param("q", "Godrej 2"))
+			.andExpect(jsonPath("$.homes[*].id", containsInAnyOrder(ids(infinity2).toArray())));
+		locations.tower(lakeside, "Tower 1", 3);
+		locations.tower(lakeside, "Tower 10", 4);
+		locations.tower(lakeside, "Tower 11", 5);
+		Property one = flat(lakeside, towerA, "1", FieldVisibility.OPEN);
+		mvc.perform(get("/properties").param("city", CITY).param("q", "Prestige Lakeside 1"))
+			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(one).toArray())));
+	}
+
+	@Test
 	void villaBeforeTheFlatNumberIsAFillerWord() throws Exception {
 		mvc.perform(get("/properties").param("city", CITY).param("q", "Lakeside villa 1205"))
 			.andExpect(jsonPath("$.items[*].id", containsInAnyOrder(ids(b1205).toArray())));

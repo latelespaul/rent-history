@@ -50,7 +50,7 @@ public class SearchSuggestionService {
 			MAX_SOCIETIES);
 		List<PlaceMatcher.SocietyHit> named = query.unit() == null ? List.of()
 			: matcher.societies(cityCode, query, caller, MAX_SOCIETIES);
-		if (!PlaceMatcher.unitFirst(named, societies)) {
+		if (!PlaceMatcher.unitFirst(named, societies, query.unit())) {
 			named = List.of();
 		}
 		List<SearchSuggestions.HomeSuggestion> homes = flats.find(named, query.unit(), true, MAX_HOMES).stream()

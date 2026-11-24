@@ -120,7 +120,7 @@ public class PropertyService {
 		if (query.unit() != null) {
 			List<PlaceMatcher.SocietyHit> split = fewestTypos(placeMatcher.societies(criteria.cityCode(), query,
 				caller, MAX_TEXT_PLACES));
-			if (PlaceMatcher.unitFirst(split, top)) {
+			if (PlaceMatcher.unitFirst(split, top, query.unit())) {
 				homeIds = flats.find(split, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId)
 					.toList();
 				if (!homeIds.isEmpty() || top.isEmpty()) {
