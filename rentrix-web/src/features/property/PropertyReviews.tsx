@@ -401,7 +401,10 @@ export function PropertyReviews({
           <StarIcon size={20} />
           What tenants say about the home
         </h2>
-        <span className="text-sm text-ink-500" data-testid="reviews-count">
+        <span
+          className="shrink-0 text-sm whitespace-nowrap text-ink-500"
+          data-testid="reviews-count"
+        >
           {listedReviewCount(reviews.data?.total, rating.reviewCount)}
         </span>
       </div>

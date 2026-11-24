@@ -141,7 +141,10 @@ export default function LandlordPage() {
           <h2 id="landlord-reviews-heading" className="text-lg font-semibold">
             What tenants say about this landlord
           </h2>
-          <span className="text-sm text-ink-500" data-testid="landlord-reviews-count">
+          <span
+            className="shrink-0 text-sm whitespace-nowrap text-ink-500"
+            data-testid="landlord-reviews-count"
+          >
             {listedReviewCount(reviews.data?.page.totalItems, rating.reviewCount)}
           </span>
         </div>
