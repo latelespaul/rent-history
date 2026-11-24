@@ -130,7 +130,8 @@ app:
     # Which published reviews the headline ratings count (D-135, D-163): "verified" (green-tick
     # reviews only, the captain's rule since anyone signed in may post) or "all" (every published
     # review, the interim default before D-163). After a switch the stored aggregates are rebuilt by
-    # the nightly repair (D-33, RatingRecomputer.recomputeAll).
+    # the nightly repair (D-33, RatingRecomputer.recomputeAll) or at once by an admin with
+    # POST /admin/ratings/recompute (D-163).
     headline: ${RATINGS_HEADLINE:verified}
   identity:
     # HMAC key for phone numbers, PAN and OTP codes (D-101, D-106). Env only, >= 32 bytes.

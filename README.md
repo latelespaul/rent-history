@@ -165,3 +165,10 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/me/identi
 ### Headline ratings (`RATINGS_HEADLINE`)
 
 `RATINGS_HEADLINE=verified` (the default since D-163) makes the headline ratings count only reviews an admin gave the green tick (D-135): anyone signed in may post, so unverified reviews are listed with their "Not verified yet" badge but stay out of the average. `all` counts every published review (the interim default before D-163). After a switch, the nightly rating repair rebuilds the stored aggregates.
+
+**One-time step after deploying D-163** (DEV, then LIVE): rebuild the stored aggregates at once, so no home keeps a headline that counts unverified reviews until the nightly repair. Sign in to the admin console, copy its access token, and run:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://<admin host>/api/v1/admin/ratings/recompute
+# {"rebuilt":123}
+```
