@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, cleanup, render, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { PropertySearch } from "@/api/properties"
 import type { AuthState } from "@/features/auth/authContext"
@@ -117,7 +117,29 @@ describe("HomePage", { timeout: 20_000 }, () => {
       expect.arrayContaining(["Any one", "By our team", "Verified by Doorway Living"]),
     )
     expect(texts("summary", region("faq"))).toHaveLength(5)
-    expect(document.querySelector('[role="search"], form')).toBeNull()
+    // step 1 no longer says sign-in is needed to search (captain 2026-11-25)
+    expect(region("how").textContent).toMatch(
+      /Searching homes and reading reviews needs no account/,
+    )
+    expect(region("how").textContent).not.toMatch(/That is all it takes to search/)
+  })
+
+  it("puts the search box in the hero, open to anyone, and sends a search to /search", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    const router = renderHome()
+
+    const hero = document.querySelector('section[aria-labelledby="hero-title"]')!
+    const form = hero.querySelector('form[role="search"]')!
+    expect(form).not.toBeNull()
+    const input = form.querySelector<HTMLInputElement>('input[role="combobox"]')!
+    const button = [...form.querySelectorAll("button")].find((b) => b.textContent === "Search")!
+    expect(button.getAttribute("type")).toBe("submit")
+
+    fireEvent.change(input, { target: { value: "HSR Layout" } })
+    fireEvent.click(button)
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/search"))
+    expect(router.state.location.search).toBe("?q=HSR+Layout")
   })
 
   it("links the hero and the header to the sections they name", () => {
@@ -150,7 +172,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
     )
   })
 
-  it("offers sign-in as the call to action at the top and the end, plus Terms and Privacy", () => {
+  it("offers sign-in as the call to action at the top and the end, plus Search, Terms and Privacy", () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
@@ -161,12 +183,15 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(
       [...footer.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")]),
     ).toEqual([
+      ["Search", "/search"],
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
     ])
-    // the only buttons scroll the preview row
+    // besides the hero search (city picker, Search), the only buttons scroll the preview row
     expect(
-      [...document.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")),
+      [...document.querySelectorAll("main button:not(form[role=search] button)")].map((b) =>
+        b.getAttribute("aria-label"),
+      ),
     ).toEqual(["Previous cards", "Next cards"])
   })
 

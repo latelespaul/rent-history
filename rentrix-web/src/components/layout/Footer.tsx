@@ -6,9 +6,26 @@ import { useCities } from "@/features/city/useCities"
 import { BRAND } from "@/lib/brand"
 import { Container } from "./Container"
 
+/** The footer's "Search": a teal pill with a 44 px tap target, so it is easy to see and tap at 390 px. */
+export function FooterSearch() {
+  return (
+    <Button
+      asChild
+      variant="outline"
+      data-testid="footer-search"
+      className="h-11 rounded-full border-teal-600 px-5 text-teal-700 hover:bg-teal-50"
+    >
+      <Link to="/search">
+        <SearchIcon />
+        Search
+      </Link>
+    </Button>
+  )
+}
+
 /**
  * Site footer. The launch line comes from the city list, never from a typed city name (D-85).
- * "Contact us" opens `/contact`. "Search" is a teal pill with a 44 px tap target, so it is easy to see and tap at 390 px.
+ * "Contact us" opens `/contact`; "Search" is the `FooterSearch` pill, also on the landing's footer.
  */
 export function Footer() {
   const cities = useCities()
@@ -28,17 +45,7 @@ export function Footer() {
           >
             Contact us
           </Link>
-          <Button
-            asChild
-            variant="outline"
-            data-testid="footer-search"
-            className="h-11 rounded-full border-teal-600 px-5 text-teal-700 hover:bg-teal-50"
-          >
-            <Link to="/search">
-              <SearchIcon />
-              Search
-            </Link>
-          </Button>
+          <FooterSearch />
         </div>
       </Container>
     </footer>
