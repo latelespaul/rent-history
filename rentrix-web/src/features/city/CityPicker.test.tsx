@@ -24,6 +24,11 @@ vi.mock("@/features/auth/authContext", async (importOriginal) => ({
   useAuth: () => ({ state: { status: "anonymous", user: null } }),
 }))
 
+// The box's suggestions (D-164): none here.
+vi.mock("@/api/search", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/search")>()),
+  fetchSuggestions: vi.fn(async () => ({ societies: [], areas: [], homes: [], towers: [] })),
+}))
 vi.mock("@/api/cities", () => ({
   cityKeys: { all: ["cities"] },
   fetchCities: vi.fn(async () => api.cities),

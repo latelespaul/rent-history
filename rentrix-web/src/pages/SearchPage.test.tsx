@@ -20,6 +20,11 @@ vi.mock("@/features/auth/authContext", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
   useAuth: () => ({ state: { status: "anonymous", user: null } }),
 }))
+// The box's suggestions (D-164): none here.
+vi.mock("@/api/search", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/search")>()),
+  fetchSuggestions: vi.fn(async () => ({ societies: [], areas: [], homes: [], towers: [] })),
+}))
 vi.mock("@/api/cities", () => ({
   cityKeys: { all: ["cities"] },
   fetchCities: vi.fn(async () => LAUNCH_CITIES),
@@ -122,7 +127,7 @@ describe("SearchPage", () => {
         : page([card({ id: "s", buildingName: "Sobha", verification: "UNVERIFIED" })])
     const user = userEvent.setup()
     const router = renderAt("/search?city=BLR&locality=HSR%20Layout")
-    const box = await screen.findByRole("textbox", { name: /Locality, society, building or PIN/ })
+    const box = await screen.findByRole("combobox", { name: /Locality, society, building or PIN/ })
     expect((box as HTMLInputElement).value).toBe("HSR Layout")
 
     await user.clear(box)

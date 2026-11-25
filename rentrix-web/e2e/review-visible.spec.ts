@@ -26,7 +26,7 @@ async function shot(page: Page, testInfo: TestInfo, name: string) {
 async function findAndOpen(page: Page, words: string, society: string) {
   await page.goto("/search")
   const search = page.getByRole("search")
-  await search.getByRole("textbox", { name: /Locality, society, building or PIN/ }).fill(words)
+  await search.getByRole("combobox", { name: /Locality, society, building or PIN/ }).fill(words)
   await search.getByRole("button", { name: "Search" }).click()
   const matching = page.getByText(`Matching “${words}”.`)
   // Sort only once the results show the words, so the sort change keeps them.
