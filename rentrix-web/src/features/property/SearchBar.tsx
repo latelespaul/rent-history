@@ -185,7 +185,15 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
         className,
       )}
     >
-      <CityPicker label="City" value={city} onChange={onCityChange} className="sm:w-72" />
+      <CityPicker
+        label="City"
+        value={city}
+        onChange={(code) => {
+          setPicked(null)
+          onCityChange(code)
+        }}
+        className="sm:w-72"
+      />
       <div className="relative flex min-h-14 flex-1 flex-wrap items-center gap-3 rounded-lg px-3 sm:flex-nowrap">
         <MapPinIcon size={18} className="shrink-0 text-ink-500" />
         <span className="min-w-0 flex-1">
@@ -225,7 +233,11 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
                 setActive(-1)
               }}
               onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              onBlur={() =>
+                setTimeout(() => {
+                  if (document.activeElement !== input.current) setOpen(false)
+                }, 150)
+              }
               onKeyDown={onKeyDown}
               placeholder={
                 picked ? "Flat no…" : examples ? `${examples}…` : "e.g. HSR Layout, Sobha, 560102"

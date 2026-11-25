@@ -23,7 +23,13 @@ vi.mock("@/features/property/useProperties", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/property/useProperties")>()),
   useLocalityHints: () => ({ data: [] }),
 }))
-vi.mock("@/features/city/CityPicker", () => ({ CityPicker: () => null }))
+vi.mock("@/features/city/CityPicker", () => ({
+  CityPicker: ({ onChange }: { onChange: (code: string) => void }) => (
+    <button type="button" onClick={() => onChange("PNQ")}>
+      Pick Pune
+    </button>
+  ),
+}))
 vi.mock("@/api/search", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/search")>()),
   fetchSuggestions: vi.fn(async (query: { city?: string; q: string; society?: string }) => {
@@ -68,13 +74,13 @@ beforeEach(() => {
   api.calls = []
 })
 
-function renderBar(onSubmit = vi.fn()) {
+function renderBar(onSubmit = vi.fn(), onCityChange = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(
     [
       {
         path: "/search",
-        element: <SearchBar city="BLR" query="" onCityChange={() => {}} onSubmit={onSubmit} />,
+        element: <SearchBar city="BLR" query="" onCityChange={onCityChange} onSubmit={onSubmit} />,
       },
       { path: "*", element: <p>elsewhere</p> },
     ],
@@ -85,7 +91,7 @@ function renderBar(onSubmit = vi.fn()) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  return { router, onSubmit }
+  return { router, onSubmit, onCityChange }
 }
 
 describe("the two-step search box (D-167)", () => {
@@ -124,6 +130,21 @@ describe("the two-step search box (D-167)", () => {
     await user.type(screen.getByRole("combobox"), "1")
     await user.click(await screen.findByRole("option", { name: /Flat 1204/ }))
     expect(router.state.location.pathname).toBe("/p/h1204")
+  })
+
+  it("drops a picked society when the city changes", async () => {
+    const user = userEvent.setup()
+    const onCityChange = vi.fn()
+    renderBar(vi.fn(), onCityChange)
+    await user.type(screen.getByRole("combobox"), "lakeside")
+    await user.click(await screen.findByRole("option", { name: /Prestige Lakeside/ }))
+    expect(screen.getByTestId("society-chip")).toBeTruthy()
+
+    await user.click(screen.getByRole("button", { name: "Pick Pune" }))
+
+    expect(onCityChange).toHaveBeenCalledWith("PNQ")
+    expect(screen.queryByTestId("society-chip")).toBeNull()
+    expect(screen.getByRole("combobox", { name: /Locality, society, building or PIN/ })).toBeTruthy()
   })
 
   it("opens the society page when Search is pressed with no flat number", async () => {
