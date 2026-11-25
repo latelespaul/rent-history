@@ -142,6 +142,13 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
     })),
   ]
   const expanded = open && options.length > 0
+  // consecutive options of one kind, with each option's place in the flat list (the keyboard's index)
+  const groups: { name: Option["group"]; items: { option: Option; i: number }[] }[] = []
+  options.forEach((option, i) => {
+    const last = groups.at(-1)
+    if (last?.name === option.group) last.items.push({ option, i })
+    else groups.push({ name: option.group, items: [{ option, i }] })
+  })
 
   function submit(event: FormEvent) {
     event.preventDefault()
@@ -247,7 +254,9 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
           </span>
         </span>
         {expanded && (
-          <ul
+          // A listbox of labelled groups (Societies, Towers, Flats, Areas), each holding its options, so a
+          // screen reader and `getByRole("option")` see every suggestion by its own name ("Demo Greens, …").
+          <div
             id={`${listId}-list`}
             role="listbox"
             aria-label="Suggestions"
@@ -255,35 +264,41 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
             // wider, it hangs over the results below the box
             className="z-30 max-h-80 w-full basis-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg sm:absolute sm:top-full sm:right-0 sm:left-0 sm:mt-1 sm:w-auto"
           >
-            {options.map((option, i) => (
-              <li
-                key={option.key}
-                id={optionId(i)}
-                role="option"
-                aria-selected={i === active}
-                data-testid="suggestion"
-                data-group={option.group}
-                // mousedown, not click: the input's blur would close the list first
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  setOpen(false)
-                  option.pick()
-                }}
-                className={cn(
-                  "flex min-h-11 cursor-pointer flex-col justify-center px-3 py-1.5",
-                  i === active ? "bg-teal-50" : "hover:bg-paper",
-                )}
-              >
-                {(i === 0 || options[i - 1].group !== option.group) && (
-                  <span className="text-[11px] font-semibold tracking-wide text-ink-500 uppercase">
-                    {option.group}
-                  </span>
-                )}
-                <span className="text-sm font-semibold text-ink-900">{option.label}</span>
-                <span className="text-xs text-ink-500">{option.detail}</span>
-              </li>
+            {groups.map((group) => (
+              <div key={group.name} role="group" aria-labelledby={`${listId}-g-${group.name}`}>
+                <div
+                  id={`${listId}-g-${group.name}`}
+                  className="px-3 pt-1.5 text-[11px] font-semibold tracking-wide text-ink-500 uppercase"
+                >
+                  {group.name}
+                </div>
+                {group.items.map(({ option, i }) => (
+                  <div
+                    key={option.key}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={i === active}
+                    aria-label={`${option.label}, ${option.detail}`}
+                    data-testid="suggestion"
+                    data-group={option.group}
+                    // mousedown, not click: the input's blur would close the list first
+                    onMouseDown={(event) => {
+                      event.preventDefault()
+                      setOpen(false)
+                      option.pick()
+                    }}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer flex-col justify-center px-3 py-1.5",
+                      i === active ? "bg-teal-50" : "hover:bg-paper",
+                    )}
+                  >
+                    <span className="text-sm font-semibold text-ink-900">{option.label}</span>
+                    <span className="text-xs text-ink-500">{option.detail}</span>
+                  </div>
+                ))}
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
       <Button type="submit" size="lg">

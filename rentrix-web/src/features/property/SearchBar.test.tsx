@@ -95,6 +95,23 @@ function renderBar(onSubmit = vi.fn(), onCityChange = vi.fn()) {
 }
 
 describe("the two-step search box (D-167)", () => {
+  it("lists every suggestion as a named option in a labelled group, for screen readers", async () => {
+    const user = userEvent.setup()
+    renderBar()
+    await user.type(screen.getByRole("combobox", { name: /Locality/ }), "lak")
+
+    const list = await screen.findByRole("listbox", { name: "Suggestions" })
+    const group = screen.getByRole("group", { name: "Societies" })
+    expect(list.contains(group)).toBe(true)
+    const option = screen.getByRole("option", {
+      name: "Prestige Lakeside, Whitefield, Bangalore · 3 homes",
+    })
+    expect(group.contains(option)).toBe(true)
+    expect(screen.getByRole("combobox", { name: /Locality/ }).getAttribute("aria-controls")).toBe(
+      list.id,
+    )
+  })
+
   it("suggests a society while typing, then its flats and towers once picked", async () => {
     const user = userEvent.setup()
     const { router, onSubmit } = renderBar()

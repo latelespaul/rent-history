@@ -67,7 +67,9 @@ import java.util.Map;
  * <p>Location hierarchy (D-115): an area with real PIN codes for every seed locality, and one gated society per
  * city with 2 towers of 2 wings each (Demo Greens, Koramangala; Demo Meadows, Baner). Demo Residency A is in
  * Demo Greens Tower 1 · Wing A and Demo Towers E in Demo Meadows Tower 2 · Wing B; every other home is
- * standalone (no society).
+ * standalone (no society). A third society, Demo Orchard (Jayanagar, Bangalore), has {@link #SOCIETY_FLATS}: 3 flats in
+ * 2 towers, so search groups them into one society card (D-166) and its page lists them by tower on DEV. They have
+ * no tenancies or reviews yet, like homes an owner has just added.
  * <p>Tenancies (PLAN B5): every home has three tenancies confirmed by both sides, two ended ones (2019–2021 and
  * 2022–2024) and a current one, each with a rent increase a year in, so every rent history shows changes. One
  * request (Demo Tenant PNQ-3 on Demo Towers E) waits for the landlord's confirmation. Every demo party is approved
@@ -121,7 +123,8 @@ public class DemoSeeder implements ApplicationRunner {
 	
 	static final List<DemoSociety> SOCIETIES = List.of(
 		new DemoSociety("BLR", "Koramangala", "Demo Greens", "Demo Builders"),
-		new DemoSociety("PNQ", "Baner", "Demo Meadows", null));
+		new DemoSociety("PNQ", "Baner", "Demo Meadows", null),
+		new DemoSociety("BLR", "Jayanagar", "Demo Orchard", "Demo Builders"));
 	
 	static final List<String> TOWERS = List.of("Tower 1", "Tower 2");
 	static final List<String> WINGS = List.of("Wing A", "Wing B");
@@ -149,6 +152,15 @@ public class DemoSeeder implements ApplicationRunner {
 			Furnishing.UNFURNISHED, "House 12"),
 		new DemoHome("PNQ", "PNQ-2", "Demo Nest H", "Viman Nagar", "411014", PropertyType.PG, 1, 1, 180,
 			Furnishing.FULL, "Room 2"));
+	
+	/** Demo Orchard's flats: 3 flats in 2 towers of one society, without tenancies (seeded after {@link #HOMES}). */
+	static final List<DemoHome> SOCIETY_FLATS = List.of(
+		new DemoHome("BLR", "BLR-2", "Demo Orchard", "Jayanagar", "560041", PropertyType.APARTMENT, 2, 2, 1100,
+			Furnishing.SEMI, "1101", "Demo Orchard", "Tower 1", "Wing A"),
+		new DemoHome("BLR", "BLR-2", "Demo Orchard", "Jayanagar", "560041", PropertyType.APARTMENT, 3, 2, 1450,
+			Furnishing.UNFURNISHED, "1204", "Demo Orchard", "Tower 1", "Wing B"),
+		new DemoHome("BLR", "BLR-2", "Demo Orchard", "Jayanagar", "560041", PropertyType.APARTMENT, 2, 2, 1080,
+			Furnishing.FULL, "2302", "Demo Orchard", "Tower 2", "Wing A"));
 	
 	private static final Instant SEEDED_AT = Instant.parse("2025-01-15T00:00:00Z");
 	/** Demo accounts predate their oldest tenancy, so their reviews read as written by real members. */
@@ -225,16 +237,23 @@ public class DemoSeeder implements ApplicationRunner {
 					towerByPath.put(society.name() + "/" + TOWERS.get(i), tower(saved, TOWERS.get(i), i));
 				}
 			}
-			List<Property> homes = HOMES.stream().map(home -> home(home, areaByName.get(home.locality()),
-				societyByName.get(home.society()), towerByPath.get(home.society() + "/" + home.tower()))).toList();
+			List<DemoHome> plan = new ArrayList<>(HOMES);
+			plan.addAll(SOCIETY_FLATS);
+			List<Property> all = new ArrayList<>();
+			for (int i = 0; i < plan.size(); i++) {
+				DemoHome home = plan.get(i);
+				all.add(home(home, i, areaByName.get(home.locality()), societyByName.get(home.society()),
+					towerByPath.get(home.society() + "/" + home.tower())));
+			}
+			List<Property> homes = all.subList(0, HOMES.size());
 			List<Tenancy> confirmed = tenancies(homes);
 			int seededApplications = verification.seed();
 			int seededReviews = reviews.seed(confirmed, homes.get(2));
-			greenTicks(homes, confirmed);
+			greenTicks(all, confirmed);
 			recomputer.recomputeAll();
 			log.info("Demo seed: {} landlords, {} tenants, {} areas, {} societies, {} published properties, "
 				+ "{} tenancies, {} reviews, {} verification applications.", LANDLORDS.size(), TENANTS.size(),
-				AREAS.size(), SOCIETIES.size(), HOMES.size(), confirmed.size() + 1, seededReviews, seededApplications);
+				AREAS.size(), SOCIETIES.size(), all.size(), confirmed.size() + 1, seededReviews, seededApplications);
 			return true;
 		});
 		return Boolean.TRUE.equals(seeded);
@@ -327,7 +346,7 @@ public class DemoSeeder implements ApplicationRunner {
 		return towers.save(tower);
 	}
 	
-	private Property home(DemoHome home, Area area, Society society, SocietyTower tower) {
+	private Property home(DemoHome home, int index, Area area, Society society, SocietyTower tower) {
 		User landlord = users.findByEmail(("demo-landlord-" + home.landlord() + "@example.test").toLowerCase(Locale.ROOT))
 			.orElseThrow();
 		Property property = new Property();
@@ -355,7 +374,7 @@ public class DemoSeeder implements ApplicationRunner {
 		property.setDescription("Demo listing for local development. Not a real home.");
 		property.setStatus(PropertyStatus.PUBLISHED);
 		property.setDemo(true);
-		property.setCreatedAt(SEEDED_AT.plusSeconds(60L * HOMES.indexOf(home)));
+		property.setCreatedAt(SEEDED_AT.plusSeconds(60L * index));
 		return properties.save(property);
 	}
 	
