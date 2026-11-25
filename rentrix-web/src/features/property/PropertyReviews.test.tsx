@@ -53,7 +53,8 @@ describe("PropertyReviews", () => {
     const items = await screen.findAllByRole("listitem")
     expect(items).toHaveLength(2)
     const [answered, open] = items
-    expect(within(answered).getByText("Demo B.")).toBeTruthy()
+    expect(within(answered).getByTestId("review-author").textContent).toBe("Tenant, 2024")
+    expect(within(answered).getByText("Reply from the owner")).toBeTruthy()
     expect(within(answered).getByRole("img", { name: "Rated 5 out of 5" })).toBeTruthy()
     expect(within(answered).getByText(/Well maintained building/)).toBeTruthy()
     expect(within(answered).getByText(/^Stayed Mar 2024 – now$/)).toBeTruthy()
@@ -63,27 +64,33 @@ describe("PropertyReviews", () => {
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
   })
 
-  it("shows each reviewer's green tick and public ID badges, or that they are not verified yet", async () => {
+  it("shows each reviewer by label with the badges they hold, never by name (D-168)", async () => {
     const [first, second] = RECORDED_REVIEWS
     api.reviews = [
       {
         ...first,
         author: {
-          shortName: "Demo B.",
-          verified: true,
-          badges: { idVerified: true, linkedinVerified: false },
+          label: "Tenant, 2024",
+          badges: { google: true, id: true, agreement: true },
         },
       },
-      { ...second, author: { shortName: "Demo C.", verified: false } },
+      { ...second, author: { label: "Tenant, 2022", badges: { google: true, id: false } } },
     ]
     renderReviews()
 
-    const [verified, unverified] = await screen.findAllByRole("listitem")
-    expect(within(verified).getByText("Verified tenant")).toBeTruthy()
-    expect(within(verified).getByText("ID verified")).toBeTruthy()
-    expect(within(verified).queryByText("LinkedIn verified")).toBeNull()
-    expect(within(unverified).getByText("Tenant not verified yet")).toBeTruthy()
-    expect(within(unverified).queryByText("Verified tenant")).toBeNull()
+    const [all, some] = await screen.findAllByRole("listitem")
+    expect(within(all).getByTestId("review-author").textContent).toBe("Tenant, 2024")
+    expect(within(all).getByText("Google verified")).toBeTruthy()
+    expect(within(all).getByText("ID verified")).toBeTruthy()
+    expect(within(all).getByText("Agreement verified")).toBeTruthy()
+    expect(within(some).getByTestId("review-author").textContent).toBe("Tenant, 2022")
+    expect(within(some).getByText("Google verified")).toBeTruthy()
+    expect(within(some).queryByText("ID verified")).toBeNull()
+    // No agreement status in the data: no badge slot at all.
+    expect(within(some).queryByText("Agreement verified")).toBeNull()
+    // The person tick is gone: the three badges replace it.
+    expect(screen.queryByText("Verified tenant")).toBeNull()
+    expect(screen.queryByText("Tenant not verified yet")).toBeNull()
   })
 
   it("counts every listed review and says how many are verified, never 0 above a listed one", async () => {

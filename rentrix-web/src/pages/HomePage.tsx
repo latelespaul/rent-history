@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { Brand } from "@/components/layout/Brand"
 import { Container } from "@/components/layout/Container"
 import { FooterSearch } from "@/components/layout/Footer"
-import { Badge, VerifiedBadge } from "@/components/ui/badge"
+import { VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ArrowRightIcon,
@@ -247,13 +247,8 @@ const TRUST = [
     tag: "Any one",
     icon: <LinkIcon size={22} />,
     title: "LinkedIn",
-    text: "Link your LinkedIn profile. Any one of these three leads to the green tick; the others add extra badges.",
-    badge: (
-      <Badge variant="info">
-        <LinkIcon />
-        LinkedIn verified
-      </Badge>
-    ),
+    text: 'Link your LinkedIn profile. Any one of these three gives the "ID verified" badge and leads to the green tick.',
+    badge: <VerifiedBadge />,
   },
   {
     tag: "By our team",

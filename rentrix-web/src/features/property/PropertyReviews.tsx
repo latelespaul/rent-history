@@ -20,8 +20,8 @@ import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
 import { dayLabel, listedReviewCount, monthLabel } from "./labels"
 import { Stars } from "./Rating"
-import { PersonTick } from "./PersonTick"
 import { ReviewTick } from "./ReviewTick"
+import { TrustBadges } from "./TrustBadges"
 import { usePropertyReviews } from "./useProperties"
 import { cn } from "@/lib/utils"
 
@@ -235,6 +235,11 @@ function CriteriaList({ review }: { review: PropertyReview }) {
   )
 }
 
+/** Who replied, by label only (D-168): "the owner", or e.g. "Tenant, 2024". */
+function replier(label: string | undefined): string {
+  return !label || label === "Owner" ? "the owner" : label
+}
+
 /** One review in a list: author line, stars, the form's answers and text, the reply. */
 export function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
@@ -253,10 +258,11 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
             Your review
           </Badge>
         )}
-        <span className="font-semibold text-ink-900">{review.author?.shortName ?? "Tenant"}</span>
-        {review.author && <PersonTick verified={review.author.verified} role="tenant" />}
-        {review.author?.badges?.idVerified && <Badge>ID verified</Badge>}
-        {review.author?.badges?.linkedinVerified && <Badge>LinkedIn verified</Badge>}
+        {/* Never the name (D-168): "Tenant, 2024" or "Owner", the same label everyone sees. */}
+        <span className="font-semibold text-ink-900" data-testid="review-author">
+          {review.author?.label ?? "Tenant"}
+        </span>
+        <TrustBadges badges={review.author?.badges} />
         {review.period && (
           <span className="text-ink-500" data-testid="review-stay">
             Stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
@@ -307,7 +313,7 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
       {review.response && (
         <div className="mt-2 rounded-lg border-l-2 border-line bg-sunk/40 px-3 py-2">
           <p className="text-xs font-semibold text-ink-700">
-            Reply from {review.response.authorShortName ?? "the landlord"}
+            Reply from {replier(review.response.authorLabel)}
           </p>
           <p className="text-sm whitespace-pre-line text-ink-700">{review.response.body}</p>
         </div>

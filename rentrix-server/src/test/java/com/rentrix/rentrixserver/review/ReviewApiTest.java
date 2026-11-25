@@ -7,6 +7,7 @@ import com.rentrix.rentrixserver.property.PropertyTestSupport;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
+import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.tenancy.TenancyRepository;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
@@ -165,9 +166,12 @@ class ReviewApiTest {
 			.andExpect(status().isCreated())
 			.andExpect(header().exists("Location"))
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
-			.andExpect(jsonPath("$.author.shortName").value("Tara T."))
+			.andExpect(jsonPath("$.author.label").value("Tenant, " + TODAY.minusYears(1).getYear()))
+			.andExpect(jsonPath("$.author.shortName").value("Tara T.")) // the author sees their own name (D-168)
 			.andExpect(jsonPath("$.author.id").doesNotExist())
-			.andExpect(jsonPath("$.author.badges.idVerified").value(false)) // a verified phone alone gives no badge
+			.andExpect(jsonPath("$.author.badges.id").value(true)) // a verified phone is one of the methods
+			.andExpect(jsonPath("$.author.badges.google").value(false))
+			.andExpect(jsonPath("$.author.badges.agreement").doesNotExist())
 			.andExpect(jsonPath("$.period.from").value(TODAY.minusYears(1).toString().substring(0, 7)))
 			.andExpect(jsonPath("$.property.unitLabel").doesNotExist());
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isEqualTo(1);
@@ -193,7 +197,8 @@ class ReviewApiTest {
 		write(landlord, tenancy, ReviewDirection.LANDLORD_TO_TENANT, 4, GOOD)
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
-			.andExpect(jsonPath("$.author.id").value(landlord.getPublicId().toString()));
+			.andExpect(jsonPath("$.author.label").value("Owner"))
+			.andExpect(jsonPath("$.author.id").doesNotExist());
 		assertThat(stored(first).getStatus()).isEqualTo(ReviewStatus.PUBLISHED);
 		assertThat(aggregate(RatingSubjectType.LANDLORD, landlord.getId()).getReviewCount()).isEqualTo(1);
 		assertThat(aggregate(RatingSubjectType.TENANT, tenant.getId()).getReviewCount()).isEqualTo(1);
@@ -452,6 +457,64 @@ class ReviewApiTest {
 	}
 
 	@Test
+	void reviewerNamesNeverReachOtherViewersOnlyLabelsAndBadges() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		User stranger = approved("Sam Stranger", Role.TENANT);
+		tenant.setGoogleSub("google-sub-tara");
+		users.saveAndFlush(tenant);
+		Tenancy tenancy = active(home(landlord), tenant);
+		tenancy.setEvidenceLevel(EvidenceLevel.DOCUMENT);
+		tenancies.saveAndFlush(tenancy);
+		String id = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		mvc.perform(post("/reviews/" + id + "/response").header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"body\": \"Thanks, the pump was replaced.\"}"))
+			.andExpect(status().isCreated());
+		String propertyId = tenancy.getProperty().getPublicId().toString();
+		String label = "Tenant, " + TODAY.minusYears(1).getYear();
+
+		// D-168: a signed-out reader and another signed-in user get labels and badges, never a name or a link
+		for (String bearer : new String[] {null, support.bearer(stranger)}) {
+			for (String path : new String[] {"/properties/" + propertyId + "/reviews", "/reviews/" + id}) {
+				var request = get(path);
+				if (bearer != null) {
+					request.header("Authorization", bearer);
+				} else if (path.startsWith("/reviews/")) {
+					continue; // a single review needs a session
+				}
+				String json = mvc.perform(request).andExpect(status().isOk()).andReturn().getResponse()
+					.getContentAsString();
+				assertThat(json).doesNotContain("Tara", "Lata", "shortName", "authorShortName");
+				String root = path.endsWith("/reviews") ? "$.items[0]" : "$";
+				assertThat(JsonPath.<String>read(json, root + ".author.label")).isEqualTo(label);
+				assertThat(JsonPath.<Boolean>read(json, root + ".author.badges.google")).isTrue();
+				assertThat(JsonPath.<Boolean>read(json, root + ".author.badges.id")).isTrue();
+				assertThat(JsonPath.<Boolean>read(json, root + ".author.badges.agreement")).isTrue();
+				assertThat(JsonPath.<String>read(json, root + ".response.authorLabel")).isEqualTo("Owner");
+				assertThat(json).doesNotContain(tenant.getPublicId().toString());
+			}
+			var page = get("/properties/" + propertyId);
+			if (bearer != null) {
+				page.header("Authorization", bearer);
+			}
+			String detail = mvc.perform(page).andExpect(status().isOk()).andReturn().getResponse()
+				.getContentAsString();
+			assertThat(detail).doesNotContain("Lata", "shortName");
+			assertThat(JsonPath.<String>read(detail, "$.landlord.label")).isEqualTo("Owner");
+			assertThat(JsonPath.<Boolean>read(detail, "$.landlord.badges.id")).isTrue();
+		}
+		// the author still sees their own name on their own pages
+		mvc.perform(get("/me/reviews/written").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items[0].author.shortName").value("Tara T."))
+			.andExpect(jsonPath("$.items[0].author.label").value(label));
+		// no agreement status on the tenancy: no agreement badge slot at all
+		tenancy.setEvidenceLevel(EvidenceLevel.MUTUAL);
+		tenancies.saveAndFlush(tenancy);
+		mvc.perform(get("/properties/" + propertyId + "/reviews"))
+			.andExpect(jsonPath("$.items[0].author.badges.agreement").doesNotExist());
+	}
+
+	@Test
 	void subjectRespondsOnce() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
@@ -466,7 +529,8 @@ class ReviewApiTest {
 				.contentType(MediaType.APPLICATION_JSON).content(reply))
 			.andExpect(status().isCreated())
 			.andExpect(jsonPath("$.response.body").value("Thanks, the pump was replaced last month."))
-			.andExpect(jsonPath("$.response.authorShortName").value("Lata L."))
+			.andExpect(jsonPath("$.response.authorLabel").value("Owner"))
+			.andExpect(jsonPath("$.response.authorShortName").value("Lata L.")) // the responder's own view
 			.andExpect(jsonPath("$.actions.respond").value(false))
 			.andExpect(jsonPath("$.actions.editResponse").value(true));
 		mvc.perform(post("/reviews/" + id + "/response").header("Authorization", support.bearer(landlord))
@@ -617,7 +681,8 @@ class ReviewApiTest {
 		// a landlord profile is open to any signed-in user (D-55)
 		mvc.perform(get("/users/" + landlord.getPublicId()).header("Authorization", support.bearer(stranger)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.shortName").value("Lata L."))
+			.andExpect(jsonPath("$.label").value("Owner"))
+			.andExpect(jsonPath("$.shortName").doesNotExist()) // never the name to others (D-168)
 			.andExpect(jsonPath("$.email").doesNotExist());
 	}
 

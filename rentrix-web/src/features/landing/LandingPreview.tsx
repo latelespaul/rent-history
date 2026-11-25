@@ -73,7 +73,9 @@ function HomeCard({ property, index }: { property: PropertyCard; index: number }
       </div>
       <p className="flex items-center justify-between border-t border-line px-4 py-3 text-sm text-ink-700">
         <span>
-          <span className="font-semibold text-ink-900">{property.landlordName}</span> · landlord
+          {/* "Owner", never the name (D-168); an unclaimed home's owner is "Not on Doorway Living yet". */}
+          <span className="font-semibold text-ink-900">Owner</span>
+          {property.landlordLabel !== "Owner" && <> · {property.landlordLabel}</>}
         </span>
         <ChevronRightIcon size={18} className="text-ink-500" />
       </p>

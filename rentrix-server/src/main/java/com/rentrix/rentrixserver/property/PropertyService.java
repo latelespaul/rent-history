@@ -8,6 +8,8 @@ import com.rentrix.rentrixserver.common.persistence.TimestampedEntity;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.edit.EditHistory;
 import com.rentrix.rentrixserver.home.dto.UpdateHomeRequest;
+import com.rentrix.rentrixserver.identity.IdentityService;
+import com.rentrix.rentrixserver.identity.TrustBadges;
 import com.rentrix.rentrixserver.location.Area;
 import com.rentrix.rentrixserver.location.LocationInput;
 import com.rentrix.rentrixserver.location.Placement;
@@ -33,11 +35,14 @@ import com.rentrix.rentrixserver.review.RatingAggregateId;
 import com.rentrix.rentrixserver.review.RatingAggregateRepository;
 import com.rentrix.rentrixserver.review.RatingSubjectType;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
+import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
+import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyService;
+import com.rentrix.rentrixserver.user.PublicLabels;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
-import com.rentrix.rentrixserver.verification.GreenTicks;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -76,7 +81,8 @@ public class PropertyService {
 	private final CityService cityService;
 	private final LocationService locations;
 	private final JdbcTemplate jdbc;
-	private final GreenTicks greenTicks;
+	private final IdentityService identity;
+	private final TenancyRepository tenancies;
 	private final PlaceMatcher placeMatcher;
 	private final FlatFinder flats;
 	private final SocietyGroups societyGroups;
@@ -271,9 +277,9 @@ public class PropertyService {
 		List<Long> ids = page.getContent().stream().map(Property::getId).toList();
 		Map<Long, RatingAggregate> ratings = homeFigures.ratings(ids);
 		RatingSummary landlordRating = RatingSummary.of(aggregate(RatingSubjectType.LANDLORD, owner.getId()));
-		boolean landlordVerified = greenTicks.has(owner, Role.LANDLORD);
+		TrustBadges landlordBadges = landlordBadges(owner);
 		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating,
-			landlordVerified, true, true, createdBy(p, owner.getPublicId())));
+			landlordBadges, true, true, createdBy(p, owner.getPublicId())));
 	}
 	
 	/**
@@ -777,10 +783,9 @@ public class PropertyService {
 		RatingSummary rating = RatingSummary.of(aggregate(RatingSubjectType.PROPERTY, property.getId()));
 		RatingSummary landlordRating = UnclaimedLandlord.is(property.getLandlord()) ? null : RatingSummary.of(
 			aggregate(RatingSubjectType.LANDLORD, property.getLandlord().getId()));
-		boolean landlordVerified = !UnclaimedLandlord.is(property.getLandlord())
-			&& greenTicks.has(property.getLandlord(), Role.LANDLORD);
-		PropertyDetail base = detail(property, rating, landlordRating, landlordVerified, caller != null,
-			isOwner(property, caller) || isAdmin(caller), caller != null && createdBy(property, caller.publicId()));
+		PropertyDetail base = detail(property, rating, landlordRating, landlordBadges(property.getLandlord()),
+			caller != null, isOwner(property, caller) || isAdmin(caller),
+			caller != null && createdBy(property, caller.publicId()));
 		// The owner contact a tenant entered stays private to them and admins (D-140).
 		boolean adder = caller != null && property.getAddedBy() != null
 			&& property.getAddedBy().getPublicId().equals(caller.publicId());
@@ -788,17 +793,28 @@ public class PropertyService {
 	}
 	
 	/**
+	 * The owner's three badges (D-168), "Agreement verified" when a rental agreement backs one of their tenancies;
+	 * none for an unclaimed home (D-139).
+	 */
+	private TrustBadges landlordBadges(User landlord) {
+		return UnclaimedLandlord.is(landlord) ? null : identity.trustBadges(landlord,
+			tenancies.existsByLandlordIdAndEvidenceLevelAndStatusIn(landlord.getId(), EvidenceLevel.DOCUMENT,
+				TenancyService.CONFIRMED));
+	}
+	
+	/**
 	 * D-56 / D-57: the unit label only for the owner and admins ({@code privileged}); the landlord profile link
-	 * ({@code landlord.id}) only for signed-in callers (D-55).
+	 * ({@code landlord.id}) only for signed-in callers (D-55). The owner shows as "Owner" (D-168); the name only to
+	 * the owner and admins.
 	 */
 	private static PropertyDetail detail(Property p, RatingSummary rating, RatingSummary landlordRating,
-		boolean landlordVerified, boolean signedIn, boolean privileged, boolean editable) {
+		TrustBadges landlordBadges, boolean signedIn, boolean privileged, boolean editable) {
 		User landlord = p.getLandlord();
 		// An unclaimed home (D-139) has no landlord profile to link to or rate.
 		LandlordSummary owner = UnclaimedLandlord.is(landlord)
-			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null, false)
-			: new LandlordSummary(signedIn ? landlord.getPublicId() : null,
-				PublicNames.of(landlord), landlordRating, landlordVerified);
+			? new LandlordSummary(null, UnclaimedLandlord.PUBLIC_NAME, null, null, null)
+			: new LandlordSummary(signedIn ? landlord.getPublicId() : null, PublicLabels.OWNER,
+				privileged ? PublicNames.of(landlord) : null, landlordRating, landlordBadges);
 		return new PropertyDetail(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPincode(),
 			privileged || p.getUnitLabelVisibility() == FieldVisibility.OPEN ? p.getUnitLabel() : null,
@@ -818,7 +834,7 @@ public class PropertyService {
 		return new PropertyCard(p.getPublicId(), CityRef.of(p.getCity()), p.getLocality(), p.getBuildingName(),
 			p.getStreet(), p.getPropertyType(), p.getBedrooms(), p.getHomeSize(), p.getHomeSizeOther(), p.getBathrooms(),
 			p.getAreaSqft(), p.getFurnishing(),
-			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordName(p.getLandlord()), locationPending(p),
+			p.getParking(), p.isDemo(), RatingSummary.of(rating), landlordLabel(p.getLandlord()), locationPending(p),
 			VerificationState.of(p.getVerificationStatus()),
 			PropertyLocation.of(p.getArea(), p.getSociety(), p.getTower(), p.getWing()),
 			withUnit && p.getUnitLabelVisibility() == FieldVisibility.OPEN ? blankToNull(p.getUnitLabel()) : null,
@@ -837,9 +853,9 @@ public class PropertyService {
 		return status == LocationStatus.PENDING;
 	}
 	
-	private static String landlordName(User landlord) {
-		return UnclaimedLandlord.is(landlord) ? UnclaimedLandlord.PUBLIC_NAME
-			: PublicNames.of(landlord);
+	/** "Owner", never the name (D-168), or the unclaimed home's wording (D-139). */
+	private static String landlordLabel(User landlord) {
+		return UnclaimedLandlord.is(landlord) ? UnclaimedLandlord.PUBLIC_NAME : PublicLabels.OWNER;
 	}
 	
 	private RatingAggregate aggregate(RatingSubjectType type, Long subjectId) {

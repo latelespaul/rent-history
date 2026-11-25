@@ -19,7 +19,9 @@ const DIRECTION_LABEL = {
 function about(review: PropertyReview): string {
   const home = review.property?.buildingName || review.property?.locality
   if (review.direction === "TENANT_TO_PROPERTY" || !review.subject) return home ?? "A home"
-  return home ? `${review.subject.shortName} · ${home}` : review.subject.shortName
+  // A label, never the other person's name (D-168).
+  const who = review.subject.label
+  return home ? `${who} · ${home}` : who
 }
 
 function period(review: PropertyReview): string | null {
@@ -60,7 +62,7 @@ function ReviewRow({ review, kind }: { review: PropertyReview; kind: "written" |
       </p>
       {review.body && <p className="line-clamp-2 text-sm text-ink-700">{review.body}</p>}
       <p className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
-        {kind === "received" && review.author && <span>By {review.author.shortName}</span>}
+        {kind === "received" && review.author && <span>By {review.author.label}</span>}
         {when && <span className="num">{when}</span>}
         {review.status === "AWAITING_REVEAL" && <Badge>Waiting for the other side</Badge>}
         <ReviewTick state={review.verification} />

@@ -133,7 +133,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { shortName: "Demo T." },
+        author: { label: "Tenant, 2024" },
         actions: { edit: false, withdraw: false, respond: false, editResponse: false },
       },
     ]
@@ -165,7 +165,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { shortName: "Demo T." },
+        author: { label: "Tenant, 2024" },
       },
     ]
     renderPage()
@@ -189,7 +189,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { shortName: "Demo T." },
+        author: { label: "Tenant, 2024" },
         actions: { edit: true, withdraw: true, respond: false, editResponse: false },
       },
     ]
@@ -215,21 +215,32 @@ describe("PropertyPage", () => {
     expect(await screen.findByTestId("i-rent-this-home")).toBeTruthy()
   })
 
-  it("shows the landlord's green tick on the landlord card, or that they are not verified yet", async () => {
+  it("shows the owner as 'Owner' with their badges on the landlord card, never by name (D-168)", async () => {
     api.property = detail({
-      landlord: { shortName: "Demo L.", rating: { reviewCount: 2, average: null }, verified: true },
+      landlord: {
+        label: "Owner",
+        rating: { reviewCount: 2, average: null },
+        badges: { google: true, id: true },
+      },
     })
     renderPage()
 
     // The rating card renders twice: once for small screens, once in the wide-screen aside.
-    expect(await screen.findAllByText("Verified landlord")).toHaveLength(2)
+    expect((await screen.findAllByTestId("landlord-label")).map((el) => el.textContent)).toEqual([
+      "Owner",
+      "Owner",
+    ])
+    expect(screen.getAllByText("Google verified")).toHaveLength(2)
+    expect(screen.getAllByText("ID verified")).toHaveLength(2)
+    expect(screen.queryByText("Agreement verified")).toBeNull()
     cleanup()
 
     api.property = detail()
     renderPage()
 
-    expect(await screen.findAllByText("Landlord not verified yet")).toHaveLength(2)
-    expect(screen.queryByText("Verified landlord")).toBeNull()
+    expect(await screen.findAllByTestId("landlord-label")).toHaveLength(2)
+    expect(screen.queryByText("Google verified")).toBeNull()
+    expect(screen.queryByText("Demo L.")).toBeNull()
   })
 
   it("keeps a tenant's one-sided rent row out of the confirmed history's change", async () => {

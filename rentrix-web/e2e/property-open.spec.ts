@@ -90,7 +90,7 @@ test.describe("open the home after a review (390 px, touch)", () => {
       for (const part of [
         card.getByRole("link", { name: society }),
         card.getByTestId("location-pending"),
-        card.getByText(/landlord/),
+        card.getByText("Owner", { exact: true }),
       ]) {
         await page.goto(results)
         await expect(card).toBeVisible()

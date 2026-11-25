@@ -25,7 +25,8 @@ public record PropertyCard(
 	Boolean parking,
 	boolean demo,
 	RatingSummary rating,
-	String landlordName,
+	/** "Owner", never the landlord's name (D-168), or "Not on Doorway Living yet" for an unclaimed home. */
+	String landlordLabel,
 	/**
 	 * True when the area, society, tower or wing is a new name nobody has reviewed yet ({@code PENDING}). It shows
 	 * at once, open by default, and the web tags it "Pending review" (captain 2026-11-23, R2 / R8).

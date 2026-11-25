@@ -78,7 +78,8 @@ class PropertyApiTest {
 			.andExpect(jsonPath("$.locality").value("Koramangala"))
 			.andExpect(jsonPath("$.unitLabel").value("T-101"))
 			.andExpect(jsonPath("$.rating.reviewCount").value(0))
-			.andExpect(jsonPath("$.landlord.shortName").value("Asha L."))
+			.andExpect(jsonPath("$.landlord.label").value("Owner"))
+			.andExpect(jsonPath("$.landlord.shortName").value("Asha L.")) // the owner sees their own name (D-168)
 			.andExpect(jsonPath("$.landlord.id").value(landlord.getPublicId().toString()));
 	}
 	
@@ -150,7 +151,8 @@ class PropertyApiTest {
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.buildingName").value("Test Residency"))
 			.andExpect(jsonPath("$.unitLabel").doesNotExist())
-			.andExpect(jsonPath("$.landlord.shortName").value("Ravi K."))
+			.andExpect(jsonPath("$.landlord.label").value("Owner"))
+			.andExpect(jsonPath("$.landlord.shortName").doesNotExist()) // never the name to others (D-168)
 			.andExpect(jsonPath("$.landlord.id").doesNotExist());
 		mvc.perform(get("/properties/" + id).header("Authorization", support.bearer(tenant)))
 			.andExpect(jsonPath("$.unitLabel").doesNotExist())

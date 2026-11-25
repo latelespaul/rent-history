@@ -93,7 +93,7 @@ class PropertySearchTest {
 			.andExpect(jsonPath("$.page.totalItems").value(1))
 			.andExpect(jsonPath("$.items[0].buildingName").value("Alpha"))
 			.andExpect(jsonPath("$.items[0].city.code").value(CITY))
-			.andExpect(jsonPath("$.items[0].landlordName").value("Search L."))
+			.andExpect(jsonPath("$.items[0].landlordLabel").value("Owner"))
 			.andExpect(jsonPath("$.items[0].rating.reviewCount").value(0))
 			.andExpect(jsonPath("$.items[0].unitLabel").doesNotExist());
 	}

@@ -26,9 +26,9 @@ export function afterSignInPath(user: CurrentUser, next: string): string {
 const NAME_WORD = /^\p{L}[\p{L}\p{M}'’.-]*$/u
 
 /**
- * Public short name, "Asha Rao" → "Asha R.", "Demo Tenant BLR-1" → "Demo T." (D-28, D-55). The
- * API owns this rule (`PublicNames.shortName`) and sends it as `shortName`; the web shows that
- * as-is. This mirror exists only to preview a name the user is still typing.
+ * Short name, "Asha Rao" → "Asha R.", "Demo Tenant BLR-1" → "Demo T.": shown only to the user
+ * and admins, never to other people (D-168). The API owns this rule (`PublicNames.shortName`) and
+ * sends it as `shortName`; this mirror only builds test users.
  */
 export function shortName(displayName: string): string {
   const words = displayName.trim().split(/\s+/).filter(Boolean)
@@ -41,8 +41,9 @@ export function shortName(displayName: string): string {
   return `${words[0]} ${String.fromCodePoint(last.codePointAt(0)!).toUpperCase()}.`
 }
 
-/** The short name to show for `user`: the API's, or a preview while `typed` differs from it. */
-export function publicName(user: CurrentUser, typed = user.displayName): string {
-  const name = typed.trim()
-  return !name || name === user.displayName ? user.shortName : shortName(name)
-}
+/**
+ * The hint under every name field (D-168): other people never see a name, only an anonymous
+ * label such as "Tenant, 2024" or "Owner".
+ */
+export const NAME_NOT_SHOWN =
+  "Never shown to other people. Your reviews show “Tenant, 2024” (the year your stay started) or “Owner”."

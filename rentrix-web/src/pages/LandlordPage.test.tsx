@@ -8,7 +8,7 @@ import { makeUser } from "@/test/users"
 
 const PROFILE: UserProfile = {
   id: "l5",
-  shortName: "Demo L.",
+  label: "Owner",
   memberSince: "2024-01",
   listedHomes: 2,
   landlordRating: {
@@ -41,7 +41,7 @@ vi.mock("@/api/reviews", async (importOriginal) => ({
         ratingOverall: 4,
         criteria: { RESPONSIVENESS: 5, PRIVACY: 4 },
         wouldRecommend: true,
-        author: { shortName: "Asha R.", verified: false },
+        author: { label: "Tenant, 2024" },
         verification: "UNVERIFIED",
       },
     ],

@@ -183,7 +183,8 @@ export interface PropertyCard {
   parking: boolean | null
   demo: boolean
   rating: RatingSummary
-  landlordName: string
+  /** "Owner", never the landlord's name (D-168), or "Not on Doorway Living yet". */
+  landlordLabel: string
   /** The area, society, tower or wing is a new name the team has not reviewed yet; shown tagged. */
   locationPending?: boolean
   /** The home's green tick (D-148); anything but `VERIFIED` shows "Not verified yet" (D-162). */
@@ -197,15 +198,28 @@ export interface PropertyCard {
 }
 
 /**
- * The owner as a property page shows them. Anonymous visitors get the short name and rating
- * only; `id` (the landlord profile link) comes only for signed-in callers (D-55).
+ * The three public verification badges of a reviewer (D-168): signed in with Google, any one of
+ * phone, Aadhaar or LinkedIn verified, and a rental agreement behind the tenancy. `agreement` is
+ * present only when that status exists.
+ */
+export interface TrustBadges {
+  google: boolean
+  id: boolean
+  agreement?: boolean
+}
+
+/**
+ * The owner as a property page shows them: `label` "Owner" (or "Not on Doorway Living yet"),
+ * never the name; `shortName` only for the owner and admins (D-168). `id` (the landlord profile
+ * link) comes only for signed-in callers (D-55).
  */
 export interface LandlordSummary {
   id?: string
-  shortName: string
+  label: string
+  shortName?: string
   rating: RatingSummary
-  /** The landlord's green tick (D-134); false for an unclaimed home's owner. */
-  verified?: boolean
+  /** The owner's three badges; null for an unclaimed home's owner. */
+  badges?: TrustBadges | null
 }
 
 export type PropertyStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED"
@@ -339,9 +353,12 @@ export interface ReviewTask {
 /** `GET /users/{id}`: the landlord part for every signed-in caller (D-55). */
 export interface UserProfile {
   id: string
-  shortName: string
+  /** "Owner" or "Tenant", never the name (D-168). */
+  label: string
+  /** Only for the person themselves and admins. */
+  shortName?: string
   memberSince: string
-  badges?: { idVerified: boolean; linkedinVerified: boolean }
+  badges?: TrustBadges
   landlordRating?: RatingDetail
   listedHomes?: number
 }
@@ -676,22 +693,32 @@ export interface PropertyReview {
   pros?: string
   cons?: string
   textHidden?: boolean
+  /**
+   * Never the name (D-168): `label` is "Tenant, 2024" (the stay's start year) or "Owner";
+   * `shortName` only for the author and admins.
+   */
   author?: {
     id?: string
-    shortName: string
-    badges?: { idVerified: boolean; linkedinVerified: boolean }
-    /** The author's green tick for the role they wrote as (D-134). */
-    verified?: boolean
+    label: string
+    shortName?: string
+    badges?: TrustBadges
   }
   /** The reviewed person (landlord or tenant); absent on a home review. */
-  subject?: { id?: string; shortName: string }
+  subject?: { id?: string; label: string; shortName?: string }
   /** The reviewed home; no unit label (D-57). */
   property?: { id: string; buildingName: string; locality: string; city: CityRef }
   period?: { from: string; to?: string }
   publishedAt?: string
   editedAt?: string
   /** The subject's one public reply. */
-  response?: { body: string; authorShortName?: string; createdAt?: string; editUntil?: string }
+  response?: {
+    body: string
+    /** "Owner" or "Tenant, 2024" (D-168); `authorShortName` only for the responder and admins. */
+    authorLabel?: string
+    authorShortName?: string
+    createdAt?: string
+    editUntil?: string
+  }
   /** What the caller may do now; the approval gate is checked on the write (D-91). */
   actions?: { edit: boolean; withdraw: boolean; respond: boolean; editResponse: boolean }
   /** The green tick (D-134): "Not verified yet" until an admin decides. */
