@@ -66,8 +66,8 @@ test("signed in, the home page opens search with the box in the first screen, in
     page,
     testInfo.project.name === "mobile" ? "Demo Landlord BLR-2" : "Demo Landlord BLR-1",
   )
-  for (const mode of ["Tenant", "Owner"] as const) {
-    await page.goto("/me/tenancies")
+  // a landlord starts in Owner mode; the header switch changes mode without a page reload
+  for (const mode of ["Owner", "Tenant"] as const) {
     const option = page
       .getByRole("banner")
       .getByRole("group", { name: "Mode" })
@@ -101,6 +101,7 @@ test("the landing footer Search is a 44 px tap target at 390 px", async ({ page 
   await search.tap()
   await expect(page).toHaveURL(/\/search$/)
   // and the app footer's Search, on the results page
+  await expect(page.getByRole("heading", { name: /\d+ propert(y|ies)/ })).toBeVisible()
   const appSearch = page.getByRole("contentinfo").getByRole("link", { name: "Search" })
   await appSearch.scrollIntoViewIfNeeded()
   expect((await appSearch.boundingBox())!.height).toBeGreaterThanOrEqual(44)
