@@ -79,7 +79,8 @@ import java.util.Map;
  * there only the landlord's review is in, awaiting reveal, so Demo Tenant BLR-3 has two review tasks. One property
  * review has the landlord's response. Aggregates are rebuilt from these reviews at the end.
  * <p>Runs only with the {@code dev} profile <em>and</em> {@code SEED_DEMO=true}, and only into an empty
- * database (no users, properties or areas); otherwise it does nothing. Verification states (the demo admin,
+ * database (no users, properties or areas); a database seeded before Demo Orchard existed only gets that society
+ * and its flats ({@link #topUpSocietyFlats}). Verification states (the demo admin,
  * approved demo parties and the admin queue) come from {@link DemoVerificationSeed}. PLAN B10 extends it with
  * the pending location proposal (Demo Enclave).
  */
@@ -206,7 +207,45 @@ public class DemoSeeder implements ApplicationRunner {
 	
 	@Override
 	public void run(ApplicationArguments args) {
-		seed();
+		if (!seed()) {
+			topUpSocietyFlats();
+		}
+	}
+	
+	/**
+	 * Adds Demo Orchard and its {@link #SOCIETY_FLATS} to a database seeded before they existed: only when the demo
+	 * landlord of those flats exists and the society does not, so a second run changes nothing.
+	 *
+	 * @return whether it added them
+	 */
+	public boolean topUpSocietyFlats() {
+		DemoHome first = SOCIETY_FLATS.get(0);
+		DemoSociety seed = SOCIETIES.stream().filter(s -> s.name().equals(first.society())).findFirst().orElseThrow();
+		Boolean added = tx.execute(status -> {
+			String landlordEmail = ("demo-landlord-" + first.landlord() + "@example.test").toLowerCase(Locale.ROOT);
+			if (users.findByEmail(landlordEmail).filter(User::isDemo).isEmpty()) {
+				return false;
+			}
+			Area area = area(AREAS.stream().filter(a -> a.name().equals(seed.area())).findFirst().orElseThrow());
+			if (societies.findByAreaAndNameKey(area, LocationNames.key(seed.name())).isPresent()) {
+				return false;
+			}
+			Society society = society(seed, area);
+			Map<String, SocietyTower> towerByName = new HashMap<>();
+			for (int i = 0; i < TOWERS.size(); i++) {
+				towerByName.put(TOWERS.get(i), tower(society, TOWERS.get(i), i));
+			}
+			List<Property> flats = new ArrayList<>();
+			for (int i = 0; i < SOCIETY_FLATS.size(); i++) {
+				DemoHome home = SOCIETY_FLATS.get(i);
+				flats.add(home(home, HOMES.size() + i, area, society, towerByName.get(home.tower())));
+			}
+			flats.forEach(home -> home.setVerificationStatus(VerificationState.VERIFIED));
+			properties.saveAll(flats);
+			log.info("Demo seed top-up: {} with {} published properties.", seed.name(), flats.size());
+			return true;
+		});
+		return Boolean.TRUE.equals(added);
 	}
 	
 	/** Seeds an empty database; returns false (and changes nothing) when any user, property or demo area exists. */

@@ -350,6 +350,43 @@ class DemoSeederTest {
 				.as("repeat pairs only count once (D-44)").containsExactly(ReviewDirection.TENANT_TO_LANDLORD,
 					ReviewDirection.LANDLORD_TO_TENANT);
 		});
+		
+		assertThat(seeder.topUpSocietyFlats()).as("a fresh seed already has Demo Orchard").isFalse();
+		assertThat(properties.count()).isEqualTo(11);
+		
+		TransactionTemplate tx = new TransactionTemplate(transactionManager);
+		tx.executeWithoutResult(status -> {
+			Society orchard = societies.findAll().stream().filter(s -> s.getName().equals("Demo Orchard"))
+				.findFirst().orElseThrow();
+			properties.deleteAll(properties.findAll().stream()
+				.filter(p -> p.getSociety() != null && p.getSociety().getId().equals(orchard.getId())).toList());
+			towers.deleteAll(towers.findBySocietyOrderBySortOrderAscNameKeyAsc(orchard));
+			societies.delete(orchard);
+		});
+		long usersBefore = users.count();
+		long tenanciesBefore = tenancies.count();
+		long reviewsBefore = reviews.count();
+		assertThat(properties.count()).as("a database seeded before Demo Orchard").isEqualTo(8);
+		
+		assertThat(seeder.topUpSocietyFlats()).isTrue();
+		assertThat(seeder.topUpSocietyFlats()).as("second boot").isFalse();
+		tx.executeWithoutResult(status -> {
+			List<Property> orchard = properties.findAll().stream()
+				.filter(p -> p.getSociety() != null && p.getSociety().getName().equals("Demo Orchard")).toList();
+			assertThat(orchard).hasSize(3).allMatch(Property::isDemo)
+				.allMatch(p -> p.getStatus() == PropertyStatus.PUBLISHED)
+				.allMatch(p -> p.getVerificationStatus() == VerificationState.VERIFIED)
+				.allMatch(p -> p.getLandlord().getDisplayName().equals("Demo Landlord BLR-2"))
+				.allMatch(p -> p.getArea().getName().equals("Jayanagar") && p.getPincode().equals("560041"));
+			assertThat(orchard.stream().map(p -> p.getUnitLabel() + " " + p.getTower().getName() + " "
+				+ p.getWing().getName())).containsExactlyInAnyOrder("1101 Tower 1 Wing A", "1204 Tower 1 Wing B",
+					"2302 Tower 2 Wing A");
+			assertThat(societies.findAll()).filteredOn(s -> s.getName().equals("Demo Orchard")).hasSize(1);
+		});
+		assertThat(properties.count()).isEqualTo(11);
+		assertThat(users.count()).isEqualTo(usersBefore);
+		assertThat(tenancies.count()).isEqualTo(tenanciesBefore);
+		assertThat(reviews.count()).isEqualTo(reviewsBefore);
 	}
 	
 	private void assertApprovedAndIdVerified(VerificationApplication application) {
