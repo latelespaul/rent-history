@@ -54,4 +54,8 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
 	List<Property> findBySocietyIdInAndStatusAndUnitLabelVisibilityAndDeletedAtIsNull(Collection<Long> societyIds,
 		PropertyStatus status, FieldVisibility visibility);
 	
+	/** Internal ids of a society's homes in {@code status}, not deleted (D-166 society summary). */
+	@Query("select p.id from Property p where p.society.id = :society and p.status = :status and p.deletedAt is null")
+	List<Long> findIdsBySocietyAndStatus(@Param("society") Long societyId, @Param("status") PropertyStatus status);
+	
 }

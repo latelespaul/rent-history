@@ -6,6 +6,7 @@ import { Notice } from "@/components/ui/notice"
 import { useCities } from "@/features/city/useCities"
 import { Pagination } from "@/features/property/Pagination"
 import { PropertyResult } from "@/features/property/PropertyResult"
+import { SocietyResult } from "@/features/property/SocietyResult"
 import { SearchBar } from "@/features/property/SearchBar"
 import { SearchFilters } from "@/features/property/SearchFilters"
 import {
@@ -16,23 +17,24 @@ import {
   withFilters,
   type SearchFilters as Changes,
 } from "@/features/property/searchParams"
-import { usePropertySearch } from "@/features/property/useProperties"
+import { useGroupedSearch } from "@/features/property/useProperties"
 
 /**
- * Search results (DESIGN.md screen 2): every filter lives in the URL, so `GET /properties` is
- * called with exactly what the address bar shows. Cities come only from `GET /cities`.
+ * Search results (DESIGN.md screen 2): every filter lives in the URL, so `GET /properties/grouped`
+ * is called with exactly what the address bar shows. A society with 2+ matching homes is one card
+ * that opens its page (D-166); every other home is its own card. Cities come only from `GET /cities`.
  */
 export default function SearchPage() {
   const [params, setParams] = useSearchParams()
   const search = useMemo(() => searchFromParams(params), [params])
-  const results = usePropertySearch(search)
+  const results = useGroupedSearch(search)
   const cities = useCities()
   const cityName = cities.data?.find((c) => c.code === search.city)?.name
 
   const change = (changes: Changes) => setParams((prev) => withFilters(prev, changes))
   const page = (search.page ?? 0) + 1
   const data = results.data
-  const total = data?.page.totalItems ?? 0
+  const total = data?.totalHomes ?? 0
   const filtered = activeFilterCount(search) > 0
 
   return (
@@ -108,11 +110,17 @@ export default function SearchPage() {
             />
           ) : (
             <ul className="space-y-4">
-              {data?.items.map((property) => (
-                <li key={property.id}>
-                  <PropertyResult property={property} />
-                </li>
-              ))}
+              {data?.items.map((item) =>
+                item.kind === "SOCIETY" ? (
+                  <li key={`s-${item.society.id}`}>
+                    <SocietyResult society={item.society} />
+                  </li>
+                ) : (
+                  <li key={item.home.id}>
+                    <PropertyResult property={item.home} />
+                  </li>
+                ),
+              )}
             </ul>
           )}
 

@@ -187,6 +187,11 @@ public class LocationService {
 		return readableArea(publicId, Viewer.of(caller), field);
 	}
 	
+	/** The society behind {@code GET /societies/{id}/summary}: readable as on the society page, else 404 (D-109). */
+	public Society readableSociety(UUID publicId, AuthenticatedUser caller) {
+		return readableSociety(publicId, Viewer.of(caller));
+	}
+	
 	public Society societyFilter(UUID publicId, AuthenticatedUser caller, String field) {
 		return readableSociety(publicId, Viewer.of(caller), field);
 	}
@@ -410,14 +415,23 @@ public class LocationService {
 			() -> area.getId() != null && areas.holdsHomeOf(area.getId(), viewer.publicId()));
 	}
 	
+	/**
+	 * D-109, widened by D-166: a {@code PENDING} society that holds a published home is read by id by anyone, as
+	 * its name is already public on that home's card and in search (D-162); else as D-109 says.
+	 */
 	private boolean reads(Viewer viewer, Society society) {
 		return viewer.reads(society.getStatus(), society.getCreatedBy(),
-			() -> society.getId() != null && societies.holdsHomeOf(society.getId(), viewer.publicId()));
+			() -> society.getId() != null && societies.holdsHomeOf(society.getId(), viewer.publicId()))
+			|| society.getStatus() == LocationStatus.PENDING && society.getId() != null
+			&& societies.holdsPublishedHome(society.getId());
 	}
 	
+	/** As for a society (D-166): a {@code PENDING} tower with a published home is read by anyone. */
 	private boolean reads(Viewer viewer, SocietyTower tower) {
 		return viewer.reads(tower.getStatus(), tower.getCreatedBy(),
-			() -> tower.getId() != null && towers.holdsHomeOf(tower.getId(), viewer.publicId()));
+			() -> tower.getId() != null && towers.holdsHomeOf(tower.getId(), viewer.publicId()))
+			|| tower.getStatus() == LocationStatus.PENDING && tower.getId() != null
+			&& towers.holdsPublishedHome(tower.getId());
 	}
 	
 	private boolean reads(Viewer viewer, SocietyWing wing) {
@@ -460,10 +474,11 @@ public class LocationService {
 			}
 		}
 		return towers.findBySocietyOrderBySortOrderAscNameKeyAsc(society).stream()
-			.filter(t -> viewer.lists(t.getStatus(), t.getCreatedBy()))
+			// a tower or wing holding a published home is listed for everyone (D-166), its name is on that home's card
+			.filter(t -> viewer.lists(t.getStatus(), t.getCreatedBy()) || perTower.getOrDefault(t.getId(), 0L) > 0)
 			.map(t -> new TowerView(t.getPublicId(), t.getName(), t.getKind(), t.getStatus(),
 				perTower.getOrDefault(t.getId(), 0L), t.getWings().stream()
-				.filter(w -> viewer.lists(w.getStatus(), w.getCreatedBy()))
+				.filter(w -> viewer.lists(w.getStatus(), w.getCreatedBy()) || perWing.getOrDefault(w.getId(), 0L) > 0)
 				.map(w -> new TowerView.WingView(w.getPublicId(), w.getName(), w.getStatus(),
 					perWing.getOrDefault(w.getId(), 0L)))
 				.toList()))

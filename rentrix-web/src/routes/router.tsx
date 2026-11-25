@@ -18,6 +18,7 @@ import PropertyPage from "@/pages/PropertyPage"
 import OnboardingPage from "@/pages/OnboardingPage"
 import SearchPage from "@/pages/SearchPage"
 import SettingsPage from "@/pages/SettingsPage"
+import SocietyPage from "@/pages/SocietyPage"
 import TenancyInvitePage from "@/pages/TenancyInvitePage"
 import TenancyPage from "@/pages/TenancyPage"
 import TenancyRequestPage from "@/pages/TenancyRequestPage"
@@ -36,6 +37,8 @@ export const routes = [
       { path: "/p/:id", element: <PropertyPage /> },
       // Search is open to everyone, signed in or not (captain 2026-11-24 00:31, D-162).
       { path: "/search", element: <SearchPage /> },
+      // A society and its flats by tower, open to everyone like search (D-166).
+      { path: "/s/:id", element: <SocietyPage /> },
       { path: "/login", element: <LoginPage /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/terms", element: <LegalPage title="Terms" /> },

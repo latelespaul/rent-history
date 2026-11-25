@@ -409,6 +409,46 @@ export interface SocietyCard {
   publishedHomes: number
 }
 
+/**
+ * A society as search shows it when 2+ of its homes match, and the society page summary (D-166).
+ * `rating` pools the homes' verified reviews (D-163); `listedReviews` counts every published one;
+ * `rentRange` comes only for signed-in callers (D-56) and only from rents open to everyone.
+ */
+export interface SocietyGroup {
+  id: string
+  name: string
+  area: { id: string; name: string }
+  city: CityRef
+  pending: boolean
+  flats: number
+  listedReviews: number
+  rating: RatingSummary
+  rentRange?: { min: number; max: number }
+}
+
+/** One row of `GET /properties/grouped` (D-166): a society with 2+ matching homes, or a home. */
+export type SearchItem =
+  { kind: "HOME"; home: PropertyCard } | { kind: "SOCIETY"; society: SocietyGroup }
+
+/** `GET /properties/grouped`: the D-59 page over rows, plus every matching home (`totalHomes`). */
+export interface GroupedPage extends Page<SearchItem> {
+  totalHomes: number
+}
+
+/** `GET /societies/{id}`: the society page header and its towers (D-112). */
+export interface SocietyDetail {
+  id: string
+  name: string
+  developer: string | null
+  kind: SocietyKind
+  area: { id: string; name: string }
+  city: CityRef
+  street: string | null
+  status: LocationStatus
+  publishedHomes: number
+  towers: TowerView[]
+}
+
 /** `GET /societies/{id}/towers`: towers with their wings, for the form pickers. */
 export interface TowerView {
   id: string

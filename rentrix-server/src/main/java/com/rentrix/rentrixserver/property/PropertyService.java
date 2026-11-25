@@ -23,7 +23,10 @@ import com.rentrix.rentrixserver.property.dto.OwnerContact;
 import com.rentrix.rentrixserver.property.dto.PropertyCard;
 import com.rentrix.rentrixserver.property.dto.PropertyDetail;
 import com.rentrix.rentrixserver.property.dto.PropertyLocation;
+import com.rentrix.rentrixserver.property.dto.GroupedPage;
 import com.rentrix.rentrixserver.property.dto.RatingSummary;
+import com.rentrix.rentrixserver.property.dto.SearchItem;
+import com.rentrix.rentrixserver.property.dto.SocietyGroup;
 import com.rentrix.rentrixserver.property.dto.UpdatePropertyRequest;
 import com.rentrix.rentrixserver.review.RatingAggregate;
 import com.rentrix.rentrixserver.review.RatingAggregateId;
@@ -79,6 +82,8 @@ public class PropertyService {
 	private final PlaceMatcher placeMatcher;
 	private final FlatFinder flats;
 	private final ReviewRepository reviews;
+	private final SocietyGroups societyGroups;
+	private final com.rentrix.rentrixserver.location.SocietyRepository societies;
 	
 	// ---------------------------------------------------------------- reads
 	
@@ -167,6 +172,93 @@ public class PropertyService {
 		Page<Property> page = new PageImpl<>(ordered, pageable, total);
 		Map<Long, Long> listed = listedReviews(ids);
 		return PageResponse.of(page, p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), true));
+	}
+	
+	/**
+	 * {@code GET /properties/grouped} (D-166): the same filters and text matching as {@link #search}, but a society
+	 * with 2+ matching homes is one {@code SOCIETY} row (its figures over those homes) and every other home its own
+	 * {@code HOME} row. Pages run over rows; {@code totalHomes} counts the homes.
+	 */
+	public GroupedPage searchGrouped(PropertySearchCriteria criteria, LocationFilter location,
+		AuthenticatedUser caller, Pageable pageable) {
+		PropertySearchCriteria resolved = withTextPlaces(withLocation(criteria, location, caller), caller);
+		if (resolved.cityCode() != null) {
+			cityService.requireLive(resolved.cityCode());
+		}
+		PropertySearchQuery query = PropertySearchQuery.of(resolved);
+		Sort.Order order = pageable.getSort().iterator().next();
+		long homes = Objects.requireNonNull(jdbc.queryForObject(query.countSql(), Long.class, query.params()));
+		long rows = homes == 0 ? 0
+			: Objects.requireNonNull(jdbc.queryForObject(query.groupCountSql(), Long.class, query.params()));
+		List<Map<String, Object>> groups = rows == 0 ? List.of() : jdbc.queryForList(
+			query.groupPageSql(order.getProperty(), order.isDescending()),
+			query.pageParams(pageable.getPageSize(), pageable.getOffset()));
+		List<Long> single = new ArrayList<>();
+		List<Long> societyIds = new ArrayList<>();
+		for (Map<String, Object> group : groups) {
+			if (((Number) group.get("n")).longValue() > 1) {
+				societyIds.add(((Number) group.get("g")).longValue());
+			} else {
+				single.add(((Number) group.get("one")).longValue());
+			}
+		}
+		Map<Long, PropertyCard> cards = cards(single);
+		Map<Long, SocietyGroup> societyRows = societyIds.isEmpty() ? Map.of() : societyGroups(query, societyIds,
+			caller != null);
+		List<SearchItem> items = new ArrayList<>();
+		for (Map<String, Object> group : groups) {
+			if (((Number) group.get("n")).longValue() > 1) {
+				SocietyGroup row = societyRows.get(((Number) group.get("g")).longValue());
+				if (row != null) {
+					items.add(SearchItem.society(row));
+				}
+			} else {
+				PropertyCard card = cards.get(((Number) group.get("one")).longValue());
+				if (card != null) {
+					items.add(SearchItem.home(card));
+				}
+			}
+		}
+		int size = pageable.getPageSize();
+		return new GroupedPage(items, new PageResponse.PageInfo(pageable.getPageNumber(), size, rows,
+			(int) ((rows + size - 1) / size)), homes);
+	}
+	
+	/**
+	 * {@code GET /societies/{id}/summary} (D-166): the society page's figures over all its published homes, as one
+	 * {@link SocietyGroup}; the rent range for signed-in callers only (D-56).
+	 */
+	public SocietyGroup societySummary(UUID societyId, AuthenticatedUser caller) {
+		Society society = locations.readableSociety(societyId, caller);
+		List<Long> homes = properties.findIdsBySocietyAndStatus(society.getId(), PropertyStatus.PUBLISHED);
+		return societyGroups.of(Map.of(society, homes), caller != null).get(society.getId());
+	}
+	
+	/** The matching homes of each society in {@code societyIds}, as {@link SocietyGroup}s keyed by society id. */
+	private Map<Long, SocietyGroup> societyGroups(PropertySearchQuery query, List<Long> societyIds,
+		boolean signedIn) {
+		Map<Long, List<Long>> members = new java.util.HashMap<>();
+		for (Map<String, Object> row : jdbc.queryForList(query.membersSql(societyIds.size()),
+			query.paramsWith(societyIds))) {
+			members.computeIfAbsent(((Number) row.get("society_id")).longValue(), id -> new ArrayList<>())
+				.add(((Number) row.get("id")).longValue());
+		}
+		Map<Society, List<Long>> bySociety = new java.util.LinkedHashMap<>();
+		for (Society society : societies.findAllById(societyIds)) {
+			bySociety.put(society, members.getOrDefault(society.getId(), List.of()));
+		}
+		return societyGroups.of(bySociety, signedIn);
+	}
+	
+	/** Search cards of the given homes, keyed by internal id. */
+	private Map<Long, PropertyCard> cards(List<Long> ids) {
+		if (ids.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
+		Map<Long, Long> listed = listedReviews(ids);
+		return properties.findByIdIn(ids).stream().collect(Collectors.toMap(Property::getId,
+			p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), true)));
 	}
 	
 	public PropertyDetail get(UUID publicId, AuthenticatedUser caller) {

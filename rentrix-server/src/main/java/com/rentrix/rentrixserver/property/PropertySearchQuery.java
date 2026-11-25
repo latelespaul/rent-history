@@ -143,6 +143,50 @@ public final class PropertySearchQuery {
 		return "SELECT COUNT(*)" + from;
 	}
 	
+	/** The grouping of {@code GET /properties/grouped} (D-166): the society, or the home itself outside one. */
+	private static final String GROUP = "COALESCE(p.society_id, -p.id)";
+	
+	/**
+	 * {@code SELECT g, n, one … GROUP BY g ORDER BY … LIMIT ? OFFSET ?} (D-166): one row per society (with how many
+	 * matching homes and the smallest id) or per home outside a society; parameters are {@link #pageParams}.
+	 */
+	public String groupPageSql(String sort, boolean descending) {
+		return "SELECT " + GROUP + " AS g, COUNT(*) AS n, MIN(p.id) AS one" + from + " GROUP BY " + GROUP
+			+ " ORDER BY " + groupOrderBy(sort, descending) + " LIMIT ? OFFSET ?";
+	}
+	
+	/** How many groups {@link #groupPageSql} pages through; parameters are {@link #params}. */
+	public String groupCountSql() {
+		return "SELECT COUNT(*) FROM (SELECT " + GROUP + " AS g" + from + " GROUP BY " + GROUP + ") grouped";
+	}
+	
+	/** {@code SELECT p.id, p.society_id} of the matching homes in {@code societies} given societies. */
+	public String membersSql(int societies) {
+		return "SELECT p.id, p.society_id" + from + " AND p.society_id IN (" + placeholders(societies) + ")";
+	}
+	
+	/** {@link #params} followed by {@code extra}. */
+	public Object[] paramsWith(List<?> extra) {
+		List<Object> all = new ArrayList<>(params);
+		all.addAll(extra);
+		return all.toArray();
+	}
+	
+	/**
+	 * A group sorts by its best home: the best Bayesian rank (unrated groups last), the most counted reviews, or the
+	 * newest home; ties end on the newest home, so pages are stable.
+	 */
+	private static String groupOrderBy(String sort, boolean descending) {
+		String dir = descending ? " DESC" : " ASC";
+		return switch (sort) {
+			case TOP_RATED -> "MIN(CASE WHEN ra.bayes_score IS NULL THEN 1 ELSE 0 END), MAX(ra.bayes_score)" + dir
+				+ ", SUM(COALESCE(ra.review_count, 0))" + dir + ", MAX(p.id) DESC";
+			case MOST_REVIEWED -> "SUM(COALESCE(ra.review_count, 0))" + dir + ", MAX(p.id) DESC";
+			case NEWEST -> "MAX(p.id)" + dir;
+			default -> throw new IllegalArgumentException("Unknown sort " + sort);
+		};
+	}
+	
 	public Object[] params() {
 		return params.toArray();
 	}
