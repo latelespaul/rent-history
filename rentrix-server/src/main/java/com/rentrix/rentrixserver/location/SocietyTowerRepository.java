@@ -24,6 +24,11 @@ public interface SocietyTowerRepository extends JpaRepository<SocietyTower, Long
 		+ " and p.deletedAt is null")
 	boolean holdsHomeOf(@Param("id") Long id, @Param("landlord") UUID landlord);
 	
+	/** Whether a published home sits here, so its name is already public on that home's card (D-162, D-166). */
+	@Query("select count(p) > 0 from Property p where p.tower.id = :id"
+		+ " and p.status = com.rentrix.rentrixserver.property.PropertyStatus.PUBLISHED and p.deletedAt is null")
+	boolean holdsPublishedHome(@Param("id") Long id);
+	
 	long countBySociety(Society society);
 	
 	/** The towers of the given societies, for tower matching in {@link PlaceMatcher} (D-164). */

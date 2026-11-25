@@ -14,7 +14,7 @@ interface Props {
   className?: string
 }
 
-function Chip({
+export function Chip({
   pressed,
   onClick,
   children,

@@ -48,7 +48,7 @@ public class SecurityConfig {
 	static final String[] PUBLIC_GET = {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
 		"/cities", "/stats", "/properties", "/properties/*", "/properties/*/rating", "/properties/*/reviews",
-		"/areas", "/areas/*", "/societies", "/societies/*", "/societies/*/towers", "/search/suggestions",
+		"/areas", "/areas/*", "/societies", "/societies/*", "/societies/*/towers", "/societies/*/summary", "/search/suggestions",
 		"/auth/config", "/auth/dev-users", "/auth/admin/dev-users",
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",

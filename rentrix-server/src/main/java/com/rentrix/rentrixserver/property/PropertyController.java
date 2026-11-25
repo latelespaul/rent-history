@@ -5,9 +5,11 @@ import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageRequests;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.property.dto.CreatePropertyRequest;
+import com.rentrix.rentrixserver.property.dto.GroupedPage;
 import com.rentrix.rentrixserver.property.dto.PropertyCard;
 import com.rentrix.rentrixserver.property.dto.PropertyDetail;
 import com.rentrix.rentrixserver.property.dto.PropertyLimits;
+import com.rentrix.rentrixserver.property.dto.SocietyGroup;
 import com.rentrix.rentrixserver.property.dto.UpdatePropertyRequest;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import jakarta.validation.Valid;
@@ -84,6 +86,48 @@ public class PropertyController {
 		@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size,
 		@RequestParam(required = false) String sort) {
+		PropertySearchCriteria criteria = criteria(city, locality, type, bedrooms, minRating, q, society, tower,
+			standalone, homeSize);
+		return service.search(criteria, new PropertyService.LocationFilter(area, society, tower, standalone), caller,
+			pageable(page, size, sort));
+	}
+	
+	/**
+	 * {@code GET /properties/grouped}, same parameters as {@link #search} (D-166): a society with 2+ matching homes
+	 * is one {@code SOCIETY} row, every other home a {@code HOME} row; pages run over rows and {@code totalHomes}
+	 * counts the homes.
+	 */
+	@GetMapping("/properties/grouped")
+	public GroupedPage searchGrouped(@AuthenticationPrincipal AuthenticatedUser caller,
+		@RequestParam(required = false) String city,
+		@RequestParam(required = false) String locality,
+		@RequestParam(required = false) String type,
+		@RequestParam(required = false) Integer bedrooms,
+		@RequestParam(required = false) BigDecimal minRating,
+		@RequestParam(required = false) String q,
+		@RequestParam(required = false) UUID area,
+		@RequestParam(required = false) UUID society,
+		@RequestParam(required = false) UUID tower,
+		@RequestParam(required = false) Boolean standalone,
+		@RequestParam(required = false) String homeSize,
+		@RequestParam(required = false) Integer page,
+		@RequestParam(required = false) Integer size,
+		@RequestParam(required = false) String sort) {
+		PropertySearchCriteria criteria = criteria(city, locality, type, bedrooms, minRating, q, society, tower,
+			standalone, homeSize);
+		return service.searchGrouped(criteria, new PropertyService.LocationFilter(area, society, tower, standalone),
+			caller, pageable(page, size, sort));
+	}
+	
+	/** {@code GET /societies/{id}/summary} (D-166): the society page's flats, reviews and rent range. */
+	@GetMapping("/societies/{id}/summary")
+	public SocietyGroup societySummary(@PathVariable UUID id, @AuthenticationPrincipal AuthenticatedUser caller) {
+		return service.societySummary(id, caller);
+	}
+	
+	/** The validated filters shared by both searches; location ids stay for the service to resolve. */
+	private static PropertySearchCriteria criteria(String city, String locality, String type, Integer bedrooms,
+		BigDecimal minRating, String q, UUID society, UUID tower, Boolean standalone, String homeSize) {
 		List<ApiProblem.FieldError> errors = new ArrayList<>();
 		String localityKey = text("locality", locality, 120, errors);
 		String textKey = text("q", q, MAX_TEXT, errors);
@@ -103,11 +147,14 @@ public class PropertyController {
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		String searchSort = sort == null || sort.isBlank() || sort.contains(",") ? sort : sort + ",desc";
-		Pageable pageable = PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
-		return service.search(new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating,
-			textKey, null, null, null, null, sizeFilter), new PropertyService.LocationFilter(area, society, tower, standalone), caller, pageable);
+		return new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating, textKey, null,
+			null, null, null, sizeFilter);
+	}
+	
+	private static Pageable pageable(Integer page, Integer size, String sort) {
+		String searchSort = sort == null || sort.isBlank() || sort.contains(",") ? sort : sort + ",desc";
+		return PageRequests.of(page, size, searchSort, SEARCH_SORTS, DEFAULT_SEARCH_SORT);
 	}
 	
 	@GetMapping("/properties/{id}")

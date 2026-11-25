@@ -5,6 +5,7 @@ import { cleanup, configure, render, screen, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { PropertySearch } from "@/api/properties"
+import type { Page, PropertyCard } from "@/types/api"
 import { LAUNCH_CITIES, SEED_STATS } from "@/test/cities"
 import { card, page } from "@/test/properties"
 import SearchPage from "./SearchPage"
@@ -14,6 +15,11 @@ const api = vi.hoisted(() => ({
   respond: (_: PropertySearch) => ({}) as unknown,
 }))
 
+// Search is open to everyone (D-162): these tests run signed out.
+vi.mock("@/features/auth/authContext", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
+  useAuth: () => ({ state: { status: "anonymous", user: null } }),
+}))
 vi.mock("@/api/cities", () => ({
   cityKeys: { all: ["cities"] },
   fetchCities: vi.fn(async () => LAUNCH_CITIES),
@@ -27,6 +33,16 @@ vi.mock("@/api/properties", async (importOriginal) => ({
   searchProperties: vi.fn(async (search: PropertySearch) => {
     api.calls.push(search)
     return api.respond(search)
+  }),
+  // The results list reads the grouped search (D-166); here every row is a home.
+  searchGrouped: vi.fn(async (search: PropertySearch) => {
+    api.calls.push(search)
+    const homes = api.respond(search) as Page<PropertyCard>
+    return {
+      items: homes.items.map((home) => ({ kind: "HOME", home })),
+      page: homes.page,
+      totalHomes: homes.page.totalItems,
+    }
   }),
 }))
 

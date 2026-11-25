@@ -34,6 +34,11 @@ public interface SocietyRepository extends JpaRepository<Society, Long>, JpaSpec
 		+ " and p.deletedAt is null")
 	boolean holdsHomeOf(@Param("id") Long id, @Param("landlord") UUID landlord);
 	
+	/** Whether a published home sits here, so its name is already public on that home's card (D-162, D-166). */
+	@Query("select count(p) > 0 from Property p where p.society.id = :id"
+		+ " and p.status = com.rentrix.rentrixserver.property.PropertyStatus.PUBLISHED and p.deletedAt is null")
+	boolean holdsPublishedHome(@Param("id") Long id);
+	
 	/** {@code [society id, published homes]} (index ix_properties_society_status). */
 	@Query("select p.society.id, count(p) from Property p where p.society.id in :ids"
 		+ " and p.status = com.rentrix.rentrixserver.property.PropertyStatus.PUBLISHED and p.deletedAt is null"

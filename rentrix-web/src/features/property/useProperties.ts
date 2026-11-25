@@ -4,6 +4,7 @@ import {
   fetchPropertyReviews,
   fetchRentHistory,
   propertyKeys,
+  searchGrouped,
   searchProperties,
   type PropertySearch,
 } from "@/api/properties"
@@ -18,6 +19,20 @@ export function usePropertySearch(search: PropertySearch) {
     queryKey: propertyKeys.search(search),
     queryFn: ({ signal }) => searchProperties(search, signal),
     placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * `GET /properties/grouped` (D-166): search results with a society of 2+ matching homes as one
+ * row; cached per viewer, because only signed-in callers get a society's rent range (D-56).
+ */
+export function useGroupedSearch(search: PropertySearch) {
+  const { ready, viewer } = useSignedIn()
+  return useQuery({
+    queryKey: propertyKeys.grouped(search, viewer),
+    queryFn: ({ signal }) => searchGrouped(search, signal),
+    placeholderData: keepPreviousData,
+    enabled: ready,
   })
 }
 

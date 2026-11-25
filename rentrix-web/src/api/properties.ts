@@ -1,4 +1,5 @@
 import type {
+  GroupedPage,
   Page,
   PropertyCard,
   PropertyDetail,
@@ -21,6 +22,9 @@ export interface PropertySearch {
   homeSize?: string
   minRating?: number
   q?: string
+  /** One society's homes, and one tower of it (D-112): the society page's list. */
+  society?: string
+  tower?: string
   sort?: string
   /** Zero-based page number (D-59). */
   page?: number
@@ -30,6 +34,8 @@ export interface PropertySearch {
 export const propertyKeys = {
   all: ["properties"] as const,
   search: (search: PropertySearch) => ["properties", "search", search] as const,
+  grouped: (search: PropertySearch, viewer: string | null) =>
+    ["properties", "grouped", search, viewer] as const,
   localities: (city: string) => ["properties", "localities", city] as const,
   detail: (id: string, viewer: string | null) => ["properties", "detail", id, viewer] as const,
   rentHistory: (id: string, viewer: string | null) =>
@@ -44,6 +50,14 @@ export function searchProperties(
   signal?: AbortSignal,
 ): Promise<Page<PropertyCard>> {
   return api.get<Page<PropertyCard>>("/properties", { query: search as Query, signal })
+}
+
+/**
+ * `GET /properties/grouped` (D-166): the same filters, with a society that has 2+ matching homes
+ * as one row. `society` and `tower` narrow to one society, as on its page.
+ */
+export function searchGrouped(search: PropertySearch, signal?: AbortSignal): Promise<GroupedPage> {
+  return api.get<GroupedPage>("/properties/grouped", { query: search as Query, signal })
 }
 
 /** `GET /properties/{id}`: fields per D-56; more when the caller is signed in. */
