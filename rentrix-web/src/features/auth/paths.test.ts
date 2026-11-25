@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { CurrentUser } from "@/types/api"
-import { makeUser } from "@/test/users"
-import { afterSignInPath, loginPath, publicName, safeNext, shortName } from "./paths"
+import { afterSignInPath, loginPath, safeNext, shortName } from "./paths"
 
 describe("auth paths", () => {
   it("keeps only same-app next paths", () => {
@@ -36,12 +35,5 @@ describe("auth paths", () => {
     expect(shortName("Cher")).toBe("Cher")
     expect(shortName("Cher 42")).toBe("Cher")
     expect(shortName(" ")).toBe("Member")
-  })
-
-  it("shows the API's short name for a saved name and previews a typed one", () => {
-    const user = makeUser({ displayName: "Demo Tenant BLR-1", shortName: "Demo T." })
-    expect(publicName(user)).toBe("Demo T.")
-    expect(publicName(user, "  ")).toBe("Demo T.")
-    expect(publicName(user, "Asha Rao")).toBe("Asha R.")
   })
 })

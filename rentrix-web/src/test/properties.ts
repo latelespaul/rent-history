@@ -16,7 +16,7 @@ export function card(overrides: Partial<PropertyCard> = {}): PropertyCard {
     parking: true,
     demo: true,
     rating: { reviewCount: 0, average: null },
-    landlordName: "Demo L.",
+    landlordLabel: "Owner",
     ...overrides,
   }
 }
@@ -46,7 +46,7 @@ export function detail(overrides: Partial<PropertyDetail> = {}): PropertyDetail 
     status: "PUBLISHED",
     demo: true,
     rating: { reviewCount: 4, average: 4.3 },
-    landlord: { shortName: "Demo L.", rating: { reviewCount: 2, average: null } },
+    landlord: { label: "Owner", rating: { reviewCount: 2, average: null } },
     createdAt: "2026-11-21T00:00:00Z",
     updatedAt: "2026-11-21T00:00:00Z",
     ...overrides,

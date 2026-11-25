@@ -151,6 +151,18 @@ public class IdentityService {
 		return badgesOf(checks.findByUser(user));
 	}
 	
+	/**
+	 * The three public badges of a reviewer (D-168): Google sign-in, any one verified method, and {@code agreement}
+	 * (true only, else absent) as the caller found it on the tenancy. A deleted account has none.
+	 */
+	@Transactional(readOnly = true)
+	public TrustBadges trustBadges(User user, boolean agreement) {
+		if (user.getId() == null || user.getStatus() == UserStatus.DELETED || user.getDeletedAt() != null) {
+			return TrustBadges.NONE;
+		}
+		return new TrustBadges(user.getGoogleSub() != null, hasPostingMethod(user), agreement ? Boolean.TRUE : null);
+	}
+
 	/** The caller's own checks, masked only (D-106). */
 	@Transactional(readOnly = true)
 	public IdentityView view(User user) {

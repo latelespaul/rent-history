@@ -121,7 +121,7 @@ class HomeApiTest {
 		assertThat(property.get("status").asString()).isEqualTo("PUBLISHED");
 		assertThat(property.get("addedByTenant").asBoolean()).isTrue();
 		assertThat(property.get("verification").asString()).isEqualTo("UNVERIFIED");
-		assertThat(property.at("/landlord/shortName").asString()).isEqualTo(UnclaimedLandlord.PUBLIC_NAME);
+		assertThat(property.at("/landlord/label").asString()).isEqualTo(UnclaimedLandlord.PUBLIC_NAME);
 		assertThat(property.at("/landlord/id").isMissingNode()).isTrue();
 		assertThat(property.at("/location/society/name").asString()).isEqualTo("Lakeside Habitat");
 		// The tenant who typed it sees the owner contact; nobody else does (D-140).
@@ -149,7 +149,7 @@ class HomeApiTest {
 		mvc.perform(get("/properties").param("city", CITY).header("Authorization", support.bearer(other)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.items[0].id").value(id))
-			.andExpect(jsonPath("$.items[0].landlordName").value(UnclaimedLandlord.PUBLIC_NAME));
+			.andExpect(jsonPath("$.items[0].landlordLabel").value(UnclaimedLandlord.PUBLIC_NAME));
 
 		// The home can be reviewed at once (window D-39 permitting); the absent landlord cannot.
 		String tenancyId = tenancy.get("id").asString();

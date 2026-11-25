@@ -10,7 +10,7 @@ import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
 import { UserIcon } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
-import { publicName, safeNext } from "@/features/auth/paths"
+import { NAME_NOT_SHOWN, safeNext } from "@/features/auth/paths"
 import { RoleChoice } from "@/features/auth/RoleChoice"
 import { roleHome, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
@@ -164,10 +164,7 @@ export default function OnboardingPage() {
               maxLength={60}
               onChange={(e) => setDisplayName(e.target.value)}
             />
-            <p className="text-xs text-ink-500">
-              Shown publicly as &ldquo;{publicName(user, displayName)}&rdquo;. You can change it
-              later.
-            </p>
+            <p className="text-xs text-ink-500">{NAME_NOT_SHOWN} You can change it later.</p>
           </div>
 
           <label className="mt-4 flex items-start gap-2.5 text-sm text-ink-900">

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CheckIcon, DocumentIcon, LinkIcon, MessageIcon } from "@/components/ui/icons.gen"
 import { Input } from "@/components/ui/input"
+import { NAME_NOT_SHOWN } from "@/features/auth/paths"
 import { Label } from "@/components/ui/label"
 import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
@@ -154,7 +155,7 @@ export function ProfileStep({ entries }: { entries: VerificationEntry[] }) {
             maxLength={60}
             onChange={(event) => setDisplayName(event.target.value)}
           />
-          <p className="text-xs text-ink-500">Shown publicly as first name and initial.</p>
+          <p className="text-xs text-ink-500">{NAME_NOT_SHOWN}</p>
         </div>
         <CityPicker
           value={homeCity}
@@ -570,7 +571,7 @@ export function IdStep({
               </Button>
             </form>
           )}
-          <p className="mt-1 text-xs text-ink-500">Gives &ldquo;LinkedIn verified&rdquo;</p>
+          <p className="mt-1 text-xs text-ink-500">Counts for &ldquo;ID verified&rdquo;</p>
           {(save.error || remove.error) && (
             <Notice tone="danger" className="mt-2">
               {errorMessage(save.error ?? remove.error)}
@@ -579,8 +580,9 @@ export function IdStep({
         </div>
       </div>
       <p className="mt-4 text-xs text-ink-500">
-        Others see only &ldquo;ID verified&rdquo; or &ldquo;LinkedIn verified&rdquo;. The method,
-        the last 4 digits and your phone stay with you and admins.
+        Others see only the badges (&ldquo;Google verified&rdquo;, &ldquo;ID verified&rdquo;) and a
+        label such as &ldquo;Tenant, 2024&rdquo;, never your name. The method, the last 4 digits and
+        your phone stay with you and admins.
       </p>
       <StepActions back="/verify/phone" skip="/verify/rental">
         <Button asChild>

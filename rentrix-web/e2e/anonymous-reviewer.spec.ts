@@ -1,0 +1,111 @@
+import { expect, test, type Page } from "@playwright/test"
+import { apiBaseUrl, devLogin } from "./support"
+
+/**
+ * D-168 (captain 2026-11-25): no reviewer is shown by name to anyone but themselves and admins.
+ * A signed-out visitor and another signed-in user read a seeded home with reviews: the page and
+ * the API JSON the browser received carry no short name ("Demo T.") or seed name, the author line
+ * is "Tenant, <year>", the owner is "Owner", and each review shows exactly the badges its API
+ * status holds ("Google verified", "ID verified", "Agreement verified"). The name fields no
+ * longer say "Shown publicly as". Runs in both projects (desktop and 390 px).
+ */
+
+/** A seed short name ("Demo T.") or full seed name ("Demo Tenant BLR-1"). */
+const SEED_NAME = /Demo [A-Z]\.|Demo (Tenant|Landlord) [A-Z]{3}-\d/
+
+interface ReviewJson {
+  author?: { label?: string; shortName?: string; badges?: Record<string, boolean | undefined> }
+}
+
+/** A published BLR seed home that lists reviews, from the public search API. */
+async function homeWithReviews(page: Page): Promise<string> {
+  await page.goto("/")
+  const api = await apiBaseUrl(page)
+  const res = await page.request.get(`${api}/properties?city=BLR&size=50`)
+  expect(res.ok()).toBe(true)
+  const body = (await res.json()) as { items: { id: string; listedReviews?: number }[] }
+  const home = body.items.find((item) => (item.listedReviews ?? 0) > 0)
+  expect(home, "a seeded BLR home with reviews").toBeTruthy()
+  return home!.id
+}
+
+/** Opens the home and returns the review and detail JSON exactly as the browser received them. */
+async function openHome(page: Page, id: string) {
+  const reviewsResponse = page.waitForResponse(
+    (r) => new URL(r.url()).pathname.endsWith(`/properties/${id}/reviews`) && r.ok(),
+  )
+  const detailResponse = page.waitForResponse(
+    (r) => new URL(r.url()).pathname.endsWith(`/properties/${id}`) && r.ok(),
+  )
+  await page.goto(`/p/${id}`)
+  const reviewsText = await (await reviewsResponse).text()
+  const detailText = await (await detailResponse).text()
+  return {
+    reviewsText,
+    detailText,
+    reviews: (JSON.parse(reviewsText) as { items: ReviewJson[] }).items,
+  }
+}
+
+async function expectAnonymous(page: Page, id: string) {
+  const { reviewsText, detailText, reviews } = await openHome(page, id)
+
+  // The name never leaves the server: not in the JSON, not in the page.
+  for (const json of [reviewsText, detailText]) {
+    expect(json).not.toMatch(SEED_NAME)
+    expect(json).not.toContain("shortName")
+  }
+  const main = page.locator("main")
+  const items = main.getByTestId("property-review")
+  await expect(items.first()).toBeVisible()
+  await expect(main.getByTestId("landlord-label").first()).toHaveText("Owner")
+  await expect(main).not.toContainText(SEED_NAME)
+  await expect(main).not.toContainText("Verified tenant")
+  await expect(main).not.toContainText("Landlord not verified yet")
+
+  // Each review: the label, and exactly the badges its status holds.
+  expect(reviews.length).toBeGreaterThan(0)
+  await expect(items).toHaveCount(reviews.length)
+  for (const [i, review] of reviews.entries()) {
+    const item = items.nth(i)
+    expect(review.author?.label).toMatch(/^Tenant, \d{4}$/)
+    await expect(item.getByTestId("review-author")).toHaveText(review.author!.label!)
+    const badges = review.author?.badges ?? {}
+    await expect(item.getByTestId("badge-google")).toHaveCount(badges.google ? 1 : 0)
+    await expect(item.getByTestId("badge-id")).toHaveCount(badges.id ? 1 : 0)
+    await expect(item.getByTestId("badge-agreement")).toHaveCount(badges.agreement ? 1 : 0)
+  }
+  // The seed has no agreement-backed tenancy, so no review renders that slot.
+  await expect(main.getByTestId("badge-agreement")).toHaveCount(0)
+  // Seed tenants verified a phone or Aadhaar, so some review shows "ID verified".
+  expect(reviews.some((r) => r.author?.badges?.id)).toBe(true)
+
+  const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+  expect(fits, "no horizontal scroll").toBe(true)
+}
+
+test("a signed-out visitor sees reviewer labels and badges, never a name [D-168]", async ({
+  page,
+}, testInfo) => {
+  const id = await homeWithReviews(page)
+  await expectAnonymous(page, id)
+  await page.screenshot({ path: testInfo.outputPath("signed-out-home.png"), fullPage: true })
+})
+
+test("another signed-in user sees no reviewer name either; their own name stays theirs [D-168]", async ({
+  page,
+}, testInfo) => {
+  await devLogin(page, "Demo Tenant PNQ-1")
+  // The viewer still sees their own short name in the account menu.
+  await expect(page.getByRole("button", { name: /^Account menu for Demo T\./ })).toBeVisible()
+  const id = await homeWithReviews(page)
+  await expectAnonymous(page, id)
+  await page.screenshot({ path: testInfo.outputPath("signed-in-home.png"), fullPage: true })
+
+  // The name field says the name stays private instead of "Shown publicly as X".
+  await page.goto("/settings")
+  const main = page.locator("main")
+  await expect(main.getByText(/Never shown to other people/)).toBeVisible()
+  await expect(main).not.toContainText(/shown publicly as/i)
+  await page.screenshot({ path: testInfo.outputPath("settings-name.png"), fullPage: true })
+})

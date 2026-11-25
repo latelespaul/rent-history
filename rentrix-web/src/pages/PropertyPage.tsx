@@ -13,7 +13,6 @@ import {
   SofaIcon,
 } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
-import { initials } from "@/components/layout/nav"
 import {
   locationPending,
   placeLine,
@@ -23,7 +22,7 @@ import {
 } from "@/features/property/labels"
 import { LocationPendingBadge } from "@/features/property/LocationPendingBadge"
 import { useMyTenancies } from "@/features/tenancy/useTenancies"
-import { PersonTick } from "@/features/property/PersonTick"
+import { TrustBadges } from "@/features/property/TrustBadges"
 import { NextSteps } from "@/features/home/NextSteps"
 import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
@@ -33,7 +32,7 @@ import { RentHistory } from "@/features/property/RentHistory"
 import { RatingBreakdown } from "@/features/review/RatingBreakdown"
 import { useProperty, useSignedIn } from "@/features/property/useProperties"
 import { useAuth } from "@/features/auth/authContext"
-import { PencilIcon, StarIcon, TenancyIcon } from "@/components/ui/icons.gen"
+import { LandlordIcon, PencilIcon, StarIcon, TenancyIcon } from "@/components/ui/icons.gen"
 import type { PropertyDetail, Tenancy } from "@/types/api"
 import { BRAND } from "@/lib/brand"
 
@@ -121,13 +120,16 @@ function RatingCard({ property, signedIn }: { property: PropertyDetail; signedIn
       </div>
       <div className="flex items-start gap-3 border-t border-line pt-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-landlord-100 text-sm font-semibold text-landlord-600">
-          {initials(landlord.shortName)}
+          <LandlordIcon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 space-y-1">
           <p className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-ink-900">{landlord.shortName}</span>
-            <Badge variant="landlord">Landlord</Badge>
-            {!property.addedByTenant && <PersonTick verified={landlord.verified} role="landlord" />}
+            {/* Never the name (D-168): "Owner", or "Not on Doorway Living yet" with the role pill. */}
+            <span className="font-semibold text-ink-900" data-testid="landlord-label">
+              {landlord.label}
+            </span>
+            {property.addedByTenant && <Badge variant="landlord">Landlord</Badge>}
+            {!property.addedByTenant && <TrustBadges badges={landlord.badges} />}
           </p>
           {property.addedByTenant ? (
             <p className="text-xs text-ink-500">

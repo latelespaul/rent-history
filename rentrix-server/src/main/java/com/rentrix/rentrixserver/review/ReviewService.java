@@ -5,8 +5,8 @@ import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageResponse;
 import com.rentrix.rentrixserver.edit.EditHistory;
 import com.rentrix.rentrixserver.edit.EditTarget;
-import com.rentrix.rentrixserver.identity.Badges;
 import com.rentrix.rentrixserver.identity.IdentityService;
+import com.rentrix.rentrixserver.identity.TrustBadges;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyRepository;
 import com.rentrix.rentrixserver.property.UnclaimedLandlord;
@@ -21,18 +21,20 @@ import com.rentrix.rentrixserver.review.dto.ReviewTask;
 import com.rentrix.rentrixserver.review.dto.ReviewView;
 import com.rentrix.rentrixserver.review.dto.UpdateReviewRequest;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
+import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyRepository;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
+import com.rentrix.rentrixserver.user.PublicLabels;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
+import com.rentrix.rentrixserver.user.UserStatus;
 import com.rentrix.rentrixserver.user.profile.ProfileAccess;
 import com.rentrix.rentrixserver.verification.ApprovalGuard;
-import com.rentrix.rentrixserver.verification.GreenTicks;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -101,7 +103,6 @@ public class ReviewService {
 	private final UserRepository users;
 	private final ApprovalGuard approvals;
 	private final IdentityService identity;
-	private final GreenTicks greenTicks;
 	private final ProfileAccess access;
 	private final RatingRecomputer recomputer;
 	private final RatingBreakdowns breakdowns;
@@ -777,7 +778,9 @@ public class ReviewService {
 		boolean privileged = author || admin;
 		ReviewView.Response response = null;
 		if (reply != null && (reply.getStatus() == ResponseStatus.PUBLISHED || responder || admin)) {
-			response = new ReviewView.Response(reply.getBody(), displayName(reply.getAuthor()), reply.getCreatedAt(),
+			User replier = reply.getAuthor();
+			response = new ReviewView.Response(reply.getBody(), label(r, replier),
+				isSelf(replier, me) || admin ? PublicNames.of(replier) : null, reply.getCreatedAt(),
 				responder || admin ? reply.getEditUntil() : null);
 		}
 		boolean published = r.getStatus() == ReviewStatus.PUBLISHED;
@@ -802,8 +805,8 @@ public class ReviewService {
 			textHidden && !privileged ? null : r.getPros(),
 			textHidden && !privileged ? null : r.getCons(),
 			textHidden ? Boolean.TRUE : null,
-			authorLine(r, admin),
-			r.getSubjectUser() == null ? null : party(r.getSubjectUser()),
+			authorLine(r, me, admin),
+			r.getSubjectUser() == null ? null : person(r, r.getSubjectUser(), me, admin),
 			propertyRef(r.getProperty()),
 			period(r.getTenancy()),
 			privileged ? r.getSubmittedAt() : null,
@@ -823,25 +826,50 @@ public class ReviewService {
 			ReviewView.Actions.NONE, null);
 	}
 
-	/** D-28 author line; the id only for landlord authors, whose profiles are open to signed-in users (D-55). */
-	private ReviewView.Author authorLine(Review r, boolean admin) {
+	/**
+	 * The author line (D-168): an anonymous label and the three badges, the name only for the author and admins, the
+	 * id for admins only. "Agreement verified" comes from this review's tenancy.
+	 */
+	private ReviewView.Author authorLine(Review r, User me, boolean admin) {
 		User author = r.getAuthor();
-		if (author.getDeletedAt() != null) {
-			return new ReviewView.Author(null, PublicNames.DELETED_USER, Badges.NONE, false);
+		if (deleted(author)) {
+			return new ReviewView.Author(null, PublicNames.DELETED_USER, null, TrustBadges.NONE);
 		}
-		boolean landlordAuthor = r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT;
-		return new ReviewView.Author(landlordAuthor || admin ? author.getPublicId() : null,
-			PublicNames.of(author), identity.badges(author),
-			greenTicks.has(author, landlordAuthor ? Role.LANDLORD : Role.TENANT));
+		return new ReviewView.Author(admin ? author.getPublicId() : null, label(r, author),
+			isSelf(author, me) || admin ? PublicNames.of(author) : null,
+			identity.trustBadges(author, r.getTenancy().getEvidenceLevel() == EvidenceLevel.DOCUMENT));
+	}
+
+	/** The reviewed person (D-168): label for everyone, the name only for that person and admins. */
+	private static ReviewView.Person person(Review r, User user, User me, boolean admin) {
+		if (deleted(user)) {
+			return new ReviewView.Person(null, PublicNames.DELETED_USER, null);
+		}
+		return new ReviewView.Person(user.getPublicId(), label(r, user),
+			isSelf(user, me) || admin ? PublicNames.of(user) : null);
+	}
+
+	/** How {@code user} shows on {@code r} (D-168): the tenancy's tenant as "Tenant, <start year>", else "Owner". */
+	private static String label(Review r, User user) {
+		if (deleted(user)) {
+			return PublicNames.DELETED_USER;
+		}
+		Tenancy tenancy = r.getTenancy();
+		return tenancy.getTenant() != null && tenancy.getTenant().getId().equals(user.getId())
+			? PublicLabels.tenant(tenancy.getStartDate()) : PublicLabels.OWNER;
+	}
+
+	private static boolean isSelf(User user, User me) {
+		return me != null && user.getId().equals(me.getId());
+	}
+
+	private static boolean deleted(User user) {
+		return user.getStatus() == UserStatus.DELETED || user.getDeletedAt() != null;
 	}
 
 	private static PartyRef party(User user) {
 		return user.getDeletedAt() != null ? new PartyRef(null, PublicNames.DELETED_USER)
 			: new PartyRef(user.getPublicId(), PublicNames.of(user));
-	}
-
-	private static String displayName(User user) {
-		return PublicNames.of(user);
 	}
 
 	static ReviewView.PropertyRef propertyRef(Property p) {

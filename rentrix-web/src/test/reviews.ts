@@ -15,10 +15,10 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     ratingC: 5,
     body: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
     author: {
-      shortName: "Demo B.",
+      label: "Tenant, 2024",
       badges: {
-        idVerified: true,
-        linkedinVerified: false,
+        google: false,
+        id: true,
       },
     },
     property: {
@@ -36,7 +36,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     publishedAt: "2024-06-09T10:00:00Z",
     response: {
       body: "Thank you for the feedback. The water pump was replaced after you moved out and the lift is now serviced every quarter.",
-      authorShortName: "Demo B.",
+      authorLabel: "Owner",
       createdAt: "2024-06-11T10:00:00Z",
       editUntil: "2024-06-18T10:00:00Z",
     },
@@ -57,10 +57,10 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     ratingC: 5,
     body: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
     author: {
-      shortName: "Demo B.",
+      label: "Tenant, 2024",
       badges: {
-        idVerified: true,
-        linkedinVerified: false,
+        google: false,
+        id: true,
       },
     },
     property: {

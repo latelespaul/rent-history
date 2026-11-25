@@ -1,12 +1,11 @@
 package com.rentrix.rentrixserver.review.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.rentrix.rentrixserver.identity.Badges;
+import com.rentrix.rentrixserver.identity.TrustBadges;
 import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.review.ReviewCriterion;
 import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewStatus;
-import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
 import com.rentrix.rentrixserver.verification.VerificationState;
 
 import java.time.Instant;
@@ -15,9 +14,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * A review as the caller may see it. The author line is the short name, the badges (D-100) and the verified
- * tenancy period in months (D-28, D-57); the tenancy itself is never linked. {@code author.id} is present only for
- * landlord authors, whose profiles signed-in users can open (D-55). {@code body} is absent while a personal-data
+ * A review as the caller may see it. The author line is an anonymous label, the three badges and the tenancy period
+ * in months (D-168, D-57); the tenancy itself is never linked. No person's name leaves the server here except to that
+ * person and admins ({@code shortName} on {@code author}, {@code subject} and {@code response}); {@code author.id}
+ * is for admins only. {@code body} is absent while a personal-data
  * report hides the text ({@code textHidden}, D-50). {@code editUntil} and {@code hiddenReason} are for the author
  * and admins only. A review about the caller that still awaits reveal is listed as a bare {@code AWAITING_REVEAL}
  * entry, with no ratings, text or author (D-46). {@code verification} is the green tick (D-134): {@code UNVERIFIED}
@@ -42,7 +42,7 @@ public record ReviewView(
 	String cons,
 	Boolean textHidden,
 	Author author,
-	PartyRef subject,
+	Person subject,
 	PropertyRef property,
 	Period period,
 	Instant submittedAt,
@@ -55,9 +55,17 @@ public record ReviewView(
 	VerificationState verification
 ) {
 	
-	/** {@code verified}: the author's green tick for the role they wrote as (D-134). */
+	/**
+	 * {@code label}: "Tenant, 2024" (the stay's start year) or "Owner" (D-168); {@code shortName} only for the author
+	 * and admins; {@code badges} the three verification badges, {@code agreement} from this review's tenancy.
+	 */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public record Author(UUID id, String shortName, Badges badges, boolean verified) {
+	public record Author(UUID id, String label, String shortName, TrustBadges badges) {
+	}
+	
+	/** The reviewed person: their label (D-168), and {@code shortName} only for that person and admins. */
+	@JsonInclude(JsonInclude.Include.NON_NULL)
+	public record Person(UUID id, String label, String shortName) {
 	}
 	
 	/** The reviewed home; no unit label (D-57). */
@@ -69,8 +77,10 @@ public record ReviewView(
 	public record Period(YearMonth from, YearMonth to) {
 	}
 	
+	/** {@code authorLabel} as on {@link Person}; {@code authorShortName} only for the responder and admins (D-168). */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	public record Response(String body, String authorShortName, Instant createdAt, Instant editUntil) {
+	public record Response(String body, String authorLabel, String authorShortName, Instant createdAt,
+		Instant editUntil) {
 	}
 	
 	/** What the caller may do on this review now; the approval gate (D-91) is checked on the write itself. */

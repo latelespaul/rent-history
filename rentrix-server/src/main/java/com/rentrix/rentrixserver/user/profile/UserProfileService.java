@@ -12,7 +12,11 @@ import com.rentrix.rentrixserver.review.ReviewDirection;
 import com.rentrix.rentrixserver.review.ReviewService;
 import com.rentrix.rentrixserver.review.dto.ReviewView;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
+import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
+import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyService;
+import com.rentrix.rentrixserver.user.PublicLabels;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -42,6 +46,7 @@ public class UserProfileService {
 	private final ProfileAccess access;
 	private final ReviewService reviews;
 	private final RatingBreakdowns breakdowns;
+	private final TenancyRepository tenancies;
 	
 	public UserProfileView get(UUID userId, AuthenticatedUser caller) {
 		User me = currentUser(caller);
@@ -52,11 +57,13 @@ public class UserProfileService {
 		if (!landlord && !tenant) {
 			throw ApiException.notFound("User");
 		}
+		boolean self = person.getId().equals(me.getId());
 		return new UserProfileView(
 			person.getPublicId(),
-			PublicNames.of(person),
+			landlord ? PublicLabels.OWNER : PublicLabels.TENANT,
+			self || admin ? PublicNames.of(person) : null,
 			YearMonth.from(person.getCreatedAt().atZone(ZoneOffset.UTC)),
-			identity.badges(person),
+			identity.trustBadges(person, agreementBacked(person, landlord)),
 			landlord ? breakdowns.forLandlord(rating(RatingSubjectType.LANDLORD, person), person.getId()) : null,
 			landlord ? access.listedHomes(person) : null,
 			tenant ? rating(RatingSubjectType.TENANT, person) : null);
@@ -77,6 +84,15 @@ public class UserProfileService {
 			throw ApiException.notFound("User");
 		}
 		return reviews.about(person, ReviewDirection.TENANT_TO_LANDLORD, me, admin, pageable);
+	}
+	
+	/** "Agreement verified" (D-168): a rental agreement backs one of their tenancies on the side the profile shows. */
+	private boolean agreementBacked(User person, boolean landlord) {
+		return landlord
+			? tenancies.existsByLandlordIdAndEvidenceLevelAndStatusIn(person.getId(), EvidenceLevel.DOCUMENT,
+				TenancyService.CONFIRMED)
+			: tenancies.existsByTenantIdAndEvidenceLevelAndStatusIn(person.getId(), EvidenceLevel.DOCUMENT,
+				TenancyService.CONFIRMED);
 	}
 	
 	private boolean tenantVisible(User me, User person, boolean admin) {

@@ -2,13 +2,13 @@ import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router-dom"
 import { isApiError } from "@/api/errors"
 import { fetchUserProfile, fetchUserReviews, reviewKeys } from "@/api/reviews"
-import { initials } from "@/components/layout/nav"
-import { Badge } from "@/components/ui/badge"
+import { LandlordIcon } from "@/components/ui/icons.gen"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { listedReviewCount, monthLabel } from "@/features/property/labels"
 import { ReviewItem } from "@/features/property/PropertyReviews"
 import { RatingLine } from "@/features/property/Rating"
+import { TrustBadges } from "@/features/property/TrustBadges"
 import { RatingBreakdown } from "@/features/review/RatingBreakdown"
 
 /**
@@ -87,15 +87,15 @@ export default function LandlordPage() {
         aria-labelledby="landlord-name"
       >
         <span className="grid size-14 shrink-0 place-items-center rounded-full bg-landlord-100 text-lg font-semibold text-landlord-600">
-          {initials(person.shortName)}
+          <LandlordIcon className="size-7" aria-hidden="true" />
         </span>
         <div className="min-w-0 space-y-1">
           <h1
             id="landlord-name"
             className="flex flex-wrap items-center gap-2 font-display text-2xl font-semibold"
           >
-            {person.shortName}
-            <Badge variant="landlord">Landlord</Badge>
+            {/* Never the name (D-168), except on the person's own profile. */}
+            {person.shortName ? `${person.shortName} (you)` : person.label}
           </h1>
           <p className="flex flex-wrap gap-2 text-sm text-ink-500">
             <span>Member since {monthLabel(person.memberSince)}</span>
@@ -105,7 +105,9 @@ export default function LandlordPage() {
               </span>
             )}
           </p>
-          {person.badges?.idVerified && <Badge>ID verified</Badge>}
+          <p className="flex flex-wrap gap-2">
+            <TrustBadges badges={person.badges} />
+          </p>
         </div>
       </section>
 

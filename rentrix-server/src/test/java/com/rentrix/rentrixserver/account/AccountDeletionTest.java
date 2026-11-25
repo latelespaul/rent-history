@@ -284,7 +284,7 @@ class AccountDeletionTest {
 		JsonNode reviews = json.readTree(mvc.perform(get("/properties/" + rented.getPublicId() + "/reviews")
 			.header(HttpHeaders.AUTHORIZATION, landlordBearer)).andReturn().getResponse().getContentAsString());
 		assertThat(reviews.at("/items/0/body").asString()).isEqualTo(REVIEW);
-		assertThat(reviews.at("/items/0/author/shortName").asString()).isEqualTo("Deleted user");
+		assertThat(reviews.at("/items/0/author/label").asString()).isEqualTo("Deleted user");
 
 		// The audit log: the user id and time only, shown to admins.
 		Map<String, Object> audit = jdbc.queryForMap(

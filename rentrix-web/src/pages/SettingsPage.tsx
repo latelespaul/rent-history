@@ -12,7 +12,7 @@ import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
 import { LogoutIcon, PlusIcon } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
-import { publicName } from "@/features/auth/paths"
+import { NAME_NOT_SHOWN } from "@/features/auth/paths"
 import { ROLE_COPY, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
 import { useIdentity } from "@/features/verification/useVerification"
@@ -83,9 +83,7 @@ function ProfileForm({ user }: { user: CurrentUser }) {
           maxLength={60}
           onChange={(e) => setDisplayName(e.target.value)}
         />
-        <p className="text-xs text-ink-500">
-          {fieldError("displayName") ?? `Shown publicly as “${publicName(user, displayName)}”.`}
-        </p>
+        <p className="text-xs text-ink-500">{fieldError("displayName") ?? NAME_NOT_SHOWN}</p>
       </div>
       <div className="space-y-1.5">
         <p className="text-sm font-semibold text-ink-900">

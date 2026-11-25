@@ -34,6 +34,14 @@ public interface TenancyRepository extends JpaRepository<Tenancy, Long> {
 	
 	List<Tenancy> findByLandlordIdAndStatusIn(Long landlordId, List<TenancyStatus> statuses);
 	
+	/** A rental agreement backs one of the landlord's tenancies in {@code statuses}: "Agreement verified" (D-168). */
+	boolean existsByLandlordIdAndEvidenceLevelAndStatusIn(Long landlordId, EvidenceLevel level,
+		Collection<TenancyStatus> statuses);
+
+	/** A rental agreement backs one of the tenant's tenancies in {@code statuses}: "Agreement verified" (D-168). */
+	boolean existsByTenantIdAndEvidenceLevelAndStatusIn(Long tenantId, EvidenceLevel level,
+		Collection<TenancyStatus> statuses);
+
 	/** All tenancies of one landlord–tenant pair, newest first (repeat-pair rule, D-44). */
 	List<Tenancy> findByLandlordIdAndTenantIdOrderByStartDateDesc(Long landlordId, Long tenantId);
 	

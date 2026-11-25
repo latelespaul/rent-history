@@ -83,9 +83,7 @@ export default function WelcomeCreatedPage() {
               <dt className="text-ink-500">Name</dt>
               <dd className="min-w-0 text-ink-900">
                 <b>{user.displayName}</b>{" "}
-                <span className="text-xs text-ink-500">
-                  · shown publicly as &ldquo;{user.shortName}&rdquo;
-                </span>
+                <span className="text-xs text-ink-500">· never shown to other people</span>
               </dd>
               <dt className="text-ink-500">Email</dt>
               <dd className="min-w-0 truncate text-ink-900">

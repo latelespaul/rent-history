@@ -43,7 +43,9 @@ export function PropertyResult({ property }: { property: PropertyCard }) {
         </p>
         <PropertyFacts property={property} />
         <p className="mt-auto border-t border-line pt-2.5 text-sm text-ink-700">
-          <span className="font-semibold text-ink-900">{property.landlordName}</span> · landlord
+          {/* "Owner", never the name (D-168); an unclaimed home's owner is "Not on Doorway Living yet". */}
+          <span className="font-semibold text-ink-900">Owner</span>
+          {property.landlordLabel !== "Owner" && <> · {property.landlordLabel}</>}
         </p>
       </div>
     </article>
