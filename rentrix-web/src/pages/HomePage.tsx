@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { Brand } from "@/components/layout/Brand"
 import { Container } from "@/components/layout/Container"
+import { FooterSearch } from "@/components/layout/Footer"
 import { Badge, VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +29,8 @@ import { AppMock } from "@/features/landing/AppMock"
 import { GoogleCta } from "@/features/landing/GoogleCta"
 import { LandingCoverage } from "@/features/landing/LandingCoverage"
 import { GreenTick, LandingPreview } from "@/features/landing/LandingPreview"
+import { SearchBar } from "@/features/property/SearchBar"
+import { withFilters } from "@/features/property/searchParams"
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
@@ -113,6 +116,33 @@ function Coverage() {
   )
 }
 
+/**
+ * The hero's search box: the same `SearchBar` as `/search` (city + locality or society, then a flat),
+ * so anyone can search from the first screen without signing in (captain 2026-11-25). A text search
+ * or a society pick opens `/search` with those filters; a flat or tower pick opens its page.
+ */
+function HeroSearch() {
+  const navigate = useNavigate()
+  const [city, setCity] = useState<string | null>(null)
+  return (
+    <SearchBar
+      city={city}
+      query=""
+      onCityChange={setCity}
+      onSubmit={({ city: picked, query, society }) =>
+        navigate({
+          pathname: "/search",
+          search: withFilters(new URLSearchParams(), {
+            city: picked ?? undefined,
+            q: query,
+            society,
+          }).toString(),
+        })
+      }
+    />
+  )
+}
+
 const NAV = [
   ["#how", "How it works"],
   ["#for-tenants", "For tenants"],
@@ -147,7 +177,7 @@ const STEPS = [
   {
     icon: <LoginIcon size={26} />,
     title: "Sign in with Google",
-    text: "Pick your side: tenant, landlord or both. That is all it takes to search homes and read reviews.",
+    text: "Searching homes and reading reviews needs no account. Sign in and pick your side (tenant, landlord or both) to add your own.",
   },
   {
     icon: <KeyIcon size={26} />,
@@ -258,10 +288,10 @@ const FAQ = [
 ] as const
 
 /**
- * `/`: the landing for anonymous visitors, a mobile-first scrolling page. Hero with the call to
- * action and a sample app screen; the problem; how it works; one card per side; trust and
+ * `/`: the landing for anonymous visitors, a mobile-first scrolling page. Hero with the search box,
+ * the call to action and a sample app screen; the problem; how it works; one card per side; trust and
  * verification; a row of home and review cards; the live cities; FAQ; the call to action again.
- * A signed-in visitor goes into the app.
+ * A signed-in visitor goes to `/search`, which opens with the same search box.
  */
 export default function HomePage() {
   const { state, signOut } = useAuth()
@@ -320,6 +350,7 @@ export default function HomePage() {
                 Know the home, the landlord <span className="text-teal-600">and</span> the tenant
                 before you sign.
               </h1>
+              <HeroSearch />
               <p className={LEAD}>
                 Real rents and two-sided reviews from people who actually lived there. Tenants rate
                 homes and landlords; landlords rate tenants. A green tick shows what our team has
@@ -602,7 +633,8 @@ export default function HomePage() {
             <span className="font-display font-semibold text-ink-900">{BRAND.name}</span> ·{" "}
             {BRAND.tagline}
           </span>
-          <span className="flex gap-2">
+          <span className="flex flex-wrap items-center gap-2">
+            <FooterSearch />
             <Link to="/terms" className="inline-flex min-h-11 items-center px-2">
               Terms
             </Link>
