@@ -9,7 +9,7 @@ test("a tenant searches, opens a home and reads its reviews with stars", async (
   const search = page.getByRole("search")
   await search.getByRole("textbox", { name: "Locality" }).fill("Koramangala")
   await search.getByRole("button", { name: "Search" }).click()
-  await page.getByRole("link", { name: "Demo Residency A" }).click()
+  await page.getByRole("link", { name: "Demo Greens · Tower 1 · Wing A", exact: true }).click()
   await expect(page).toHaveURL(/\/p\//)
 
   const reviews = page.getByRole("region", { name: /what tenants say about the home/i })

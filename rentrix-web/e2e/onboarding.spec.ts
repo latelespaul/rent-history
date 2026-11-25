@@ -20,7 +20,7 @@ test.fixme("onboarding runs role pick and verification, then returns to the star
   await expect(page).toHaveURL(/\/search/)
   await page.getByRole("search").getByRole("textbox", { name: "Locality" }).fill("Koramangala")
   await page.getByRole("search").getByRole("button", { name: "Search" }).click()
-  await page.getByRole("link", { name: "Demo Residency A" }).click()
+  await page.getByRole("link", { name: "Demo Greens · Tower 1 · Wing A", exact: true }).click()
   const started = page.url()
   await page.getByRole("link", { name: /I rent or rented this home/ }).click()
 
