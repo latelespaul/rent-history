@@ -33,9 +33,11 @@ async function openHome(page: Page) {
 async function openSearchAndProperty(page: Page, check: () => Promise<void>) {
   await devLogin(page, "Demo Tenant BLR-2")
   await page.goto("/search?city=BLR")
-  await expect(page.getByRole("link", { name: "Demo Residency A" })).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "Demo Greens · Tower 1 · Wing A", exact: true }),
+  ).toBeVisible()
   await check()
-  await page.getByRole("link", { name: "Demo Residency A" }).click()
+  await page.getByRole("link", { name: "Demo Greens · Tower 1 · Wing A", exact: true }).click()
   await expect(
     page
       .getByRole("region", { name: /what tenants say about the home/i })

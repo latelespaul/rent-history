@@ -3,9 +3,9 @@ import { Link } from "react-router-dom"
 import { Badge, DemoBadge } from "@/components/ui/badge"
 import { ArrowRightIcon, CheckIcon, ChevronRightIcon, MapPinIcon } from "@/components/ui/icons.gen"
 import { useCities } from "@/features/city/useCities"
-import { placeLine, propertyTitle } from "@/features/property/labels"
+import { homeTitle, placeLine } from "@/features/property/labels"
 import { PropertyFacts } from "@/features/property/PropertyFacts"
-import { RatingLine, Stars } from "@/features/property/Rating"
+import { CardReviews, Stars } from "@/features/property/Rating"
 import { usePropertySearch } from "@/features/property/useProperties"
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
@@ -56,15 +56,15 @@ function HomeCard({ property, index }: { property: PropertyCard; index: number }
         {property.demo && <DemoBadge className="absolute top-3 left-3" />}
       </Picture>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-[17px] font-semibold">
+        <h3 className="text-[17px] font-semibold" data-testid="card-title">
           <Link
             to={`/p/${encodeURIComponent(property.id)}`}
             className="text-ink-900 no-underline after:absolute after:inset-0 hover:no-underline"
           >
-            {propertyTitle(property)}
+            {homeTitle(property)}
           </Link>
         </h3>
-        <RatingLine rating={property.rating} />
+        <CardReviews rating={property.rating} listed={property.listedReviews} />
         <p className="inline-flex items-center gap-1.5 text-sm text-ink-700">
           <MapPinIcon size={16} className="text-ink-500" />
           {placeLine(property)}

@@ -174,7 +174,8 @@ class PropertySocietySearchTest {
 		for (String q : List.of("Prestige Lakeside 1301", "Prestige Lakeside 9999")) {
 			mvc.perform(get("/properties").param("city", CITY).param("q", q))
 				.andExpect(jsonPath("$.page.totalItems").value(4))
-				.andExpect(jsonPath("$.items[*].unitLabel").doesNotExist());
+				// the open flats' numbers show on their cards (D-165); the masked one's never does (D-57)
+				.andExpect(jsonPath("$.items[*].unitLabel", containsInAnyOrder("1204", "B-1204", "1205")));
 		}
 		mvc.perform(get("/search/suggestions").param("city", CITY).param("q", "Prestige Lakeside 13"))
 			.andExpect(jsonPath("$.homes", empty()));

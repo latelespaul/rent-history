@@ -19,7 +19,7 @@ test("public short names use the last real name word, not a code [click-test (c)
   await expect(page.getByText("Demo L.", { exact: true }).first()).toBeVisible()
   await expect(codeInitial).toHaveCount(0)
 
-  await page.getByRole("link", { name: "Demo Residency A" }).click()
+  await page.getByRole("link", { name: "Demo Greens · Tower 1 · Wing A", exact: true }).click()
   const reviews = page.getByRole("region", { name: /what tenants say about the home/i })
   await expect(reviews.getByRole("listitem").first()).toBeVisible()
   await expect(reviews.getByText("Demo T.", { exact: true }).first()).toBeVisible()
