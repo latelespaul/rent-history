@@ -144,7 +144,9 @@ describe("the two-step search box (D-167)", () => {
 
     expect(onCityChange).toHaveBeenCalledWith("PNQ")
     expect(screen.queryByTestId("society-chip")).toBeNull()
-    expect(screen.getByRole("combobox", { name: /Locality, society, building or PIN/ })).toBeTruthy()
+    expect(
+      screen.getByRole("combobox", { name: /Locality, society, building or PIN/ }),
+    ).toBeTruthy()
   })
 
   it("opens the society page when Search is pressed with no flat number", async () => {
