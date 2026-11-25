@@ -171,7 +171,7 @@ test("a pending society with no published home stays not found", async ({ page }
   await page.goto("/")
   const base = await apiBaseUrl(page)
   const api = await request.newContext()
-  let societyId = ""
+  let societyId: string
   try {
     const login = await api.post(`${base}/auth/dev-login/new`, { data: { key: `sd${tag}` } })
     expect(login.ok(), `dev login: HTTP ${login.status()}`).toBe(true)
