@@ -50,6 +50,7 @@ export const RATING_OPTIONS = [3, 3.5, 4, 4.5] as const
 const KEYS = [
   "city",
   "locality",
+  "society",
   "q",
   "type",
   "homeSize",
@@ -91,6 +92,10 @@ export function searchFromParams(params: URLSearchParams): PropertySearch {
   return {
     city: textParam(params.get("city"))?.toUpperCase(),
     locality: textParam(params.get("locality")),
+    // a picked society (D-167): only an id-shaped value is ever sent
+    society: /^[0-9a-f-]{36}$/i.test(params.get("society") ?? "")
+      ? params.get("society")!
+      : undefined,
     q: textParam(params.get("q")),
     type: type && TYPES.has(type) ? type : undefined,
     homeSize: homeSize && SIZES.has(homeSize) ? homeSize : undefined,
@@ -130,6 +135,7 @@ export function withFilters(current: URLSearchParams, changes: SearchFilters): U
 export function activeFilterCount(search: PropertySearch): number {
   return [
     search.locality,
+    search.society,
     search.q,
     search.type,
     search.homeSize,

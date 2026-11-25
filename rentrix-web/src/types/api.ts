@@ -449,6 +449,30 @@ export interface SocietyDetail {
   towers: TowerView[]
 }
 
+/** `GET /search/suggestions` (D-164, D-167): societies, areas, open flats and a picked society's towers. */
+export interface SearchSuggestions {
+  societies: Array<{
+    id: string
+    name: string
+    area: { id: string; name: string }
+    city: CityRef
+    tower?: { id: string; name: string }
+    publishedHomes: number
+    pending: boolean
+  }>
+  areas: Array<{ id: string; name: string; city: CityRef }>
+  homes: Array<{
+    id: string
+    society: { id: string; name: string }
+    tower?: { id: string; name: string }
+    wing?: { id: string; name: string }
+    unitLabel: string
+    locality: string
+    city: CityRef
+  }>
+  towers: Array<{ id: string; name: string; publishedHomes: number }>
+}
+
 /** `GET /societies/{id}/towers`: towers with their wings, for the form pickers. */
 export interface TowerView {
   id: string

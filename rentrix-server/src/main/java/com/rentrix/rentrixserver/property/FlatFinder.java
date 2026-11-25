@@ -62,6 +62,14 @@ public class FlatFinder {
 		return found.size() > limit ? List.copyOf(found.subList(0, limit)) : List.copyOf(found);
 	}
 	
+	/** The first {@code limit} open flats of one society in flat-number order: the picker before a number is typed. */
+	public List<Property> openIn(Long societyId, int limit) {
+		List<Property> found = new ArrayList<>(open(List.of(societyId)).stream()
+			.filter(p -> !key(p.getUnitLabel()).isEmpty()).toList());
+		found.sort(Comparator.comparing((Property p) -> key(p.getUnitLabel())).thenComparing(Property::getId));
+		return found.size() > limit ? List.copyOf(found.subList(0, limit)) : List.copyOf(found);
+	}
+	
 	private List<Property> open(Collection<Long> societyIds) {
 		return properties.findBySocietyIdInAndStatusAndUnitLabelVisibilityAndDeletedAtIsNull(societyIds,
 			PropertyStatus.PUBLISHED, FieldVisibility.OPEN);

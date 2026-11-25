@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /** {@code GET /search/suggestions?city=&q=} (D-164): public, like {@code GET /properties} (D-162). */
 @RestController
@@ -24,14 +25,20 @@ public class SearchSuggestionController {
 	
 	/**
 	 * {@code q} is what the box holds so far: a society or area name (typos allowed), optionally a tower, and
-	 * optionally a flat number at the end. {@code city} is a live city code; without it every live city.
+	 * optionally a flat number at the end. {@code city} is a live city code; without it every live city. With
+	 * {@code society} (a picked society's id) the text is a flat number or a tower of that society (D-167).
 	 */
 	@GetMapping("/search/suggestions")
 	public SearchSuggestions suggestions(@RequestParam(required = false) String city,
-		@RequestParam(required = false) String q, @AuthenticationPrincipal AuthenticatedUser caller) {
+		@RequestParam(required = false) String q, @RequestParam(required = false) UUID society,
+		@AuthenticationPrincipal AuthenticatedUser caller) {
 		if (q != null && q.trim().length() > MAX_TEXT) {
 			throw ApiException.validation(List.of(new ApiProblem.FieldError("q", "size",
 				"At most " + MAX_TEXT + " characters.")));
+		}
+		if (society != null) {
+			// the second step of the box: a society is picked, the text is a flat number or a tower (D-167)
+			return service.suggestInSociety(society, q, caller);
 		}
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
 		return service.suggest(cityCode, q, caller);

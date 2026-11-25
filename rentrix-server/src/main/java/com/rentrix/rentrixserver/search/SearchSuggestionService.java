@@ -1,6 +1,7 @@
 package com.rentrix.rentrixserver.search;
 
 import com.rentrix.rentrixserver.city.CityService;
+import com.rentrix.rentrixserver.location.LocationService;
 import com.rentrix.rentrixserver.location.LocationStatus;
 import com.rentrix.rentrixserver.location.NameMatch;
 import com.rentrix.rentrixserver.location.PlaceMatcher;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * The search box suggestions (D-164): typo-tolerant word prefixes of society, tower and area names
@@ -36,6 +38,7 @@ public class SearchSuggestionService {
 	private final PlaceMatcher matcher;
 	private final FlatFinder flats;
 	private final CityService cities;
+	private final LocationService locations;
 	
 	public SearchSuggestions suggest(String cityCode, String text, AuthenticatedUser caller) {
 		if (cityCode != null) {
@@ -63,6 +66,28 @@ public class SearchSuggestionService {
 				CityRef.of(hit.area().getCity())))
 			.toList();
 		return new SearchSuggestions(societies.stream().map(SearchSuggestionService::society).toList(), areas, homes);
+	}
+	
+	/**
+	 * The second step of the box (D-167): with a society picked, {@code text} is a flat number or a tower. Suggests the
+	 * society's towers whose name the text starts (every tower with a published home when it is empty) and its open
+	 * flats whose number starts with it (the first ones when empty). Only {@code OPEN} flat numbers (D-140); the
+	 * society must be readable (D-109, D-166), else 404.
+	 */
+	public SearchSuggestions suggestInSociety(UUID societyId, String text, AuthenticatedUser caller) {
+		Society society = locations.readableSociety(societyId, caller);
+		List<String> typed = NameMatch.withoutLevelWords(NameMatch.words(text));
+		List<SearchSuggestions.TowerSuggestion> towers = locations.towers(societyId, caller).stream()
+			.filter(t -> t.publishedHomes() > 0)
+			.filter(t -> typed.isEmpty() || NameMatch.cost(typed,
+				NameMatch.withoutLevelWords(NameMatch.words(t.name()))) != NameMatch.NONE)
+			.map(t -> new SearchSuggestions.TowerSuggestion(t.id(), t.name(), t.publishedHomes()))
+			.toList();
+		List<Property> found = typed.isEmpty() && NameMatch.words(text).isEmpty()
+			? flats.openIn(society.getId(), MAX_HOMES)
+			: flats.findIn(List.of(new FlatFinder.Place(society.getId(), null)), text, true, MAX_HOMES);
+		return new SearchSuggestions(List.of(), List.of(), found.stream().map(SearchSuggestionService::home).toList(),
+			towers);
 	}
 	
 	private static SearchSuggestions.SocietySuggestion society(PlaceMatcher.SocietyHit hit) {

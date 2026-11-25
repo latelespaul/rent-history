@@ -14,7 +14,7 @@ test("public short names use the last real name word, not a code [click-test (c)
 
   await page.goto("/search")
   const search = page.getByRole("search")
-  await search.getByRole("textbox", { name: "Locality" }).fill("Koramangala")
+  await search.getByRole("combobox", { name: "Locality" }).fill("Koramangala")
   await search.getByRole("button", { name: "Search" }).click()
   await expect(page.getByText("Demo L.", { exact: true }).first()).toBeVisible()
   await expect(codeInitial).toHaveCount(0)

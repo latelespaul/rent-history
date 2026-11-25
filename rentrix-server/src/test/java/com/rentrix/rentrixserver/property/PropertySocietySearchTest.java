@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
@@ -242,4 +243,28 @@ class PropertySocietySearchTest {
 			.andExpect(status().isUnprocessableContent());
 	}
 
+	
+	/**
+	 * D-167: with a society picked, the box suggests that society's towers and its open flats whose number starts
+	 * with what is typed (the first flats when nothing is typed yet); never a masked one, never another society's.
+	 */
+	@Test
+	void aPickedSocietySuggestsItsTowersAndOpenFlats() throws Exception {
+		String id = lakeside.getPublicId().toString();
+		mvc.perform(get("/search/suggestions").param("society", id))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.towers[*].name", contains("Tower A", "Tower B")))
+			.andExpect(jsonPath("$.homes[*].unitLabel", contains("1204", "1205", "B-1204")))
+			.andExpect(jsonPath("$.societies", empty()));
+		mvc.perform(get("/search/suggestions").param("society", id).param("q", "12"))
+			.andExpect(jsonPath("$.homes[*].id", containsInAnyOrder(ids(a1204, b1204, b1205).toArray())))
+			.andExpect(jsonPath("$.towers", empty()));
+		mvc.perform(get("/search/suggestions").param("society", id).param("q", "tower b"))
+			.andExpect(jsonPath("$.towers[*].name", contains("Tower B")));
+		mvc.perform(get("/search/suggestions").param("society", id).param("q", "13"))
+			.andExpect(jsonPath("$.homes", empty()));
+		mvc.perform(get("/search/suggestions").param("society", java.util.UUID.randomUUID().toString()))
+			.andExpect(status().isNotFound());
+	}
+	
 }

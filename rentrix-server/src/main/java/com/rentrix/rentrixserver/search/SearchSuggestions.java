@@ -13,9 +13,18 @@ import java.util.UUID;
  * number is open (D-140) are ever offered, so {@code unitLabel} is always one anybody may see (D-57).
  */
 public record SearchSuggestions(List<SocietySuggestion> societies, List<AreaSuggestion> areas,
-	List<HomeSuggestion> homes) {
+	List<HomeSuggestion> homes, List<TowerSuggestion> towers) {
 	
-	public static final SearchSuggestions NONE = new SearchSuggestions(List.of(), List.of(), List.of());
+	public static final SearchSuggestions NONE = new SearchSuggestions(List.of(), List.of(), List.of(), List.of());
+	
+	/** Suggestions without towers: the box before a society is picked. */
+	public SearchSuggestions(List<SocietySuggestion> societies, List<AreaSuggestion> areas, List<HomeSuggestion> homes) {
+		this(societies, areas, homes, List.of());
+	}
+	
+	/** A tower of the picked society (D-167), with its published homes; opens the society page on that tower. */
+	public record TowerSuggestion(UUID id, String name, long publishedHomes) {
+	}
 	
 	/** A society, with {@code tower} when the text also named one of its towers. */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
