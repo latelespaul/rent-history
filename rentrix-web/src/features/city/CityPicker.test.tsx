@@ -18,6 +18,12 @@ const api = vi.hoisted(() => ({
   stats: null as unknown,
 }))
 
+// Search is open to everyone (D-162) and reads the session for its grouped results: run signed out.
+vi.mock("@/features/auth/authContext", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
+  useAuth: () => ({ state: { status: "anonymous", user: null } }),
+}))
+
 vi.mock("@/api/cities", () => ({
   cityKeys: { all: ["cities"] },
   fetchCities: vi.fn(async () => api.cities),
