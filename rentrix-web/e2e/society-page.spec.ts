@@ -7,7 +7,10 @@ import { apiBaseUrl, daysAgo } from "./support"
  * Society card and society page (captain 2026-11-25, D-166): two tenants add flats in one new
  * society (Tower A flat 101, a 3 BHK; Tower B flat 201). Search shows ONE society card with
  * "2 flats" instead of two home cards; it opens the society page, which lists the flats by tower,
- * filters by tower and by BHK, and opens a flat's own page.
+ * filters by tower and by BHK, and opens a flat's own page. The society is a typed name still
+ * pending review, and it opens for anyone because it holds published homes; an owner's flat
+ * there keeps its number masked on the page (D-57, D-140). A pending society with no published
+ * home (a landlord's draft) stays "not found" (D-109, firstmate 2026-11-25).
  *
  * Screenshots go to the test output, and to `SOCIETY_PAGE_SHOTS` when set.
  */
@@ -28,9 +31,7 @@ async function shot(page: Page, testInfo: TestInfo, name: string, part?: Locator
 }
 
 async function noSidewaysScroll(page: Page) {
-  const fits = await page.evaluate(
-    () => document.documentElement.scrollWidth <= window.innerWidth,
-  )
+  const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
   expect(fits, "no horizontal scroll").toBe(true)
 }
 
@@ -42,6 +43,7 @@ async function addFlat(
   tower: string,
   unit: string,
   homeSize?: string,
+  relation: "RENT" | "OWN" = "RENT",
 ) {
   const base = await apiBaseUrl(page)
   const api = await request.newContext()
@@ -51,7 +53,11 @@ async function addFlat(
     let { accessToken } = (await login.json()) as { accessToken: string }
     const onboarded = await api.post(`${base}/me/onboarding`, {
       headers: { Authorization: `Bearer ${accessToken}` },
-      data: { roles: ["TENANT"], homeCity: "BLR", acceptTerms: true },
+      data: {
+        roles: [relation === "OWN" ? "LANDLORD" : "TENANT"],
+        homeCity: "BLR",
+        acceptTerms: true,
+      },
     })
     expect(onboarded.ok(), `onboarding: HTTP ${onboarded.status()}`).toBe(true)
     accessToken = ((await onboarded.json()) as { accessToken: string }).accessToken
@@ -61,8 +67,9 @@ async function addFlat(
     const added = await api.post(`${base}/me/homes`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       data: {
-        relation: "RENT",
-        startDate: daysAgo(30),
+        relation,
+        // an owner adds the home only; a tenant says when they moved in
+        ...(relation === "RENT" ? { startDate: daysAgo(30) } : {}),
         home: {
           city: "BLR",
           pincode: "560034",
@@ -141,4 +148,66 @@ test("a society with 2 matching flats is one card that opens its page by tower",
     await page.getByRole("link", { name: `${society} · Tower A · Flat 101` }).click()
     await expect(page).toHaveURL(/\/p\//)
   })
+
+  await test.step("an owner's flat is listed without its masked flat number", async () => {
+    await page.goBack()
+    const societyPage = new URL(page.url())
+    await addFlat(page, `sc${tag}`, society, "Tower B", "301", undefined, "OWN")
+    // a fresh load: the app keeps results for a minute, and this flat was added outside it
+    await page.goto(societyPage.pathname)
+    await expect(page.getByTestId("card-title")).toHaveCount(3)
+    // Tower B lists its newest flat first: the owner's, without its masked number
+    await expect(page.getByTestId("card-title")).toHaveText([
+      `${society} · Tower A · Flat 101`,
+      `${society} · Tower B`,
+      `${society} · Tower B · Flat 201`,
+    ])
+    await expect(page.locator("main")).not.toContainText("301")
+  })
+})
+
+test("a pending society with no published home stays not found", async ({ page }, testInfo) => {
+  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  await page.goto("/")
+  const base = await apiBaseUrl(page)
+  const api = await request.newContext()
+  let societyId = ""
+  try {
+    const login = await api.post(`${base}/auth/dev-login/new`, { data: { key: `sd${tag}` } })
+    expect(login.ok(), `dev login: HTTP ${login.status()}`).toBe(true)
+    let { accessToken } = (await login.json()) as { accessToken: string }
+    const onboarded = await api.post(`${base}/me/onboarding`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: { roles: ["LANDLORD"], homeCity: "BLR", acceptTerms: true },
+    })
+    expect(onboarded.ok(), `onboarding: HTTP ${onboarded.status()}`).toBe(true)
+    accessToken = ((await onboarded.json()) as { accessToken: string }).accessToken
+    const areas = (await (await api.get(`${base}/areas?city=BLR&q=koramangala`)).json()) as {
+      items: Array<{ id: string }>
+    }
+    // A landlord's draft listing proposes the society; nothing in it is published.
+    const draft = await api.post(`${base}/properties`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      data: {
+        city: "BLR",
+        pincode: "560034",
+        propertyType: "APARTMENT",
+        unitLabel: "9",
+        location: {
+          areaId: areas.items[0].id,
+          newSociety: { name: `Draftview ${tag}`, kind: "APARTMENT_COMPLEX" },
+        },
+      },
+    })
+    expect(draft.ok(), `draft: HTTP ${draft.status()} ${await draft.text()}`).toBe(true)
+    societyId = ((await draft.json()) as { location: { society: { id: string } } }).location.society
+      .id
+    const anonymous = await request.newContext()
+    expect((await anonymous.get(`${base}/societies/${societyId}`)).status()).toBe(404)
+    await anonymous.dispose()
+  } finally {
+    await api.dispose()
+  }
+  await page.goto(`/s/${societyId}`)
+  await expect(page.getByText("This society is not on Doorway Living")).toBeVisible()
 })
