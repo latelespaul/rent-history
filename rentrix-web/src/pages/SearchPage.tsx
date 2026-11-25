@@ -113,7 +113,7 @@ export default function SearchPage() {
               {data?.items.map((item) =>
                 item.kind === "SOCIETY" ? (
                   <li key={`s-${item.society.id}`}>
-                    <SocietyResult society={item.society} />
+                    <SocietyResult society={item.society} homeSize={search.homeSize} />
                   </li>
                 ) : (
                   <li key={item.home.id}>

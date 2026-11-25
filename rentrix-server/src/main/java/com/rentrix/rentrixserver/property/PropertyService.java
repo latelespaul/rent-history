@@ -32,7 +32,6 @@ import com.rentrix.rentrixserver.review.RatingAggregate;
 import com.rentrix.rentrixserver.review.RatingAggregateId;
 import com.rentrix.rentrixserver.review.RatingAggregateRepository;
 import com.rentrix.rentrixserver.review.RatingSubjectType;
-import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
@@ -52,7 +51,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,8 +79,8 @@ public class PropertyService {
 	private final GreenTicks greenTicks;
 	private final PlaceMatcher placeMatcher;
 	private final FlatFinder flats;
-	private final ReviewRepository reviews;
 	private final SocietyGroups societyGroups;
+	private final HomeFigures homeFigures;
 	private final com.rentrix.rentrixserver.location.SocietyRepository societies;
 	
 	// ---------------------------------------------------------------- reads
@@ -167,10 +165,10 @@ public class PropertyService {
 			query.pageParams(pageable.getPageSize(), pageable.getOffset()));
 		Map<Long, Property> byId = properties.findByIdIn(ids).stream()
 			.collect(Collectors.toMap(Property::getId, Function.identity()));
-		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
+		Map<Long, RatingAggregate> ratings = homeFigures.ratings(ids);
 		List<Property> ordered = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
 		Page<Property> page = new PageImpl<>(ordered, pageable, total);
-		Map<Long, Long> listed = listedReviews(ids);
+		Map<Long, Long> listed = homeFigures.listedReviews(ids);
 		return PageResponse.of(page, p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), true));
 	}
 	
@@ -255,8 +253,8 @@ public class PropertyService {
 		if (ids.isEmpty()) {
 			return Map.of();
 		}
-		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
-		Map<Long, Long> listed = listedReviews(ids);
+		Map<Long, RatingAggregate> ratings = homeFigures.ratings(ids);
+		Map<Long, Long> listed = homeFigures.listedReviews(ids);
 		return properties.findByIdIn(ids).stream().collect(Collectors.toMap(Property::getId,
 			p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), true)));
 	}
@@ -271,7 +269,7 @@ public class PropertyService {
 		User owner = currentUser(caller);
 		Page<Property> page = properties.findByLandlordIdAndDeletedAtIsNull(owner.getId(), pageable);
 		List<Long> ids = page.getContent().stream().map(Property::getId).toList();
-		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY, ids);
+		Map<Long, RatingAggregate> ratings = homeFigures.ratings(ids);
 		RatingSummary landlordRating = RatingSummary.of(aggregate(RatingSubjectType.LANDLORD, owner.getId()));
 		boolean landlordVerified = greenTicks.has(owner, Role.LANDLORD);
 		return PageResponse.of(page, p -> detail(p, RatingSummary.of(ratings.get(p.getId())), landlordRating,
@@ -380,9 +378,8 @@ public class PropertyService {
 				: sameSociety(p, societyId, societyKey))
 			.limit(10)
 			.toList();
-		Map<Long, RatingAggregate> ratings = aggregates(RatingSubjectType.PROPERTY,
-			found.stream().map(Property::getId).toList());
-		Map<Long, Long> listed = listedReviews(found.stream().map(Property::getId).toList());
+		Map<Long, RatingAggregate> ratings = homeFigures.ratings(found.stream().map(Property::getId).toList());
+		Map<Long, Long> listed = homeFigures.listedReviews(found.stream().map(Property::getId).toList());
 		// "Is it this one?" never shows a flat number (D-139)
 		return found.stream().map(p -> card(p, ratings.get(p.getId()), listed.getOrDefault(p.getId(), 0L), false))
 			.toList();
@@ -828,18 +825,6 @@ public class PropertyService {
 			(int) listedReviews);
 	}
 	
-	/** {@code [property id → published home reviews]} for the cards of one page (D-165). */
-	private Map<Long, Long> listedReviews(Collection<Long> propertyIds) {
-		Map<Long, Long> counts = new java.util.HashMap<>();
-		if (propertyIds.isEmpty()) {
-			return counts;
-		}
-		for (Object[] row : reviews.countListedForProperties(propertyIds)) {
-			counts.put((Long) row[0], ((Number) row[1]).longValue());
-		}
-		return counts;
-	}
-	
 	/** True when any level of the home's place is a {@code PENDING} proposal (see {@link PropertyCard}). */
 	private static boolean locationPending(Property p) {
 		return pending(p.getArea() == null ? null : p.getArea().getStatus())
@@ -859,15 +844,6 @@ public class PropertyService {
 	
 	private RatingAggregate aggregate(RatingSubjectType type, Long subjectId) {
 		return aggregates.findById(new RatingAggregateId(type, subjectId)).orElse(null);
-	}
-	
-	private Map<Long, RatingAggregate> aggregates(RatingSubjectType type, Collection<Long> subjectIds) {
-		if (subjectIds.isEmpty()) {
-			return Map.of();
-		}
-		List<RatingAggregateId> keys = subjectIds.stream().map(id -> new RatingAggregateId(type, id)).toList();
-		return aggregates.findAllById(keys).stream()
-			.collect(Collectors.toMap(a -> a.getId().subjectId(), Function.identity()));
 	}
 	
 	private static String requireLocality(String locality) {

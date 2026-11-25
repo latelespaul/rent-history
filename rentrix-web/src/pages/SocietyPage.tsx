@@ -7,6 +7,7 @@ import { MapPinIcon } from "@/components/ui/icons.gen"
 import { EmptyState, ErrorState } from "@/components/ui/states"
 import { HOME_SIZES } from "@/features/property/labels"
 import { LocationPendingBadge } from "@/features/property/LocationPendingBadge"
+import { Pagination } from "@/features/property/Pagination"
 import { PropertyResult } from "@/features/property/PropertyResult"
 import { CardReviews } from "@/features/property/Rating"
 import { Chip } from "@/features/property/SearchFilters"
@@ -14,7 +15,7 @@ import { flatCount, flatsByTower, rentRangeLabel } from "@/features/property/soc
 import { usePropertySearch, useSignedIn } from "@/features/property/useProperties"
 import { BRAND } from "@/lib/brand"
 
-/** How many of the society's flats the page lists (the API's largest page, D-59). */
+/** How many of the society's flats one page lists (the API's largest page, D-59). */
 const FLATS_PAGE = 50
 
 /** A map search for the society: there are no stored coordinates, so the pin is a search. */
@@ -33,6 +34,8 @@ export default function SocietyPage() {
   const { ready, viewer } = useSignedIn()
   const tower = params.get("tower") ?? undefined
   const homeSize = params.get("homeSize") ?? undefined
+  const pageParam = params.get("page")
+  const page = pageParam && /^\d+$/.test(pageParam) && Number(pageParam) > 1 ? Number(pageParam) : 1
 
   const society = useQuery({
     queryKey: locationKeys.society(id, viewer),
@@ -51,14 +54,16 @@ export default function SocietyPage() {
     tower,
     homeSize,
     size: FLATS_PAGE,
+    page: page > 1 ? page - 1 : undefined,
     sort: "newest",
   })
 
-  function filter(name: "tower" | "homeSize", value: string | undefined) {
+  function filter(name: "tower" | "homeSize" | "page", value: string | undefined) {
     setParams((prev) => {
       const next = new URLSearchParams(prev)
       if (value) next.set(name, value)
       else next.delete(name)
+      if (name !== "page") next.delete("page")
       return next
     })
   }
@@ -231,6 +236,13 @@ export default function SocietyPage() {
               </ul>
             </section>
           ))
+        )}
+        {flats.data && (
+          <Pagination
+            page={page}
+            totalPages={flats.data.page.totalPages}
+            onPage={(next) => filter("page", next > 1 ? String(next) : undefined)}
+          />
         )}
       </section>
     </main>

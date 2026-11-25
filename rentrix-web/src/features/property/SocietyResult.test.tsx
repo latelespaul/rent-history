@@ -37,6 +37,17 @@ describe("a society card in the search results (D-166)", () => {
     expect(screen.getByTestId("society-rent").textContent).toBe("₹25,000 – ₹40,000 a month")
   })
 
+  it("opens the society page on the home size the search counted", () => {
+    render(
+      <MemoryRouter>
+        <SocietyResult society={group()} homeSize="BHK3" />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole("link", { name: "Prestige Lakeside" }).getAttribute("href")).toBe(
+      "/s/s1?homeSize=BHK3",
+    )
+  })
+
   it("shows no rent range when the API sent none (signed out, D-56)", () => {
     render(
       <MemoryRouter>

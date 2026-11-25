@@ -7,10 +7,6 @@ import com.rentrix.rentrixserver.property.dto.CityRef;
 import com.rentrix.rentrixserver.property.dto.RatingSummary;
 import com.rentrix.rentrixserver.property.dto.SocietyGroup;
 import com.rentrix.rentrixserver.review.RatingAggregate;
-import com.rentrix.rentrixserver.review.RatingAggregateId;
-import com.rentrix.rentrixserver.review.RatingAggregateRepository;
-import com.rentrix.rentrixserver.review.RatingSubjectType;
-import com.rentrix.rentrixserver.review.ReviewRepository;
 import com.rentrix.rentrixserver.tenancy.RentRecord;
 import com.rentrix.rentrixserver.tenancy.RentRecordRepository;
 import com.rentrix.rentrixserver.tenancy.RentRecordStatus;
@@ -36,8 +32,7 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class SocietyGroups {
 
-	private final RatingAggregateRepository aggregates;
-	private final ReviewRepository reviews;
+	private final HomeFigures homeFigures;
 	private final RentRecordRepository rentRecords;
 
 	/**
@@ -46,8 +41,8 @@ public class SocietyGroups {
 	 */
 	public Map<Long, SocietyGroup> of(Map<Society, List<Long>> homes, boolean withRent) {
 		List<Long> all = homes.values().stream().flatMap(List::stream).toList();
-		Map<Long, RatingAggregate> ratings = ratings(all);
-		Map<Long, Long> listed = listed(all);
+		Map<Long, RatingAggregate> ratings = homeFigures.ratings(all);
+		Map<Long, Long> listed = homeFigures.listedReviews(all);
 		Map<Long, Long> rents = withRent ? latestOpenRents(all) : Map.of();
 		Map<Long, SocietyGroup> groups = new HashMap<>();
 		homes.forEach((society, ids) -> {
@@ -78,28 +73,6 @@ public class SocietyGroups {
 				min == Long.MAX_VALUE ? null : new SocietyGroup.RentRange(min, max)));
 		});
 		return groups;
-	}
-
-	private Map<Long, RatingAggregate> ratings(Collection<Long> homeIds) {
-		Map<Long, RatingAggregate> byHome = new HashMap<>();
-		if (homeIds.isEmpty()) {
-			return byHome;
-		}
-		List<RatingAggregateId> keys = homeIds.stream()
-			.map(id -> new RatingAggregateId(RatingSubjectType.PROPERTY, id)).toList();
-		aggregates.findAllById(keys).forEach(a -> byHome.put(a.getId().subjectId(), a));
-		return byHome;
-	}
-
-	private Map<Long, Long> listed(Collection<Long> homeIds) {
-		Map<Long, Long> counts = new HashMap<>();
-		if (homeIds.isEmpty()) {
-			return counts;
-		}
-		for (Object[] row : reviews.countListedForProperties(homeIds)) {
-			counts.put((Long) row[0], ((Number) row[1]).longValue());
-		}
-		return counts;
 	}
 
 	/**

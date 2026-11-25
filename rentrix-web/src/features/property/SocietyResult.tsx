@@ -8,9 +8,9 @@ import { CardReviews } from "./Rating"
 /**
  * One society in the search results when 2+ of its homes match (D-166): name, area and city, how
  * many flats match, their reviews and verified average, and (signed in) the rent range. The whole
- * card opens the society page `/s/:id`, which lists its flats by tower.
+ * card opens the society page `/s/:id`, which lists its flats by tower, with the search's home size.
  */
-export function SocietyResult({ society }: { society: SocietyGroup }) {
+export function SocietyResult({ society, homeSize }: { society: SocietyGroup; homeSize?: string }) {
   return (
     <article
       data-testid="society-result"
@@ -23,7 +23,7 @@ export function SocietyResult({ society }: { society: SocietyGroup }) {
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
           <h3 className="text-lg font-semibold" data-testid="society-title">
             <Link
-              to={`/s/${encodeURIComponent(society.id)}`}
+              to={`/s/${encodeURIComponent(society.id)}${homeSize ? `?homeSize=${encodeURIComponent(homeSize)}` : ""}`}
               className="text-ink-900 no-underline after:absolute after:inset-0 hover:no-underline"
             >
               {society.name}
