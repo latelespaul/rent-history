@@ -25,6 +25,11 @@ vi.mock("@/api/search", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/search")>()),
   fetchSuggestions: vi.fn(async () => ({ societies: [], areas: [], homes: [], towers: [] })),
 }))
+// The society chip's name (D-167).
+vi.mock("@/api/locations", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/locations")>()),
+  fetchSociety: vi.fn(async (id: string) => ({ id, name: "Prestige Lakeside" })),
+}))
 vi.mock("@/api/cities", () => ({
   cityKeys: { all: ["cities"] },
   fetchCities: vi.fn(async () => LAUNCH_CITIES),
@@ -55,6 +60,8 @@ const BLR_HOMES = [
   card({ id: "a", buildingName: "Demo Residency A", rating: { reviewCount: 4, average: 4.3 } }),
   card({ id: "b", buildingName: "Demo Heights B", rating: { reviewCount: 1, average: null } }),
 ]
+
+const SOCIETY = "0b7e7c1e-5d3a-4c2b-9f1a-2e6d8c4b1a01"
 
 function renderAt(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -139,6 +146,36 @@ describe("SearchPage", () => {
       expect(resultCalls().at(-1)).toMatchObject({ city: "BLR", q: "560102", locality: undefined }),
     )
     expect(await screen.findByTestId("card-not-verified")).toBeTruthy()
+  })
+
+  it("drops the picked society when the city changes, so the search stays in one city", async () => {
+    const user = userEvent.setup()
+    const router = renderAt(`/search?city=BLR&society=${SOCIETY}&q=1204`)
+    expect(await screen.findByTestId("society-chip")).toBeTruthy()
+
+    const trigger = within(screen.getByRole("main")).getByRole("button", {
+      name: /city/i,
+      expanded: false,
+    })
+    await vi.waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false))
+    await user.click(trigger)
+    await user.click(screen.getByRole("option", { name: /Pune/ }))
+
+    expect(router.state.location.search).toBe("?city=PNQ&q=1204")
+    expect(screen.queryByTestId("society-chip")).toBeNull()
+  })
+
+  it("clears the picked society with the other filters", async () => {
+    const user = userEvent.setup()
+    const router = renderAt(`/search?city=BLR&society=${SOCIETY}&q=1205`)
+    await screen.findByTestId("society-chip")
+
+    const filters = screen.getByRole("region", { name: "Filters" })
+    await user.click(within(filters).getByRole("button", { name: "Clear" }))
+
+    expect(router.state.location.search).toBe("?city=BLR")
+    expect(screen.queryByTestId("society-chip")).toBeNull()
+    expect(within(filters).queryByRole("button", { name: "Clear" })).toBeNull()
   })
 
   it("pages through results with a 1-based page in the URL", async () => {

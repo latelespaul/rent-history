@@ -62,6 +62,7 @@ export function SearchFilters({ search, onChange, className }: Props) {
             onClick={() =>
               onChange({
                 locality: undefined,
+                society: undefined,
                 q: undefined,
                 type: undefined,
                 homeSize: undefined,

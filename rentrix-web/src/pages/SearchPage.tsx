@@ -19,7 +19,7 @@ import {
   withFilters,
   type SearchFilters as Changes,
 } from "@/features/property/searchParams"
-import { useGroupedSearch } from "@/features/property/useProperties"
+import { useGroupedSearch, useSignedIn } from "@/features/property/useProperties"
 
 /**
  * Search results (DESIGN.md screen 2): every filter lives in the URL, so `GET /properties/grouped`
@@ -32,11 +32,12 @@ export default function SearchPage() {
   const results = useGroupedSearch(search)
   const cities = useCities()
   const cityName = cities.data?.find((c) => c.code === search.city)?.name
+  const { ready, viewer } = useSignedIn()
   // the society a two-step pick narrowed the search to (D-167): its name for the chip
   const society = useQuery({
-    queryKey: locationKeys.society(search.society ?? "", null),
+    queryKey: locationKeys.society(search.society ?? "", viewer),
     queryFn: ({ signal }) => fetchSociety(search.society!, signal),
-    enabled: Boolean(search.society),
+    enabled: ready && Boolean(search.society),
     retry: false,
   })
   const pickedSociety =
@@ -55,7 +56,7 @@ export default function SearchPage() {
         city={search.city ?? null}
         query={search.q ?? search.locality ?? ""}
         society={pickedSociety}
-        onCityChange={(code) => change({ city: code })}
+        onCityChange={(code) => change({ city: code, society: undefined })}
         onSubmit={({ city, query, society }) =>
           change({ city: city ?? undefined, q: query, society, locality: undefined })
         }
