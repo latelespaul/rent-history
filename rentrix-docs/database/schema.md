@@ -297,6 +297,7 @@ Only reviews with `status = 'PUBLISHED'` and `counts_in_aggregate = true` count.
 | BLR | Whitefield (560066) | — | Demo Villa C (standalone) |
 | BLR | Indiranagar (560038) | — | Demo Studio D (standalone) |
 | BLR | Jayanagar (560011, 560041) | **Demo Enclave** → Tower 1 (both `PENDING`, proposed by the pending listing) | Demo Annex I (`PENDING_REVIEW`) |
+| BLR | Jayanagar (560011, 560041) | **Demo Orchard** (gated, by Demo Builders) → Tower 1 (Wing A, Wing B), Tower 2 (Wing A, Wing B) | 3 flats of Demo Landlord BLR-2, no tenancies: 1101 → Tower 1 · Wing A, 1204 → Tower 1 · Wing B, 2302 → Tower 2 · Wing A |
 | PNQ | Baner (411045) | **Demo Meadows** (gated) → Tower 1 (Wing A, Wing B), Tower 2 (Wing A, Wing B) | Demo Towers E → Tower 2 · Wing B |
 | PNQ | Hinjewadi (411057) | — | Demo Park F (standalone) |
 | PNQ | Kothrud (411038) | — | Demo Court G (standalone house) |

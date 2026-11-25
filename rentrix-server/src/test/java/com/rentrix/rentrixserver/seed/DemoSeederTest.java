@@ -153,38 +153,51 @@ class DemoSeederTest {
 		assertThat(seeder.seed()).as("non-empty database").isFalse();
 		
 		new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-			List<Property> homes = properties.findAll();
-			assertThat(homes).hasSize(8).allMatch(Property::isDemo)
+			List<Property> allHomes = properties.findAll();
+			assertThat(allHomes).hasSize(11).allMatch(Property::isDemo)
 				.allMatch(p -> p.getStatus() == PropertyStatus.PUBLISHED);
-			Map<String, Long> perCity = homes.stream()
+			Map<String, Long> perCity = allHomes.stream()
 				.collect(Collectors.groupingBy(p -> p.getCity().getCode(), Collectors.counting()));
-			assertThat(perCity).containsExactlyInAnyOrderEntriesOf(Map.of("BLR", 4L, "PNQ", 4L));
-			assertThat(homes).allMatch(p -> p.getBuildingName().startsWith("Demo "));
+			assertThat(perCity).containsExactlyInAnyOrderEntriesOf(Map.of("BLR", 7L, "PNQ", 4L));
+			assertThat(allHomes).allMatch(p -> p.getBuildingName().startsWith("Demo "));
+			// Demo Orchard's 3 flats in 2 towers have no tenancies; every other home has its tenancies and reviews.
+			List<Property> orchard = allHomes.stream()
+				.filter(p -> p.getSociety() != null && p.getSociety().getName().equals("Demo Orchard")).toList();
+			assertThat(orchard).hasSize(3)
+				.allMatch(p -> p.getLandlord().getDisplayName().equals("Demo Landlord BLR-2"));
+			assertThat(orchard.stream().map(p -> p.getTower().getName()).distinct()).hasSize(2);
+			assertThat(tenancies.findAll()).noneMatch(t -> orchard.stream()
+				.anyMatch(p -> p.getId().equals(t.getProperty().getId())));
+			List<Property> homes = allHomes.stream().filter(p -> !orchard.contains(p)).toList();
+			assertThat(homes).hasSize(8);
 			assertThat(homes.stream().map(p -> p.getLandlord().getDisplayName()).distinct())
 				.containsExactlyInAnyOrder("Demo Landlord BLR-1", "Demo Landlord BLR-2", "Demo Landlord PNQ-1",
 					"Demo Landlord PNQ-2");
-			assertThat(homes).allMatch(p -> p.getPincode().startsWith(p.getCity().getCode().equals("BLR") ? "56" : "41"));
+			assertThat(allHomes).allMatch(p -> p.getPincode().startsWith(p.getCity().getCode().equals("BLR") ? "56" : "41"));
 			// D-115: every home points at its area, whose PIN codes include the home's; the society homes match.
 			// V18 already has every seed locality, so the seed uses those reference rows instead of demo ones.
-			assertThat(homes).allMatch(p -> p.getArea() != null && !p.getArea().isDemo()
+			assertThat(allHomes).allMatch(p -> p.getArea() != null && !p.getArea().isDemo()
 				&& p.getArea().getId() >= 201 && p.getArea().getId() <= 381
 				&& p.getArea().getCity().getCode().equals(p.getCity().getCode())
 				&& p.getArea().pincodeList().contains(p.getPincode())
 				&& p.getArea().getName().equals(p.getLocality()));
-			Map<String, String> placed = homes.stream().filter(p -> p.getSociety() != null)
-				.collect(Collectors.toMap(Property::getBuildingName, p -> p.getSociety().getName() + " / "
-					+ p.getTower().getName() + " / " + p.getWing().getName()));
+			Map<String, String> placed = allHomes.stream().filter(p -> p.getSociety() != null)
+				.collect(Collectors.toMap(p -> p.getBuildingName() + " " + p.getUnitLabel(),
+					p -> p.getSociety().getName() + " / " + p.getTower().getName() + " / " + p.getWing().getName()));
 			assertThat(placed).containsExactlyInAnyOrderEntriesOf(Map.of(
-				"Demo Residency A", "Demo Greens / Tower 1 / Wing A",
-				"Demo Towers E", "Demo Meadows / Tower 2 / Wing B"));
-			assertThat(homes).filteredOn(p -> p.getSociety() == null).hasSize(6)
+				"Demo Residency A D-101", "Demo Greens / Tower 1 / Wing A",
+				"Demo Towers E E-1203", "Demo Meadows / Tower 2 / Wing B",
+				"Demo Orchard 1101", "Demo Orchard / Tower 1 / Wing A",
+				"Demo Orchard 1204", "Demo Orchard / Tower 1 / Wing B",
+				"Demo Orchard 2302", "Demo Orchard / Tower 2 / Wing A"));
+			assertThat(allHomes).filteredOn(p -> p.getSociety() == null).hasSize(6)
 				.allMatch(p -> p.getTower() == null && p.getWing() == null);
 			
 			List<Society> gated = societies.findAll();
-			assertThat(gated).hasSize(2).allMatch(Society::isDemo)
+			assertThat(gated).hasSize(3).allMatch(Society::isDemo)
 				.allMatch(s -> s.getKind() == SocietyKind.GATED_COMMUNITY && s.getStatus() == LocationStatus.ACTIVE)
 				.allMatch(s -> s.getCity().getCode().equals(s.getArea().getCity().getCode()));
-			assertThat(gated.stream().map(s -> s.getCity().getCode())).containsExactlyInAnyOrder("BLR", "PNQ");
+			assertThat(gated.stream().map(s -> s.getCity().getCode())).containsExactlyInAnyOrder("BLR", "BLR", "PNQ");
 			for (Society society : gated) {
 				List<SocietyTower> its = towers.findBySocietyOrderBySortOrderAscNameKeyAsc(society);
 				assertThat(its).extracting(SocietyTower::getName).containsExactly("Tower 1", "Tower 2");
@@ -192,8 +205,8 @@ class DemoSeederTest {
 					.containsExactly("Wing A", "Wing B"));
 			}
 			assertThat(areas.findAll().stream().filter(Area::isDemo)).isEmpty();
-			List<Area> seedAreas = homes.stream().map(Property::getArea).distinct().toList();
-			assertThat(seedAreas).hasSize(8)
+			List<Area> seedAreas = allHomes.stream().map(Property::getArea).distinct().toList();
+			assertThat(seedAreas).hasSize(9)
 				.allMatch(a -> a.getStatus() == LocationStatus.ACTIVE && !a.pincodeList().isEmpty())
 				.allMatch(a -> a.pincodeList().stream()
 					.allMatch(pin -> pin.startsWith(a.getCity().getCode().equals("BLR") ? "56" : "41")));
@@ -316,7 +329,7 @@ class DemoSeederTest {
 				.allMatch(r -> r.getVerificationStatus() == VerificationState.VERIFIED);
 			assertThat(written).filteredOn(r -> r.getStatus() == ReviewStatus.AWAITING_REVEAL)
 				.allMatch(r -> r.getVerificationStatus() == null);
-			assertThat(homes).allMatch(h -> h.getVerificationStatus() == VerificationState.VERIFIED);
+			assertThat(allHomes).allMatch(h -> h.getVerificationStatus() == VerificationState.VERIFIED);
 			// every home but Demo Villa C (its current tenant has not reviewed yet) and every landlord shows an average
 			for (Property home : homes) {
 				RatingAggregate rating = aggregates.findById(new RatingAggregateId(RatingSubjectType.PROPERTY,
@@ -337,6 +350,43 @@ class DemoSeederTest {
 				.as("repeat pairs only count once (D-44)").containsExactly(ReviewDirection.TENANT_TO_LANDLORD,
 					ReviewDirection.LANDLORD_TO_TENANT);
 		});
+		
+		assertThat(seeder.topUpSocietyFlats()).as("a fresh seed already has Demo Orchard").isFalse();
+		assertThat(properties.count()).isEqualTo(11);
+		
+		TransactionTemplate tx = new TransactionTemplate(transactionManager);
+		tx.executeWithoutResult(status -> {
+			Society orchard = societies.findAll().stream().filter(s -> s.getName().equals("Demo Orchard"))
+				.findFirst().orElseThrow();
+			properties.deleteAll(properties.findAll().stream()
+				.filter(p -> p.getSociety() != null && p.getSociety().getId().equals(orchard.getId())).toList());
+			towers.deleteAll(towers.findBySocietyOrderBySortOrderAscNameKeyAsc(orchard));
+			societies.delete(orchard);
+		});
+		long usersBefore = users.count();
+		long tenanciesBefore = tenancies.count();
+		long reviewsBefore = reviews.count();
+		assertThat(properties.count()).as("a database seeded before Demo Orchard").isEqualTo(8);
+		
+		assertThat(seeder.topUpSocietyFlats()).isTrue();
+		assertThat(seeder.topUpSocietyFlats()).as("second boot").isFalse();
+		tx.executeWithoutResult(status -> {
+			List<Property> orchard = properties.findAll().stream()
+				.filter(p -> p.getSociety() != null && p.getSociety().getName().equals("Demo Orchard")).toList();
+			assertThat(orchard).hasSize(3).allMatch(Property::isDemo)
+				.allMatch(p -> p.getStatus() == PropertyStatus.PUBLISHED)
+				.allMatch(p -> p.getVerificationStatus() == VerificationState.VERIFIED)
+				.allMatch(p -> p.getLandlord().getDisplayName().equals("Demo Landlord BLR-2"))
+				.allMatch(p -> p.getArea().getName().equals("Jayanagar") && p.getPincode().equals("560041"));
+			assertThat(orchard.stream().map(p -> p.getUnitLabel() + " " + p.getTower().getName() + " "
+				+ p.getWing().getName())).containsExactlyInAnyOrder("1101 Tower 1 Wing A", "1204 Tower 1 Wing B",
+					"2302 Tower 2 Wing A");
+			assertThat(societies.findAll()).filteredOn(s -> s.getName().equals("Demo Orchard")).hasSize(1);
+		});
+		assertThat(properties.count()).isEqualTo(11);
+		assertThat(users.count()).isEqualTo(usersBefore);
+		assertThat(tenancies.count()).isEqualTo(tenanciesBefore);
+		assertThat(reviews.count()).isEqualTo(reviewsBefore);
 	}
 	
 	private void assertApprovedAndIdVerified(VerificationApplication application) {
