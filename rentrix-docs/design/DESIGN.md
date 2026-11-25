@@ -163,7 +163,7 @@ Every review, response, profile, property and tenancy has a "Report" action (fla
 ```
 
 ### 2.9 Owner profile (design v3)
-One landlord can own many properties. The landlord profile lists them all, grouped by city → area → society (standalone homes under their area), with each property's rating, the owner's **Rating as landlord** and the **Homes rating** roll-up of all their homes side by side (D-111, D-113). Badges "ID verified" and "LinkedIn verified" sit under the name (D-100).
+One landlord can own many properties. The landlord profile lists them all, grouped by city → area → society (standalone homes under their area), with each property's rating, the owner's **Rating as landlord** and the **Homes rating** roll-up of all their homes side by side (D-111, D-113). The owner shows as "Owner", never by name, with up to three badges under the label: "Google verified", "ID verified" and, only when that status exists, "Agreement verified" (D-168, replacing the D-100 pair).
 
 ### 2.10 Rental agreement (design v4)
 ```
