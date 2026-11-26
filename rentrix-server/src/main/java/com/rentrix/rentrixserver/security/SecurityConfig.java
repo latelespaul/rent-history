@@ -36,12 +36,12 @@ public class SecurityConfig {
 
 	/**
 	 * Anonymous POST routes: sign-in, the cookie-based refresh and logout of the main site and of the admin console
-	 * (§13, §13.3), Truecaller's server callback and the mail apps' one-click unsubscribe (D-172).
+	 * (§13, §13.3), Truecaller's server callback and the mail apps' one-click unsubscribe (D-172), and the traffic counter's page view beacon (D-174).
 	 */
 	static final String[] PUBLIC_POST = {
 		"/auth/google", "/auth/dev-login", "/auth/dev-login/new", "/auth/refresh", "/auth/logout",
 		"/auth/admin/google", "/auth/admin/dev-login", "/auth/admin/refresh", "/auth/admin/logout",
-		"/auth/truecaller/callback", "/mail/unsubscribe",
+		"/auth/truecaller/callback", "/mail/unsubscribe", "/metrics/pageview",
 	};
 
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */

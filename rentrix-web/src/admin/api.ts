@@ -27,6 +27,7 @@ export const adminKeys = {
   smsRelay: ["admin", "sms-relay"] as const,
   queue: ["admin", "queue"] as const,
   editHistory: (type: string, id: string) => ["admin", "edit-history", type, id] as const,
+  traffic: ["admin", "traffic"] as const,
   auditLog: (action: string | null, page: number) => ["admin", "audit-log", action, page] as const,
 }
 
@@ -226,4 +227,28 @@ export function sendReviewReminder(body: {
   dryRun: boolean
 }): Promise<ReminderResult> {
   return adminApi.post<ReminderResult>("/admin/mail/review-reminder", body)
+}
+
+/** Views and visitors for one window; a person who comes on two days counts on both (D-174). */
+export interface TrafficWindow {
+  views: number
+  visitors: number
+}
+
+export interface TrafficTop {
+  name: string
+  views: number
+}
+
+/** `GET /admin/traffic`: daily-aggregate visit counts, never tied to a person (D-174). */
+export interface TrafficSummary {
+  today: TrafficWindow
+  last7Days: TrafficWindow
+  last30Days: TrafficWindow
+  topPages: TrafficTop[]
+  topSources: TrafficTop[]
+}
+
+export function fetchTraffic(signal?: AbortSignal): Promise<TrafficSummary> {
+  return adminApi.get<TrafficSummary>("/admin/traffic", { signal })
 }
