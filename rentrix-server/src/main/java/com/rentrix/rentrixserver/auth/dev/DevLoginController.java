@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.auth.AuthService;
 import com.rentrix.rentrixserver.auth.SessionResponses;
 import com.rentrix.rentrixserver.auth.SignInRateLimiter;
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.invite.InviteService;
 import com.rentrix.rentrixserver.notification.email.WelcomeMailer;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
@@ -57,6 +59,7 @@ public class DevLoginController {
 	private final UserViews userViews;
 	private final AuthService auth;
 	private final SignInRateLimiter rateLimiter;
+	private final InviteService invites;
 	private final SessionResponses sessions;
 	private final WelcomeMailer welcome;
 	
@@ -84,9 +87,10 @@ public class DevLoginController {
 	
 	/**
 	 * Optional {@code key} stands for one Google account: {@code dev-new-<key>} is its subject and
-	 * {@code new-user-<key>@example.test} its email. Without it a random key is used.
+	 * {@code new-user-<key>@example.test} its email. Without it a random key is used. {@code ref} is an invite code,
+	 * counted as on {@code POST /auth/google} when this call creates the user (invite-friends IF-5).
 	 */
-	public record NewUserRequest(@Pattern(regexp = "[a-z0-9]{1,16}") String key) {
+	public record NewUserRequest(@Pattern(regexp = "[a-z0-9]{1,16}") String key, @Size(max = 32) String ref) {
 	}
 	
 	/**
@@ -115,6 +119,9 @@ public class DevLoginController {
 		user.setDisplayName("New User");
 		User saved = users.save(user);
 		welcome.signedUp(saved);
+		if (body != null) {
+			invites.attribute(saved, body.ref());
+		}
 		return sessions.signedIn(request, auth.startSession(saved));
 	}
 	

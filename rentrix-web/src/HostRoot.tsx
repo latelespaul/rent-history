@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react"
 import App from "./App"
+import { keepRefFromUrl } from "./features/invite/ref"
 import { isAdminHost } from "./lib/config"
 
 // The console is its own chunk, so the main site never downloads it.
@@ -10,7 +11,11 @@ const AdminApp = lazy(() => import("./admin/AdminApp"))
  * main site.
  */
 export default function HostRoot() {
-  if (!isAdminHost(window.location.hostname)) return <App />
+  if (!isAdminHost(window.location.hostname)) {
+    // Before the router reads the address: an invite link's ?ref= is kept, then removed.
+    keepRefFromUrl()
+    return <App />
+  }
   return (
     <Suspense fallback={null}>
       <AdminApp />

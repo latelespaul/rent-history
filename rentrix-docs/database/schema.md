@@ -493,3 +493,41 @@ The foreign key is a table constraint inside `CREATE TABLE`, which MySQL enforce
 |---|---|
 | a review's parameter ratings | the primary key `(review_id, criterion)` |
 | per-parameter averages of one home or landlord (D-158): counted reviews joined to their rows, grouped by `criterion` | `ix_reviews_property`, `ix_reviews_subject_user`, then the primary key |
+
+## 10. Invite friends (D-173)
+
+One random share code per user and one row per person who signed up through it (design note [`../design/invite-friends.md`](../design/invite-friends.md)). Neither table has a `public_id`: no row is addressed from outside. Migration `V20`.
+
+```sql
+CREATE TABLE invite_codes (
+    id              BIGINT            NOT NULL,
+    user_id         BIGINT            NOT NULL,   -- unique: one code per user
+    code            VARCHAR(16)       NOT NULL,   -- 10 chars, Crockford base32, random
+    created_at      ${timestamp_type} NOT NULL,
+    updated_at      ${timestamp_type} NOT NULL,
+    CONSTRAINT pk_invite_codes PRIMARY KEY (id),
+    CONSTRAINT uq_invite_codes_user UNIQUE (user_id),
+    CONSTRAINT uq_invite_codes_code UNIQUE (code),
+    CONSTRAINT fk_invite_codes_user FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+CREATE TABLE referrals (
+    id              BIGINT            NOT NULL,
+    inviter_id      BIGINT            NOT NULL,
+    invitee_id      BIGINT            NOT NULL,   -- unique: a person counts once, for one inviter
+    created_at      ${timestamp_type} NOT NULL,
+    updated_at      ${timestamp_type} NOT NULL,
+    CONSTRAINT pk_referrals PRIMARY KEY (id),
+    CONSTRAINT uq_referrals_invitee UNIQUE (invitee_id),
+    CONSTRAINT fk_referrals_inviter FOREIGN KEY (inviter_id) REFERENCES users (id),
+    CONSTRAINT fk_referrals_invitee FOREIGN KEY (invitee_id) REFERENCES users (id)
+);
+CREATE INDEX ix_referrals_inviter ON referrals (inviter_id);
+```
+
+| Query | Index |
+|---|---|
+| the caller's code | `uq_invite_codes_user` |
+| the owner of a code at sign-up | `uq_invite_codes_code` |
+| "N friends joined" | `ix_referrals_inviter` |
+| has this new user been counted | `uq_referrals_invitee` |

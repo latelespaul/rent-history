@@ -17,6 +17,7 @@ import { useAuth } from "@/features/auth/authContext"
 import { DevLoginPanel } from "@/features/auth/DevLoginPanel"
 import { GoogleButton } from "@/features/auth/GoogleButton"
 import { afterSignInPath, safeNext } from "@/features/auth/paths"
+import { clearRef, readRef } from "@/features/invite/ref"
 import { BRAND } from "@/lib/brand"
 import { roleHome } from "@/features/auth/roles"
 import type { CurrentUser } from "@/types/api"
@@ -35,6 +36,8 @@ const PROMISES = [
  * on this page, so a session restored from the refresh cookie on load shows none.
  */
 function greet(user: CurrentUser) {
+  // The invite code goes with one sign-in only, counted or not (invite-friends §3).
+  clearRef()
   if (!user.needsOnboarding) toast.success(`Signed in as ${user.displayName}`, { duration: 4000 })
 }
 
@@ -54,12 +57,13 @@ export default function LoginPage() {
   })
 
   const google = useMutation({
-    mutationFn: async (idToken: string) => acceptSession(await signInWithGoogle(idToken)),
+    mutationFn: async (idToken: string) =>
+      acceptSession(await signInWithGoogle(idToken, readRef())),
     onSuccess: greet,
   })
   const dev = useMutation({
     mutationFn: async (userId: string | null) =>
-      acceptSession(await (userId ? devLogin(userId) : devLoginAsNewUser())),
+      acceptSession(await (userId ? devLogin(userId) : devLoginAsNewUser(readRef()))),
     onSuccess: greet,
   })
 

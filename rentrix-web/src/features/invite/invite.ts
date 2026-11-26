@@ -5,8 +5,14 @@ import { BRAND } from "@/lib/brand"
  * root, never at a home or review page: a link to the home a user just reviewed would tie them to
  * that review (IF-4).
  */
-export function inviteLink(origin: string): string {
-  return `${origin.replace(/\/+$/, "")}/`
+export function inviteLink(origin: string, code?: string | null): string {
+  const root = `${origin.replace(/\/+$/, "")}/`
+  return code ? `${root}?ref=${encodeURIComponent(code)}` : root
+}
+
+/** "1 friend joined", "3 friends joined". */
+export function joinedLabel(joined: number): string {
+  return `${joined} ${joined === 1 ? "friend" : "friends"} joined`
 }
 
 /** The prefilled text (IF-9): honest claims only, two short sentences and the link. */

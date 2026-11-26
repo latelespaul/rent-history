@@ -15,6 +15,7 @@ import { useAuth } from "@/features/auth/authContext"
 import { NAME_NOT_SHOWN } from "@/features/auth/paths"
 import { ROLE_COPY, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
+import { joinedLabel } from "@/features/invite/invite"
 import { useInvite } from "@/features/invite/useInvite"
 import { useIdentity } from "@/features/verification/useVerification"
 import type { CurrentUser, UpdateMeRequest, VerificationStatus } from "@/types/api"
@@ -184,12 +185,19 @@ function Roles({ user }: { user: CurrentUser }) {
 
 /** Invite friends (design note `invite-friends.md` §6): the share sheet, or WhatsApp and Copy link. */
 function InviteFriends() {
-  const { invite, sheet } = useInvite()
+  const { invite, sheet, joined } = useInvite()
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <p className="min-w-0 flex-1 text-sm text-ink-500">
-        Know someone who rents in Bangalore or Pune? Send them the link.
-      </p>
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="text-ink-500">
+          Know someone who rents in Bangalore or Pune? Send them the link.
+        </p>
+        {joined !== null && (
+          <p className="mt-1 font-semibold text-ink-900" data-testid="settings-joined">
+            {joinedLabel(joined)}
+          </p>
+        )}
+      </div>
       <Button variant="outline" onClick={() => void invite()} data-testid="settings-invite">
         <ShareIcon />
         Invite friends

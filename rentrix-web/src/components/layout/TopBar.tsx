@@ -241,7 +241,7 @@ export function TopBar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const items = navFor(viewer)
-  const { invite, sheet: inviteSheet } = useInvite()
+  const { invite, sheet: inviteSheet } = useInvite({ enabled: Boolean(viewer) })
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
