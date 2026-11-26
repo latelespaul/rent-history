@@ -9,21 +9,24 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ChevronDownIcon,
-  DocumentIcon,
+  DocumentXIcon,
   InfoIcon,
   KeyIcon,
   LandlordIcon,
   LinkIcon,
+  LockIcon,
   LoginIcon,
+  MapPinIcon,
   MessageIcon,
   ShieldCheckIcon,
   StarIcon,
   TenancyIcon,
   TenantIcon,
+  TrendUpIcon,
 } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
 import { AuthPending } from "@/features/auth/RequireAuth"
-import { launchCopy } from "@/features/city/cityText"
+import { chipNames } from "@/features/city/cityText"
 import { useCities } from "@/features/city/useCities"
 import { AppMock } from "@/features/landing/AppMock"
 import { GoogleCta } from "@/features/landing/GoogleCta"
@@ -82,18 +85,42 @@ function Section({
   )
 }
 
-/** The launch line from `GET /cities` (D-85) in a pill with a live dot; nothing until it loads. */
-function LaunchPill() {
+/**
+ * The live cities from `GET /cities` (D-85) as a row of chips after a "Live" dot, plus "More soon";
+ * nothing until a non-empty list loads. The row scrolls sideways on a phone when it is long, so it
+ * takes keyboard focus too.
+ */
+function CityChips() {
   const cities = useCities()
-  if (!cities.isSuccess) return null
+  if (!cities.isSuccess || cities.data.length === 0) return null
   return (
-    <span className="inline-flex items-center gap-2 self-start rounded-full border border-line bg-surface py-1.5 pr-3 pl-2 text-[13px] font-semibold text-ink-700 shadow-sm">
-      <span
-        aria-hidden
-        className="size-2 rounded-full bg-success-600 shadow-[0_0_0_4px_var(--rx-success-100)]"
-      />
-      {launchCopy(cities.data)}
-    </span>
+    <div className="flex items-center gap-2.5 lg:items-start">
+      <span className="inline-flex h-8 shrink-0 items-center gap-2 text-[13px] font-semibold text-ink-700">
+        <span
+          aria-hidden
+          className="size-2 rounded-full bg-success-600 shadow-[0_0_0_4px_var(--rx-success-100)]"
+        />
+        Live
+      </span>
+      <ul
+        aria-label="Live cities"
+        tabIndex={0}
+        className="-my-1 flex min-w-0 snap-x [scrollbar-width:none] gap-2 overflow-x-auto py-1 lg:flex-wrap"
+      >
+        {chipNames(cities.data).map((name) => (
+          <li
+            key={name}
+            className="inline-flex h-8 shrink-0 snap-start items-center gap-1 rounded-full border border-line bg-surface pr-3 pl-2 text-[13px] font-semibold text-ink-900 shadow-sm"
+          >
+            <MapPinIcon size={15} className="text-teal-600" />
+            {name}
+          </li>
+        ))}
+        <li className="inline-flex h-8 shrink-0 snap-start items-center rounded-full border border-dashed border-line-strong px-3 text-[13px] font-semibold text-ink-700">
+          + More soon
+        </li>
+      </ul>
+    </div>
   )
 }
 
@@ -151,25 +178,29 @@ const NAV = [
   ["#faq", "FAQ"],
 ] as const
 
-/** What goes wrong today, per side, and for everyone. */
+/** The hero's three promises, one icon badge each, in place of a lead paragraph. */
+const HERO_BADGES = [
+  { icon: <StarIcon size={20} />, label: "Two-sided reviews" },
+  { icon: <TrendUpIcon size={20} />, label: "Real rents" },
+  { icon: <ShieldCheckIcon size={20} />, label: "Team-verified" },
+]
+
+/** What goes wrong today, per side, and for everyone: one icon tile and a few words each. */
 const PROBLEMS = [
   {
     icon: <TenantIcon size={24} />,
     tone: "bg-tenant-100 text-tenant-600",
-    title: "Tenants get burned",
-    text: "Deposits kept without a reason, repairs ignored for weeks, surprise rent rises at renewal.",
+    title: "Deposits kept, repairs ignored",
   },
   {
     icon: <LandlordIcon size={24} />,
     tone: "bg-landlord-100 text-landlord-600",
-    title: "Landlords take a gamble",
-    text: "Rent paid late, homes handed back damaged, and no way to check a tenant before move-in.",
+    title: "Late rent, damaged homes",
   },
   {
-    icon: <DocumentIcon size={24} />,
+    icon: <DocumentXIcon size={24} />,
     tone: "bg-sunk text-ink-700",
-    title: "No record anyone trusts",
-    text: "Group-chat hearsay and anonymous stars vanish. Nothing follows a landlord or a tenant to the next rental.",
+    title: "No record follows anyone",
   },
 ]
 
@@ -336,28 +367,33 @@ export default function HomePage() {
           className="relative overflow-hidden bg-[radial-gradient(900px_500px_at_85%_10%,var(--rx-teal-100),transparent_60%),radial-gradient(600px_400px_at_0%_100%,var(--rx-marigold-100),transparent_60%)] pt-10 pb-14 lg:pt-22 lg:pb-26"
         >
           <Container className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-14 lg:px-8">
-            <div className="flex flex-col gap-5 motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in motion-safe:slide-in-from-bottom-2">
-              <LaunchPill />
+            <div className="flex flex-col gap-4 motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in motion-safe:slide-in-from-bottom-2 max-lg:min-w-0 lg:gap-5">
+              <CityChips />
               <h1
                 id="hero-title"
-                className="font-display text-4xl leading-[1.08] font-semibold tracking-tight text-ink-900 lg:text-[3.5rem]"
+                className="font-display text-[2rem] leading-[1.1] font-semibold tracking-tight text-ink-900 lg:text-[3.5rem]"
               >
-                Know the home, the landlord <span className="text-teal-600">and</span> the tenant
-                before you sign.
+                Check the home, the landlord <span className="text-teal-600">and</span> the tenant.
               </h1>
               <HeroSearch />
-              <p className={LEAD}>
-                Real rents and two-sided reviews from people who actually lived there. Tenants rate
-                homes and landlords; landlords rate tenants. A green tick shows what our team has
-                verified.
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-3">
+              <ul className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+                {HERO_BADGES.map((b) => (
+                  <li
+                    key={b.label}
+                    className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface/80 px-1.5 py-2 text-center text-xs leading-tight font-semibold text-ink-900 sm:h-9 sm:flex-row sm:rounded-full sm:py-0 sm:pr-3.5 sm:pl-2.5 sm:text-[13px]"
+                  >
+                    <span className="text-teal-600">{b.icon}</span>
+                    {b.label}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <GoogleCta className="h-[52px] rounded-xl shadow-[0_6px_18px_rgb(15_118_110/0.25)]" />
                 <Button
                   asChild
                   variant="ghost"
                   size="lg"
-                  className="h-[52px] w-full rounded-xl text-teal-700 hover:bg-teal-50 hover:text-teal-700 sm:w-auto"
+                  className="hidden h-[52px] rounded-xl text-teal-700 hover:bg-teal-50 hover:text-teal-700 lg:inline-flex"
                 >
                   <a href="#how">
                     See how it works
@@ -365,47 +401,34 @@ export default function HomePage() {
                   </a>
                 </Button>
               </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-500">
-                {["One Google account for both sides", "Phone, Aadhaar and PAN stay private"].map(
-                  (line) => (
-                    <li key={line} className="inline-flex items-center gap-1.5">
-                      <CheckIcon size={16} className="text-success-600" />
-                      {line}
-                    </li>
-                  ),
-                )}
-              </ul>
+              <p className="inline-flex items-center gap-1.5 text-sm text-ink-700">
+                <LockIcon size={16} className="text-teal-700" />
+                Phone, Aadhaar, PAN stay private
+              </p>
             </div>
             <AppMock />
           </Container>
         </section>
 
-        <Section
-          id="problem"
-          eyebrow="The problem"
-          title="Renting runs on trust nobody can check."
-          intro="You hand over a deposit or a set of keys to a stranger, on a broker's word and a 15-minute visit."
-        >
-          <ul className="grid gap-4 md:grid-cols-3 md:gap-6">
+        <Section id="problem" eyebrow="The problem" title="Renting runs on trust nobody can check.">
+          <ul className="grid grid-cols-3 gap-2.5 md:gap-6">
             {PROBLEMS.map((p) => (
               <li
                 key={p.title}
-                className="flex flex-col gap-3 rounded-[20px] border border-line bg-surface p-6"
+                className="flex flex-col items-center gap-2.5 rounded-[20px] border border-line bg-surface px-2 py-4 text-center md:p-6"
               >
-                <span className={cn("grid size-12 place-items-center rounded-[14px]", p.tone)}>
+                <span className={cn("grid size-12 place-items-center rounded-full", p.tone)}>
                   {p.icon}
                 </span>
-                <h3 className="text-[19px] font-semibold text-ink-900">{p.title}</h3>
-                <p className="text-[15px] text-ink-700">{p.text}</p>
+                <h3 className="text-sm leading-snug font-semibold text-ink-900 md:text-[17px]">
+                  {p.title}
+                </h3>
               </li>
             ))}
           </ul>
-          <p className="mt-6 flex items-start gap-3 rounded-2xl bg-teal-50 px-5 py-4 text-teal-800">
-            <TenancyIcon size={22} className="mt-0.5 text-teal-600" />
-            <span>
-              <strong>{BRAND.name} keeps that record.</strong> Each side rates the other after a
-              real tenancy, and the record stays with the home and the people.
-            </span>
+          <p className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-teal-50 py-2.5 pr-5 pl-3 font-semibold text-teal-800">
+            <TenancyIcon size={22} className="text-teal-700" />
+            {BRAND.name} keeps the record.
           </p>
         </Section>
 

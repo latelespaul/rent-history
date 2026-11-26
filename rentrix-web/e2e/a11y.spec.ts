@@ -30,6 +30,27 @@ async function openHome(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
 }
 
+/**
+ * The hero (bar the search box and the sample screen, which hold KNOWN_RULES elements) and the
+ * problem section pass every rule, colour contrast included (landing visual redesign, PR 1).
+ */
+test("home hero and problem pass every WCAG 2.1 AA rule, contrast included", async ({ page }) => {
+  await openHome(page)
+  await expect(page.getByRole("list", { name: "Live cities" })).toBeVisible()
+  const hero = 'section[aria-labelledby="hero-title"]'
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .include(hero)
+    .include("#problem")
+    .exclude(`${hero} form[role="search"]`)
+    .exclude(`${hero} figure`)
+    .analyze()
+  const found = violations.map(
+    (v) => `${v.id}: ${v.help}\n  ${v.nodes.map((n) => n.target.join(" ")).join("\n  ")}`,
+  )
+  expect(found, found.join("\n")).toEqual([])
+})
+
 async function openSearchAndProperty(page: Page, check: () => Promise<void>) {
   await devLogin(page, "Demo Tenant BLR-2")
   await page.goto("/search?city=BLR")

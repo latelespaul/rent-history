@@ -10,7 +10,7 @@ rentrix-docs/design/
 ├── DESIGN.md            this file
 ├── tokens.css           design tokens (CSS custom properties), imported by the web later
 ├── icons.html           icon sheet
-├── icons/               icons.js (source), <name>.svg (49 files), sprite.svg
+├── icons/               icons.js (source), <name>.svg (60 files), sprite.svg, style-spec.json, preview.html, LICENSE-lucide
 ├── mockups/             one static HTML page per screen + mock.css, mock.js, index.html
 ├── screenshots/         PNG renders: <screen>-desktop.png (1440 px), some also -mobile.png (390 px)
 └── tools/               build-icons.mjs, render.mjs (headless Chromium via Playwright)
@@ -362,14 +362,16 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 
 ## 5. Icon set
 
-49 original icons in [`icons/`](icons/), previewed in [`icons.html`](icons.html).
+60 icons in [`icons/`](icons/), previewed in [`icons.html`](icons.html) and the self-contained [`icons/preview.html`](icons/preview.html) (24 px, 48 px and on dark); [`icons/style-spec.json`](icons/style-spec.json) lists the rules and every name.
 
 - 24 × 24 grid, 2 px safe padding; one stroke 1.75 px, round caps and joins; no fills; `currentColor` only. The star is the one icon whose "on" state is filled, and only through CSS.
 - Sizes 16 / 20 (default) / 24. Do not scale stroke width.
 - Decorative next to a label (`aria-hidden="true"`); icon-only buttons need `aria-label`.
 - Product metaphors: **landlord** = person under a roof, **tenant** = person in a doorway, **tenancy** = house with a check (also the brand mark), **shield-check** = verified, **eye-off** = double-blind / hidden, **lock** = private field, **flag** = report, **trend-up** = rent history, **rupee** = money.
-- Source of truth is `icons/icons.js` (path data). `tools/build-icons.mjs` writes `icons/<name>.svg` and `icons/sprite.svg`; the React app can import the SVG files (e.g. via `vite-plugin-svgr`) or use the sprite.
-- No third-party icon sets and no Google logo is redrawn: the Google button in the mockup is a neutral placeholder; production uses Google's own GIS button.
+- Doorway set (v2, captain 2026-11-25): **rent-receipt**, **society-gate**, **owner-key** (house with a key), **review-card**, **agreement** (signed document), **verified-tenant** (person with a check), **city-bangalore** and **city-pune** (city marks), drawn on the same grid as the 49 v1 icons.
+- Source of truth is `icons/icons.js` (path data). `tools/build-icons.mjs` writes `icons/<name>.svg`, `icons/sprite.svg`, `icons/style-spec.json` and `icons/preview.html`; `rentrix-web` copies the path data with `npm run sync:design`.
+- No third-party icon *set* is installed. A missing common UI glyph may be ported from [Lucide](https://lucide.dev) and redrawn on this grid at stroke 1.75; `PORTED` in `icons.js` lists each one (now `document-x`, `badge-check`, `map-pin-check`). No Google logo is redrawn: the Google button in the mockup is a neutral placeholder; production uses Google's own mark.
+- Licences: the v1 and Doorway icons are original to this project (project licence). Lucide ports are under the ISC licence (Lucide contributors; Feather portions MIT), kept in [`icons/LICENSE-lucide`](icons/LICENSE-lucide); ISC needs no credit in the UI.
 
 ---
 

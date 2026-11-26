@@ -90,7 +90,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
     renderHome()
 
     await waitFor(() => expect(texts("h2")).toContain("Where we are live."), { timeout: 10_000 })
-    expect(texts("h1")).toEqual(["Know the home, the landlord and the tenant before you sign."])
+    expect(texts("h1")).toEqual(["Check the home, the landlord and the tenant."])
     expect(texts("h2")).toEqual([
       "Renting runs on trust nobody can check.",
       "Three steps, a few minutes.",
@@ -101,11 +101,15 @@ describe("HomePage", { timeout: 20_000 }, () => {
       "Questions, answered.",
       "Rent with your eyes open.",
     ])
-    expect(texts("h3", region("problem"))).toEqual([
-      "Tenants get burned",
-      "Landlords take a gamble",
-      "No record anyone trusts",
+    // the problem is three icon tiles of a few words each and one banner, with no paragraph
+    const problem = region("problem")
+    expect(texts("h3", problem)).toEqual([
+      "Deposits kept, repairs ignored",
+      "Late rent, damaged homes",
+      "No record follows anyone",
     ])
+    expect(problem.querySelectorAll("li svg[aria-hidden=true]")).toHaveLength(3)
+    expect(texts("p", problem)).toEqual(["Doorway Living keeps the record."])
     expect(texts("h3", region("audience"))).toEqual(["For tenants", "For landlords"])
     expect(region("how").querySelectorAll("ol > li")).toHaveLength(3)
     const trust = texts("h3", region("trust")).join(" | ")
@@ -142,6 +146,28 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(router.state.location.search).toBe("?q=HSR+Layout")
   })
 
+  it("leads the hero with three icon badges and one privacy line instead of a paragraph", () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    renderHome()
+
+    const hero = document.querySelector('section[aria-labelledby="hero-title"]')!
+    const badges = [...hero.querySelectorAll("ul:not([aria-label]) > li")]
+    expect(badges.map((li) => li.textContent)).toEqual([
+      "Two-sided reviews",
+      "Real rents",
+      "Team-verified",
+    ])
+    for (const li of badges)
+      expect(li.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true")
+    expect(texts("p", hero.querySelector("div")!)).toContain("Phone, Aadhaar, PAN stay private")
+    // the search box comes before the badges and the call to action
+    const order = [hero.querySelector("h1"), hero.querySelector("form"), badges[0], ctaLinks()[0]]
+    for (let i = 1; i < order.length; i++)
+      expect(
+        order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+  })
+
   it("links the hero and the header to the sections they name", () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
@@ -159,17 +185,26 @@ describe("HomePage", { timeout: 20_000 }, () => {
     ).toHaveProperty("pathname", "/login")
   })
 
-  it("names the launch cities from GET /cities", async () => {
+  it("shows the live cities from GET /cities as chips in the hero", async () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
     await waitFor(
       () =>
-        expect(texts("section[aria-labelledby=hero-title] span")).toContain(
-          "Live in Bangalore and Pune; other cities on request",
-        ),
+        expect(
+          texts('section[aria-labelledby=hero-title] ul[aria-label="Live cities"] li'),
+        ).toEqual(["Bangalore", "Pune", "+ More soon"]),
       { timeout: 10_000 },
     )
+  })
+
+  it("shows no city chips when GET /cities fails", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    vi.mocked(fetchCities).mockRejectedValueOnce(new Error("offline"))
+    renderHome()
+
+    await waitFor(() => expect(client.getQueryState(["cities"])?.status).toBe("error"))
+    expect(document.querySelector('ul[aria-label="Live cities"]')).toBeNull()
   })
 
   it("offers sign-in as the call to action at the top and the end, plus Search, Terms and Privacy", () => {
