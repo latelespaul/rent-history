@@ -7,7 +7,8 @@ import { Slot } from "radix-ui"
  * Buttons per DESIGN.md §4.4: 40 px tall, 10 px radius, semibold. One primary per area.
  * `default` is the primary (teal); `outline` is the secondary (strong border on surface).
  * `accent` (marigold, near-black text) is the one action we want pressed on a screen, and only
- * there: the landing's sign-up, the review submit and the invite's WhatsApp (DESIGN.md §4.1).
+ * there: the landing's sign-up, Add home's "Write a review", the review submit and the invite's
+ * WhatsApp (DESIGN.md §4.1).
  */
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent text-sm font-semibold whitespace-nowrap no-underline transition-colors duration-(--rx-dur-fast) ease-rx outline-none select-none hover:no-underline disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:size-[18px] [&_svg]:shrink-0",

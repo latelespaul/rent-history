@@ -7,7 +7,7 @@ import type { Tenancy } from "@/types/api"
 import { AgreementStepCard } from "./AgreementStepCard"
 import { reviewStepOpen, stepsLeft } from "./steps"
 
-function ReviewStepCard({ tenancy }: { tenancy: Tenancy }) {
+function ReviewStepCard({ tenancy, accent }: { tenancy: Tenancy; accent: boolean }) {
   if (!reviewStepOpen(tenancy)) return null
   const window = reviewWindow(tenancy, today())
   return (
@@ -24,7 +24,13 @@ function ReviewStepCard({ tenancy }: { tenancy: Tenancy }) {
               Your review shows as &ldquo;Not verified yet&rdquo; until the tenancy is verified.
               Optional.
             </p>
-            <Button asChild size="sm" className="mt-1" data-testid="add-home-write-review">
+            <Button
+              asChild
+              size="sm"
+              variant={accent ? "accent" : "default"}
+              className="mt-1"
+              data-testid="add-home-write-review"
+            >
               <Link to={`/tenancies/${tenancy.id}/review`}>Write a review</Link>
             </Button>
           </>
@@ -44,12 +50,14 @@ function ReviewStepCard({ tenancy }: { tenancy: Tenancy }) {
 /**
  * The optional next steps for a home the tenant added: review it, and upload the rental
  * agreement. Each is skippable; both stay visible on My tenancies and the home's page until done.
+ * `accent` gives "Write a review" the accent, for a screen where it is the one primary action
+ * (DESIGN.md §4.1).
  */
-export function NextSteps({ tenancy }: { tenancy: Tenancy }) {
+export function NextSteps({ tenancy, accent = false }: { tenancy: Tenancy; accent?: boolean }) {
   if (stepsLeft(tenancy) === 0) return null
   return (
     <div className="space-y-2" data-testid="next-steps">
-      <ReviewStepCard tenancy={tenancy} />
+      <ReviewStepCard tenancy={tenancy} accent={accent} />
       <AgreementStepCard tenancy={tenancy} />
     </div>
   )
