@@ -7,7 +7,6 @@ import com.rentrix.rentrixserver.review.ReviewCriterion;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 
@@ -17,19 +16,20 @@ import java.util.List;
  * on (D-52), so the UI shows "New · n reviews" below that and one review never defines anyone.
  * {@code distribution} lists the counts of 1 to 5 stars in that order. On a home or landlord page (D-158) it also
  * carries {@code criteria}, the review form's parameters with their counts and, from 3 ratings each, their averages,
- * and {@code recommend}, the "would you recommend" answers ({@link RatingBreakdowns}). {@code lastReviewMonth} is the
- * month of the latest counted review, never its day or time, which could tell the reviewed party who wrote it (D-169).
+ * and {@code recommend}, the "would you recommend" answers ({@link RatingBreakdowns}). {@code lastReviewYear} is the
+ * year of the latest counted review, never its month, day or time (D-169, D-171): the month of a current tenant's
+ * review could tell the reviewed party who wrote it, and the aggregate does not know whose stay it was.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RatingDetail(int reviewCount, BigDecimal average, List<Integer> distribution, SubRatings subRatings,
-	YearMonth lastReviewMonth, List<CriterionRating> criteria, Recommend recommend) {
+	Integer lastReviewYear, List<CriterionRating> criteria, Recommend recommend) {
 	
 	public static final int MIN_REVIEWS_FOR_AVERAGE = 3;
 	public static final RatingDetail NONE = new RatingDetail(0, null, null, null, null);
 	
 	public RatingDetail(int reviewCount, BigDecimal average, List<Integer> distribution, SubRatings subRatings,
-		YearMonth lastReviewMonth) {
-		this(reviewCount, average, distribution, subRatings, lastReviewMonth, null, null);
+		Integer lastReviewYear) {
+		this(reviewCount, average, distribution, subRatings, lastReviewYear, null, null);
 	}
 	
 	/** One form parameter (D-158): {@code average} only from {@value #MIN_REVIEWS_FOR_AVERAGE} ratings (D-52). */
@@ -43,7 +43,7 @@ public record RatingDetail(int reviewCount, BigDecimal average, List<Integer> di
 	
 	/** This rating with the form's per-parameter figures. */
 	public RatingDetail withBreakdown(List<CriterionRating> criteria, Recommend recommend) {
-		return new RatingDetail(reviewCount, average, distribution, subRatings, lastReviewMonth, criteria, recommend);
+		return new RatingDetail(reviewCount, average, distribution, subRatings, lastReviewYear, criteria, recommend);
 	}
 	
 	/** Averages of the optional sub-ratings a, b and c; their meaning depends on the direction (D-29). */
@@ -56,16 +56,16 @@ public record RatingDetail(int reviewCount, BigDecimal average, List<Integer> di
 			return NONE;
 		}
 		if (row.getReviewCount() < MIN_REVIEWS_FOR_AVERAGE) {
-			return new RatingDetail(row.getReviewCount(), null, null, null, month(row.getLastReviewAt()));
+			return new RatingDetail(row.getReviewCount(), null, null, null, year(row.getLastReviewAt()));
 		}
 		return new RatingDetail(row.getReviewCount(), shown(row.getAverage()),
 			List.of(row.getCount1(), row.getCount2(), row.getCount3(), row.getCount4(), row.getCount5()),
 			new SubRatings(shown(row.getSubAAvg()), shown(row.getSubBAvg()), shown(row.getSubCAvg())),
-			month(row.getLastReviewAt()));
+			year(row.getLastReviewAt()));
 	}
 	
-	private static YearMonth month(Instant at) {
-		return at == null ? null : YearMonth.from(at.atZone(ZoneOffset.UTC));
+	private static Integer year(Instant at) {
+		return at == null ? null : at.atZone(ZoneOffset.UTC).getYear();
 	}
 	
 	static BigDecimal shown(BigDecimal value) {

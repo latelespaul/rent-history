@@ -23,16 +23,19 @@ public final class PublicLabels {
 	}
 
 	/**
-	 * The coarse "Stayed 1+ yr" badge (D-169): the stay from {@code start} lasted a year or more by {@code asOf} (the
-	 * review's submit day) or by its {@code end}, whichever is first. Fixed at submit time, so it never flips later
-	 * and gives away when a current stay began.
+	 * The coarse stay length (D-171): how long the stay from {@code start} had lasted by {@code asOf} (the review's
+	 * submit day) or by its {@code end}, whichever is first. Fixed at submit time, so it never moves on later and gives
+	 * away when a current stay began. Null without a start or a submit day.
 	 */
-	public static boolean longStay(LocalDate start, LocalDate end, LocalDate asOf) {
+	public static StayLength stayLength(LocalDate start, LocalDate end, LocalDate asOf) {
 		if (start == null || asOf == null) {
-			return false;
+			return null;
 		}
 		LocalDate until = end != null && end.isBefore(asOf) ? end : asOf;
-		return !start.plusYears(1).isAfter(until);
+		if (start.plusYears(1).isAfter(until)) {
+			return StayLength.UNDER_ONE_YEAR;
+		}
+		return start.plusYears(2).isAfter(until) ? StayLength.ONE_TO_TWO_YEARS : StayLength.TWO_PLUS_YEARS;
 	}
 
 }

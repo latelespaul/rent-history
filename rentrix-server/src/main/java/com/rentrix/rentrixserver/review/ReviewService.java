@@ -31,6 +31,7 @@ import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
 import com.rentrix.rentrixserver.user.PublicLabels;
 import com.rentrix.rentrixserver.user.PublicNames;
 import com.rentrix.rentrixserver.user.Role;
+import com.rentrix.rentrixserver.user.StayLength;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
 import com.rentrix.rentrixserver.user.UserStatus;
@@ -847,9 +848,10 @@ public class ReviewService {
 			authorLine(r, me, admin),
 			r.getSubjectUser() == null ? null : person(r, r.getSubjectUser(), me, admin),
 			propertyRef(r.getProperty()),
-			// D-169: the stay and the exact times only for the author and admins; others get the month and "edited".
+			// D-169: the stay and the exact times only for the author and admins; others get only the year (D-171) and
+			// "edited".
 			privileged ? period(r.getTenancy()) : null,
-			month(r.getPublishedAt()),
+			publishedYear(r.getPublishedAt()),
 			r.getLastEditedAt() != null ? Boolean.TRUE : null,
 			privileged ? r.getSubmittedAt() : null,
 			privileged ? r.getPublishedAt() : null,
@@ -867,13 +869,13 @@ public class ReviewService {
 	 */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
-			null, null, null, null, null, null, null, propertyRef(r.getProperty()), null, null, null, null, null, null,
-			null, null, null, ReviewView.Actions.NONE, null);
+			null, null, null, null, null, null, null, propertyRef(r.getProperty()), null, null, null, null, null,
+			null, null, null, null, ReviewView.Actions.NONE, null);
 	}
 
 	/**
-	 * The author line (D-168, D-169): an anonymous label with no year, the coarse "Stayed 1+ yr" badge of a tenant
-	 * author and the three badges, the name only for the author and admins, the id for admins only. "Agreement
+	 * The author line (D-168, D-169): an anonymous label with no year, the coarse stay length of a tenant author
+	 * (D-171) and the three badges, the name only for the author and admins, the id for admins only. "Agreement
 	 * verified" comes from this review's tenancy.
 	 */
 	private ReviewView.Author authorLine(Review r, User me, boolean admin) {
@@ -882,10 +884,10 @@ public class ReviewService {
 			return new ReviewView.Author(null, PublicNames.DELETED_USER, null, null, TrustBadges.NONE);
 		}
 		Tenancy tenancy = r.getTenancy();
-		boolean longStay = isTenant(tenancy, author) && r.getSubmittedAt() != null && PublicLabels.longStay(
-			tenancy.getStartDate(), tenancy.getEndDate(), LocalDate.ofInstant(r.getSubmittedAt(), ZoneOffset.UTC));
-		return new ReviewView.Author(admin ? author.getPublicId() : null, label(r, author),
-			longStay ? Boolean.TRUE : null, isSelf(author, me) || admin ? PublicNames.of(author) : null,
+		StayLength stayLength = isTenant(tenancy, author) && r.getSubmittedAt() != null ? PublicLabels.stayLength(
+			tenancy.getStartDate(), tenancy.getEndDate(), LocalDate.ofInstant(r.getSubmittedAt(), ZoneOffset.UTC)) : null;
+		return new ReviewView.Author(admin ? author.getPublicId() : null, label(r, author), stayLength,
+			isSelf(author, me) || admin ? PublicNames.of(author) : null,
 			identity.trustBadges(author, r.getTenancy().getEvidenceLevel() == EvidenceLevel.DOCUMENT));
 	}
 
@@ -924,9 +926,12 @@ public class ReviewService {
 			|| tenancy.getVerificationStatus() == VerificationState.VERIFIED;
 	}
 	
-	/** Month and year in UTC, never the day or time (D-169); null for null. */
-	static YearMonth month(Instant at) {
-		return at == null ? null : YearMonth.from(at.atZone(ZoneOffset.UTC));
+	/**
+	 * The year a review was published, in UTC (D-171): never the month, day or time, for a past stay and a current one
+	 * alike, so the date's form does not tell the landlord which tenant wrote it. Null for null.
+	 */
+	static Integer publishedYear(Instant at) {
+		return at == null ? null : at.atZone(ZoneOffset.UTC).getYear();
 	}
 
 	private static boolean isSelf(User user, User me) {

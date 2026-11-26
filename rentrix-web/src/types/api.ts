@@ -684,6 +684,9 @@ export interface RentRecordInput {
  * omitted): `body` is missing while a report hides the text (`textHidden`), and `author.id` only for
  * landlord authors (D-55, D-57).
  */
+/** A tenant author's coarse stay length (D-171): "Stayed < 1 yr", "Stayed 1-2 yrs", "Stayed 2+ yrs". */
+export type StayLength = "UNDER_ONE_YEAR" | "ONE_TO_TWO_YEARS" | "TWO_PLUS_YEARS"
+
 export interface PropertyReview {
   id: string
   direction?: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
@@ -704,13 +707,13 @@ export interface PropertyReview {
   textHidden?: boolean
   /**
    * Never the name (D-168) and never a year (D-169): `label` is "Verified tenant", "Tenant" or
-   * "Owner"; `longStay` true shows the coarse "Stayed 1+ yr" badge; `shortName` only for the author
-   * and admins.
+   * "Owner"; `stayLength` is a tenant author's coarse stay bucket (D-171); `shortName` only for the
+   * author and admins.
    */
   author?: {
     id?: string
     label: string
-    longStay?: boolean
+    stayLength?: StayLength
     shortName?: string
     badges?: TrustBadges
   }
@@ -720,8 +723,8 @@ export interface PropertyReview {
   property?: { id: string; buildingName: string; locality: string; city: CityRef }
   /** The stay, only for the author and admins (D-169): it would tell the landlord who wrote it. */
   period?: { from: string; to?: string }
-  /** "2026-11": the month it was published, for everyone; never the day or time (D-169). */
-  publishedMonth?: string
+  /** The year it was published (UTC): never the month, day or time, for any stay (D-169, D-171). */
+  publishedYear?: number
   /** True once the author edited it; the date only on `editedAt`, for the author and admins. */
   edited?: boolean
   /** Exact times, only for the author and admins (D-169). */

@@ -17,8 +17,8 @@ import {
 } from "@/features/edit/verified"
 import { criterionLabel } from "@/features/review/form"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
-import type { PropertyReview, RatingSummary } from "@/types/api"
-import { listedReviewCount, monthLabel } from "./labels"
+import type { PropertyReview, RatingSummary, StayLength } from "@/types/api"
+import { listedReviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { ReviewTick } from "./ReviewTick"
 import { TrustBadges } from "./TrustBadges"
@@ -240,11 +240,28 @@ function replier(label: string | undefined): string {
   return !label || label === "Owner" ? "the owner" : label
 }
 
+/** The coarse stay length (D-171): never a month or a year, so the landlord cannot date the stay. */
+const STAY_LENGTH: Record<StayLength, string> = {
+  UNDER_ONE_YEAR: "Stayed < 1 yr",
+  ONE_TO_TWO_YEARS: "Stayed 1-2 yrs",
+  TWO_PLUS_YEARS: "Stayed 2+ yrs",
+}
+
+/**
+ * "Published 2026" for every review (D-171): a month for past stays only would tell the landlord
+ * which review the current tenant wrote.
+ */
+function publishedLabel(review: PropertyReview): string | null {
+  return review.publishedYear ? `Published ${review.publishedYear}` : null
+}
+
 /** One review in a list: author line, stars, the form's answers and text, the reply. */
 export function ReviewItem({ review, propertyId }: { review: PropertyReview; propertyId: string }) {
   const rating = review.ratingOverall
   // Only the author gets edit or withdraw (D-156): that marks their own review.
   const mine = Boolean(review.actions?.edit || review.actions?.withdraw)
+  const published = publishedLabel(review)
+  const stay = review.author?.stayLength && STAY_LENGTH[review.author.stayLength]
   return (
     <li
       className="space-y-1.5 py-4 first:pt-0"
@@ -265,7 +282,7 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
         <span className="font-semibold text-ink-900" data-testid="review-author">
           {review.author?.label ?? "Tenant"}
         </span>
-        {review.author?.longStay && <Badge data-testid="review-long-stay">Stayed 1+ yr</Badge>}
+        {stay && <Badge data-testid="review-stay-length">{stay}</Badge>}
         <TrustBadges badges={review.author?.badges} />
         {review.verification && <ReviewTick state={review.verification} />}
       </p>
@@ -302,11 +319,11 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
         </p>
       )}
       <CriteriaList review={review} />
-      {/* Month and year only, never the day (D-169). */}
-      {(review.publishedMonth || review.edited) && (
+      {/* Never the day (D-169); the month only for a stay that had ended (D-171). */}
+      {(published || review.edited) && (
         <p className="text-xs text-ink-500" data-testid="review-dates">
-          {review.publishedMonth && `Published ${monthLabel(review.publishedMonth)}`}
-          {review.publishedMonth && review.edited && " · "}
+          {published}
+          {published && review.edited && " · "}
           {review.edited && "edited"}
         </p>
       )}
