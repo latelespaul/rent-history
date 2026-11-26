@@ -10,6 +10,7 @@ import { BuildingIcon, CheckIcon, ChevronRightIcon } from "@/components/ui/icons
 import { Label } from "@/components/ui/label"
 import { ErrorState } from "@/components/ui/states"
 import { Textarea } from "@/components/ui/textarea"
+import { InviteCard } from "@/features/invite/InviteCard"
 import { Stars } from "@/features/property/Rating"
 import { ReviewTick } from "@/features/property/ReviewTick"
 import {
@@ -348,6 +349,7 @@ function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Ten
           </p>
         </figure>
       )}
+      {!tenant && <InviteCard className="mt-3" />}
       {tenant ? (
         <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-tenancy">
           <Link to={`/tenancies/${tenancy.id}`}>Back to the tenancy</Link>

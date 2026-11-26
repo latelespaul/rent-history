@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Notice } from "@/components/ui/notice"
 import { errorMessage } from "@/components/ui/states"
-import { LogoutIcon, PlusIcon } from "@/components/ui/icons.gen"
+import { LogoutIcon, PlusIcon, ShareIcon } from "@/components/ui/icons.gen"
 import { useAuth } from "@/features/auth/authContext"
 import { NAME_NOT_SHOWN } from "@/features/auth/paths"
 import { ROLE_COPY, type PickableRole } from "@/features/auth/roles"
 import { CityPicker } from "@/features/city/CityPicker"
+import { useInvite } from "@/features/invite/useInvite"
 import { useIdentity } from "@/features/verification/useVerification"
 import type { CurrentUser, UpdateMeRequest, VerificationStatus } from "@/types/api"
 
@@ -181,6 +182,23 @@ function Roles({ user }: { user: CurrentUser }) {
   )
 }
 
+/** Invite friends (design note `invite-friends.md` §6): the share sheet, or WhatsApp and Copy link. */
+function InviteFriends() {
+  const { invite, sheet } = useInvite()
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <p className="min-w-0 flex-1 text-sm text-ink-500">
+        Know someone who rents in Bangalore or Pune? Send them the link.
+      </p>
+      <Button variant="outline" onClick={() => void invite()} data-testid="settings-invite">
+        <ShareIcon />
+        Invite friends
+      </Button>
+      {sheet}
+    </div>
+  )
+}
+
 /**
  * `/settings` (DESIGN.md "settings", not mocked): profile edits, add the other role (D-16),
  * approval status per role (D-89), sign out, and the way to delete the account (D-58).
@@ -206,6 +224,9 @@ export default function SettingsPage() {
           description="Be a tenant, a landlord, or both. Roles can be added, not removed."
         >
           <Roles user={user} />
+        </Section>
+        <Section title="Invite friends">
+          <InviteFriends />
         </Section>
         <Section title="Account">
           <div className="flex flex-wrap items-center gap-3">

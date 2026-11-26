@@ -158,6 +158,57 @@ describe("top bar", () => {
   })
 })
 
+describe("invite friends", () => {
+  const tenant: ShellViewer = { shortName: "Demo T.", roles: ["TENANT"], isDemo: false }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, "share")
+  })
+
+  it("is not offered to a signed-out visitor", async () => {
+    renderShell()
+    await userEvent.setup().click(within(banner()).getByRole("button", { name: "Menu" }))
+    const dialog = await screen.findByRole("dialog")
+    expect(within(dialog).queryByRole("button", { name: "Invite friends" })).toBeNull()
+  })
+
+  it("opens the share sheet from the account menu", async () => {
+    const share = vi.fn(async () => {})
+    Object.defineProperty(navigator, "share", { value: share, configurable: true })
+    renderShell("/", tenant)
+    const user = userEvent.setup()
+    await user.click(within(banner()).getByRole("button", { name: /Account menu/ }))
+    await user.click(await screen.findByRole("menuitem", { name: "Invite friends" }))
+    expect(share).toHaveBeenCalledWith({
+      text: expect.stringContaining("Tenants review anonymously."),
+    })
+  })
+
+  it("opens the fallback sheet from the account menu without a share sheet", async () => {
+    renderShell("/", tenant)
+    const user = userEvent.setup()
+    await user.click(within(banner()).getByRole("button", { name: /Account menu/ }))
+    await user.click(await screen.findByRole("menuitem", { name: "Invite friends" }))
+    const sheet = await screen.findByTestId("invite-sheet")
+    expect(within(sheet).getByRole("link", { name: "WhatsApp" })).toBeTruthy()
+    await user.click(within(sheet).getByRole("button", { name: "Copy link" }))
+    expect(screen.getByTestId("invite-sheet")).toBeTruthy()
+  })
+
+  it("closes the phone menu and shows WhatsApp and Copy link without a share sheet", async () => {
+    renderShell("/", tenant)
+    const user = userEvent.setup()
+    await user.click(within(banner()).getByRole("button", { name: "Menu" }))
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Invite friends" }),
+    )
+    const sheet = await screen.findByTestId("invite-sheet")
+    expect(within(sheet).getByRole("link", { name: "WhatsApp" })).toBeTruthy()
+    expect(within(sheet).getByRole("button", { name: "Copy link" })).toBeTruthy()
+    expect(screen.getAllByRole("dialog")).toHaveLength(1)
+  })
+})
+
 describe("verification row", () => {
   it("shows the optional any-one hint on the green-tick row of the menu", async () => {
     renderShell("/", {

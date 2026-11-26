@@ -112,6 +112,7 @@ describe("review form", () => {
 
     expect(await screen.findByTestId("review-submitted")).toBeTruthy()
     expect(screen.getByTestId("review-landlord-state").textContent).toMatch(/hidden until/i)
+    expect(screen.getByTestId("invite-card").textContent).toMatch(/help the next tenant/i)
     expect(reviews.submitReviewForm).toHaveBeenCalledWith("t5", {
       home: {
         ratingOverall: 4,
@@ -164,6 +165,25 @@ describe("review form", () => {
     expect(await screen.findByText("Remove the phone number.")).toBeTruthy()
     expect(screen.getByTestId("review-step").getAttribute("data-section")).toBe("landlord")
     expect(screen.queryByText(/invalid fields/i)).toBeNull()
+  })
+
+  it("shows the owner no tenant invite card after they review their tenant", async () => {
+    vi.mocked(reviews.fetchReviewTasks).mockResolvedValueOnce([task("LANDLORD_TO_TENANT")])
+    vi.mocked(reviews.submitReviewForm).mockResolvedValue({
+      tenant: { id: "r3", status: "AWAITING_REVEAL", ratingOverall: 4 },
+    })
+    renderForm()
+    const user = userEvent.setup({ delay: null })
+    await user.click(await screen.findByTestId("review-next"))
+    await user.click(screen.getByTestId("rate-RENT_ON_TIME-4"))
+    await user.click(screen.getByTestId("review-next"))
+    await user.click(screen.getByTestId("overall-tenant-4"))
+    await user.click(screen.getByTestId("review-next"))
+    await user.click(screen.getByTestId("review-submit"))
+
+    expect(await screen.findByTestId("review-submitted")).toBeTruthy()
+    expect(screen.getByTestId("review-tenant-state")).toBeTruthy()
+    expect(screen.queryByTestId("invite-card")).toBeNull()
   })
 
   it("keeps the draft on this device and offers it again", async () => {
