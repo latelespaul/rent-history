@@ -624,6 +624,37 @@ class ReviewApiTest {
 	}
 	
 	@Test
+	void receivedListFollowsNeitherPostingOrderNorRating() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		String[] names = {"Tara Tenant", "Uma Tenant", "Vik Tenant"};
+		int[] ratings = {5, 2, 4};
+		String[] ids = new String[3];
+		for (int i = 0; i < 3; i++) {
+			User tenant = approved(names[i], Role.TENANT);
+			Tenancy tenancy = ended(home(landlord), tenant, TODAY.minusYears(3), TODAY.minusMonths(2));
+			ids[i] = written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, ratings[i]);
+			if (i < 2) {
+				written(landlord, tenancy, ReviewDirection.LANDLORD_TO_TENANT, 4); // reveals the first two (D-46)
+			}
+		}
+		// Posted oldest to newest: 0, 1, 2 (2 still awaits reveal). The random ids happen to sort 1, 0, 2, which
+		// is neither posting order (2, 1, 0 or 0, 1, 2) nor rating order (0, 2, 1 or 1, 2, 0).
+		String[] keyed = {"00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000001",
+			"00000000-0000-4000-8000-000000000003"};
+		entityManager.flush();
+		for (int i = 0; i < 3; i++) {
+			jdbc.update("update reviews set public_id = ?, submitted_at = ? where public_id = ?", keyed[i],
+				java.sql.Timestamp.from(Instant.now().minus(Duration.ofDays(10 - i))), ids[i]);
+		}
+		entityManager.clear();
+
+		String json = json("/me/reviews/received?as=LANDLORD", support.bearer(landlord));
+		assertThat(JsonPath.<java.util.List<String>>read(json, "$.items[*].id"))
+			.containsExactly(keyed[1], keyed[0], keyed[2]);
+		assertThat(JsonPath.<String>read(json, "$.items[2].status")).isEqualTo("AWAITING_REVEAL");
+	}
+
+	@Test
 	void aOneSidedStayIsPlainTenantAndAShortOneHasNoLongStayBadge() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);

@@ -479,7 +479,9 @@ public class ReviewService {
 
 	/**
 	 * {@code GET /me/reviews/received?as=LANDLORD|TENANT}: published reviews about the caller, plus the ones still
-	 * awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs.
+	 * awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs. Ordered by the random
+	 * review id only (D-169): posting order would tell the subject which ex-tenant wrote which, and rating order would
+	 * place a pending review's hidden rating among the published ones.
 	 */
 	public PageResponse<ReviewView> received(AuthenticatedUser caller, TenancyParty as, Pageable pageable) {
 		User me = currentUser(caller);
@@ -488,7 +490,7 @@ public class ReviewService {
 			: EnumSet.of(as == TenancyParty.LANDLORD ? ReviewDirection.TENANT_TO_LANDLORD
 			: ReviewDirection.LANDLORD_TO_TENANT);
 		Page<Review> page = reviews.findBySubjectUserIdAndDirectionInAndStatusIn(me.getId(), directions,
-			EnumSet.of(ReviewStatus.PUBLISHED, ReviewStatus.AWAITING_REVEAL), pageable);
+			EnumSet.of(ReviewStatus.PUBLISHED, ReviewStatus.AWAITING_REVEAL), unordered(pageable));
 		boolean admin = caller.hasRole(Role.ADMIN);
 		Map<Long, ReviewResponse> replies = responsesOf(page.getContent());
 		return PageResponse.of(page, r -> r.getStatus() == ReviewStatus.AWAITING_REVEAL
@@ -535,8 +537,8 @@ public class ReviewService {
 	// -------------------------------------------------------------- helpers
 	
 	/**
-	 * A public review list's order (D-169) must not give away who posted when: equal ratings are ordered by the random
-	 * review id, never by the row or posting order.
+	 * A review list's order (D-169) must not give away who posted when: equal ratings, or every review of an unsorted
+	 * list, are ordered by the random review id, never by the row or posting order.
 	 */
 	static Pageable unordered(Pageable pageable) {
 		return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),

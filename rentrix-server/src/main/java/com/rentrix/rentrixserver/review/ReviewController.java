@@ -123,12 +123,15 @@ public class ReviewController {
 		return reviews.written(caller, as, PageRequests.of(page, size, sort, WRITTEN_SORTS, DEFAULT_WRITTEN_SORT));
 	}
 	
-	/** {@code GET /me/reviews/received?as=LANDLORD|TENANT}: both capacities when {@code as} is absent. */
+	/**
+	 * {@code GET /me/reviews/received?as=LANDLORD|TENANT}: both capacities when {@code as} is absent. No sort: the list
+	 * is in random review-id order, never posting order or rating (D-169).
+	 */
 	@GetMapping("/me/reviews/received")
 	public PageResponse<ReviewView> received(@RequestParam(required = false, name = "as") TenancyParty as,
 		@RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
 		@AuthenticationPrincipal AuthenticatedUser caller) {
-		return reviews.received(caller, as, PageRequests.of(page, size, null, WRITTEN_SORTS, DEFAULT_WRITTEN_SORT));
+		return reviews.received(caller, as, PageRequests.of(page, size, null, Map.of(), Sort.unsorted()));
 	}
 	
 	@GetMapping("/me/review-tasks")
