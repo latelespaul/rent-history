@@ -29,10 +29,19 @@ function GoogleMark() {
   )
 }
 
-/** "Sign in / Sign up with Google" → `/login`; a 48 px tall target, full width on a phone. */
-export function GoogleCta({ className }: { className?: string }) {
+/**
+ * "Sign in / Sign up with Google" → `/login`; a 48 px tall target, full width on a phone. The hero
+ * copy is the landing's one accent button; the repeat at the foot keeps its own colours.
+ */
+export function GoogleCta({
+  className,
+  variant,
+}: {
+  className?: string
+  variant?: "default" | "accent"
+}) {
   return (
-    <Button asChild size="lg" className={cn("w-full sm:w-auto", className)}>
+    <Button asChild size="lg" variant={variant} className={cn("w-full sm:w-auto", className)}>
       <Link to="/login">
         <GoogleMark />
         {CTA_LABEL}

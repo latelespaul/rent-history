@@ -69,14 +69,14 @@ export function InviteSheet({
           </p>
           <div className="grid grid-cols-2 gap-2">
             {message ? (
-              <Button asChild variant="outline" data-testid="invite-whatsapp">
+              <Button asChild variant="accent" data-testid="invite-whatsapp">
                 <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer">
                   <MessageIcon />
                   WhatsApp
                 </a>
               </Button>
             ) : (
-              <Button variant="outline" disabled data-testid="invite-whatsapp">
+              <Button variant="accent" disabled data-testid="invite-whatsapp">
                 <MessageIcon />
                 WhatsApp
               </Button>

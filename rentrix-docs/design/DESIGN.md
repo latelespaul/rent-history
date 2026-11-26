@@ -275,12 +275,15 @@ Tokens live in [`tokens.css`](tokens.css) as `--rx-*` custom properties. Compone
 | Line | `--rx-line` | `#e4dfd5` | borders, dividers |
 | Primary | `--rx-teal-600` | `#0f766e` | primary buttons, links, verified badge, focus |
 | Rating | `--rx-marigold-500` | `#e8a317` | filled stars and rating bars **only** |
+| Accent | `--rx-cta` / `--rx-cta-fg` | `#f4b23e` / `#142229` | the **one** primary action per screen (button `variant="accent"`); hover `#e8a317`, disabled `#f6e3bd` / `#5c4a1f` |
 | Tenant | `--rx-tenant-600` / `100` | `#3559b0` / `#e2e9fa` | tenant badges, avatars, role cards |
 | Landlord | `--rx-landlord-600` / `100` | `#b0532d` / `#f8e4da` | landlord badges, avatars, response accent |
 | Success / Warn / Danger / Info | `--rx-*-600` / `100` | see tokens | status badges and notices |
 | Dev only | `--rx-dev-600` / `100` | `#7a3bd1` / `#efe5fc` | dev-login panel and mockup spec tags; never in prod UI |
 
-Rules: marigold is reserved for ratings, so a yellow element always means "rating". Teal means "trust / action". Red appears only for errors and destructive actions. Text on tinted badges uses the `600` shade on the `100` tint (contrast ≥ 4.5:1). A dark theme exists as token overrides under `[data-theme="dark"]`; v1 ships light only.
+Rules: two base colours, teal and cream (paper), do 90% of the work. Teal means "trust / action". Marigold appears in two places only: rating stars and bars (`--rx-marigold-*`), and the accent button. Red appears only for errors and destructive actions. Text on tinted badges uses the `600` shade on the `100` tint (contrast ≥ 4.5:1). A dark theme exists as token overrides under `[data-theme="dark"]`; v1 ships light only.
+
+**One accent, one primary CTA per screen.** The accent (`--rx-cta`, marigold `#f4b23e`) goes only on the single action we most want pressed on a screen; every other button stays teal or neutral. Today that is three buttons: the landing hero's "Sign in / Sign up with Google", "Submit review" on the review form, and WhatsApp in the Invite friends sheet. A new accent use replaces one of these on its screen, never adds a second; `button.test.ts` lists the uses. Text on the accent is near-black `#142229` (8.7:1), never white (1.9:1, fails AA). The cta tokens are fixed in both themes; its focus ring is a 2 px `--rx-ink-900` outline, and disabled uses its own pale tint with dark text instead of fading.
 
 ### 4.2 Typography
 - **Display** (`--rx-font-display`, Fraunces → Georgia fallback): page titles and the hero only. Weight 600.

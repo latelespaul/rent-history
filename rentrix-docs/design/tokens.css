@@ -25,10 +25,19 @@
   --rx-teal-100: #d5eeea;
   --rx-teal-50: #ecf7f5;
 
-  /* ---- Accent: marigold (ratings only) ----------------------------- */
+  /* ---- Marigold: rating stars --------------------------------------- */
   --rx-marigold-600: #c98a0c;
   --rx-marigold-500: #e8a317; /* filled stars */
   --rx-marigold-100: #fcefcf;
+
+  /* ---- Accent: the one primary action per screen (DESIGN.md §4.1) ---
+   * Fixed values in both themes; text is always near-black, never white
+   * (white on #f4b23e is 1.9:1). Ratios are checked in button.test.ts. */
+  --rx-cta: #f4b23e;             /* marigold; text 8.7:1 */
+  --rx-cta-hover: #e8a317;       /* text 7.5:1 */
+  --rx-cta-fg: #142229;
+  --rx-cta-disabled: #f6e3bd;    /* disabled text 6.8:1 */
+  --rx-cta-disabled-fg: #5c4a1f;
 
   /* ---- Roles: each side has its own hue ---------------------------- */
   --rx-tenant-600: #3559b0;   /* tenant: indigo-blue */
