@@ -700,7 +700,7 @@ public class TenancyService {
 	}
 
 	/** Both sides confirmed it, or the landlord started it: not a tenant's one-sided record (D-142). */
-	static boolean mutual(Tenancy tenancy) {
+	public static boolean mutual(Tenancy tenancy) {
 		return tenancy.getConfirmedAt() != null || tenancy.getInitiatedBy() == TenancyParty.LANDLORD;
 	}
 

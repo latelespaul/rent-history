@@ -581,8 +581,8 @@ export function IdStep({
       </div>
       <p className="mt-4 text-xs text-ink-500">
         Others see only the badges (&ldquo;Google verified&rdquo;, &ldquo;ID verified&rdquo;) and a
-        label such as &ldquo;Tenant, 2024&rdquo;, never your name. The method, the last 4 digits and
-        your phone stay with you and admins.
+        label such as &ldquo;Verified tenant&rdquo;, never your name or your stay dates. The method,
+        the last 4 digits and your phone stay with you and admins.
       </p>
       <StepActions back="/verify/phone" skip="/verify/rental">
         <Button asChild>

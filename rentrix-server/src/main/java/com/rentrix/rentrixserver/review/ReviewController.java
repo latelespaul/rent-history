@@ -41,9 +41,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ReviewController {
 	
-	/** {@code sort=newest|rating} with {@code ,asc|desc}; newest first by default. */
-	public static final Map<String, String> SORTS = Map.of("newest", "publishedAt", "rating", "ratingOverall");
-	public static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "publishedAt");
+	/**
+	 * {@code sort=rating} with {@code ,asc|desc}; the highest rating first by default. No "newest": the posting order
+	 * of one home's reviews would tell its landlord which tenant wrote which (D-169).
+	 */
+	public static final Map<String, String> SORTS = Map.of("rating", "ratingOverall");
+	public static final Sort DEFAULT_SORT = Sort.by(Sort.Direction.DESC, "ratingOverall");
 	static final Map<String, String> WRITTEN_SORTS = Map.of("newest", "submittedAt");
 	static final Sort DEFAULT_WRITTEN_SORT = Sort.by(Sort.Direction.DESC, "submittedAt");
 	
@@ -98,7 +101,7 @@ public class ReviewController {
 		return reviews.updateResponse(id, request.body(), caller);
 	}
 	
-	/** {@code GET /properties/{id}/reviews?page=&size=&sort=newest|rating}: public, full text (D-161). */
+	/** {@code GET /properties/{id}/reviews?page=&size=&sort=rating}: public, full text (D-161). */
 	@GetMapping("/properties/{id}/reviews")
 	public PageResponse<ReviewView> forProperty(@PathVariable UUID id, @RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size, @RequestParam(required = false) String sort,
