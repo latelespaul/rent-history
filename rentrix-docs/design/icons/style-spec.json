@@ -8,7 +8,7 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 62,
+  "iconCount": 63,
   "icons": [
     "agreement",
     "alert",
@@ -58,6 +58,7 @@
     "review-card",
     "rupee",
     "search",
+    "share",
     "shield-check",
     "sliders",
     "society-gate",

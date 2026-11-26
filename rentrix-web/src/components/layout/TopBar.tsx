@@ -21,6 +21,7 @@ import {
   MenuIcon,
   MessageIcon,
   PlusIcon,
+  ShareIcon,
   ShieldCheckIcon,
   UserIcon,
 } from "@/components/ui/icons.gen"
@@ -33,6 +34,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { useLoginHref } from "@/features/auth/useLoginHref"
+import { useInvite } from "@/features/invite/useInvite"
 import { addHomePath, type Mode } from "@/features/mode/mode"
 import { ModeSwitch } from "@/features/mode/ModeSwitch"
 import { STEPS, type Progress } from "@/features/verification/progress"
@@ -143,8 +145,16 @@ function ProgressRow({ progress }: { progress: Progress }) {
   )
 }
 
-/** The viewer chip as a menu: the verification row, settings, contact and sign out. */
-function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: () => void }) {
+/** The viewer chip as a menu: the verification row, invite friends, settings, contact and sign out. */
+function AccountMenu({
+  viewer,
+  onSignOut,
+  onInvite,
+}: {
+  viewer: ShellViewer
+  onSignOut?: () => void
+  onInvite: () => void
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -172,6 +182,10 @@ function AccountMenu({ viewer, onSignOut }: { viewer: ShellViewer; onSignOut?: (
             <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuItem onSelect={() => onInvite()} data-testid="menu-invite">
+          <ShareIcon />
+          Invite friends
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/settings">
             <UserIcon />
@@ -227,6 +241,7 @@ export function TopBar({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const items = navFor(viewer)
+  const { invite, sheet: inviteSheet } = useInvite()
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface">
@@ -264,7 +279,7 @@ export function TopBar({
             </Button>
           )}
           {viewer ? (
-            <AccountMenu viewer={viewer} onSignOut={onSignOut} />
+            <AccountMenu viewer={viewer} onSignOut={onSignOut} onInvite={() => void invite()} />
           ) : (
             <span className="hidden nav:inline-flex">
               <SignIn />
@@ -327,6 +342,18 @@ export function TopBar({
                 </nav>
                 {viewer ? (
                   <div className="flex flex-col gap-2 border-t border-line pt-4">
+                    <Button
+                      variant="outline"
+                      size="block"
+                      data-testid="sheet-invite"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        void invite()
+                      }}
+                    >
+                      <ShareIcon />
+                      Invite friends
+                    </Button>
                     <Button asChild variant="outline" size="block">
                       <Link to="/settings" onClick={() => setMenuOpen(false)}>
                         <UserIcon />
@@ -355,6 +382,7 @@ export function TopBar({
           </Sheet>
         </div>
       </Container>
+      {viewer && inviteSheet}
       {viewer && viewer.mode && viewer.roles.length > 0 && onModeChange && (
         <div className="border-t border-line bg-background">
           <Container className="flex h-11 items-center gap-3">
