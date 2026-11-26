@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, request, test, type Locator, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, daysAgo } from "./support"
+import { apiBaseUrl, daysAgo, uniqueTag } from "./support"
 
 /**
  * Society card and society page (captain 2026-11-25, D-166): two tenants add flats in one new
@@ -94,7 +94,7 @@ test("a society with 2 matching flats is one card that opens its page by tower",
   page,
 }, testInfo) => {
   test.setTimeout(testInfo.timeout * 2)
-  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  const tag = uniqueTag(testInfo.project.name)
   const society = `Lakeview ${tag}`
   await page.goto("/")
   await addFlat(page, `sa${tag}`, society, "Tower A", "101", "BHK3")
@@ -167,7 +167,7 @@ test("a society with 2 matching flats is one card that opens its page by tower",
 })
 
 test("a pending society with no published home stays not found", async ({ page }, testInfo) => {
-  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  const tag = uniqueTag(testInfo.project.name)
   await page.goto("/")
   const base = await apiBaseUrl(page)
   const api = await request.newContext()
