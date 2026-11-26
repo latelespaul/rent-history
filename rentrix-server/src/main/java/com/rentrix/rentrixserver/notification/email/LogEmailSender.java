@@ -1,17 +1,15 @@
 package com.rentrix.rentrixserver.notification.email;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.util.Locale;
 
 /**
- * Writes email to the API log instead of sending it (D-65). The recipient is masked and the subject is logged at
- * {@code INFO}; the body, which can hold a single-use invite link, only at {@code DEBUG}, which the dev profile
- * switches on for {@code com.rentrix} and prod leaves off.
+ * Writes email to the API log instead of sending it (D-65): the sender whenever mail is off ({@link MailConfig}).
+ * The recipient is masked and the subject is logged at {@code INFO}; the body, which can hold a single-use invite
+ * link, only at {@code DEBUG}, which the dev profile switches on for {@code com.rentrix} and prod leaves off.
  */
 @Slf4j
-@Component
 public class LogEmailSender implements EmailSender {
 	
 	@Override

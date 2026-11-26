@@ -122,6 +122,17 @@ app:
   web:
     # Public URL of the web app, for links in emails (tenancy invites, D-65).
     base-url: ${APP_BASE_URL:}
+  mail:
+    # Email through Resend (D-172). Without RESEND_API_KEY mail is off: the API starts, logs that,
+    # and only writes emails to the log. The key is secret: env only, never committed or logged.
+    # Mail also stays off without APP_BASE_URL (the links in the emails).
+    enabled: ${MAIL_ENABLED:true}
+    resend-api-key: ${RESEND_API_KEY:}
+    from: ${MAIL_FROM:Doorway Living <hello@doorwayliving.in>}
+    # Public URL of this API with /api/v1, for the unsubscribe link. Empty = APP_BASE_URL + /api/v1
+    # (LIVE and DEV serve the API there).
+    api-base-url: ${APP_API_BASE_URL:}
+    send-interval: 600ms                  # between two reminder emails: under Resend's per-second limit
   scheduling:
     enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
   seed:

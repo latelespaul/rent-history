@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.auth.AuthService;
 import com.rentrix.rentrixserver.auth.SessionResponses;
 import com.rentrix.rentrixserver.auth.SignInRateLimiter;
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.notification.email.WelcomeMailer;
 import com.rentrix.rentrixserver.user.Role;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
@@ -57,6 +58,7 @@ public class DevLoginController {
 	private final AuthService auth;
 	private final SignInRateLimiter rateLimiter;
 	private final SessionResponses sessions;
+	private final WelcomeMailer welcome;
 	
 	public record DevLoginRequest(@NotNull UUID userId) {
 	}
@@ -111,7 +113,9 @@ public class DevLoginController {
 		user.setEmail(email);
 		user.setEmailVerifiedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
 		user.setDisplayName("New User");
-		return sessions.signedIn(request, auth.startSession(users.save(user)));
+		User saved = users.save(user);
+		welcome.signedUp(saved);
+		return sessions.signedIn(request, auth.startSession(saved));
 	}
 	
 }

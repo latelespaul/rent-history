@@ -65,6 +65,20 @@ CORS_ALLOWED_ORIGINS=https://doorwayliving.in,https://www.doorwayliving.in
 
 Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Proto` / `-Host` / `-Port` only from `TRUSTED_PROXIES` (default: loopback and private ranges), so a web served from the API's own origin needs no CORS entry. Set `TRUSTED_PROXIES` to the proxy's IP when it is neither. See SYSTEM_DESIGN §17.
 
+### Email (Resend)
+
+The API sends email through [Resend](https://resend.com) from `hello@doorwayliving.in` (SYSTEM_DESIGN D-172): tenancy and review notices, a welcome email on sign-up with a "Rate your landlord" link, and the admin console's **Mail** page, which sends a review reminder (one email per user, never BCC). Welcome and reminder emails carry an unsubscribe link. Set on the API (names only; the key comes from your secret store, never from git):
+
+```sh
+RESEND_API_KEY=…                                   # secret; empty = mail off (emails only go to the log)
+MAIL_FROM="Doorway Living <hello@doorwayliving.in>"  # default; the domain must be verified at Resend
+APP_BASE_URL=https://doorwayliving.in               # links in emails; mail stays off without it
+# APP_API_BASE_URL=https://doorwayliving.in/api/v1  # only if the API is not under the web origin
+# MAIL_ENABLED=false                                # kill switch: mail off even with a key
+```
+
+The startup log says `Mail is on: Resend, from …` or why mail is off. In `dev`, mail is off: each email is written to the API log (the body at `DEBUG`). To try it locally, run the API and the web, open `http://admin.localhost:5173/mail` as the seed's Demo Admin and press **Count recipients** (a dry run; sending needs a key). `POST /api/v1/auth/dev-login/new` logs the welcome email of the new user.
+
 ### Admin console
 
 The admin console has its own host and its own session (SYSTEM_DESIGN §13.3); the main site never shows, grants or uses the admin role. On the API set:

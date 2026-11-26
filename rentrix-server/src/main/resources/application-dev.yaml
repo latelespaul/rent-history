@@ -29,6 +29,8 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   web:
     base-url: ${APP_BASE_URL:http://localhost:5173}
+  mail:
+    enabled: ${MAIL_ENABLED:false}       # emails go to this log (DEBUG shows the body), never to Resend
   dev-login:
     enabled: ${DEV_LOGIN_ENABLED:true}
   admin-console:

@@ -36,12 +36,12 @@ public class SecurityConfig {
 
 	/**
 	 * Anonymous POST routes: sign-in, the cookie-based refresh and logout of the main site and of the admin console
-	 * (§13, §13.3), and Truecaller's server callback.
+	 * (§13, §13.3), Truecaller's server callback and the mail apps' one-click unsubscribe (D-172).
 	 */
 	static final String[] PUBLIC_POST = {
 		"/auth/google", "/auth/dev-login", "/auth/dev-login/new", "/auth/refresh", "/auth/logout",
 		"/auth/admin/google", "/auth/admin/dev-login", "/auth/admin/refresh", "/auth/admin/logout",
-		"/auth/truecaller/callback",
+		"/auth/truecaller/callback", "/mail/unsubscribe",
 	};
 
 	/** Anonymous GET routes (paths are relative to the /api/v1 context path). */
@@ -49,7 +49,7 @@ public class SecurityConfig {
 		"/actuator/health", "/actuator/health/liveness", "/actuator/health/readiness",
 		"/cities", "/stats", "/properties", "/properties/*", "/properties/*/rating", "/properties/*/reviews",
 		"/areas", "/areas/*", "/societies", "/societies/*", "/societies/*/towers", "/societies/*/summary", "/search/suggestions",
-		"/auth/config", "/auth/dev-users", "/auth/admin/dev-users",
+		"/auth/config", "/auth/dev-users", "/auth/admin/dev-users", "/mail/unsubscribe",
 		// springdoc is only switched on in dev and test (D-64)
 		"/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**",
 	};

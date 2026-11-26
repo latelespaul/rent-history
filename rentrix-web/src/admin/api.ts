@@ -207,3 +207,23 @@ export function fetchAuditLog(
     signal,
   })
 }
+
+/** The review reminder's outcome (D-172): counts only, never an email address. */
+export interface ReminderResult {
+  dryRun: boolean
+  mailEnabled: boolean
+  recipients: number
+  sent: number
+  failed: number
+}
+
+/**
+ * `POST /admin/mail/review-reminder` (D-172): `dryRun` only counts the recipients; otherwise one
+ * email goes to each, never BCC. Users who opted out or already got it are always skipped.
+ */
+export function sendReviewReminder(body: {
+  onlyWithoutReview: boolean
+  dryRun: boolean
+}): Promise<ReminderResult> {
+  return adminApi.post<ReminderResult>("/admin/mail/review-reminder", body)
+}
