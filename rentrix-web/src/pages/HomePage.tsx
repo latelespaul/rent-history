@@ -1,24 +1,24 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useState, type ReactNode } from "react"
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { Brand } from "@/components/layout/Brand"
 import { Container } from "@/components/layout/Container"
 import { FooterSearch } from "@/components/layout/Footer"
-import { VerifiedBadge } from "@/components/ui/badge"
+import { Badge, VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ArrowRightIcon,
   BadgeCheckIcon,
   BuildingIcon,
-  CheckIcon,
   ChevronDownIcon,
   DocumentXIcon,
+  EyeOffIcon,
   HomeIcon,
-  InfoIcon,
+  IdCardIcon,
   LandlordIcon,
   LinkIcon,
   LockIcon,
   LoginIcon,
-  MessageIcon,
+  PhoneIcon,
   RupeeIcon,
   SearchIcon,
   ShieldCheckIcon,
@@ -128,7 +128,10 @@ function CityChips() {
   )
 }
 
-/** "Where we are live": the whole section waits for a non-empty `GET /cities` (D-85). */
+/**
+ * "Live in N cities": one tile per city, the count and names from `GET /cities` (D-85), never
+ * written here. The whole section waits for a non-empty list.
+ */
 function Coverage() {
   const cities = useCities()
   if (!cities.isSuccess || cities.data.length === 0) return null
@@ -136,13 +139,12 @@ function Coverage() {
     <Section
       id="coverage"
       eyebrow="Coverage"
-      title="Where we are live."
-      intro="Search by locality, gated society or PIN code."
+      title={cities.data.length === 1 ? "Live in 1 city." : `Live in ${cities.data.length} cities.`}
       center
       className="border-y border-line bg-sunk"
     >
       <LandingCoverage cities={cities.data} />
-      <p className="mt-5 text-center text-sm text-ink-500">More cities are on the way.</p>
+      <p className="mt-8 text-center text-sm text-ink-500">More cities are on the way.</p>
     </Section>
   )
 }
@@ -245,34 +247,45 @@ const AUDIENCES = [
   },
 ] as const
 
-const TRUST = [
+/** A small chip on the dark trust band: an icon, then a word (white on white/10, contrast AA). */
+function BandChip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <li className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 pr-3 pl-2.5 text-[13px] font-semibold text-white">
+      {icon}
+      {children}
+    </li>
+  )
+}
+
+/**
+ * The trust ladder: three stages, each the real badge a post or a user carries at that stage
+ * (brief §3.5) and a caption of 2-3 words. Stage 2 names the three ways to verify (any one, D-144).
+ */
+const TRUST_STAGES = [
   {
-    tag: "Any one",
-    icon: <MessageIcon size={22} />,
-    title: "Phone OTP",
-    text: "Confirm your mobile number with a one-time code. Others never see the number.",
-    badge: null,
+    caption: "Post at once",
+    badge: <Badge variant="neutral">Not verified yet</Badge>,
   },
   {
-    tag: "Any one",
-    icon: <ShieldCheckIcon size={22} />,
-    title: "Aadhaar",
-    text: 'Upload a masked Aadhaar for an "ID verified" badge. Others see only the badge, never the number.',
-    badge: <VerifiedBadge />,
+    caption: "Verify once",
+    badge: (
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-[11px] font-bold tracking-[0.08em] text-[#8fd8cd] uppercase">
+          Any one
+        </span>
+        <ul aria-label="Verify with any one" className="flex flex-wrap justify-center gap-2">
+          <BandChip icon={<PhoneIcon size={16} className="text-[#8fd8cd]" />}>Phone</BandChip>
+          <BandChip icon={<IdCardIcon size={16} className="text-[#8fd8cd]" />}>Aadhaar</BandChip>
+          <BandChip icon={<LinkIcon size={16} className="text-[#8fd8cd]" />}>LinkedIn</BandChip>
+        </ul>
+        <VerifiedBadge />
+      </div>
+    ),
   },
   {
-    tag: "Any one",
-    icon: <LinkIcon size={22} />,
-    title: "LinkedIn",
-    text: 'Link your LinkedIn profile. Any one of these three gives the "ID verified" badge and leads to the green tick.',
-    badge: <VerifiedBadge />,
-  },
-  {
-    tag: "By our team",
-    icon: <CheckIcon size={22} />,
-    title: "Green tick",
-    text: `Green tick = approved by the ${BRAND.name} team after an ID check. We also check homes, tenancies and reviews.`,
-    badge: <GreenTick />,
+    caption: "Checked by our team",
+    // on white: success-600 on its success-100 tint is 4.23:1, below AA (brief §4.5)
+    badge: <GreenTick className="bg-white" />,
   },
 ]
 
@@ -560,47 +573,40 @@ export default function HomePage() {
         <section
           id="trust"
           aria-labelledby="trust-title"
-          className="relative scroll-mt-16 overflow-hidden bg-teal-800 py-16 text-[#e6f4f1] lg:py-26"
+          className="relative scroll-mt-16 overflow-hidden bg-teal-800 py-20 text-[#e6f4f1] lg:py-32"
         >
           <span
             aria-hidden
             className="absolute -top-30 -right-30 size-[420px] rounded-full bg-[radial-gradient(closest-side,rgb(20_149_138/0.45),transparent)]"
           />
           <Container className="relative lg:px-8">
-            <div className="mb-8 flex flex-col gap-3 lg:mb-12">
+            <div className="mb-10 flex flex-col gap-3 lg:mb-16 lg:items-center lg:text-center">
               <span className={cn(EYEBROW, "text-[#8fd8cd]")}>Trust and verification</span>
               <h2 id="trust-title" className={cn(H2, "text-white")}>
-                Open to everyone. Verified where it counts.
+                Verified where it counts.
               </h2>
-              <p className={cn(LEAD, "text-[#c4e4df]")}>
-                Sign in and post at once: posts show as "Not verified yet". Verify with any one of
-                phone, Aadhaar or LinkedIn to get the green tick = approved by the {BRAND.name} team
-                after an ID check.
-              </p>
             </div>
-            <ul className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4.5">
-              {TRUST.map((t) => (
-                <li
-                  key={t.title}
-                  className="grid grid-cols-[48px_1fr] items-start gap-3.5 rounded-[18px] border border-white/12 bg-white/6 p-4.5 lg:grid-cols-1 lg:p-5"
-                >
-                  <span className="grid size-12 place-items-center rounded-[14px] bg-white/10 text-[#8fd8cd]">
-                    {t.icon}
-                  </span>
-                  <div className="flex h-full flex-col gap-2">
-                    <span className="self-start rounded-md bg-[#8fd8cd] px-2 py-0.5 text-[11px] font-bold tracking-[0.06em] text-teal-800 uppercase">
-                      {t.tag}
+            <ol className="mx-auto grid max-w-6xl gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-stretch lg:gap-5">
+              {TRUST_STAGES.map((stage, i) => (
+                <Fragment key={stage.caption}>
+                  {i > 0 && (
+                    <li aria-hidden className="grid place-items-center text-[#8fd8cd]">
+                      <ArrowRightIcon size={24} className="rotate-90 lg:rotate-0" />
+                    </li>
+                  )}
+                  <li className="flex flex-col items-center justify-center gap-2.5 rounded-[20px] border border-white/12 bg-white/6 px-5 py-5 text-center lg:py-7">
+                    <span className="grid size-8 place-items-center rounded-full bg-white/10 text-sm font-bold text-white">
+                      {i + 1}
                     </span>
-                    <h3 className="text-[17px] font-semibold text-white">{t.title}</h3>
-                    <p className="text-sm text-[#c4e4df]">{t.text}</p>
-                    {t.badge && <span className="mt-auto pt-1">{t.badge}</span>}
-                  </div>
-                </li>
+                    {stage.badge}
+                    <h3 className="text-[17px] font-semibold text-white">{stage.caption}</h3>
+                  </li>
+                </Fragment>
               ))}
-            </ul>
-            <p className="mt-6 flex items-start gap-2 text-sm text-[#a9d3cc]">
-              <InfoIcon size={18} className="mt-px" />
-              We never show phone numbers, Aadhaar or PAN to other users.
+            </ol>
+            <p className="mt-10 flex items-center justify-center gap-2 text-sm font-semibold text-[#c4e4df]">
+              <EyeOffIcon size={18} />
+              Others never see your numbers.
             </p>
           </Container>
         </section>

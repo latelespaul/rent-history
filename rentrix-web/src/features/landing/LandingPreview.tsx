@@ -16,9 +16,9 @@ import { Buildings } from "./AppMock"
 export const PREVIEW_SIZE = 6
 
 /** The green tick (D-134): the badge an admin review gives a user, home, tenancy or review. */
-export function GreenTick() {
+export function GreenTick({ className }: { className?: string }) {
   return (
-    <Badge variant="success">
+    <Badge variant="success" className={className}>
       <CheckIcon />
       Verified by {BRAND.name}
     </Badge>
