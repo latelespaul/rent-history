@@ -18,8 +18,8 @@ import java.util.UUID;
  * A review as the caller may see it. The author line is an anonymous label and the three badges (D-168); the tenancy
  * itself is never linked. Nothing on it lets the reviewed party work out which tenant wrote it (D-169): the stay
  * ({@code period}) and the exact times ({@code submittedAt}, {@code publishedAt}, {@code editedAt}) go only to the
- * author and admins; everyone else gets {@code publishedYear}, {@code publishedMonth} (month and year, never the day or
- * time) only when the stay had ended by the day it was published (D-171), and {@code edited} (yes/no). The review {@code id} is random, not a time-ordered UUIDv7. No person's name leaves the
+ * author and admins; everyone else gets {@code publishedYear} (the year only, never the month, day or time, D-171) and
+ * {@code edited} (yes/no). The review {@code id} is random, not a time-ordered UUIDv7. No person's name leaves the
  * server here except to that person and admins ({@code shortName} on {@code author}, {@code subject} and
  * {@code response}); {@code author.id} is for admins only. {@code body} is absent while a personal-data
  * report hides the text ({@code textHidden}, D-50). {@code editUntil} and {@code hiddenReason} are for the author
@@ -49,7 +49,6 @@ public record ReviewView(
 	Person subject,
 	PropertyRef property,
 	Period period,
-	YearMonth publishedMonth,
 	Integer publishedYear,
 	Boolean edited,
 	Instant submittedAt,

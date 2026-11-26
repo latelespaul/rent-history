@@ -848,11 +848,10 @@ public class ReviewService {
 			authorLine(r, me, admin),
 			r.getSubjectUser() == null ? null : person(r, r.getSubjectUser(), me, admin),
 			propertyRef(r.getProperty()),
-			// D-169: the stay and the exact times only for the author and admins; others get the year, the month only
-			// for a stay that had ended by then (D-171), and "edited".
+			// D-169: the stay and the exact times only for the author and admins; others get only the year (D-171) and
+			// "edited".
 			privileged ? period(r.getTenancy()) : null,
-			publishedMonth(r),
-			r.getPublishedAt() == null ? null : month(r.getPublishedAt()).getYear(),
+			publishedYear(r.getPublishedAt()),
 			r.getLastEditedAt() != null ? Boolean.TRUE : null,
 			privileged ? r.getSubmittedAt() : null,
 			privileged ? r.getPublishedAt() : null,
@@ -870,7 +869,7 @@ public class ReviewService {
 	 */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
-			null, null, null, null, null, null, null, propertyRef(r.getProperty()), null, null, null, null, null, null,
+			null, null, null, null, null, null, null, propertyRef(r.getProperty()), null, null, null, null, null,
 			null, null, null, null, ReviewView.Actions.NONE, null);
 	}
 
@@ -928,18 +927,11 @@ public class ReviewService {
 	}
 	
 	/**
-	 * The month a review was published (D-171), only when its stay had ended by that day: a month next to a current
-	 * stay would tell the landlord that this tenant wrote it. Otherwise only the year goes out.
+	 * The year a review was published, in UTC (D-171): never the month, day or time, for a past stay and a current one
+	 * alike, so the date's form does not tell the landlord which tenant wrote it. Null for null.
 	 */
-	static YearMonth publishedMonth(Review r) {
-		Instant at = r.getPublishedAt();
-		LocalDate end = r.getTenancy().getEndDate();
-		return at == null || end == null || end.isAfter(LocalDate.ofInstant(at, ZoneOffset.UTC)) ? null : month(at);
-	}
-
-	/** Month and year in UTC, never the day or time (D-169); null for null. */
-	static YearMonth month(Instant at) {
-		return at == null ? null : YearMonth.from(at.atZone(ZoneOffset.UTC));
+	static Integer publishedYear(Instant at) {
+		return at == null ? null : at.atZone(ZoneOffset.UTC).getYear();
 	}
 
 	private static boolean isSelf(User user, User me) {

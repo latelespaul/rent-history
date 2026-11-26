@@ -18,7 +18,7 @@ import {
 import { criterionLabel } from "@/features/review/form"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary, StayLength } from "@/types/api"
-import { listedReviewCount, monthLabel } from "./labels"
+import { listedReviewCount } from "./labels"
 import { Stars } from "./Rating"
 import { ReviewTick } from "./ReviewTick"
 import { TrustBadges } from "./TrustBadges"
@@ -248,11 +248,10 @@ const STAY_LENGTH: Record<StayLength, string> = {
 }
 
 /**
- * "Published Nov 2026" for a stay that had ended by then, else "Published 2026" (D-171): a month
- * next to a current stay would tell the landlord who wrote it.
+ * "Published 2026" for every review (D-171): a month for past stays only would tell the landlord
+ * which review the current tenant wrote.
  */
 function publishedLabel(review: PropertyReview): string | null {
-  if (review.publishedMonth) return `Published ${monthLabel(review.publishedMonth)}`
   return review.publishedYear ? `Published ${review.publishedYear}` : null
 }
 

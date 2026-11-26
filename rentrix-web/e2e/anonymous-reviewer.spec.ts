@@ -31,7 +31,6 @@ interface ReviewJson {
     shortName?: string
     badges?: Record<string, boolean | undefined>
   }
-  publishedMonth?: string
   publishedYear?: number
 }
 
@@ -98,16 +97,18 @@ async function expectAnonymous(page: Page, id: string) {
     const item = items.nth(i)
     expect(review.author?.label).toMatch(/^(Verified tenant|Tenant)$/)
     await expect(item.getByTestId("review-author")).toHaveText(review.author!.label!)
-    // No year on the card (D-169) but when it was published: "Published Nov 2026" for an ended
-    // stay, "Published 2026" for a current one (D-171); the stay only as a bucket.
+    // No year on the card (D-169) but the year it was published, "Published 2026", for every
+    // stay (D-171); the stay only as a bucket.
     const stay = review.author?.stayLength
     if (stay) expect(Object.keys(STAY_LENGTH)).toContain(stay)
     if (stay) await expect(item.getByTestId("review-stay-length")).toHaveText(STAY_LENGTH[stay])
     else await expect(item.getByTestId("review-stay-length")).toHaveCount(0)
     await expect(item.getByTestId("review-author").locator("..")).not.toContainText(/\d{4}/)
-    const published = review.publishedMonth ? /^Published \w{3} \d{4}/ : /^Published \d{4}/
-    if (review.publishedYear) await expect(item.getByTestId("review-dates")).toHaveText(published)
-    const text = (await item.innerText()).replace(/Published (\w{3} )?\d{4}/, "")
+    expect(review, "no month in the JSON").not.toHaveProperty("publishedMonth")
+    if (review.publishedYear) {
+      await expect(item.getByTestId("review-dates")).toHaveText(/^Published \d{4}( · edited)?$/)
+    }
+    const text = (await item.innerText()).replace(/Published \d{4}/, "")
     expect(text, "no year on the card").not.toMatch(/\b(19|20)\d{2}\b/)
     const badges = review.author?.badges ?? {}
     await expect(item.getByTestId("badge-google")).toHaveCount(badges.google ? 1 : 0)

@@ -21,7 +21,7 @@ Design-v2 renders (new and changed screens) are also copied to `rentrix-docs/scr
 
 ## 1. Design principles
 
-1. **Proof before opinion.** Every rating sits next to its proof: "Verified tenancy · Apr 2022 – Mar 2024". The verified badge (shield-check icon, teal) is the most repeated element in the product. *Changed by D-169, D-171*: on a review the proof is "Verified tenant", a coarse stay badge ("Stayed < 1 yr", "Stayed 1-2 yrs" or "Stayed 2+ yrs") and the badges, never the stay dates or a year, so the landlord cannot tell which tenant wrote it; the card shows only "Published Nov 2026" for an ended stay and "Published 2026" for a current one.
+1. **Proof before opinion.** Every rating sits next to its proof: "Verified tenancy · Apr 2022 – Mar 2024". The verified badge (shield-check icon, teal) is the most repeated element in the product. *Changed by D-169, D-171*: on a review the proof is "Verified tenant", a coarse stay badge ("Stayed < 1 yr", "Stayed 1-2 yrs" or "Stayed 2+ yrs") and the badges, never the stay dates or a year, so the landlord cannot tell which tenant wrote it; the card shows only the year it was published, "Published 2026", for every stay.
 2. **Honest numbers only** (D-03). No invented stats or testimonials. Counts come from `GET /stats` and are shown as they are. Under 3 reviews there is no star average, only "New · n reviews" (D-52).
 3. **Two sides, two colours.** Tenant things use indigo-blue, landlord things use clay. A user who is both sees both reputations side by side, never mixed (D-18).
 4. **Privacy is visible.** Wherever data is hidden, the UI says so with a lock icon and a short reason ("Flat number visible only to the landlord and tenants"). Users must understand why they can or cannot see something (D-54–D-57).
@@ -342,7 +342,7 @@ Rules: marigold is reserved for ratings, so a yellow element always means "ratin
 | Tenancy `DECLINED` / `EXPIRED` / `CANCELLED` / `VOIDED` | neutral / danger for voided | x |
 | `evidence_level` MUTUAL / DOCUMENT | verified "Confirmed by both" / verified "Agreement checked" | shield-check |
 | Review `AWAITING_REVEAL` | warn "Awaiting reveal · <date>" | clock |
-| Review `PUBLISHED` (edited) | "Published <month> · edited" in meta | – |
+| Review `PUBLISHED` (edited) | "Published <year> · edited" in meta | – |
 | Review `HIDDEN` | author sees danger "Hidden by moderator" + reason | eye-off |
 | Rent record `PROPOSED` / `DISPUTED` | info "To confirm" / danger "Disputed" | rupee |
 | Demo row | demo "Demo data" | – |

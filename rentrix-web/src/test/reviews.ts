@@ -31,7 +31,6 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
         name: "Bangalore",
       },
     },
-    publishedMonth: "2024-06",
     publishedYear: 2024,
     response: {
       body: "Thank you for the feedback. The water pump was replaced after you moved out and the lift is now serviced every quarter.",

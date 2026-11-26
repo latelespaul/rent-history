@@ -47,7 +47,7 @@ afterEach(cleanup)
 configure({ asyncUtilTimeout: 10000 })
 
 describe("PropertyReviews", () => {
-  it("renders the author, stars, text, month and landlord reply from the recorded API response", async () => {
+  it("renders the author, stars, text, year and landlord reply from the recorded API response", async () => {
     renderReviews()
 
     const items = await screen.findAllByRole("listitem")
@@ -57,12 +57,12 @@ describe("PropertyReviews", () => {
     expect(within(answered).getByText("Reply from the owner")).toBeTruthy()
     expect(within(answered).getByRole("img", { name: "Rated 5 out of 5" })).toBeTruthy()
     expect(within(answered).getByText(/Well maintained building/)).toBeTruthy()
-    expect(within(answered).getByTestId("review-dates").textContent).toBe("Published Jun 2024")
+    expect(within(answered).getByTestId("review-dates").textContent).toBe("Published 2024")
     expect(within(answered).queryByTestId("review-stay-length")).toBeNull()
     expect(within(answered).getByText(/The water pump was replaced/)).toBeTruthy()
     expect(within(answered).queryByRole("button", { name: "Respond" })).toBeNull()
     expect(within(open).getByTestId("review-stay-length").textContent).toBe("Stayed 2+ yrs")
-    // D-171: a current stay's review shows the year only, never the month.
+    // D-171: every review shows the year only, never the month.
     expect(within(open).getByTestId("review-dates").textContent).toBe("Published 2024")
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
     // D-169: no stay dates and no year on any card the landlord sees.

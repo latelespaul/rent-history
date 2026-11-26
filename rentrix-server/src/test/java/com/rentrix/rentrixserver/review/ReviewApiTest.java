@@ -181,7 +181,7 @@ class ReviewApiTest {
 			// the author sees their own stay and times; others do not (D-169)
 			.andExpect(jsonPath("$.period.from").value(TODAY.minusYears(1).toString().substring(0, 7)))
 			.andExpect(jsonPath("$.publishedAt").exists())
-			// a current stay's review: the year only, never the month (D-171)
+			// the year only, never the month (D-171)
 			.andExpect(jsonPath("$.publishedMonth").doesNotExist())
 			.andExpect(jsonPath("$.publishedYear").value(TODAY.getYear()))
 			.andExpect(jsonPath("$.property.unitLabel").doesNotExist());
@@ -533,10 +533,10 @@ class ReviewApiTest {
 	private static final java.util.Set<String> STAY_LENGTHS = java.util.Set.of("UNDER_ONE_YEAR", "ONE_TO_TWO_YEARS",
 		"TWO_PLUS_YEARS");
 
-	/** A month value ("2025-11"), which a current stay's review never carries (D-171); quoted, so no id matches. */
+	/** A month value ("2025-11"), which no review carries for a non-admin (D-171); quoted, so no id matches. */
 	private static final java.util.regex.Pattern MONTH = java.util.regex.Pattern.compile("\"\\d{4}-\\d{2}\"");
 
-	/** A full date or an exact time ("2025-11-26", "2025-11-26T10:00:00Z"); a "2025-11" month is allowed. */
+	/** A full date or an exact time ("2025-11-26", "2025-11-26T10:00:00Z"). */
 	private static final java.util.regex.Pattern DAY_OR_TIME = java.util.regex.Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 	
 	private String json(String path, String bearer) throws Exception {
@@ -597,14 +597,15 @@ class ReviewApiTest {
 					json = json.replaceAll("\"createdAt\":\"[^\"]+\",\"editUntil\":\"[^\"]+\"", "");
 				}
 				assertThat(json).as(path).doesNotContain(PRIVATE_KEYS)
-					.doesNotContain("Tenant, ", String.valueOf(start), String.valueOf(end), "currently");
+					.doesNotContain("Tenant, ", String.valueOf(start), String.valueOf(end), "currently", "publishedMonth");
 				assertThat(DAY_OR_TIME.matcher(json).find()).as(path + " has a day or a time: " + json).isFalse();
+				// An ended stay's review shows the year only too (D-171); a profile's own "memberSince" is not a review's.
+				String reviewFields = json.replaceAll("\"memberSince\":\"[^\"]+\"", "");
+				assertThat(MONTH.matcher(reviewFields).find()).as(path + " has a month: " + json).isFalse();
 			}
 			String reviewsJson = json("/properties/" + propertyId + "/reviews", bearer);
 			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].author.label")).isEqualTo("Verified tenant");
 			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].author.stayLength")).isEqualTo("ONE_TO_TWO_YEARS");
-			// An ended stay's review keeps its month (D-171).
-			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].publishedMonth")).isEqualTo(month);
 			assertThat(JsonPath.<Integer>read(reviewsJson, "$.items[0].publishedYear")).isEqualTo(TODAY.getYear());
 			assertThat(JsonPath.<java.util.List<String>>read(reviewsJson, "$.items[*].author.stayLength"))
 				.allMatch(STAY_LENGTHS::contains);
