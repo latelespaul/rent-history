@@ -12,12 +12,13 @@ interface AdminNavItem {
   icon: IconName
 }
 
-/** The console's pages: the approvals queue first (W9), reports, the OTP relay, then the audit log. */
+/** The console's pages: the approvals queue first (W9), reports, the OTP relay, the audit log, then mail. */
 const ADMIN_NAV: AdminNavItem[] = [
   { to: "/approvals", label: "Approvals", icon: "shield-check" },
   { to: "/reports", label: "Reports", icon: "flag" },
   { to: "/sms-relay", label: "OTP relay", icon: "message" },
   { to: "/audit-log", label: "Audit log", icon: "clock" },
+  { to: "/mail", label: "Mail", icon: "mail" },
 ]
 
 /**

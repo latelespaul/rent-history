@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.auth.google.GoogleIdentity;
 import com.rentrix.rentrixserver.auth.google.GoogleTokenVerifier;
 import com.rentrix.rentrixserver.auth.google.InvalidGoogleTokenException;
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.notification.email.WelcomeMailer;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.user.User;
 import com.rentrix.rentrixserver.user.UserRepository;
@@ -46,6 +47,7 @@ public class AuthService {
 	private final UserViews userViews;
 	private final AuthProperties properties;
 	private final AdminConsoleMembers adminMembers;
+	private final WelcomeMailer welcome;
 	private final Clock clock;
 	
 	/**
@@ -63,12 +65,17 @@ public class AuthService {
 	/**
 	 * Verifies the Google ID token, then finds the user by {@code google_sub} or creates one (D-72, D-73).
 	 * Email, verification time, Google name and avatar are refreshed on every sign-in; the display name only
-	 * when the user is new.
+	 * when the user is new. A new user also gets the welcome email (D-172).
 	 */
 	@Transactional
 	public Session signInWithGoogle(String idToken) {
 		GoogleIdentity identity = verifiedGoogle(idToken);
-		return startSession(googleUser(identity, email(identity)));
+		boolean signUp = users.findByGoogleSub(identity.sub()).isEmpty();
+		User user = googleUser(identity, email(identity));
+		if (signUp) {
+			welcome.signedUp(user);
+		}
+		return startSession(user);
 	}
 	
 	/**

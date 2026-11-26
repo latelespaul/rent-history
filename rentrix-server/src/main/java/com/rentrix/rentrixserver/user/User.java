@@ -77,6 +77,10 @@ public class User extends PublicEntity {
 	@Column(name = "status", nullable = false, length = 16)
 	private UserStatus status = UserStatus.ACTIVE;
 	
+	/** Set by the unsubscribe link (D-172): no welcome or reminder emails; null = subscribed. */
+	@Column(name = "mail_opt_out_at")
+	private Instant mailOptOutAt;
+	
 	@Column(name = "is_demo", nullable = false)
 	private boolean demo;
 	
