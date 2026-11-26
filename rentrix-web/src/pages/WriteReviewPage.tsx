@@ -349,7 +349,7 @@ function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Ten
           </p>
         </figure>
       )}
-      <InviteCard className="mt-3" />
+      {!tenant && <InviteCard className="mt-3" />}
       {tenant ? (
         <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-tenancy">
           <Link to={`/tenancies/${tenancy.id}`}>Back to the tenancy</Link>
