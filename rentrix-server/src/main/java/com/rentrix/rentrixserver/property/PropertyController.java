@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.property;
 
+import com.rentrix.rentrixserver.city.CityService;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.common.web.PageRequests;
@@ -63,7 +64,9 @@ public class PropertyController {
 	/**
 	 * {@code GET /properties?city=&area=&society=&tower=&standalone=&homeSize=&locality=&type=&bedrooms=&minRating=&q=&page=
 	 * &size=&sort=}: published homes.
-	 * {@code city} is a live city code (else {@code 422 city_not_live}); without it every live city is searched.
+	 * {@code city} is one live city code or several, comma-separated ({@code BLR,PNQ}), matching homes in any of
+	 * them; codes that are not live are ignored, and only when none is live the answer is {@code 422 city_not_live}
+	 * (captain 2026-11-27). Without it every live city is searched.
 	 * {@code locality} is a prefix, {@code q} matches locality, building or street, {@code minRating} (1–5)
 	 * keeps homes whose shown average (one decimal) reaches it, i.e. 3 or more reviews (D-52). A {@code sort}
 	 * name without a direction sorts descending. {@code area}, {@code society} and {@code tower} are
@@ -147,8 +150,7 @@ public class PropertyController {
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
-		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
-		return new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating, textKey, null,
+		return new PropertySearchCriteria(CityService.searchCodes(city), localityKey, propertyType, bedrooms, minRating, textKey, null,
 			null, null, null, sizeFilter);
 	}
 	

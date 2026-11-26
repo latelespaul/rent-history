@@ -97,7 +97,7 @@ public class PropertyService {
 	
 	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, LocationFilter location,
 		AuthenticatedUser caller, Pageable pageable) {
-		return search(withTextPlaces(withLocation(criteria, location, caller), caller), pageable);
+		return search(withTextPlaces(withLocation(liveCities(criteria), location, caller), caller), pageable);
 	}
 	
 	/** How many societies (or towers) one search text may resolve to (D-164). */
@@ -126,11 +126,11 @@ public class PropertyService {
 				criteria.towerId())), criteria.text(), false, MAX_TEXT_FLATS));
 		}
 		PlaceMatcher.Query query = PlaceMatcher.Query.parse(criteria.text());
-		List<PlaceMatcher.SocietyHit> top = fewestTypos(placeMatcher.societies(criteria.cityCode(),
+		List<PlaceMatcher.SocietyHit> top = fewestTypos(placeMatcher.societies(criteria.cityCodes(),
 			PlaceMatcher.Query.whole(criteria.text()), caller, MAX_TEXT_PLACES));
 		List<Long> homeIds = List.of();
 		if (query.unit() != null) {
-			List<PlaceMatcher.SocietyHit> split = fewestTypos(placeMatcher.societies(criteria.cityCode(), query,
+			List<PlaceMatcher.SocietyHit> split = fewestTypos(placeMatcher.societies(criteria.cityCodes(), query,
 				caller, MAX_TEXT_PLACES));
 			if (PlaceMatcher.unitFirst(split, top, query.unit())) {
 				homeIds = flats.find(split, query.unit(), false, MAX_TEXT_FLATS).stream().map(Property::getId)
@@ -149,6 +149,12 @@ public class PropertyService {
 			homeIds));
 	}
 	
+	/** The search over only the live cities it names (captain 2026-11-27); none live is {@code 422 city_not_live}. */
+	private PropertySearchCriteria liveCities(PropertySearchCriteria criteria) {
+		return criteria.cityCodes().isEmpty() ? criteria
+			: criteria.withCityCodes(cityService.liveSearchCodes(criteria.cityCodes()));
+	}
+	
 	/** Fewest typos only: "greens" never brings in a "Grens Park" next to "Demo Greens". */
 	private static List<PlaceMatcher.SocietyHit> fewestTypos(List<PlaceMatcher.SocietyHit> hits) {
 		return hits.isEmpty() ? hits : hits.stream().filter(h -> h.cost() == hits.getFirst().cost()).toList();
@@ -160,10 +166,7 @@ public class PropertyService {
 	}
 	
 	public PageResponse<PropertyCard> search(PropertySearchCriteria criteria, Pageable pageable) {
-		if (criteria.cityCode() != null) {
-			cityService.requireLive(criteria.cityCode());
-		}
-		PropertySearchQuery query = PropertySearchQuery.of(criteria);
+		PropertySearchQuery query = PropertySearchQuery.of(liveCities(criteria));
 		Sort.Order order = pageable.getSort().iterator().next();
 		long total = Objects.requireNonNull(jdbc.queryForObject(query.countSql(), Long.class, query.params()));
 		List<Long> ids = total == 0 ? List.of() : jdbc.queryForList(
@@ -185,10 +188,7 @@ public class PropertyService {
 	 */
 	public GroupedPage searchGrouped(PropertySearchCriteria criteria, LocationFilter location,
 		AuthenticatedUser caller, Pageable pageable) {
-		PropertySearchCriteria resolved = withTextPlaces(withLocation(criteria, location, caller), caller);
-		if (resolved.cityCode() != null) {
-			cityService.requireLive(resolved.cityCode());
-		}
+		PropertySearchCriteria resolved = withTextPlaces(withLocation(liveCities(criteria), location, caller), caller);
 		PropertySearchQuery query = PropertySearchQuery.of(resolved);
 		Sort.Order order = pageable.getSort().iterator().next();
 		long homes = Objects.requireNonNull(jdbc.queryForObject(query.countSql(), Long.class, query.params()));
@@ -308,7 +308,7 @@ public class PropertyService {
 			throw locationMismatch("society", "This society is not in this area.");
 		}
 		String cityCode = society != null ? society.getCity().getCode() : area.getCity().getCode();
-		if (criteria.cityCode() != null && !criteria.cityCode().equals(cityCode)) {
+		if (!criteria.cityCodes().isEmpty() && !criteria.cityCodes().contains(cityCode)) {
 			throw locationMismatch(society != null ? "society" : "area", "This place is not in that city.");
 		}
 		cityService.requireLive(cityCode);
@@ -318,7 +318,7 @@ public class PropertyService {
 	
 	private static PropertySearchCriteria copy(PropertySearchCriteria c, Long areaId, Long societyId, Long towerId,
 		Boolean standalone) {
-		return new PropertySearchCriteria(c.cityCode(), c.localityPrefix(), c.type(), c.bedrooms(), c.minRating(),
+		return new PropertySearchCriteria(c.cityCodes(), c.localityPrefix(), c.type(), c.bedrooms(), c.minRating(),
 			c.text(), areaId, societyId, towerId, standalone, c.homeSize());
 	}
 	

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -96,18 +97,18 @@ public class PlaceMatcher {
 
 	/**
 	 * The societies {@code query}'s place words name, best first: fewest typos, then whole-name matches before
-	 * tower matches, then the most published homes. {@code cityCode} null means every live city.
+	 * tower matches, then the most published homes. {@code cityCodes} empty means every live city.
 	 */
-	public List<SocietyHit> societies(String cityCode, Query query, AuthenticatedUser caller, int limit) {
+	public List<SocietyHit> societies(Collection<String> cityCodes, Query query, AuthenticatedUser caller, int limit) {
 		List<String> typed = query.placeWords();
 		if (typed.isEmpty()) {
 			return List.of();
 		}
 		Viewer viewer = Viewer.of(caller);
 		PageRequest bound = PageRequest.of(0, MAX_CANDIDATES);
-		List<Society> candidates = cityCode == null ? societies.findCandidatesInLiveCities(bound)
-			: societies.findCandidatesInCity(cityCode, bound);
-		warnIfCapped("societies", cityCode, candidates.size());
+		List<Society> candidates = cityCodes.isEmpty() ? societies.findCandidatesInLiveCities(bound)
+			: societies.findCandidatesInCities(cityCodes, bound);
+		warnIfCapped("societies", cityCodes, candidates.size());
 		List<SocietyHit> whole = new ArrayList<>();
 		// societies whose name takes the first k typed words; the rest may name a tower
 		Map<Long, Integer> prefixCost = new HashMap<>();
@@ -174,16 +175,16 @@ public class PlaceMatcher {
 	}
 
 	/** The areas the whole text names by name or alias (D-108), best first; listed areas only (D-109). */
-	public List<AreaHit> areas(String cityCode, String text, AuthenticatedUser caller, int limit) {
+	public List<AreaHit> areas(Collection<String> cityCodes, String text, AuthenticatedUser caller, int limit) {
 		List<String> typed = NameMatch.words(text);
 		if (typed.isEmpty()) {
 			return List.of();
 		}
 		Viewer viewer = Viewer.of(caller);
 		PageRequest bound = PageRequest.of(0, MAX_CANDIDATES);
-		List<Area> candidates = cityCode == null ? areas.findCandidatesInLiveCities(bound)
-			: areas.findCandidatesInCity(cityCode, bound);
-		warnIfCapped("areas", cityCode, candidates.size());
+		List<Area> candidates = cityCodes.isEmpty() ? areas.findCandidatesInLiveCities(bound)
+			: areas.findCandidatesInCities(cityCodes, bound);
+		warnIfCapped("areas", cityCodes, candidates.size());
 		List<AreaHit> hits = new ArrayList<>();
 		for (Area area : candidates) {
 			if (!viewer.lists(area.getStatus(), area.getCreatedBy())) {
@@ -213,10 +214,10 @@ public class PlaceMatcher {
 		return status == LocationStatus.ACTIVE || publishedHomes > 0 || viewer.lists(status, createdBy);
 	}
 
-	private static void warnIfCapped(String kind, String cityCode, int loaded) {
+	private static void warnIfCapped(String kind, Collection<String> cityCodes, int loaded) {
 		if (loaded >= MAX_CANDIDATES) {
 			log.warn("Place search loaded the full cap of {} {} candidates in {}; newer {} are not matched",
-				MAX_CANDIDATES, kind, cityCode == null ? "all live cities" : cityCode, kind);
+				MAX_CANDIDATES, kind, cityCodes.isEmpty() ? "all live cities" : String.join(",", cityCodes), kind);
 		}
 	}
 

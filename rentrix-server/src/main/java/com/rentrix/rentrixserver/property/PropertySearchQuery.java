@@ -4,6 +4,7 @@ import com.rentrix.rentrixserver.review.RatingSubjectType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -56,9 +57,10 @@ public final class PropertySearchQuery {
 			// an area fixes the city: ix_properties_area_status
 			sql.append(" WHERE p.area_id = ?");
 			params.add(criteria.areaId());
-		} else if (criteria.cityCode() != null) {
-			sql.append(" WHERE p.city_code = ?");
-			params.add(criteria.cityCode());
+		} else if (!criteria.cityCodes().isEmpty()) {
+			sql.append(" WHERE p.city_code IN (").append(String.join(", ", Collections.nCopies(
+				criteria.cityCodes().size(), "?"))).append(")");
+			params.addAll(criteria.cityCodes());
 		} else {
 			sql.append(" WHERE p.city_code IN (SELECT c.code FROM cities c WHERE c.live = ?)");
 			params.add(Boolean.TRUE);

@@ -149,15 +149,40 @@ describe("CityPicker", () => {
     )
   })
 
-  it("writes the chosen code to ?city= on click", async () => {
+  it("ticks several cities into ?city= on click and keeps the list open until Done", async () => {
     const router = renderAt("/search")
     const { user } = await openPicker()
 
+    expect(screen.getByRole("listbox").getAttribute("aria-multiselectable")).toBe("true")
     await user.click(screen.getByRole("option", { name: /Pune/ }))
-
     expect(router.state.location.search).toBe("?city=PNQ")
+    await user.click(screen.getByRole("option", { name: /Bangalore/ }))
+    expect(router.state.location.search).toBe("?city=PNQ,BLR")
+    expect(
+      within(screen.getByRole("listbox", { name: "Cities" }))
+        .getAllByRole("option")
+        .map((o) => o.getAttribute("aria-selected")),
+    ).toEqual(["true", "true"])
+    expect(screen.getByText("2 cities picked")).toBeTruthy()
+
+    // a second tap unticks
+    await user.click(screen.getByRole("option", { name: /Pune/ }))
+    expect(router.state.location.search).toBe("?city=BLR")
+
+    await user.click(screen.getByRole("button", { name: "Done" }))
     expect(screen.queryByRole("listbox")).toBeNull()
-    expect(screen.getByRole("button", { name: /city/i }).textContent).toContain("Pune")
+    expect(
+      within(screen.getByRole("main")).getByRole("button", { name: /city/i }).textContent,
+    ).toContain("Bangalore")
+  })
+
+  it("names the first two cities and counts the rest when closed", async () => {
+    respond(NINE_CITIES)
+    renderAt("/search?city=PNQ,BLR,DEL")
+    const trigger = await within(await screen.findByRole("main")).findByRole("button", {
+      name: /Pune, Bangalore \+1 more/,
+    })
+    expect(trigger).toBeTruthy()
   })
 
   it("chooses with the keyboard on the search page", async () => {
@@ -169,7 +194,9 @@ describe("CityPicker", () => {
     await user.type(input, "cal")
     await user.keyboard("{Enter}")
 
-    expect(router.state.location.search).toBe("?city=CCU")
+    // Enter ticks Kolkata next to Pune; the list stays open
+    expect(router.state.location.search).toBe("?city=PNQ,CCU")
+    expect(screen.getByRole("listbox")).toBeTruthy()
   })
 
   it("closes on Escape without changing the city", async () => {

@@ -148,7 +148,7 @@ describe("SearchPage", () => {
     expect(await screen.findByTestId("card-not-verified")).toBeTruthy()
   })
 
-  it("drops the picked society when the city changes, so the search stays in one city", async () => {
+  it("drops the picked society when the cities change", async () => {
     const user = userEvent.setup()
     const router = renderAt(`/search?city=BLR&society=${SOCIETY}&q=1204`)
     expect(await screen.findByTestId("society-chip")).toBeTruthy()
@@ -161,7 +161,7 @@ describe("SearchPage", () => {
     await user.click(trigger)
     await user.click(screen.getByRole("option", { name: /Pune/ }))
 
-    expect(router.state.location.search).toBe("?city=PNQ&q=1204")
+    expect(router.state.location.search).toBe("?city=BLR,PNQ&q=1204")
     expect(screen.queryByTestId("society-chip")).toBeNull()
   })
 
@@ -187,6 +187,55 @@ describe("SearchPage", () => {
 
     expect(router.state.location.search).toBe("?city=BLR&page=2")
     await vi.waitFor(() => expect(resultCalls().at(-1)).toMatchObject({ page: 1 }))
+  })
+
+  it("searches homes in any of several cities kept in the URL (captain 2026-11-27)", async () => {
+    const user = userEvent.setup()
+    const router = renderAt("/search?city=BLR")
+    await screen.findByRole("heading", { name: "12 properties in Bangalore" })
+
+    const trigger = within(screen.getByRole("main")).getByRole("button", {
+      name: /city/i,
+      expanded: false,
+    })
+    await user.click(trigger)
+    await user.click(screen.getByRole("option", { name: /Pune/ }))
+
+    // the list stays open for another city; the URL and the API carry both
+    expect(screen.getByRole("listbox", { name: "Cities" })).toBeTruthy()
+    expect(router.state.location.search).toBe("?city=BLR,PNQ")
+    await vi.waitFor(() => expect(resultCalls().at(-1)).toMatchObject({ city: "BLR,PNQ" }))
+    expect(
+      await screen.findByRole("heading", { name: "12 properties in Bangalore and Pune" }),
+    ).toBeTruthy()
+
+    await user.click(screen.getByRole("button", { name: "Done" }))
+    expect(screen.queryByRole("listbox", { name: "Cities" })).toBeNull()
+    expect(trigger.textContent).toContain("Bangalore, Pune")
+
+    // unticking every city searches all of them
+    await user.click(trigger)
+    await user.click(screen.getByRole("button", { name: "Clear" }))
+    expect(router.state.location.search).toBe("")
+    await vi.waitFor(() => expect(resultCalls().at(-1)).toMatchObject({ city: undefined }))
+    expect(await screen.findByRole("heading", { name: "12 properties" })).toBeTruthy()
+  })
+
+  it("reads cities by code, name or alias from a shared link and ignores unknown ones", async () => {
+    renderAt("/search?city=bengaluru,Pune,goa,BLR")
+
+    expect(
+      await screen.findByRole("heading", { name: "12 properties in Bangalore and Pune" }),
+    ).toBeTruthy()
+    // the API only ever sees known codes: no call carried the raw names
+    expect(resultCalls().map((c) => c.city)).toEqual(resultCalls().map(() => "BLR,PNQ"))
+  })
+
+  it("searches every city when the link names no known city", async () => {
+    renderAt("/search?city=goa")
+
+    expect(await screen.findByRole("heading", { name: "12 properties" })).toBeTruthy()
+    expect(resultCalls().at(-1)).toMatchObject({ city: undefined })
   })
 
   it("says so when nothing matches the filters", async () => {

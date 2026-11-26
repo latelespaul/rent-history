@@ -1,8 +1,8 @@
 import type { PropertySearch } from "@/api/properties"
-import type { PropertyType } from "@/types/api"
+import type { City, PropertyType } from "@/types/api"
 
 /**
- * The search page keeps every filter in the URL (`/search?city=BLR&type=APARTMENT&page=2`), so a
+ * The search page keeps every filter in the URL (`/search?city=BLR,PNQ&type=APARTMENT&page=2`), so a
  * result list can be shared, reloaded and walked back with the browser. These helpers are the
  * only translation between the URL and the `GET /properties` query.
  */
@@ -75,6 +75,47 @@ function ratingParam(value: string | null): number | undefined {
   return n >= 1 && n <= 5 ? n : undefined
 }
 
+/** How many cities one search may name; the API ignores any beyond the same bound. */
+export const MAX_CITIES = 20
+
+/**
+ * The cities a `city=` value names (captain 2026-11-27): comma-separated, so `?city=BLR,PNQ` finds
+ * homes in either; blanks and repeats are dropped, at most `MAX_CITIES`. Empty means every city.
+ */
+export function cityTokens(value: string | null | undefined): string[] {
+  const seen = new Set<string>()
+  for (const raw of (value ?? "").split(",")) {
+    const token = raw.trim().slice(0, 40)
+    if (token && !seen.has(token.toUpperCase())) seen.add(token.toUpperCase())
+  }
+  return [...seen].slice(0, MAX_CITIES)
+}
+
+/**
+ * The known city codes among `tokens`, in their order. A token is a city's code, name or alias in
+ * any case (`bangalore`, `Bengaluru` and `BLR` are one city); an unknown token is ignored, never an error.
+ */
+export function knownCities(tokens: string[], cities: City[]): string[] {
+  const codes: string[] = []
+  for (const token of tokens) {
+    const t = token.toLocaleLowerCase()
+    const city = cities.find(
+      (c) =>
+        c.code.toLowerCase() === t ||
+        c.name.toLocaleLowerCase() === t ||
+        c.aliases.some((alias) => alias.toLocaleLowerCase() === t),
+    )
+    if (city && !codes.includes(city.code)) codes.push(city.code)
+  }
+  return codes
+}
+
+/** The URL's query string with its commas left readable (`?city=BLR,PNQ`, not `BLR%2CPNQ`). */
+export function searchString(params: URLSearchParams): string {
+  const text = params.toString().replace(/%2C/gi, ",")
+  return text ? `?${text}` : ""
+}
+
 function textParam(value: string | null): string | undefined {
   const t = value?.trim()
   return t ? t.slice(0, 100) : undefined
@@ -90,7 +131,8 @@ export function searchFromParams(params: URLSearchParams): PropertySearch {
   const sort = params.get("sort")
   const page = intParam(params.get("page"), 1, 10_000)
   return {
-    city: textParam(params.get("city"))?.toUpperCase(),
+    // the city tokens as typed; the page keeps only known cities (`knownCities`) before it searches
+    city: cityTokens(params.get("city")).join(",") || undefined,
     locality: textParam(params.get("locality")),
     // a picked society (D-167): only an id-shaped value is ever sent
     society: /^[0-9a-f-]{36}$/i.test(params.get("society") ?? "")
