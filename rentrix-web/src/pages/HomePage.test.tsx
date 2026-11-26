@@ -6,7 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { PropertySearch } from "@/api/properties"
 import type { AuthState } from "@/features/auth/authContext"
 import { fetchCities } from "@/api/cities"
-import { LAUNCH_CITIES } from "@/test/cities"
+import { LAUNCH_CITIES, NINE_CITIES } from "@/test/cities"
 import { card, page } from "@/test/properties"
 import { makeUser } from "@/test/users"
 import HomePage from "./HomePage"
@@ -123,48 +123,39 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(texts("summary", region("faq"))).toHaveLength(5)
   })
 
-  it("shows how it works as three titled steps with chips, no body text", () => {
+  it("shows how it works as three steps of an icon and a short label, no body text", () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
     const how = region("how")
     expect(texts("ol > li h3", how)).toEqual([
       "Sign in with Google",
-      "Verify once, add your home",
-      "Rate each other",
+      "Verify once",
+      "Rate your rental",
     ])
-    expect(how.querySelectorAll("ol p")).toHaveLength(0)
-    expect(texts('ul[aria-label="Pick a side"] li', how)).toEqual(["Tenant", "Landlord", "Both"])
-    expect(texts('ul[aria-label="Verify with any one"] li', how)).toEqual([
-      "Phone",
-      "Aadhaar",
-      "LinkedIn",
-    ])
+    // one short line per step (captain 2026-11-26): 3-5 words, no chips, no body text
+    for (const title of texts("ol > li h3", how))
+      expect(title.split(" ").length).toBeLessThanOrEqual(5)
+    expect(how.querySelectorAll("ol p, ol ul")).toHaveLength(0)
     for (const svg of how.querySelectorAll("ol svg"))
       expect(svg.closest("[aria-hidden=true]")).not.toBeNull()
     // searching needs no account (captain 2026-11-25): one line under the steps says so
     expect(texts("p", how)).toEqual(["Search and read reviews with no account."])
   })
 
-  it("shows each side as four icon tiles, one side at a time on the I rent / I own toggle", () => {
+  it("shows each side as three icon rows, one side at a time on the I rent / I own toggle", () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
     const audience = region("audience")
     const tiles = (id: string) => texts(`#${id} li`, audience)
-    expect(tiles("for-tenants")).toEqual([
-      "Check the landlord",
-      "Know the home",
-      "See real rents",
-      "Build your record",
-    ])
+    expect(tiles("for-tenants")).toEqual(["Check the landlord", "Know the home", "See real rents"])
     expect(tiles("for-landlords")).toEqual([
       "Check a tenant",
       "List your homes",
-      "Reply to reviews",
       "Earn the green tick",
     ])
-    expect(audience.querySelectorAll("li svg[aria-hidden=true]")).toHaveLength(8)
+    expect(audience.querySelectorAll("li svg[aria-hidden=true]")).toHaveLength(6)
     expect(audience.querySelectorAll("p")).toHaveLength(0)
     expect(
       [...audience.querySelectorAll("article a")].map((a) => [
@@ -247,7 +238,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
     ).toHaveProperty("pathname", "/login")
   })
 
-  it("shows the live cities from GET /cities as chips in the hero", async () => {
+  it("shows the live cities from GET /cities as a short Live in line in the hero", async () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
@@ -256,6 +247,20 @@ describe("HomePage", { timeout: 20_000 }, () => {
         expect(
           texts('section[aria-labelledby=hero-title] ul[aria-label="Live cities"] li'),
         ).toEqual(["Bangalore", "Pune", "+ More soon"]),
+      { timeout: 10_000 },
+    )
+  })
+
+  it("names only two cities in the hero and counts the rest (captain 2026-11-26)", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    vi.mocked(fetchCities).mockResolvedValueOnce(NINE_CITIES)
+    renderHome()
+
+    await waitFor(
+      () =>
+        expect(
+          texts('section[aria-labelledby=hero-title] ul[aria-label="Live cities"] li'),
+        ).toEqual(["Ahmedabad", "Bangalore", "+7 more"]),
       { timeout: 10_000 },
     )
   })

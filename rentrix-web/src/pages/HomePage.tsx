@@ -7,22 +7,18 @@ import { VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ArrowRightIcon,
+  BadgeCheckIcon,
   BuildingIcon,
   CheckIcon,
   ChevronDownIcon,
   DocumentXIcon,
   HomeIcon,
-  IdCardIcon,
   InfoIcon,
-  KeyIcon,
   LandlordIcon,
   LinkIcon,
   LockIcon,
   LoginIcon,
-  MapPinIcon,
   MessageIcon,
-  PhoneIcon,
-  ReplyIcon,
   RupeeIcon,
   SearchIcon,
   ShieldCheckIcon,
@@ -30,8 +26,6 @@ import {
   TenancyIcon,
   TenantIcon,
   TrendUpIcon,
-  UserIcon,
-  UsersIcon,
 } from "@/components/ui/icons.gen"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/auth/authContext"
@@ -74,12 +68,12 @@ function Section({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className={cn("scroll-mt-16 py-16 lg:py-26", className)}
+      className={cn("scroll-mt-16 py-20 lg:py-32", className)}
     >
       <Container className="lg:px-8">
         <div
           className={cn(
-            "mb-8 flex flex-col gap-3 lg:mb-12",
+            "mb-10 flex flex-col gap-3 lg:mb-16",
             center && "lg:items-center lg:text-center",
           )}
         >
@@ -95,39 +89,39 @@ function Section({
   )
 }
 
+/** How many city chips the hero names before it shows "+N more" (captain 2026-11-26). */
+const HERO_CITY_CHIPS = 2
+
 /**
- * The live cities from `GET /cities` (D-85) as a row of chips after a "Live" dot, plus "More soon";
- * nothing until a non-empty list loads. The row scrolls sideways on a phone when it is long, so it
- * takes keyboard focus too.
+ * A short "Live in" line from `GET /cities` (D-85): the first two cities as chips, then "+N more"
+ * (or "+ More soon" when there are no more); nothing until a non-empty list loads. The full list
+ * is the coverage section further down, so the first screen stays open (captain 2026-11-26).
  */
 function CityChips() {
   const cities = useCities()
   if (!cities.isSuccess || cities.data.length === 0) return null
+  const names = chipNames(cities.data)
+  const more = names.length - HERO_CITY_CHIPS
   return (
-    <div className="flex items-center gap-2.5 lg:items-start">
+    <div className="flex items-center gap-2">
       <span className="inline-flex h-8 shrink-0 items-center gap-2 text-[13px] font-semibold text-ink-700">
         <span
           aria-hidden
           className="size-2 rounded-full bg-success-600 shadow-[0_0_0_4px_var(--rx-success-100)]"
         />
-        Live
+        Live in
       </span>
-      <ul
-        aria-label="Live cities"
-        tabIndex={0}
-        className="-my-1 flex min-w-0 snap-x [scrollbar-width:none] gap-2 overflow-x-auto py-1 lg:flex-wrap"
-      >
-        {chipNames(cities.data).map((name) => (
+      <ul aria-label="Live cities" className="flex min-w-0 flex-wrap gap-1.5">
+        {names.slice(0, HERO_CITY_CHIPS).map((name) => (
           <li
             key={name}
-            className="inline-flex h-8 shrink-0 snap-start items-center gap-1 rounded-full border border-line bg-surface pr-3 pl-2 text-[13px] font-semibold text-ink-900 shadow-sm"
+            className="inline-flex h-8 shrink-0 items-center rounded-full border border-line bg-surface px-3 text-[13px] font-semibold text-ink-900 shadow-sm"
           >
-            <MapPinIcon size={15} className="text-teal-600" />
             {name}
           </li>
         ))}
-        <li className="inline-flex h-8 shrink-0 snap-start items-center rounded-full border border-dashed border-line-strong px-3 text-[13px] font-semibold text-ink-700">
-          + More soon
+        <li className="inline-flex h-8 shrink-0 items-center rounded-full border border-dashed border-line-strong px-3 text-[13px] font-semibold text-ink-700">
+          {more > 0 ? `+${more} more` : "+ More soon"}
         </li>
       </ul>
     </div>
@@ -214,58 +208,14 @@ const PROBLEMS = [
   },
 ]
 
-/** A small label chip under a step: an icon in its colour, then a word in ink (contrast AA). */
-function Chip({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
-  return (
-    <li className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface pr-3 pl-2.5 text-[13px] font-semibold text-ink-900">
-      {icon}
-      {children}
-    </li>
-  )
-}
-
-/** Three steps, each a title and one row of chips or stars in place of body text. */
+/** Three steps, each an icon and a label of 3-5 words, one line max (captain 2026-11-26). */
 const STEPS = [
-  {
-    icon: <LoginIcon size={26} />,
-    title: "Sign in with Google",
-    extra: (
-      <ul aria-label="Pick a side" className="flex flex-wrap gap-2">
-        <Chip icon={<TenantIcon size={16} className="text-tenant-600" />}>Tenant</Chip>
-        <Chip icon={<LandlordIcon size={16} className="text-landlord-600" />}>Landlord</Chip>
-        <Chip icon={<UsersIcon size={16} className="text-teal-600" />}>Both</Chip>
-      </ul>
-    ),
-  },
-  {
-    icon: <KeyIcon size={26} />,
-    title: "Verify once, add your home",
-    extra: (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold tracking-[0.06em] text-teal-700 uppercase">Any one</span>
-        <ul aria-label="Verify with any one" className="flex flex-wrap gap-2">
-          <Chip icon={<PhoneIcon size={16} className="text-teal-600" />}>Phone</Chip>
-          <Chip icon={<IdCardIcon size={16} className="text-teal-600" />}>Aadhaar</Chip>
-          <Chip icon={<LinkIcon size={16} className="text-teal-600" />}>LinkedIn</Chip>
-        </ul>
-      </div>
-    ),
-  },
-  {
-    icon: <StarIcon size={26} />,
-    title: "Rate each other",
-    // decorative: the step title says it, so the stars carry no number (DESIGN.md §4.5)
-    extra: (
-      <span aria-hidden className="inline-flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <StarIcon key={n} size={22} className="fill-marigold-500 text-marigold-500" />
-        ))}
-      </span>
-    ),
-  },
+  { icon: <LoginIcon size={26} />, title: "Sign in with Google" },
+  { icon: <BadgeCheckIcon size={26} />, title: "Verify once" },
+  { icon: <StarIcon size={26} />, title: "Rate your rental" },
 ]
 
-/** One card per side: a 2x2 grid of icon tiles, a few words each, and one link. */
+/** One card per side: three one-line icon rows, a few words each, and one link (captain 2026-11-26). */
 const AUDIENCES = [
   {
     id: "for-tenants",
@@ -277,7 +227,6 @@ const AUDIENCES = [
       [LandlordIcon, "Check the landlord"],
       [HomeIcon, "Know the home"],
       [RupeeIcon, "See real rents"],
-      [UserIcon, "Build your record"],
     ],
     link: { to: "/search", label: "Search homes" },
   },
@@ -290,7 +239,6 @@ const AUDIENCES = [
     tiles: [
       [TenantIcon, "Check a tenant"],
       [BuildingIcon, "List your homes"],
-      [ReplyIcon, "Reply to reviews"],
       [ShieldCheckIcon, "Earn the green tick"],
     ],
     link: { to: "/login", label: "List your home" },
@@ -402,10 +350,10 @@ export default function HomePage() {
       <main className="flex-1">
         <section
           aria-labelledby="hero-title"
-          className="relative overflow-hidden bg-[radial-gradient(900px_500px_at_85%_10%,var(--rx-teal-100),transparent_60%),radial-gradient(600px_400px_at_0%_100%,var(--rx-marigold-100),transparent_60%)] pt-10 pb-14 lg:pt-22 lg:pb-26"
+          className="relative overflow-hidden bg-[radial-gradient(900px_500px_at_85%_10%,var(--rx-teal-100),transparent_60%),radial-gradient(600px_400px_at_0%_100%,var(--rx-marigold-100),transparent_60%)] pt-12 pb-16 lg:pt-26 lg:pb-32"
         >
-          <Container className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-14 lg:px-8">
-            <div className="flex flex-col gap-4 motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in motion-safe:slide-in-from-bottom-2 max-lg:min-w-0 lg:gap-5">
+          <Container className="grid items-center gap-14 lg:grid-cols-[1.08fr_0.92fr] lg:gap-20 lg:px-8">
+            <div className="flex flex-col gap-6 motion-safe:animate-in motion-safe:duration-200 motion-safe:fade-in motion-safe:slide-in-from-bottom-2 max-lg:min-w-0 lg:gap-7">
               <CityChips />
               <h1
                 id="hero-title"
@@ -477,32 +425,30 @@ export default function HomePage() {
           center
           className="border-y border-line bg-sunk"
         >
-          <ol className="grid gap-7 lg:grid-cols-3 lg:gap-10">
+          <ol className="grid gap-8 lg:grid-cols-3 lg:gap-12">
             {STEPS.map((step, i) => (
               <li
                 key={step.title}
                 className={cn(
-                  "relative grid grid-cols-[56px_1fr] gap-4 lg:grid-cols-1",
+                  "relative flex items-center gap-5 lg:flex-col lg:gap-4",
                   i < STEPS.length - 1 &&
-                    "before:absolute before:top-[60px] before:-bottom-7 before:left-[27px] before:border-l-2 before:border-dashed before:border-line-strong lg:before:top-7 lg:before:-right-10 lg:before:bottom-auto lg:before:left-16 lg:before:border-t-2 lg:before:border-l-0",
+                    "before:absolute before:top-[60px] before:-bottom-8 before:left-[27px] before:border-l-2 before:border-dashed before:border-line-strong lg:before:top-7 lg:before:right-[calc(-50%-12px)] lg:before:bottom-auto lg:before:left-[calc(50%+36px)] lg:before:border-t-2 lg:before:border-l-0",
                 )}
               >
-                <span className="relative z-[1] grid size-14 place-items-center rounded-[18px] bg-teal-600 text-white shadow-[0_8px_18px_rgb(15_118_110/0.25)]">
+                <span className="relative z-[1] grid size-14 shrink-0 place-items-center rounded-[18px] bg-teal-600 text-white shadow-[0_8px_18px_rgb(15_118_110/0.25)]">
                   {step.icon}
-                </span>
-                <div>
-                  <span className="text-xs font-bold tracking-[0.08em] text-teal-700 uppercase">
-                    Step {i + 1}
+                  <span
+                    aria-hidden
+                    className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full border-2 border-sunk bg-ink-900 text-xs font-bold text-white"
+                  >
+                    {i + 1}
                   </span>
-                  <h3 className="mt-0.5 mb-2.5 text-[19px] font-semibold text-ink-900">
-                    {step.title}
-                  </h3>
-                  {step.extra}
-                </div>
+                </span>
+                <h3 className="text-[19px] font-semibold text-ink-900">{step.title}</h3>
               </li>
             ))}
           </ol>
-          <p className="mt-8 inline-flex items-center gap-2 rounded-full bg-surface py-2 pr-4 pl-3 text-sm font-semibold text-ink-900 lg:mt-10">
+          <p className="mt-10 inline-flex items-center gap-2 rounded-full bg-surface py-2 pr-4 pl-3 text-sm font-semibold text-ink-900 lg:mx-auto lg:mt-14 lg:flex lg:w-fit">
             <SearchIcon size={18} className="text-teal-600" />
             Search and read reviews with no account.
           </p>
@@ -518,7 +464,7 @@ export default function HomePage() {
           <Tabs defaultValue="tenant">
             <TabsList
               aria-label="Choose your side"
-              className="mb-5 w-full max-w-sm self-center lg:hidden"
+              className="mb-6 w-full max-w-sm self-center lg:hidden"
             >
               {AUDIENCES.map(({ side, tab, icon: Icon }) => (
                 <TabsTrigger
@@ -535,7 +481,7 @@ export default function HomePage() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <div className="grid gap-5 lg:grid-cols-2 lg:gap-7">
+            <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2 lg:gap-8">
               {AUDIENCES.map((a) => {
                 const tenant = a.side === "tenant"
                 const tint = tenant
@@ -574,11 +520,11 @@ export default function HomePage() {
                           {a.title}
                         </h3>
                       </div>
-                      <ul className="grid grid-cols-2 gap-3 p-5 lg:p-6">
+                      <ul className="grid gap-3 p-5 lg:p-7">
                         {a.tiles.map(([Icon, label]) => (
                           <li
                             key={label}
-                            className="flex flex-col items-start gap-2.5 rounded-2xl border border-line bg-paper p-3.5"
+                            className="flex items-center gap-3.5 rounded-2xl border border-line bg-paper px-4 py-3"
                           >
                             <span
                               className={cn("grid size-10 place-items-center rounded-full", tint)}
