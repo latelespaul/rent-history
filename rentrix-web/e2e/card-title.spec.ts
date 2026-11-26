@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, request, test, type Locator, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, daysAgo } from "./support"
+import { apiBaseUrl, daysAgo, uniqueTag } from "./support"
 
 /**
  * Home card title line (captain 2026-11-25, D-165): every home card, in search results and on the
@@ -71,7 +71,7 @@ async function addOpenFlat(page: Page, society: string, key: string) {
 }
 
 test("home cards lead with society, tower and an open flat number", async ({ page }, testInfo) => {
-  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  const tag = uniqueTag(testInfo.project.name)
   const society = `Lakeview ${tag}`
   await page.goto("/")
   await addOpenFlat(page, society, `card${tag}`)

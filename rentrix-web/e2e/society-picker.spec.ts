@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { expect, request, test, type Page, type TestInfo } from "@playwright/test"
-import { apiBaseUrl, daysAgo } from "./support"
+import { apiBaseUrl, daysAgo, uniqueTag } from "./support"
 
 /**
  * Two-step search box (captain 2026-11-25, D-167): typing a society's name, with a typo, suggests
@@ -70,7 +70,7 @@ async function addFlat(page: Page, key: string, society: string, tower: string, 
 
 test("pick a society, then its flat number", async ({ page }, testInfo) => {
   test.setTimeout(testInfo.timeout * 2)
-  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  const tag = uniqueTag(testInfo.project.name)
   const society = `Lakeview ${tag}`
   await page.goto("/")
   await addFlat(page, `pa${tag}`, society, "Tower B", "1204")

@@ -89,6 +89,18 @@ export function daysAgo(days: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/**
+ * A made-up name tag for one project and run, e.g. "mqhzkdwpa". The letters are random, not a
+ * timestamp: search forgives typos, so two tags made seconds apart ("mmwxgthx7", "mmwxgtlcx")
+ * matched each other's societies across specs.
+ */
+export function uniqueTag(projectName: string): string {
+  const letters = Array.from({ length: 8 }, () =>
+    String.fromCharCode(97 + Math.floor(Math.random() * 26)),
+  ).join("")
+  return `${projectName.slice(0, 1)}${letters}`
+}
+
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }

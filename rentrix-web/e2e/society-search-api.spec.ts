@@ -1,5 +1,5 @@
 import { expect, request, test, type APIRequestContext } from "@playwright/test"
-import { apiBaseUrl, daysAgo } from "./support"
+import { apiBaseUrl, daysAgo, uniqueTag } from "./support"
 
 /**
  * Society-aware search, API slice (captain 2026-11-25, D-164): a tenant adds a home in a new
@@ -36,8 +36,8 @@ test("a society is suggested with a typo and a flat is found by society + flat n
 }, testInfo) => {
   await page.goto("/")
   const base = await apiBaseUrl(page)
-  // One made-up society per project and run, so desktop and mobile and reruns never meet.
-  const tag = `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36)}`
+  // One made-up society per project and run, so specs, projects and reruns never meet.
+  const tag = uniqueTag(testInfo.project.name)
   const society = `Lakeview ${tag}`
 
   const user = await request.newContext()
