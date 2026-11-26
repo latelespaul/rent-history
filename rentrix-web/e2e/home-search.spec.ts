@@ -61,8 +61,8 @@ test("the signed-out home page has the search box in the first screen", async ({
   expect(fits, "no horizontal scroll").toBe(true)
   await shot(page, testInfo, "home-signed-out")
 
-  // step 1 says search needs no account
-  await expect(page.locator("#how")).toContainText("needs no account")
+  // the line under the steps says search needs no account
+  await expect(page.locator("#how")).toContainText("Search and read reviews with no account.")
   await expect(page.locator("#how")).not.toContainText("That is all it takes to search")
 
   await form.getByRole("combobox").fill("Koramangala")

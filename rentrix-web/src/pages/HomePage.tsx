@@ -7,9 +7,12 @@ import { VerifiedBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   ArrowRightIcon,
+  BuildingIcon,
   CheckIcon,
   ChevronDownIcon,
   DocumentXIcon,
+  HomeIcon,
+  IdCardIcon,
   InfoIcon,
   KeyIcon,
   LandlordIcon,
@@ -18,12 +21,19 @@ import {
   LoginIcon,
   MapPinIcon,
   MessageIcon,
+  PhoneIcon,
+  ReplyIcon,
+  RupeeIcon,
+  SearchIcon,
   ShieldCheckIcon,
   StarIcon,
   TenancyIcon,
   TenantIcon,
   TrendUpIcon,
+  UserIcon,
+  UsersIcon,
 } from "@/components/ui/icons.gen"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/auth/authContext"
 import { AuthPending } from "@/features/auth/RequireAuth"
 import { chipNames } from "@/features/city/cityText"
@@ -204,56 +214,84 @@ const PROBLEMS = [
   },
 ]
 
+/** A small label chip under a step: an icon in its colour, then a word in ink (contrast AA). */
+function Chip({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+  return (
+    <li className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface pr-3 pl-2.5 text-[13px] font-semibold text-ink-900">
+      {icon}
+      {children}
+    </li>
+  )
+}
+
+/** Three steps, each a title and one row of chips or stars in place of body text. */
 const STEPS = [
   {
     icon: <LoginIcon size={26} />,
     title: "Sign in with Google",
-    text: "Searching homes and reading reviews needs no account. Sign in and pick your side (tenant, landlord or both) to add your own.",
+    extra: (
+      <ul aria-label="Pick a side" className="flex flex-wrap gap-2">
+        <Chip icon={<TenantIcon size={16} className="text-tenant-600" />}>Tenant</Chip>
+        <Chip icon={<LandlordIcon size={16} className="text-landlord-600" />}>Landlord</Chip>
+        <Chip icon={<UsersIcon size={16} className="text-teal-600" />}>Both</Chip>
+      </ul>
+    ),
   },
   {
     icon: <KeyIcon size={26} />,
-    title: "Verify once, add your rental",
-    text: "Verify with any one: phone, Aadhaar or LinkedIn. Then add the home you rent or rent out.",
+    title: "Verify once, add your home",
+    extra: (
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold tracking-[0.06em] text-teal-700 uppercase">Any one</span>
+        <ul aria-label="Verify with any one" className="flex flex-wrap gap-2">
+          <Chip icon={<PhoneIcon size={16} className="text-teal-600" />}>Phone</Chip>
+          <Chip icon={<IdCardIcon size={16} className="text-teal-600" />}>Aadhaar</Chip>
+          <Chip icon={<LinkIcon size={16} className="text-teal-600" />}>LinkedIn</Chip>
+        </ul>
+      </div>
+    ),
   },
   {
     icon: <StarIcon size={26} />,
     title: "Rate each other",
-    text: "Tenants rate the home and the landlord; landlords rate the tenant. The next person reads it before they sign.",
+    // decorative: the step title says it, so the stars carry no number (DESIGN.md §4.5)
+    extra: (
+      <span aria-hidden className="inline-flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <StarIcon key={n} size={22} className="fill-marigold-500 text-marigold-500" />
+        ))}
+      </span>
+    ),
   },
 ]
 
+/** One card per side: a 2x2 grid of icon tiles, a few words each, and one link. */
 const AUDIENCES = [
   {
     id: "for-tenants",
     side: "tenant",
-    icon: <TenantIcon size={26} />,
+    tab: "I rent",
+    icon: TenantIcon,
     title: "For tenants",
-    sub: "Rent with your eyes open.",
-    benefits: [
-      ["Check the landlord first", "How they handled the deposit, repairs and rent rises."],
-      [
-        "Know the home",
-        "Upkeep, water, power, noise and the society, from people who lived there.",
-      ],
-      ["See real rents", "What past tenants paid, where both sides chose to share it."],
-      ["Build your renter record", "Share good ratings from past landlords with the next one."],
+    tiles: [
+      [LandlordIcon, "Check the landlord"],
+      [HomeIcon, "Know the home"],
+      [RupeeIcon, "See real rents"],
+      [UserIcon, "Build your record"],
     ],
     link: { to: "/search", label: "Search homes" },
   },
   {
     id: "for-landlords",
     side: "landlord",
-    icon: <LandlordIcon size={26} />,
+    tab: "I own",
+    icon: LandlordIcon,
     title: "For landlords",
-    sub: "Hand over the keys with confidence.",
-    benefits: [
-      [
-        "Check a tenant before move-in",
-        "See how past landlords rated them when they share their record or enquire.",
-      ],
-      ["List your homes", "Add each home you rent out, with its details, in a few minutes."],
-      ["Answer reviews in public", "Reply once, under any review of you or your home."],
-      ["Earn the green tick", "Our team checks your homes and tenancies; checked ones carry it."],
+    tiles: [
+      [TenantIcon, "Check a tenant"],
+      [BuildingIcon, "List your homes"],
+      [ReplyIcon, "Reply to reviews"],
+      [ShieldCheckIcon, "Earn the green tick"],
     ],
     link: { to: "/login", label: "List your home" },
   },
@@ -456,14 +494,18 @@ export default function HomePage() {
                   <span className="text-xs font-bold tracking-[0.08em] text-teal-700 uppercase">
                     Step {i + 1}
                   </span>
-                  <h3 className="mt-0.5 mb-1.5 text-[19px] font-semibold text-ink-900">
+                  <h3 className="mt-0.5 mb-2.5 text-[19px] font-semibold text-ink-900">
                     {step.title}
                   </h3>
-                  <p className="text-[15px] text-ink-700">{step.text}</p>
+                  {step.extra}
                 </div>
               </li>
             ))}
           </ol>
+          <p className="mt-8 inline-flex items-center gap-2 rounded-full bg-surface py-2 pr-4 pl-3 text-sm font-semibold text-ink-900 lg:mt-10">
+            <SearchIcon size={18} className="text-teal-600" />
+            Search and read reviews with no account.
+          </p>
         </Section>
 
         <Section
@@ -472,78 +514,101 @@ export default function HomePage() {
           title="One place, two points of view."
           center
         >
-          <div className="grid gap-5 lg:grid-cols-2 lg:gap-7">
-            {AUDIENCES.map((a) => {
-              const tenant = a.side === "tenant"
-              return (
-                <article
-                  key={a.id}
-                  id={a.id}
-                  aria-labelledby={`${a.id}-title`}
-                  className="flex scroll-mt-20 flex-col overflow-hidden rounded-3xl border border-line bg-surface"
+          {/* On a phone a segmented "I rent / I own" toggle shows one card; from 1024 px both show. */}
+          <Tabs defaultValue="tenant">
+            <TabsList
+              aria-label="Choose your side"
+              className="mb-5 w-full max-w-sm self-center lg:hidden"
+            >
+              {AUDIENCES.map(({ side, tab, icon: Icon }) => (
+                <TabsTrigger
+                  key={side}
+                  value={side}
+                  className={
+                    side === "tenant"
+                      ? "data-[state=active]:text-tenant-600"
+                      : "data-[state=active]:text-landlord-600"
+                  }
                 >
-                  <div
-                    className={cn(
-                      "flex items-center gap-4 p-6",
-                      tenant ? "bg-tenant-100" : "bg-landlord-100",
-                    )}
+                  <Icon size={20} />
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <div className="grid gap-5 lg:grid-cols-2 lg:gap-7">
+              {AUDIENCES.map((a) => {
+                const tenant = a.side === "tenant"
+                const tint = tenant
+                  ? "bg-tenant-100 text-tenant-600"
+                  : "bg-landlord-100 text-landlord-600"
+                return (
+                  <TabsContent
+                    key={a.id}
+                    value={a.side}
+                    forceMount
+                    className="data-[state=inactive]:max-lg:hidden"
                   >
-                    <span
-                      className={cn(
-                        "grid size-13 place-items-center rounded-[14px] bg-white",
-                        tenant ? "text-tenant-600" : "text-landlord-600",
-                      )}
+                    <article
+                      id={a.id}
+                      aria-labelledby={`${a.id}-title`}
+                      className="flex h-full scroll-mt-20 flex-col overflow-hidden rounded-3xl border border-line bg-surface"
                     >
-                      {a.icon}
-                    </span>
-                    <div>
-                      <h3
-                        id={`${a.id}-title`}
-                        className="font-display text-2xl leading-tight font-semibold text-ink-900"
+                      <div
+                        className={cn(
+                          "flex items-center gap-4 p-5 lg:p-6",
+                          tenant ? "bg-tenant-100" : "bg-landlord-100",
+                        )}
                       >
-                        {a.title}
-                      </h3>
-                      <p className="text-sm text-ink-700">{a.sub}</p>
-                    </div>
-                  </div>
-                  <ul className="grid gap-3.5 px-6 pt-5 pb-2">
-                    {a.benefits.map(([title, text]) => (
-                      <li
-                        key={title}
-                        className="grid grid-cols-[24px_1fr] gap-2.5 text-[15px] text-ink-700"
-                      >
-                        <CheckIcon
-                          size={22}
+                        <span
                           className={cn(
-                            "rounded-full p-[3px]",
-                            tenant
-                              ? "bg-tenant-100 text-tenant-600"
-                              : "bg-landlord-100 text-landlord-600",
+                            "grid size-13 place-items-center rounded-[14px] bg-white",
+                            tenant ? "text-tenant-600" : "text-landlord-600",
                           )}
-                        />
-                        <span>
-                          <strong className="block font-semibold text-ink-900">{title}</strong>
-                          {text}
+                        >
+                          <a.icon size={26} />
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto px-6 pt-3 pb-6">
-                    <Link
-                      to={a.link.to}
-                      className={cn(
-                        "inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold",
-                        !tenant && "text-landlord-600",
-                      )}
-                    >
-                      {a.link.label}
-                      <ArrowRightIcon size={18} />
-                    </Link>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+                        <h3
+                          id={`${a.id}-title`}
+                          className="font-display text-2xl leading-tight font-semibold text-ink-900"
+                        >
+                          {a.title}
+                        </h3>
+                      </div>
+                      <ul className="grid grid-cols-2 gap-3 p-5 lg:p-6">
+                        {a.tiles.map(([Icon, label]) => (
+                          <li
+                            key={label}
+                            className="flex flex-col items-start gap-2.5 rounded-2xl border border-line bg-paper p-3.5"
+                          >
+                            <span
+                              className={cn("grid size-10 place-items-center rounded-full", tint)}
+                            >
+                              <Icon size={22} />
+                            </span>
+                            <span className="text-[15px] leading-snug font-semibold text-ink-900">
+                              {label}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-auto px-5 pb-5 lg:px-6 lg:pb-6">
+                        <Link
+                          to={a.link.to}
+                          className={cn(
+                            "inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold",
+                            !tenant && "text-landlord-600",
+                          )}
+                        >
+                          {a.link.label}
+                          <ArrowRightIcon size={18} />
+                        </Link>
+                      </div>
+                    </article>
+                  </TabsContent>
+                )
+              })}
+            </div>
+          </Tabs>
         </Section>
 
         <section
