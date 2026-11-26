@@ -197,7 +197,7 @@ function Added({ result }: { result: AddHomeResult }) {
           >
             Home added. {stepsLeftLabel(left)}
           </h2>
-          <NextSteps tenancy={tenancy} />
+          <NextSteps tenancy={tenancy} accent />
         </div>
       )}
       {tenancy?.reviewed && left === 0 && (

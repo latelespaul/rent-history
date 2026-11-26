@@ -753,6 +753,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
           {section === "check" ? (
             <Button
               type="submit"
+              variant="accent"
               size="lg"
               className="flex-1"
               disabled={submit.isPending}

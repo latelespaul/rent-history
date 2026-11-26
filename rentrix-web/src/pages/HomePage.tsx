@@ -387,7 +387,10 @@ export default function HomePage() {
                 ))}
               </ul>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <GoogleCta className="h-[52px] rounded-xl shadow-[0_6px_18px_rgb(15_118_110/0.25)]" />
+                <GoogleCta
+                  variant="accent"
+                  className="h-[52px] rounded-xl shadow-[0_6px_18px_rgb(201_138_12/0.3)]"
+                />
                 <Button
                   asChild
                   variant="ghost"

@@ -64,6 +64,11 @@
   --color-marigold-100: var(--rx-marigold-100);
   --color-marigold-500: var(--rx-marigold-500);
   --color-marigold-600: var(--rx-marigold-600);
+  --color-cta: var(--rx-cta);
+  --color-cta-hover: var(--rx-cta-hover);
+  --color-cta-foreground: var(--rx-cta-fg);
+  --color-cta-disabled: var(--rx-cta-disabled);
+  --color-cta-disabled-foreground: var(--rx-cta-disabled-fg);
   --color-tenant-100: var(--rx-tenant-100);
   --color-tenant-600: var(--rx-tenant-600);
   --color-landlord-100: var(--rx-landlord-100);
