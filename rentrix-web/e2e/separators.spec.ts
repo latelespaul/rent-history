@@ -68,7 +68,8 @@ test("a tenant's tenancy card and review row never start a line with a separator
   await expect(page).toHaveURL(/\/p\//)
 
   const review = page.getByTestId("property-review").first()
-  await expect(review.getByTestId("review-dates")).toHaveText(/^Published \w{3} \d{4}$/)
+  // A current stay's review: the year only, never the month (D-171).
+  await expect(review.getByTestId("review-dates")).toHaveText(/^Published \d{4}$/)
   expect(await leadingDots(review)).toEqual([])
 
   await page.goto("/me/tenancies")

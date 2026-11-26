@@ -58,14 +58,16 @@ describe("PropertyReviews", () => {
     expect(within(answered).getByRole("img", { name: "Rated 5 out of 5" })).toBeTruthy()
     expect(within(answered).getByText(/Well maintained building/)).toBeTruthy()
     expect(within(answered).getByTestId("review-dates").textContent).toBe("Published Jun 2024")
-    expect(within(answered).queryByTestId("review-long-stay")).toBeNull()
+    expect(within(answered).queryByTestId("review-stay-length")).toBeNull()
     expect(within(answered).getByText(/The water pump was replaced/)).toBeTruthy()
     expect(within(answered).queryByRole("button", { name: "Respond" })).toBeNull()
-    expect(within(open).getByTestId("review-long-stay").textContent).toBe("Stayed 1+ yr")
+    expect(within(open).getByTestId("review-stay-length").textContent).toBe("Stayed 2+ yrs")
+    // D-171: a current stay's review shows the year only, never the month.
+    expect(within(open).getByTestId("review-dates").textContent).toBe("Published 2024")
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
     // D-169: no stay dates and no year on any card the landlord sees.
     for (const item of items) {
-      expect(item.textContent).not.toMatch(/Stayed \w{3} \d{4}|Tenant, \d{4}/)
+      expect(item.textContent).not.toMatch(/Stayed \w{3} \d{4}|Tenant, \d{4}|\d{4} [–-] now/)
     }
   })
 

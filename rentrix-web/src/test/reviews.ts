@@ -32,6 +32,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
       },
     },
     publishedMonth: "2024-06",
+    publishedYear: 2024,
     response: {
       body: "Thank you for the feedback. The water pump was replaced after you moved out and the lift is now serviced every quarter.",
       authorLabel: "Owner",
@@ -56,7 +57,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     body: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
     author: {
       label: "Verified tenant",
-      longStay: true,
+      stayLength: "TWO_PLUS_YEARS",
       badges: {
         google: false,
         id: true,
@@ -71,7 +72,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
         name: "Bangalore",
       },
     },
-    publishedMonth: "2024-02",
+    publishedYear: 2024,
     actions: {
       edit: false,
       withdraw: false,

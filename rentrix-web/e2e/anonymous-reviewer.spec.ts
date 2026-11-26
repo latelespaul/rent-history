@@ -4,6 +4,8 @@ import { apiBaseUrl, devLogin } from "./support"
 /**
  * D-168 (captain 2026-11-25): no reviewer is shown by name to anyone but themselves and admins.
  * D-169 (captain 2026-11-26): nor by anything that tells the landlord which tenant wrote it.
+ * D-171 (captain 2026-11-26): the stay shows only as a coarse bucket, and a current stay's review
+ * shows the year it was published, never the month.
  * A signed-out visitor and another signed-in user read a seeded home with reviews: the page and
  * the API JSON the browser received carry no short name ("Demo T.") or seed name, no stay dates
  * and no exact times; the author line is "Verified tenant" or "Tenant" with no year, the owner is
@@ -25,11 +27,19 @@ const PRIVATE_FIELDS =
 interface ReviewJson {
   author?: {
     label?: string
-    longStay?: boolean
+    stayLength?: string
     shortName?: string
     badges?: Record<string, boolean | undefined>
   }
   publishedMonth?: string
+  publishedYear?: number
+}
+
+/** The stay buckets anyone may see (D-171), by API value. */
+const STAY_LENGTH: Record<string, string> = {
+  UNDER_ONE_YEAR: "Stayed < 1 yr",
+  ONE_TO_TWO_YEARS: "Stayed 1-2 yrs",
+  TWO_PLUS_YEARS: "Stayed 2+ yrs",
 }
 
 /** A published BLR seed home that lists reviews, from the public search API. */
@@ -88,10 +98,16 @@ async function expectAnonymous(page: Page, id: string) {
     const item = items.nth(i)
     expect(review.author?.label).toMatch(/^(Verified tenant|Tenant)$/)
     await expect(item.getByTestId("review-author")).toHaveText(review.author!.label!)
-    // No year on the card (D-169) but the month it was published: "Published Nov 2026".
-    await expect(item.getByTestId("review-long-stay")).toHaveCount(review.author?.longStay ? 1 : 0)
+    // No year on the card (D-169) but when it was published: "Published Nov 2026" for an ended
+    // stay, "Published 2026" for a current one (D-171); the stay only as a bucket.
+    const stay = review.author?.stayLength
+    if (stay) expect(Object.keys(STAY_LENGTH)).toContain(stay)
+    if (stay) await expect(item.getByTestId("review-stay-length")).toHaveText(STAY_LENGTH[stay])
+    else await expect(item.getByTestId("review-stay-length")).toHaveCount(0)
     await expect(item.getByTestId("review-author").locator("..")).not.toContainText(/\d{4}/)
-    const text = (await item.innerText()).replace(/Published \w{3} \d{4}/, "")
+    const published = review.publishedMonth ? /^Published \w{3} \d{4}/ : /^Published \d{4}/
+    if (review.publishedYear) await expect(item.getByTestId("review-dates")).toHaveText(published)
+    const text = (await item.innerText()).replace(/Published (\w{3} )?\d{4}/, "")
     expect(text, "no year on the card").not.toMatch(/\b(19|20)\d{2}\b/)
     const badges = review.author?.badges ?? {}
     await expect(item.getByTestId("badge-google")).toHaveCount(badges.google ? 1 : 0)

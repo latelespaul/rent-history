@@ -172,7 +172,7 @@ class ReviewApiTest {
 			.andExpect(header().exists("Location"))
 			.andExpect(jsonPath("$.status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.author.label").value("Verified tenant")) // never the year (D-169)
-			.andExpect(jsonPath("$.author.longStay").value(true)) // a year into the stay: "Stayed 1+ yr"
+			.andExpect(jsonPath("$.author.stayLength").value("ONE_TO_TWO_YEARS")) // a year in: "Stayed 1-2 yrs"
 			.andExpect(jsonPath("$.author.shortName").value("Tara T.")) // the author sees their own name (D-168)
 			.andExpect(jsonPath("$.author.id").doesNotExist())
 			.andExpect(jsonPath("$.author.badges.id").value(true)) // a verified phone is one of the methods
@@ -181,7 +181,9 @@ class ReviewApiTest {
 			// the author sees their own stay and times; others do not (D-169)
 			.andExpect(jsonPath("$.period.from").value(TODAY.minusYears(1).toString().substring(0, 7)))
 			.andExpect(jsonPath("$.publishedAt").exists())
-			.andExpect(jsonPath("$.publishedMonth").value(TODAY.toString().substring(0, 7)))
+			// a current stay's review: the year only, never the month (D-171)
+			.andExpect(jsonPath("$.publishedMonth").doesNotExist())
+			.andExpect(jsonPath("$.publishedYear").value(TODAY.getYear()))
 			.andExpect(jsonPath("$.property.unitLabel").doesNotExist());
 		assertThat(aggregate(RatingSubjectType.PROPERTY, tenancy.getProperty().getId()).getReviewCount()).isEqualTo(1);
 
@@ -527,6 +529,13 @@ class ReviewApiTest {
 	private static final String[] PRIVATE_KEYS = {"\"period\"", "\"submittedAt\"", "\"publishedAt\"",
 		"\"editedAt\"", "\"editUntil\"", "\"createdAt\"", "\"lastReviewAt\""};
 	
+	/** The only stay values anyone but the author and admins sees (D-171): buckets, never a month or a year. */
+	private static final java.util.Set<String> STAY_LENGTHS = java.util.Set.of("UNDER_ONE_YEAR", "ONE_TO_TWO_YEARS",
+		"TWO_PLUS_YEARS");
+
+	/** A month value ("2025-11"), which a current stay's review never carries (D-171); quoted, so no id matches. */
+	private static final java.util.regex.Pattern MONTH = java.util.regex.Pattern.compile("\"\\d{4}-\\d{2}\"");
+
 	/** A full date or an exact time ("2025-11-26", "2025-11-26T10:00:00Z"); a "2025-11" month is allowed. */
 	private static final java.util.regex.Pattern DAY_OR_TIME = java.util.regex.Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
 	
@@ -593,11 +602,16 @@ class ReviewApiTest {
 			}
 			String reviewsJson = json("/properties/" + propertyId + "/reviews", bearer);
 			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].author.label")).isEqualTo("Verified tenant");
-			assertThat(JsonPath.<Boolean>read(reviewsJson, "$.items[0].author.longStay")).isTrue();
+			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].author.stayLength")).isEqualTo("ONE_TO_TWO_YEARS");
+			// An ended stay's review keeps its month (D-171).
 			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].publishedMonth")).isEqualTo(month);
+			assertThat(JsonPath.<Integer>read(reviewsJson, "$.items[0].publishedYear")).isEqualTo(TODAY.getYear());
+			assertThat(JsonPath.<java.util.List<String>>read(reviewsJson, "$.items[*].author.stayLength"))
+				.allMatch(STAY_LENGTHS::contains);
 			assertThat(JsonPath.<Boolean>read(reviewsJson, "$.items[0].edited")).isTrue();
-			assertThat(JsonPath.<String>read(json("/properties/" + propertyId + "/rating", bearer),
-				"$.lastReviewMonth")).isEqualTo(month);
+			String rating = json("/properties/" + propertyId + "/rating", bearer);
+			assertThat(JsonPath.<Integer>read(rating, "$.lastReviewYear")).isEqualTo(TODAY.getYear());
+			assertThat(rating).doesNotContain("lastReviewMonth", month);
 		}
 		
 		// The search card carries no review date either.
@@ -623,6 +637,47 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.response.createdAt").exists());
 	}
 	
+	@Test
+	void aCurrentStaysReviewShowsNoMonthOrStayDateToANonAdmin() throws Exception {
+		User landlord = approved("Lata Landlord", Role.LANDLORD);
+		User tenant = approved("Tara Tenant", Role.TENANT);
+		User stranger = approved("Sam Stranger", Role.TENANT);
+		LocalDate start = TODAY.minusMonths(30).withDayOfMonth(5);
+		Tenancy tenancy = data.tenancy(home(landlord), tenant, start, null, TenancyStatus.ACTIVE);
+		String home = written(tenant, tenancy, ReviewDirection.TENANT_TO_PROPERTY, 4);
+		String aboutLandlord = written(tenant, tenancy, ReviewDirection.TENANT_TO_LANDLORD, 3);
+		written(landlord, tenancy, ReviewDirection.LANDLORD_TO_TENANT, 5); // reveals both (D-46)
+		String propertyId = tenancy.getProperty().getPublicId().toString();
+
+		// Signed out, another signed-in user, and the reviewed landlord himself.
+		String[] viewers = {null, support.bearer(stranger), support.bearer(landlord)};
+		for (String bearer : viewers) {
+			java.util.List<String> paths = new java.util.ArrayList<>(java.util.List.of(
+				"/properties/" + propertyId + "/reviews", "/properties/" + propertyId + "/rating"));
+			if (bearer != null) {
+				paths.addAll(java.util.List.of("/reviews/" + home, "/reviews/" + aboutLandlord,
+					"/users/" + landlord.getPublicId() + "/reviews"));
+			}
+			if (bearer != null && bearer.equals(viewers[2])) {
+				paths.add("/me/reviews/received?as=LANDLORD");
+			}
+			for (String path : paths) {
+				String json = json(path, bearer);
+				assertThat(json).as(path).doesNotContain(PRIVATE_KEYS).doesNotContain("publishedMonth",
+					"lastReviewMonth", String.valueOf(start), start.toString().substring(0, 7));
+				assertThat(MONTH.matcher(json).find()).as(path + " has a month: " + json).isFalse();
+			}
+			String reviewsJson = json("/properties/" + propertyId + "/reviews", bearer);
+			assertThat(JsonPath.<Integer>read(reviewsJson, "$.items[0].publishedYear")).isEqualTo(TODAY.getYear());
+			assertThat(JsonPath.<String>read(reviewsJson, "$.items[0].author.stayLength")).isEqualTo("TWO_PLUS_YEARS");
+		}
+		// The exact dates stay stored, and the author still sees their own stay.
+		assertThat(tenancies.findById(tenancy.getId()).orElseThrow().getStartDate()).isEqualTo(start);
+		mvc.perform(get("/me/reviews/written").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items[0].period.from").value(start.toString().substring(0, 7)))
+			.andExpect(jsonPath("$.items[0].publishedAt").exists());
+	}
+
 	@Test
 	void receivedListFollowsNeitherPostingOrderNorRating() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
@@ -655,7 +710,7 @@ class ReviewApiTest {
 	}
 
 	@Test
-	void aOneSidedStayIsPlainTenantAndAShortOneHasNoLongStayBadge() throws Exception {
+	void aOneSidedStayIsPlainTenantAndAShortOneIsUnderAYear() throws Exception {
 		User landlord = approved("Lata Landlord", Role.LANDLORD);
 		User tenant = approved("Tara Tenant", Role.TENANT);
 		Tenancy tenancy = ended(home(landlord), tenant, TODAY.minusMonths(8), TODAY.minusMonths(1));
@@ -665,7 +720,7 @@ class ReviewApiTest {
 		
 		String json = json("/properties/" + tenancy.getProperty().getPublicId() + "/reviews", null);
 		assertThat(JsonPath.<String>read(json, "$.items[0].author.label")).isEqualTo("Tenant");
-		assertThat(json).doesNotContain("longStay");
+		assertThat(JsonPath.<String>read(json, "$.items[0].author.stayLength")).isEqualTo("UNDER_ONE_YEAR");
 		// The landlord's confirmation makes it "Verified tenant".
 		tenancy.setConfirmedAt(Instant.now());
 		tenancies.saveAndFlush(tenancy);
