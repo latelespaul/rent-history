@@ -481,7 +481,7 @@ export default function HomePage() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2 lg:gap-8">
+            <div className="mx-auto grid w-full max-w-4xl gap-5 lg:grid-cols-2 lg:gap-8">
               {AUDIENCES.map((a) => {
                 const tenant = a.side === "tenant"
                 const tint = tenant
