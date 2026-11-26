@@ -9,7 +9,12 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import { rupees } from "@/features/property/labels"
 import { RentRecords } from "@/features/tenancy/RentRecords"
 import { TenancyActions } from "@/features/tenancy/TenancyActions"
-import { EditTenancyButton, MyReviewLink, TenancyFacts } from "@/features/tenancy/TenancyCard"
+import {
+  EditTenancyButton,
+  MyReviewLink,
+  ReviewTenantLink,
+  TenancyFacts,
+} from "@/features/tenancy/TenancyCard"
 import {
   counterparty,
   dateLabel,
@@ -206,6 +211,7 @@ export default function TenancyPage() {
           <StatusNote tenancy={tenancy} />
           <div className="flex flex-wrap items-center gap-2">
             <ReviewCta tenancy={tenancy} />
+            <ReviewTenantLink tenancy={tenancy} size="default" />
             <EditTenancyButton tenancy={tenancy} size="default" />
           </div>
           <TenancyActions tenancy={tenancy} />

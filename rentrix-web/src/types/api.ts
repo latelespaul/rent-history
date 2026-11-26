@@ -145,7 +145,10 @@ export type HomeCriterion =
   | "VALUE_FOR_RENT"
 export type LandlordCriterion =
   "RESPONSIVENESS" | "DEPOSIT_RETURN" | "TRANSPARENCY" | "PRIVACY" | "BEHAVIOUR"
-export type ReviewCriterion = HomeCriterion | LandlordCriterion
+/** The owner's questions about the tenant (landlord-adds-tenant LT-6). */
+export type TenantCriterion =
+  "RENT_ON_TIME" | "CARE_OF_HOME" | "COMMUNICATION" | "HOUSE_RULES" | "MOVE_OUT"
+export type ReviewCriterion = HomeCriterion | LandlordCriterion | TenantCriterion
 
 /** One parameter of a rating (D-158): `average` only from 3 ratings of it (D-52). */
 export interface CriterionRating {
@@ -329,15 +332,20 @@ export interface ReviewFormPart {
   cons?: string
 }
 
-/** `POST /tenancies/{id}/review-form`: the home and landlord reviews, saved together. */
+/**
+ * `POST /tenancies/{id}/review-form`: the tenant's home and landlord reviews, saved together, or
+ * the owner's review of the tenant (no pros or cons).
+ */
 export interface ReviewFormInput {
   home?: ReviewFormPart
   landlord?: ReviewFormPart
+  tenant?: ReviewFormPart
 }
 
 export interface ReviewFormResult {
   home?: PropertyReview
   landlord?: PropertyReview
+  tenant?: PropertyReview
 }
 
 /** `GET /me/review-tasks`: a review the caller can write now. */
@@ -345,7 +353,8 @@ export interface ReviewTask {
   tenancyId: string
   direction: "TENANT_TO_LANDLORD" | "LANDLORD_TO_TENANT" | "TENANT_TO_PROPERTY"
   property: { id: string; buildingName: string | null; locality: string; city: CityRef }
-  counterparty?: PartyRef
+  /** `id` is null for a tenancy with no linked tenant yet ("Your tenant"). */
+  counterparty?: { id: string | null; shortName: string }
   period: { from: string; to?: string }
   otherSideWaiting: boolean
 }

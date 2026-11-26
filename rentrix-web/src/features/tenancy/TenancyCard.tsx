@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { fetchReviewTasks, reviewKeys } from "@/api/reviews"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,6 +12,7 @@ import {
   RupeeIcon,
   StarIcon,
 } from "@/components/ui/icons.gen"
+import { useMode } from "@/features/mode/useMode"
 import { rupees } from "@/features/property/labels"
 import type { Tenancy } from "@/types/api"
 import { counterparty, dateLabel, rentLine, TENANCY_STATUS, tenancyHome } from "./labels"
@@ -81,6 +84,43 @@ export function MyReviewLink({
   )
 }
 
+/**
+ * "Review your tenant" for the owner, in Owner mode, while `GET /me/review-tasks` lists this
+ * tenancy's tenant review (window open, not written yet; landlord-adds-tenant S1).
+ */
+export function ReviewTenantLink({
+  tenancy,
+  size = "sm",
+}: {
+  tenancy: Tenancy
+  size?: "sm" | "default"
+}) {
+  if (tenancy.myRole !== "LANDLORD") return null
+  if (tenancy.status !== "ACTIVE" && tenancy.status !== "ENDED") return null
+  return <OwnerReviewTask tenancy={tenancy} size={size} />
+}
+
+function OwnerReviewTask({ tenancy, size }: { tenancy: Tenancy; size: "sm" | "default" }) {
+  const [mode] = useMode()
+  const tasks = useQuery({
+    queryKey: reviewKeys.tasks,
+    queryFn: ({ signal }) => fetchReviewTasks(signal),
+    enabled: mode === "OWNER",
+  })
+  const open = tasks.data?.some(
+    (t) => t.tenancyId === tenancy.id && t.direction === "LANDLORD_TO_TENANT",
+  )
+  if (mode !== "OWNER" || !open) return null
+  return (
+    <Button asChild size={size} data-testid="tenancy-review-tenant">
+      <Link to={`/tenancies/${tenancy.id}/review`}>
+        <StarIcon />
+        Review your tenant
+      </Link>
+    </Button>
+  )
+}
+
 /** One tenancy in a list (`/me/tenancies`, landlord dashboard), with the actions allowed now. */
 export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
   const status = TENANCY_STATUS[tenancy.status]
@@ -125,6 +165,7 @@ export function TenancyCard({ tenancy }: { tenancy: Tenancy }) {
         {/* Own line on a phone, so the buttons never squeeze the home's name and facts. */}
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <MyReviewLink tenancy={tenancy} />
+          <ReviewTenantLink tenancy={tenancy} />
           <EditTenancyButton tenancy={tenancy} />
           <Button asChild variant="outline" size="sm">
             <Link to={`/tenancies/${tenancy.id}`}>Open</Link>

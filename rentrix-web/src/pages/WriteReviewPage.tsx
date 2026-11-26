@@ -16,20 +16,25 @@ import {
   clearDraft,
   COMMENT_MAX,
   criterionLabel,
+  draftKey,
   emptyDraft,
   HOME_CRITERIA,
   LANDLORD_CRITERIA,
   loadDraft,
   missingOverall,
   overallOf,
+  partOf,
   PROS_CONS_MAX,
   saveDraft,
   sectionOfField,
   sectionsFor,
+  TENANT_CRITERIA,
   toRequest,
   workedOutOverall,
   type CriterionText,
+  type FormParts,
   type PartDraft,
+  type PartKey,
   type ReviewDraft,
   type Section,
 } from "@/features/review/form"
@@ -42,14 +47,14 @@ import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 import type { ReviewFormResult, ReviewTask, Tenancy } from "@/types/api"
 
-type Parts = { home: boolean; landlord: boolean }
-type PartKey = "home" | "landlord"
+type Parts = FormParts
 type Errors = Record<string, string>
 
 const SECTION_TITLES: Record<Section, string> = {
   stay: "Your stay",
   home: "The home",
   landlord: "The landlord",
+  tenant: "The tenant",
   overall: "Overall",
   check: "Check and submit",
 }
@@ -211,6 +216,18 @@ function OverallPicker({
   )
 }
 
+const PART_CRITERIA: Record<PartKey, CriterionText[]> = {
+  home: HOME_CRITERIA,
+  landlord: LANDLORD_CRITERIA,
+  tenant: TENANT_CRITERIA,
+}
+
+const SUMMARY_TITLES: Record<PartKey, (name: string) => string> = {
+  home: () => "The home",
+  landlord: (name) => `The landlord, ${name}`,
+  tenant: (name) => `The tenant, ${name}`,
+}
+
 /** One answered line of the check screen. */
 function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -264,6 +281,7 @@ function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Ten
   const propertyId = tenancy.property.id
   const home = result.home
   const landlord = result.landlord
+  const tenant = result.tenant
   return (
     <section
       data-testid="review-submitted"
@@ -320,16 +338,34 @@ function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Ten
           </p>
         </figure>
       )}
-      <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-home">
-        <Link to={`/p/${propertyId}#reviews`}>See it on the home&rsquo;s page</Link>
-      </Button>
+      {tenant && (
+        <figure className="mt-3 space-y-1 rounded-lg border border-line p-4">
+          <p className="font-semibold text-ink-900">Tenant: {tenant.ratingOverall} / 5</p>
+          <p className="text-sm text-ink-500" data-testid="review-tenant-state">
+            {tenant.status === "PUBLISHED"
+              ? "Published together with your tenant’s review of you."
+              : "Hidden until your tenant reviews you, or for 14 days, so neither side can react to the other."}
+          </p>
+        </figure>
+      )}
+      {tenant ? (
+        <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-tenancy">
+          <Link to={`/tenancies/${tenancy.id}`}>Back to the tenancy</Link>
+        </Button>
+      ) : (
+        <Button asChild size="lg" className="mt-5 w-full" data-testid="review-view-home">
+          <Link to={`/p/${propertyId}#reviews`}>See it on the home&rsquo;s page</Link>
+        </Button>
+      )}
     </section>
   )
 }
 
 /** The form itself, one section per screen (D-157). */
 function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
-  const id = tenancy.id
+  // The owner's draft has its own key, so it never mixes with a tenant's on a shared device.
+  const owner = Boolean(parts.tenant)
+  const id = draftKey(tenancy.id, owner ? "LANDLORD" : "TENANT")
   const queryClient = useQueryClient()
   const [restored] = useState(() => loadDraft(id) !== null)
   const [draft, setDraft] = useState<ReviewDraft>(() => loadDraft(id) ?? emptyDraft())
@@ -340,7 +376,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
   const section = sections[step]
 
   const submit = useMutation({
-    mutationFn: () => submitReviewForm(id, toRequest(draft, parts)),
+    mutationFn: () => submitReviewForm(tenancy.id, toRequest(draft, parts)),
     onSuccess: async () => {
       clearDraft(id)
       // Tenancies too: their "Rate and review" next step is now done.
@@ -375,15 +411,15 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
   }
 
   function setPart(key: PartKey, change: Partial<PartDraft>) {
-    setDraft((d) => ({ ...d, [key]: { ...d[key], ...change } }))
+    setDraft((d) => ({ ...d, [key]: { ...partOf(d, key), ...change } }))
   }
 
   function rate(key: PartKey, criterion: string, n: number | null) {
     setDraft((d) => {
-      const ratings = { ...d[key].ratings }
+      const ratings = { ...partOf(d, key).ratings }
       if (n === null) delete ratings[criterion as keyof typeof ratings]
       else ratings[criterion as keyof typeof ratings] = n
-      return { ...d, [key]: { ...d[key], ratings } }
+      return { ...d, [key]: { ...partOf(d, key), ratings } }
     })
     setErrors(({ [`${key}.criteria.${criterion}`]: _, ...rest }) => rest)
   }
@@ -410,6 +446,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
   }
 
   const landlordName = tenancy.landlord.shortName
+  const tenantName = tenancy.tenant?.shortName ?? "your tenant"
   const ruleError =
     isApiError(submit.error) && submit.error.fieldErrors.length === 0 ? submit.error : null
 
@@ -420,17 +457,15 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
         <CriterionRow
           key={c.key}
           criterion={c}
-          value={draft[key].ratings[c.key]}
+          value={partOf(draft, key).ratings[c.key]}
           error={errors[`${key}.criteria.${c.key}`]}
           onChange={(n) => rate(key, c.key, n)}
         />
       ))}
       <TextField
         id={`review-comment-${key}`}
-        label={
-          key === "home" ? "Anything else about the home?" : "Anything else about the landlord?"
-        }
-        value={draft[key].comment}
+        label={`Anything else about the ${key}?`}
+        value={partOf(draft, key).comment}
         max={COMMENT_MAX}
         error={errors[`${key}.body`]}
         onChange={(comment) => setPart(key, { comment })}
@@ -442,7 +477,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
     <div className="space-y-5">
       <div>
         <p className="text-xs font-semibold tracking-wide text-teal-700 uppercase">
-          Write a review
+          {owner ? "Review your tenant" : "Write a review"}
         </p>
         <h1 className="mt-1 font-display text-2xl font-semibold text-ink-900">
           {tenancyHome(tenancy)}
@@ -506,10 +541,17 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
               </SummaryRow>
             </dl>
             <p>The dates come from your tenancy. To change them, edit the tenancy.</p>
-            <p>
-              You rate the home{parts.landlord ? ` and your landlord, ${landlordName}` : ""}, one
-              screen each. Every question is optional, except the overall rating.
-            </p>
+            {owner ? (
+              <p>
+                You rate your tenant, {tenantName}. Every question is optional, except the overall
+                rating.
+              </p>
+            ) : (
+              <p>
+                You rate the home{parts.landlord ? ` and your landlord, ${landlordName}` : ""}, one
+                screen each. Every question is optional, except the overall rating.
+              </p>
+            )}
             {!parts.landlord && parts.home && (
               <p className="text-ink-500">
                 Your landlord is not on {BRAND.name} yet, so only the home can be rated now.
@@ -531,6 +573,20 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
             LANDLORD_CRITERIA,
             `About ${landlordName}. They see it only after they review you, or after 14 days.`,
           )}
+
+        {section === "tenant" && (
+          <>
+            {criteriaSection(
+              "tenant",
+              TENANT_CRITERIA,
+              `How was ${tenantName} as a tenant? Rate what you know. Skip the rest.`,
+            )}
+            <p className="rounded-lg bg-sunk p-3 text-sm text-ink-700" data-testid="review-reveal">
+              Hidden until your tenant reviews you too, or for 14 days, so neither side can react to
+              the other.
+            </p>
+          </>
+        )}
 
         {section === "overall" && (
           <div className="space-y-5">
@@ -574,59 +630,88 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
                 />
               </>
             )}
-            <TextField
-              id="review-pros"
-              label="Pros"
-              value={draft.pros}
-              max={PROS_CONS_MAX}
-              error={errors["home.pros"] ?? errors["landlord.pros"]}
-              onChange={(pros) => setDraft((d) => ({ ...d, pros }))}
-            />
-            <TextField
-              id="review-cons"
-              label="Cons"
-              value={draft.cons}
-              max={PROS_CONS_MAX}
-              error={errors["home.cons"] ?? errors["landlord.cons"]}
-              onChange={(cons) => setDraft((d) => ({ ...d, cons }))}
-            />
+            {parts.tenant && (
+              <>
+                <OverallPicker
+                  part="tenant"
+                  draft={partOf(draft, "tenant")}
+                  label="Overall rating of the tenant"
+                  error={errors["tenant.ratingOverall"]}
+                  onChange={(own) => {
+                    setPart("tenant", { ownOverall: own })
+                    setErrors(({ "tenant.ratingOverall": _, ...rest }) => rest)
+                  }}
+                />
+                <YesNo
+                  label="Would you rent to them again?"
+                  value={partOf(draft, "tenant").recommend}
+                  testId="recommend-tenant"
+                  onChange={(recommend) => setPart("tenant", { recommend })}
+                />
+              </>
+            )}
+            {/* Pros and cons are about a home; the owner writes about the tenant in the comment. */}
+            {!owner && (
+              <>
+                <TextField
+                  id="review-pros"
+                  label="Pros"
+                  value={draft.pros}
+                  max={PROS_CONS_MAX}
+                  error={errors["home.pros"] ?? errors["landlord.pros"]}
+                  onChange={(pros) => setDraft((d) => ({ ...d, pros }))}
+                />
+                <TextField
+                  id="review-cons"
+                  label="Cons"
+                  value={draft.cons}
+                  max={PROS_CONS_MAX}
+                  error={errors["home.cons"] ?? errors["landlord.cons"]}
+                  onChange={(cons) => setDraft((d) => ({ ...d, cons }))}
+                />
+              </>
+            )}
           </div>
         )}
 
         {section === "check" && (
           <div className="space-y-3">
             <p className="text-sm text-ink-500">
-              Check your answers. Reviews are public, without your full name.
+              {owner
+                ? "Check your answers. Only the tenant and their landlords can read it, without your full name."
+                : "Check your answers. Reviews are public, without your full name."}
             </p>
-            {(["home", "landlord"] as const)
+            {(["home", "landlord", "tenant"] as const)
               .filter((key) => parts[key])
               .map((key) => (
                 <SummaryBlock
                   key={key}
-                  title={key === "home" ? "The home" : `The landlord, ${landlordName}`}
+                  title={SUMMARY_TITLES[key](key === "tenant" ? tenantName : landlordName)}
                   testId={`review-summary-${key}`}
                   onEdit={() => goTo(sections.indexOf(key))}
                 >
-                  {(key === "home" ? HOME_CRITERIA : LANDLORD_CRITERIA).map((c) => (
+                  {PART_CRITERIA[key].map((c) => (
                     <SummaryRow key={c.key} label={criterionLabel(c.key)}>
-                      <StarsOrSkipped value={draft[key].ratings[c.key]} />
+                      <StarsOrSkipped value={partOf(draft, key).ratings[c.key]} />
                     </SummaryRow>
                   ))}
                   <SummaryRow label="Overall">
-                    <StarsOrSkipped value={overallOf(draft[key])} />
+                    <StarsOrSkipped value={overallOf(partOf(draft, key))} />
                   </SummaryRow>
-                  <SummaryRow label="Would recommend">
-                    {draft[key].recommend === null ? (
+                  <SummaryRow
+                    label={key === "tenant" ? "Would rent to them again" : "Would recommend"}
+                  >
+                    {partOf(draft, key).recommend === null ? (
                       <span className="text-ink-500">Skipped</span>
-                    ) : draft[key].recommend ? (
+                    ) : partOf(draft, key).recommend ? (
                       "Yes"
                     ) : (
                       "No"
                     )}
                   </SummaryRow>
-                  {draft[key].comment.trim() && (
+                  {partOf(draft, key).comment.trim() && (
                     <p className="text-sm whitespace-pre-line text-ink-700">
-                      {draft[key].comment.trim()}
+                      {partOf(draft, key).comment.trim()}
                     </p>
                   )}
                 </SummaryBlock>
@@ -706,6 +791,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
 /** Nothing to write: the window is not open yet, or both reviews are in. */
 function Closed({ tenancy }: { tenancy: Tenancy }) {
   const window = reviewWindow(tenancy, today())
+  const owner = tenancy.myRole === "LANDLORD"
   return (
     <section
       className="space-y-3 rounded-xl border border-line bg-surface p-6 shadow-sm"
@@ -714,14 +800,24 @@ function Closed({ tenancy }: { tenancy: Tenancy }) {
       <h1 className="font-display text-2xl font-semibold text-ink-900">{tenancyHome(tenancy)}</h1>
       <p className="text-sm text-ink-700">
         {window.state === "not_yet"
-          ? `You can review it from ${dateLabel(window.opens)}: reviews open 60 days after you move in, or when you move out.`
+          ? owner
+            ? `You can review your tenant from ${dateLabel(window.opens)}: reviews open 60 days after they move in, or when they move out.`
+            : `You can review it from ${dateLabel(window.opens)}: reviews open 60 days after you move in, or when you move out.`
           : window.state === "none"
             ? "Only a current or ended tenancy can be reviewed."
-            : "You already reviewed this stay. You can change your review on the home’s page."}
+            : owner
+              ? "You already reviewed this tenant."
+              : "You already reviewed this stay. You can change your review on the home’s page."}
       </p>
-      <Button asChild variant="outline">
-        <Link to={`/p/${tenancy.property.id}#reviews`}>Go to the home&rsquo;s page</Link>
-      </Button>
+      {owner ? (
+        <Button asChild variant="outline">
+          <Link to={`/tenancies/${tenancy.id}`}>Back to the tenancy</Link>
+        </Button>
+      ) : (
+        <Button asChild variant="outline">
+          <Link to={`/p/${tenancy.property.id}#reviews`}>Go to the home&rsquo;s page</Link>
+        </Button>
+      )}
     </section>
   )
 }
@@ -732,6 +828,8 @@ function Closed({ tenancy }: { tenancy: Tenancy }) {
  * landlord can be reviewed, D-139), the overall ratings with "would you recommend" and pros and
  * cons, then a check screen. The draft stays on this device. The home review publishes at once
  * without the green tick (D-132, D-134); the landlord review waits for the reveal (D-46).
+ * The owner gets the same form with one part, "The tenant" (landlord-adds-tenant S1): its five
+ * questions, "Would you rent to them again?", no pros or cons, and the reveal as for the landlord.
  */
 export default function WriteReviewPage() {
   const { id = "" } = useParams()
@@ -747,6 +845,7 @@ export default function WriteReviewPage() {
     setParts({
       home: mine.some((t) => t.direction === "TENANT_TO_PROPERTY"),
       landlord: mine.some((t) => t.direction === "TENANT_TO_LANDLORD"),
+      tenant: mine.some((t) => t.direction === "LANDLORD_TO_TENANT"),
     })
   }
 
@@ -761,7 +860,7 @@ export default function WriteReviewPage() {
     )
   } else if (!tenancy.data || parts === null) {
     body = <p className="text-sm text-ink-500">Loading the review form…</p>
-  } else if (!parts.home && !parts.landlord) {
+  } else if (!parts.home && !parts.landlord && !parts.tenant) {
     body = <Closed tenancy={tenancy.data} />
   } else {
     body = <ReviewForm tenancy={tenancy.data} parts={parts} />

@@ -2,6 +2,7 @@ import type {
   HomeCriterion,
   LandlordCriterion,
   ReviewCriterion,
+  TenantCriterion,
   ReviewFormInput,
   ReviewFormPart,
 } from "@/types/api"
@@ -54,8 +55,25 @@ export const LANDLORD_CRITERIA: (CriterionText & { key: LandlordCriterion })[] =
   { key: "BEHAVIOUR", label: "Behaviour", hint: "Polite and fair" },
 ]
 
+/** The owner's five questions about the tenant (landlord-adds-tenant LT-6). */
+export const TENANT_CRITERIA: (CriterionText & { key: TenantCriterion })[] = [
+  { key: "RENT_ON_TIME", label: "Paid rent on time", hint: "Every month, without reminders" },
+  { key: "CARE_OF_HOME", label: "Took care of the home", hint: "Kept it clean, reported repairs" },
+  { key: "COMMUNICATION", label: "Easy to reach and clear", hint: "Answers and says things early" },
+  {
+    key: "HOUSE_RULES",
+    label: "Respected the society rules and neighbours",
+    hint: "No complaints from the society",
+  },
+  {
+    key: "MOVE_OUT",
+    label: "Moved out as agreed (notice, keys, condition)",
+    hint: "Skip it if they still live there",
+  },
+]
+
 const LABELS = new Map<ReviewCriterion, string>(
-  [...HOME_CRITERIA, ...LANDLORD_CRITERIA].map((c) => [c.key, c.label]),
+  [...HOME_CRITERIA, ...LANDLORD_CRITERIA, ...TENANT_CRITERIA].map((c) => [c.key, c.label]),
 )
 
 export function criterionLabel(key: ReviewCriterion): string {
@@ -79,7 +97,7 @@ export function workedOutOverall(ratings: Ratings): number | null {
   return Math.min(5, Math.max(1, Math.floor(average + 0.5)))
 }
 
-/** One part (home or landlord) as the user fills it. `ownOverall` null means "worked out". */
+/** One part (home, landlord or tenant) as the user fills it. `ownOverall` null means "worked out". */
 export interface PartDraft {
   ratings: Ratings
   comment: string
@@ -92,14 +110,36 @@ export interface ReviewDraft {
   step: number
   home: PartDraft
   landlord: PartDraft
+  /** The owner's review of the tenant; absent in drafts saved before it existed. */
+  tenant?: PartDraft
   pros: string
   cons: string
   savedAt?: string
 }
 
+function emptyPart(): PartDraft {
+  return { ratings: {}, comment: "", ownOverall: null, recommend: null }
+}
+
 export function emptyDraft(): ReviewDraft {
-  const part = (): PartDraft => ({ ratings: {}, comment: "", ownOverall: null, recommend: null })
-  return { version: 1, step: 0, home: part(), landlord: part(), pros: "", cons: "" }
+  return {
+    version: 1,
+    step: 0,
+    home: emptyPart(),
+    landlord: emptyPart(),
+    tenant: emptyPart(),
+    pros: "",
+    cons: "",
+  }
+}
+
+/** The parts of one form: the tenant's (home, landlord) or the owner's (tenant). */
+export type FormParts = { home: boolean; landlord: boolean; tenant?: boolean }
+export type PartKey = "home" | "landlord" | "tenant"
+
+/** A part of the draft, empty when the draft has none yet. */
+export function partOf(draft: ReviewDraft, key: PartKey): PartDraft {
+  return draft[key] ?? emptyPart()
 }
 
 /** The overall rating that will be sent: the user's own, else the worked-out one. */
@@ -107,14 +147,15 @@ export function overallOf(part: PartDraft): number | null {
   return part.ownOverall ?? workedOutOverall(part.ratings)
 }
 
-export type Section = "stay" | "home" | "landlord" | "overall" | "check"
+export type Section = "stay" | "home" | "landlord" | "tenant" | "overall" | "check"
 
 /** The screens, one section each; the landlord one only when the landlord can be reviewed. */
-export function sectionsFor(parts: { home: boolean; landlord: boolean }): Section[] {
+export function sectionsFor(parts: FormParts): Section[] {
   return [
     "stay",
     ...(parts.home ? (["home"] as const) : []),
     ...(parts.landlord ? (["landlord"] as const) : []),
+    ...(parts.tenant ? (["tenant"] as const) : []),
     "overall",
     "check",
   ]
@@ -135,15 +176,14 @@ function part(draft: PartDraft, extra?: { pros: string; cons: string }): ReviewF
 /**
  * The request body. Pros and cons are about the stay and go with the home review, which
  * publishes at once; they go with the landlord review only when the home is not part of the form.
+ * The tenant part never takes them: the owner writes about the tenant in the comment.
  */
-export function toRequest(
-  draft: ReviewDraft,
-  parts: { home: boolean; landlord: boolean },
-): ReviewFormInput {
+export function toRequest(draft: ReviewDraft, parts: FormParts): ReviewFormInput {
   const extra = { pros: draft.pros, cons: draft.cons }
   return {
     ...(parts.home && { home: part(draft.home, extra) }),
     ...(parts.landlord && { landlord: part(draft.landlord, parts.home ? undefined : extra) }),
+    ...(parts.tenant && { tenant: part(partOf(draft, "tenant")) }),
   }
 }
 
@@ -154,29 +194,40 @@ export function toRequest(
  */
 export function sectionOfField(field: string): Section {
   const [prefix, name] = field.split(".")
-  if (name === "criteria" || name === "body") return prefix === "landlord" ? "landlord" : "home"
+  if (name === "criteria" || name === "body")
+    return prefix === "landlord" || prefix === "tenant" ? prefix : "home"
   return "overall"
 }
 
 /** Client checks before "Next": the overall rating of every part on the overall screen. */
-export function missingOverall(
-  draft: ReviewDraft,
-  parts: { home: boolean; landlord: boolean },
-): Record<string, string> {
+export function missingOverall(draft: ReviewDraft, parts: FormParts): Record<string, string> {
   const errors: Record<string, string> = {}
   if (parts.home && overallOf(draft.home) === null)
     errors["home.ratingOverall"] = "Pick an overall rating for the home."
   if (parts.landlord && overallOf(draft.landlord) === null)
     errors["landlord.ratingOverall"] = "Pick an overall rating for the landlord."
+  if (parts.tenant && overallOf(partOf(draft, "tenant")) === null)
+    errors["tenant.ratingOverall"] = "Pick an overall rating for the tenant."
   return errors
 }
 
 const KEY = "rx-review-draft:"
 
-/** The saved draft of this tenancy's review, or null. Storage may be blocked: never throws. */
-export function loadDraft(tenancyId: string): ReviewDraft | null {
+/**
+ * The draft's storage key: the tenant's keeps `rx-review-draft:<tenancyId>`, the owner's adds
+ * `:LANDLORD`, so the two sides never share a draft on one device.
+ */
+export function draftKey(tenancyId: string, side: "TENANT" | "LANDLORD" = "TENANT"): string {
+  return side === "LANDLORD" ? `${tenancyId}:LANDLORD` : tenancyId
+}
+
+/**
+ * The saved draft of this tenancy's review, or null. Storage may be blocked: never throws.
+ * `id` is a {@link draftKey}.
+ */
+export function loadDraft(id: string): ReviewDraft | null {
   try {
-    const raw = localStorage.getItem(KEY + tenancyId)
+    const raw = localStorage.getItem(KEY + id)
     if (!raw) return null
     const draft = JSON.parse(raw) as ReviewDraft
     return draft?.version === 1 ? draft : null
@@ -186,18 +237,18 @@ export function loadDraft(tenancyId: string): ReviewDraft | null {
 }
 
 /** Keeps the draft on this device only; it never reaches the server (D-157). */
-export function saveDraft(tenancyId: string, draft: ReviewDraft): boolean {
+export function saveDraft(id: string, draft: ReviewDraft): boolean {
   try {
-    localStorage.setItem(KEY + tenancyId, JSON.stringify(draft))
+    localStorage.setItem(KEY + id, JSON.stringify(draft))
     return true
   } catch {
     return false
   }
 }
 
-export function clearDraft(tenancyId: string) {
+export function clearDraft(id: string) {
   try {
-    localStorage.removeItem(KEY + tenancyId)
+    localStorage.removeItem(KEY + id)
   } catch {
     // storage blocked: nothing was saved
   }

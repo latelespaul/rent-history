@@ -1,6 +1,6 @@
 # Landlord adds tenant (design note)
 
-Status: **design, not built**. Date: 2026-11-24. Captain's asks: 2026-11-24 19:30 IST, and the addendum of the same day (OPEN 47 / 53).
+Status: **design; slice S1 built** (2026-11-26, SYSTEM_DESIGN D-170). Date: 2026-11-24. Captain's asks: 2026-11-24 19:30 IST, and the addendum of the same day (OPEN 47 / 53).
 Build waits for the stabilisation pass (OPEN 46). Then it ships as the small PRs of §9, each through no-mistakes, DEV first; master releases to LIVE.
 
 This note is written for a developer who joins the codebase today. It maps the captain's model onto the code that exists (§2), lists only the smallest changes that close each gap (§3), decides each scenario (§4–§7), and orders the work into PRs that ship one at a time (§9). It extends SYSTEM_DESIGN §5.4, §6, §7 and §10 and the review form note [`review-form.md`](review-form.md). Rules there stay unless a line below says otherwise.
@@ -398,3 +398,11 @@ API tests to add, beyond the e2e: phone match with one, two and zero accounts; e
 - **LT-10** Account deletion also clears `tenant_name` and the phone columns.
 - **LT-11** `GET /properties/{id}/stays` (signed in only) shows every direction per stay under its existing visibility rule. Outsiders see only stays with a published review, as year ranges without month or "Current"; the two parties see their own stays in full; tenant identity never on the home page for outsiders.
 - **LT-12** Dates are optional from S3: an undated stay holds no dates, is left out of rent history, overlap checks and the stays of non-parties, and, while `ACTIVE`, needs a move-in month before its review. This is the one exception to "every field optional": under the review lock (D-39) a running stay's window opens 60 days after move-in, so the review form's Stay step asks for the month at review time, with that reason shown. An undated `ENDED` stay is reviewable at once, because D-39 already opens the window once a stay has ended. An undated stay becomes `ENDED` through `livesThere: false` at add (no end date needed) or through the end action, which skips the `before_start` check when no start date is held. `ReviewWindow` treats a NULL start date as open when `ENDED` and as not open when `ACTIVE`. One rule holds everywhere: a stay with a start date is `ENDED` only with an end date. Only an undated stay may be `ENDED` with `end_date` NULL, and then `ended_at` marks it as ended. Confirm, the one-sided record path and `PATCH` keep that status from `ended_at` instead of working it out from `end_date` alone. An undated stay keeps its rent on `initial_rent_inr` only and writes no rent record; the first record is written when a `PATCH` sets a move-in month. Every server site that reads `start_date` follows the list in §8.1 "Undated stays: code that reads `start_date`".
+
+### Master's answers to §12 (2026-11-26), for the later slices
+
+Recorded with S1; S1 builds none of them.
+
+- **a)** A past stay with no dates is allowed. The move-in month and year are optional, and such a stay shows as "Dates not given".
+- **b)** The review form's dates step stays, but it becomes optional: the user can skip it.
+- **c)** Superseded by a P1 privacy rule (captain, 2026-11-26 02:11): the reviewed party must never be able to work out who wrote a review. Stay dates, tenancy years and "currently renting" are never shown on reviews to any non-admin, signed-in or not; only the Doorway team (admin) sees them. It holds for owner → tenant reviews as for every other direction, and later slices follow it wherever §7 and LT-11 put a period, a year range or "Current" next to a review.

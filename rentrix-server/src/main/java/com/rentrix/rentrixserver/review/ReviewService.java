@@ -93,6 +93,8 @@ public class ReviewService {
 
 	private static final List<TenancyStatus> CONFIRMED = List.of(TenancyStatus.ACTIVE, TenancyStatus.ENDED);
 	private static final Set<ReviewStatus> EDITABLE = EnumSet.of(ReviewStatus.AWAITING_REVEAL, ReviewStatus.PUBLISHED);
+	/** The counterparty of an owner's review task while the tenancy has no linked tenant. */
+	static final String YOUR_TENANT = "Your tenant";
 
 	private final ReviewRepository reviews;
 	private final ReviewRevisionRepository revisions;
@@ -131,9 +133,10 @@ public class ReviewService {
 	}
 
 	/**
-	 * {@code POST /tenancies/{id}/review-form} (D-157): the tenant's home and landlord reviews, both saved or neither.
-	 * Each part passes the same rules as {@link #create}; every broken field rule of both parts comes back in one
-	 * {@code 422}, each on its own path.
+	 * {@code POST /tenancies/{id}/review-form} (D-157): the tenant's home and landlord reviews, both saved or neither,
+	 * or the owner's review of the tenant (LT-6). Each part passes the same rules as {@link #create}; every broken
+	 * field rule of every part comes back in one {@code 422}, each on its own path. The tenant part takes no pros or
+	 * cons ({@code not_allowed}): all text about a person stays behind the reveal (D-46).
 	 */
 	@Transactional
 	public ReviewFormView form(UUID tenancyId, ReviewFormRequest request, AuthenticatedUser caller) {
@@ -146,9 +149,13 @@ public class ReviewService {
 		if (request.landlord() != null) {
 			parts.put(ReviewDirection.TENANT_TO_LANDLORD, request.landlord());
 		}
+		if (request.tenant() != null) {
+			parts.put(ReviewDirection.LANDLORD_TO_TENANT, request.tenant());
+		}
 		if (parts.isEmpty()) {
-			throw ApiException.validation(List.of(new ApiProblem.FieldError("home", "not_null",
-				"Rate the home or the landlord.")));
+			throw ApiException.validation(List.of(sideOf(tenancy, me) == TenancyParty.LANDLORD
+				? new ApiProblem.FieldError("tenant", "not_null", "Rate the tenant.")
+				: new ApiProblem.FieldError("home", "not_null", "Rate the home or the landlord.")));
 		}
 		parts.keySet().forEach(direction -> requireCanWrite(tenancy, me, direction));
 		requireVolume(me, parts.size());
@@ -157,6 +164,16 @@ public class ReviewService {
 		parts.forEach((direction, part) -> contents.put(direction, content(prefixOf(direction), direction, true,
 			part.ratingOverall(), null, null, null, part.criteria(), part.wouldRecommend(), part.body(), part.pros(),
 			part.cons(), tenancy.getProperty().getUnitLabel(), errors)));
+		ReviewFormRequest.Part tenantPart = request.tenant();
+		if (tenantPart != null) {
+			for (String field : List.of("pros", "cons")) {
+				String text = field.equals("pros") ? tenantPart.pros() : tenantPart.cons();
+				if (!ReviewContentRules.strip(text).isEmpty()) {
+					errors.add(new ApiProblem.FieldError("tenant." + field, "not_allowed",
+						"Pros and cons are about a home. Write about the tenant in the comment."));
+				}
+			}
+		}
 		if (!errors.isEmpty()) {
 			throw ApiException.validation(errors);
 		}
@@ -165,7 +182,7 @@ public class ReviewService {
 		contents.forEach((direction, content) -> written.put(direction,
 			view(write(tenancy, me, direction, content), me, admin)));
 		return new ReviewFormView(written.get(ReviewDirection.TENANT_TO_PROPERTY),
-			written.get(ReviewDirection.TENANT_TO_LANDLORD));
+			written.get(ReviewDirection.TENANT_TO_LANDLORD), written.get(ReviewDirection.LANDLORD_TO_TENANT));
 	}
 
 	/** The author row, locked: it serialises one author's submits (volume guard). */
@@ -499,8 +516,11 @@ public class ReviewService {
 					case LANDLORD_TO_TENANT -> tenancy.getTenant();
 					case TENANT_TO_PROPERTY -> null;
 				};
-				tasks.add(new ReviewTask(tenancy.getPublicId(), direction, propertyRef(tenancy.getProperty()),
-					counterparty == null ? null : party(counterparty), period(tenancy),
+				// A tenancy with no linked tenant (tenant_id NULL, landlord-adds-tenant LT-5) has no one to name yet.
+				PartyRef ref = counterparty != null ? party(counterparty)
+					: direction == ReviewDirection.LANDLORD_TO_TENANT ? new PartyRef(null, YOUR_TENANT) : null;
+				tasks.add(new ReviewTask(tenancy.getPublicId(), direction, propertyRef(tenancy.getProperty()), ref,
+					period(tenancy),
 					counter != null && counter.getStatus() == ReviewStatus.AWAITING_REVEAL));
 			}
 		}
@@ -533,7 +553,7 @@ public class ReviewService {
 			return false;
 		}
 		return review.getDirection() != ReviewDirection.LANDLORD_TO_TENANT
-			|| access.canSeeTenant(me, review.getSubjectUser(), false);
+			|| review.getSubjectUser() != null && access.canSeeTenant(me, review.getSubjectUser(), false);
 	}
 
 	/** {@link #visible} with the row locked, for a write. */
@@ -674,8 +694,12 @@ public class ReviewService {
 			.map(c -> c + "=" + criteria.get(c)).collect(Collectors.joining(","));
 	}
 
-		private static String prefixOf(ReviewDirection direction) {
-		return direction == ReviewDirection.TENANT_TO_PROPERTY ? "home." : "landlord.";
+	private static String prefixOf(ReviewDirection direction) {
+		return switch (direction) {
+			case TENANT_TO_PROPERTY -> "home.";
+			case TENANT_TO_LANDLORD -> "landlord.";
+			case LANDLORD_TO_TENANT -> "tenant.";
+		};
 	}
 
 	private static void requireAuthor(Review review, User me) {
