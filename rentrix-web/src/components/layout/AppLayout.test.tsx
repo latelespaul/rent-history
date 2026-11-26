@@ -22,6 +22,12 @@ vi.mock("@/api/cities", () => ({
   }),
 }))
 
+// `GET /me/invite`: the user's own code and friends-joined count (invite-friends §4).
+vi.mock("@/api/invite", () => ({
+  inviteKeys: { mine: ["me", "invite"] },
+  fetchInvite: vi.fn(async () => ({ code: "K7QM2XWR4D", joined: 2 })),
+}))
+
 vi.mock("@/api/stats", () => ({
   statsKeys: { all: ["stats"] },
   fetchStats: vi.fn(async () => SEED_STATS),

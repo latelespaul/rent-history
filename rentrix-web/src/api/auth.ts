@@ -18,9 +18,12 @@ export function fetchAuthConfig(signal?: AbortSignal): Promise<AuthConfig> {
   return api.get<AuthConfig>("/auth/config", { signal })
 }
 
-/** `POST /auth/google` with the GIS ID token; the API verifies it and starts a session (D-70). */
-export function signInWithGoogle(idToken: string): Promise<AuthSession> {
-  return api.post<AuthSession>("/auth/google", { idToken })
+/**
+ * `POST /auth/google` with the GIS ID token; the API verifies it and starts a session (D-70).
+ * `ref` is a kept invite code: the API counts it only when this sign-in creates the account.
+ */
+export function signInWithGoogle(idToken: string, ref?: string | null): Promise<AuthSession> {
+  return api.post<AuthSession>("/auth/google", ref ? { idToken, ref } : { idToken })
 }
 
 /** `GET /auth/dev-users`: the demo seed users (dev profile only, D-77). */
@@ -34,8 +37,8 @@ export function devLogin(userId: string): Promise<AuthSession> {
 }
 
 /** `POST /auth/dev-login/new`: sign in as a brand-new user with no role yet (dev profile only). */
-export function devLoginAsNewUser(): Promise<AuthSession> {
-  return api.post<AuthSession>("/auth/dev-login/new")
+export function devLoginAsNewUser(ref?: string | null): Promise<AuthSession> {
+  return api.post<AuthSession>("/auth/dev-login/new", ref ? { ref } : undefined)
 }
 
 /** `POST /auth/logout`: revokes the refresh token and clears its cookie. */

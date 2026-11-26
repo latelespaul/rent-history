@@ -39,6 +39,12 @@ vi.mock("@/features/auth/authContext", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
   useAuth: () => ({ state: { status: "signedIn", user: makeUser() }, acceptSession: vi.fn() }),
 }))
+// `GET /me/invite`: the user's own code and friends-joined count (invite-friends §4).
+vi.mock("@/api/invite", () => ({
+  inviteKeys: { mine: ["me", "invite"] },
+  fetchInvite: vi.fn(async () => ({ code: "K7QM2XWR4D", joined: 2 })),
+}))
+
 vi.mock("@/api/tenancies", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/tenancies")>()),
   fetchTenancy: vi.fn(async () => TENANCY),

@@ -5,6 +5,7 @@ import com.rentrix.rentrixserver.auth.google.GoogleIdentity;
 import com.rentrix.rentrixserver.auth.google.GoogleTokenVerifier;
 import com.rentrix.rentrixserver.auth.google.InvalidGoogleTokenException;
 import com.rentrix.rentrixserver.common.error.ApiException;
+import com.rentrix.rentrixserver.invite.InviteService;
 import com.rentrix.rentrixserver.notification.email.WelcomeMailer;
 import com.rentrix.rentrixserver.security.AccessTokenService;
 import com.rentrix.rentrixserver.user.User;
@@ -48,6 +49,7 @@ public class AuthService {
 	private final AuthProperties properties;
 	private final AdminConsoleMembers adminMembers;
 	private final WelcomeMailer welcome;
+	private final InviteService invites;
 	private final Clock clock;
 	
 	/**
@@ -69,11 +71,22 @@ public class AuthService {
 	 */
 	@Transactional
 	public Session signInWithGoogle(String idToken) {
+		return signInWithGoogle(idToken, null);
+	}
+	
+	/**
+	 * Like {@link #signInWithGoogle(String)}; when this sign-in creates the account, {@code ref} (an invite code
+	 * the web kept from a {@code ?ref=} link) counts the new user for the code's owner (invite-friends IF-5). The
+	 * reply is the same whatever happens to {@code ref}.
+	 */
+	@Transactional
+	public Session signInWithGoogle(String idToken, String ref) {
 		GoogleIdentity identity = verifiedGoogle(idToken);
 		boolean signUp = users.findByGoogleSub(identity.sub()).isEmpty();
 		User user = googleUser(identity, email(identity));
 		if (signUp) {
 			welcome.signedUp(user);
+			invites.attribute(user, ref);
 		}
 		return startSession(user);
 	}

@@ -32,7 +32,8 @@ public class AuthController {
 	public record AuthConfig(String googleClientId, boolean devLogin) {
 	}
 	
-	public record GoogleSignInRequest(@NotBlank @Size(max = 8192) String idToken) {
+	/** {@code ref}: an invite code from a {@code ?ref=} link, counted only when this sign-in creates the account. */
+	public record GoogleSignInRequest(@NotBlank @Size(max = 8192) String idToken, @Size(max = 32) String ref) {
 	}
 	
 	@GetMapping("/config")
@@ -43,7 +44,7 @@ public class AuthController {
 	@PostMapping("/google")
 	ResponseEntity<AuthResponse> google(@Valid @RequestBody GoogleSignInRequest body, HttpServletRequest request) {
 		rateLimiter.check(request);
-		return sessions.signedIn(request, auth.signInWithGoogle(body.idToken()));
+		return sessions.signedIn(request, auth.signInWithGoogle(body.idToken(), body.ref()));
 	}
 	
 	@PostMapping("/refresh")

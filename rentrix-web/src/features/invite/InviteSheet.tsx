@@ -9,7 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { inviteMessage, whatsappUrl } from "./invite"
+import { inviteMessage, joinedLabel, whatsappUrl } from "./invite"
 
 /**
  * The fallback when the browser has no share sheet (design note `invite-friends.md` §6): the
@@ -19,15 +19,20 @@ export function InviteSheet({
   open,
   onOpenChange,
   link,
+  joined = null,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  link: string
+  /** Null while the user's own link is still loading. */
+  link: string | null
+  /** How many people joined with the user's code; null when unknown. */
+  joined?: number | null
 }) {
   const field = useRef<HTMLInputElement>(null)
-  const message = inviteMessage(link)
+  const message = link ? inviteMessage(link) : null
 
   async function copy() {
+    if (!link) return
     try {
       await navigator.clipboard.writeText(link)
       toast.success("Link copied")
@@ -50,8 +55,8 @@ export function InviteSheet({
           </span>
           <span className="min-w-0">
             <SheetTitle className="text-base font-semibold text-ink-900">Invite friends</SheetTitle>
-            <SheetDescription className="text-xs text-ink-500">
-              Share {window.location.host || "the site"} with someone who rents.
+            <SheetDescription className="text-xs text-ink-500" data-testid="invite-joined">
+              {joined === null ? "Share it with someone who rents." : joinedLabel(joined)}
             </SheetDescription>
           </span>
         </SheetHeader>
@@ -60,16 +65,28 @@ export function InviteSheet({
             data-testid="invite-message"
             className="rounded-lg border border-line bg-background p-3 text-sm text-ink-700"
           >
-            {message}
+            {message ?? "Getting your link…"}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <Button asChild variant="outline" data-testid="invite-whatsapp">
-              <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer">
+            {message ? (
+              <Button asChild variant="outline" data-testid="invite-whatsapp">
+                <a href={whatsappUrl(message)} target="_blank" rel="noopener noreferrer">
+                  <MessageIcon />
+                  WhatsApp
+                </a>
+              </Button>
+            ) : (
+              <Button variant="outline" disabled data-testid="invite-whatsapp">
                 <MessageIcon />
                 WhatsApp
-              </a>
-            </Button>
-            <Button variant="outline" onClick={() => void copy()} data-testid="invite-copy">
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              disabled={!link}
+              onClick={() => void copy()}
+              data-testid="invite-copy"
+            >
               <LinkIcon />
               Copy link
             </Button>
@@ -79,7 +96,7 @@ export function InviteSheet({
             <input
               ref={field}
               readOnly
-              value={link}
+              value={link ?? ""}
               onFocus={(e) => e.currentTarget.select()}
               className="h-10 w-full rounded-md border border-line bg-sunk px-3 text-sm text-ink-700"
             />

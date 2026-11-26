@@ -7,6 +7,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { AuthConfig, CurrentUser } from "@/types/api"
 import { LAUNCH_CITIES } from "@/test/cities"
 import { DEV_USERS, NEW_USER, makeUser } from "@/test/users"
+import { keepRefFromUrl, readRef } from "@/features/invite/ref"
 import { AuthProvider } from "./AuthProvider"
 
 // The API is mocked at the module edge: `@/api/client` (token store) and `@/api/auth` (endpoints).
@@ -40,6 +41,12 @@ vi.mock("@/api/auth", () => ({
   logout: vi.fn(async () => undefined),
   completeOnboarding: vi.fn(),
   updateMe: vi.fn(),
+}))
+
+// `GET /me/invite`: the user's own code and friends-joined count (invite-friends §4).
+vi.mock("@/api/invite", () => ({
+  inviteKeys: { mine: ["me", "invite"] },
+  fetchInvite: vi.fn(async () => ({ code: "K7QM2XWR4D", joined: 2 })),
 }))
 
 vi.mock("@/api/verification", () => ({
@@ -137,7 +144,7 @@ describe("login page", () => {
     callback({ credential: "google-id-token" })
 
     expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
-    expect(auth.signInWithGoogle).toHaveBeenCalledWith("google-id-token")
+    expect(auth.signInWithGoogle).toHaveBeenCalledWith("google-id-token", null)
     expect(api.setAccessToken).toHaveBeenCalledWith("google-token")
     expect(where(router)).toBe("/welcome")
   })
@@ -218,6 +225,46 @@ describe("login page", () => {
     expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
     expect(where(router)).toBe("/welcome")
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it("sends a kept invite code with the first sign-in, then drops it", async () => {
+    window.history.replaceState(null, "", "/?ref=k7qm2xwr4d")
+    keepRefFromUrl()
+    expect(window.location.search).toBe("")
+    h.config = { googleClientId: "test-client.apps.googleusercontent.com", devLogin: false }
+    vi.mocked(auth.signInWithGoogle).mockResolvedValue({
+      accessToken: "google-token",
+      user: NEW_USER,
+      needsOnboarding: true,
+    })
+    renderApp("/login")
+    await waitFor(() => expect(h.gis!.renderButton).toHaveBeenCalled())
+    h.gis!.initialize.mock.calls[0][0].callback({ credential: "google-id-token" })
+
+    expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
+    expect(auth.signInWithGoogle).toHaveBeenCalledWith("google-id-token", "K7QM2XWR4D")
+    expect(readRef()).toBeNull()
+  })
+
+  it("sends a kept invite code with a dev new-user sign-in", async () => {
+    window.history.replaceState(null, "", "/?ref=K7QM2XWR4D")
+    keepRefFromUrl()
+    h.config = { googleClientId: null, devLogin: true }
+    vi.mocked(auth.devLoginAsNewUser).mockResolvedValue({
+      accessToken: "new-token",
+      user: NEW_USER,
+      needsOnboarding: true,
+    })
+    renderApp("/login")
+    const panel = await screen.findByRole("region", { name: /dev login/i })
+    await within(panel).findByText("Demo Landlord BLR-1")
+    await userEvent
+      .setup()
+      .click(within(panel).getByRole("button", { name: /sign in as a new user/i }))
+
+    expect(await screen.findByRole("heading", { name: /welcome to doorway living/i })).toBeTruthy()
+    expect(auth.devLoginAsNewUser).toHaveBeenCalledWith("K7QM2XWR4D")
+    expect(readRef()).toBeNull()
   })
 
   it("sends a signed-in visitor on to next, with no toast for a restored session", async () => {

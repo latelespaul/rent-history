@@ -1,6 +1,6 @@
 # Invite friends (design note)
 
-Status: **design**. Date: 2026-11-26. Captain's ask: 2026-11-26 19:34 IST, "i want to invite people on platform".
+Status: **built** (slices 1–3; SYSTEM_DESIGN D-173). Date: 2026-11-26. Captain's ask: 2026-11-26 19:34 IST, "i want to invite people on platform".
 Each slice of §8 ships as its own small PR through no-mistakes, DEV first; a healthy DEV goes LIVE.
 
 This note adds a general "Invite friends" feature: any signed-in user shares a link to Doorway Living, and sees how many people joined from it. It extends SYSTEM_DESIGN §5.12, §10 and §13.1. Rules there stay unless a line below says otherwise.
@@ -39,7 +39,7 @@ Decisions proposed here are labelled **IF-1 … IF-9**. Each build PR records th
 
 ## 2. Data model (IF-1, IF-2)
 
-One Flyway migration, at the next free `V` number when the PR is made (`V20` today). Same portable SQL subset as V1 (D-10).
+One Flyway migration, at the next free `V` number when the PR is made (`V21` today). Same portable SQL subset as V1 (D-10).
 
 ```
 invite_codes                              referrals

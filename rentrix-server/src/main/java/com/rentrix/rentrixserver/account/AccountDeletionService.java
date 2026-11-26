@@ -88,6 +88,9 @@ public class AccountDeletionService {
 			.setParameter("erased", ERASED_PHONE).setParameter("now", now).setParameter("user", user).executeUpdate();
 		
 		bulk("delete from ShareLink s where s.user = :user", user);
+		// Invite friends (IF-8): the code goes, and the user no longer counts for anyone or counts anyone.
+		bulk("delete from Referral r where r.inviter = :user or r.invitee = :user", user);
+		bulk("delete from InviteCode c where c.user = :user", user);
 		bulk("delete from Enquiry e where e.tenant = :user", user);
 		em.createQuery("delete from IdempotencyRecord r where r.scope = :scope")
 			.setParameter("scope", user.getPublicId().toString()).executeUpdate();
