@@ -3,18 +3,33 @@ import { apiBaseUrl, devLogin } from "./support"
 
 /**
  * D-168 (captain 2026-11-25): no reviewer is shown by name to anyone but themselves and admins.
+ * D-169 (captain 2026-11-26): nor by anything that tells the landlord which tenant wrote it.
  * A signed-out visitor and another signed-in user read a seeded home with reviews: the page and
- * the API JSON the browser received carry no short name ("Demo T.") or seed name, the author line
- * is "Tenant, <year>", the owner is "Owner", and each review shows exactly the badges its API
- * status holds ("Google verified", "ID verified", "Agreement verified"). The name fields no
- * longer say "Shown publicly as". Runs in both projects (desktop and 390 px).
+ * the API JSON the browser received carry no short name ("Demo T.") or seed name, no stay dates
+ * and no exact times; the author line is "Verified tenant" or "Tenant" with no year, the owner is
+ * "Owner", and each review shows exactly the badges its API status holds ("Google verified", "ID
+ * verified", "Agreement verified"). The name fields no longer say "Shown publicly as". Runs in
+ * both projects (desktop and 390 px).
  */
 
 /** A seed short name ("Demo T.") or full seed name ("Demo Tenant BLR-1"). */
 const SEED_NAME = /Demo [A-Z]\.|Demo (Tenant|Landlord) [A-Z]{3}-\d/
 
+/** A full date ("2024-03-01") or an exact time ("2024-03-01T10:00:00Z"); a "2024-03" month is fine. */
+const DAY_OR_TIME = /\d{4}-\d{2}-\d{2}/
+
+/** Fields only the author and admins get (D-169): the stay and the exact times. */
+const PRIVATE_FIELDS =
+  /"(period|submittedAt|publishedAt|editedAt|editUntil|createdAt|lastReviewAt)"/
+
 interface ReviewJson {
-  author?: { label?: string; shortName?: string; badges?: Record<string, boolean | undefined> }
+  author?: {
+    label?: string
+    longStay?: boolean
+    shortName?: string
+    badges?: Record<string, boolean | undefined>
+  }
+  publishedMonth?: string
 }
 
 /** A published BLR seed home that lists reviews, from the public search API. */
@@ -55,21 +70,29 @@ async function expectAnonymous(page: Page, id: string) {
     expect(json).not.toMatch(SEED_NAME)
     expect(json).not.toContain("shortName")
   }
+  // Nor the stay or an exact time (D-169): the review JSON has months only.
+  expect(reviewsText).not.toMatch(PRIVATE_FIELDS)
+  expect(reviewsText).not.toMatch(DAY_OR_TIME)
   const main = page.locator("main")
   const items = main.getByTestId("property-review")
   await expect(items.first()).toBeVisible()
   await expect(main.getByTestId("landlord-label").first()).toHaveText("Owner")
   await expect(main).not.toContainText(SEED_NAME)
-  await expect(main).not.toContainText("Verified tenant")
   await expect(main).not.toContainText("Landlord not verified yet")
+  await expect(main.getByTestId("review-stay")).toHaveCount(0)
 
   // Each review: the label, and exactly the badges its status holds.
   expect(reviews.length).toBeGreaterThan(0)
   await expect(items).toHaveCount(reviews.length)
   for (const [i, review] of reviews.entries()) {
     const item = items.nth(i)
-    expect(review.author?.label).toMatch(/^Tenant, \d{4}$/)
+    expect(review.author?.label).toMatch(/^(Verified tenant|Tenant)$/)
     await expect(item.getByTestId("review-author")).toHaveText(review.author!.label!)
+    // No year on the card (D-169) but the month it was published: "Published Nov 2026".
+    await expect(item.getByTestId("review-long-stay")).toHaveCount(review.author?.longStay ? 1 : 0)
+    await expect(item.getByTestId("review-author").locator("..")).not.toContainText(/\d{4}/)
+    const text = (await item.innerText()).replace(/Published \w{3} \d{4}/, "")
+    expect(text, "no year on the card").not.toMatch(/\b(19|20)\d{2}\b/)
     const badges = review.author?.badges ?? {}
     await expect(item.getByTestId("badge-google")).toHaveCount(badges.google ? 1 : 0)
     await expect(item.getByTestId("badge-id")).toHaveCount(badges.id ? 1 : 0)

@@ -86,7 +86,7 @@ describe("LandlordDashboardPage in Owner mode (PLAN R10)", () => {
         status: "PUBLISHED",
         ratingOverall: 5,
         body: "Fixed the geyser the same day.",
-        author: { label: "Tenant, 2024" },
+        author: { label: "Verified tenant" },
         subject: { label: "Owner", shortName: "Demo P." },
         property: {
           id: "p1",
@@ -102,7 +102,7 @@ describe("LandlordDashboardPage in Owner mode (PLAN R10)", () => {
     expect(await screen.findByText("Tenancies on your homes (0)")).toBeTruthy()
     const received = await screen.findByTestId("owner-reviews-received")
     expect(await within(received).findByText("Fixed the geyser the same day.")).toBeTruthy()
-    expect(within(received).getByText("By Tenant, 2024")).toBeTruthy()
+    expect(within(received).getByText("By Verified tenant")).toBeTruthy()
     expect(within(received).getByTestId("my-review-pending")).toBeTruthy()
     expect(fetchMyReceivedReviews).toHaveBeenCalledWith("LANDLORD", expect.anything())
     expect(fetchMyWrittenReviews).toHaveBeenCalledWith("LANDLORD", expect.anything())

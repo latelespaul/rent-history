@@ -47,21 +47,26 @@ afterEach(cleanup)
 configure({ asyncUtilTimeout: 10000 })
 
 describe("PropertyReviews", () => {
-  it("renders the author, stars, text, stay and landlord reply from the recorded API response", async () => {
+  it("renders the author, stars, text, month and landlord reply from the recorded API response", async () => {
     renderReviews()
 
     const items = await screen.findAllByRole("listitem")
     expect(items).toHaveLength(2)
     const [answered, open] = items
-    expect(within(answered).getByTestId("review-author").textContent).toBe("Tenant, 2024")
+    expect(within(answered).getByTestId("review-author").textContent).toBe("Verified tenant")
     expect(within(answered).getByText("Reply from the owner")).toBeTruthy()
     expect(within(answered).getByRole("img", { name: "Rated 5 out of 5" })).toBeTruthy()
     expect(within(answered).getByText(/Well maintained building/)).toBeTruthy()
-    expect(within(answered).getByText(/^Stayed Mar 2024 – now$/)).toBeTruthy()
+    expect(within(answered).getByTestId("review-dates").textContent).toBe("Published Jun 2024")
+    expect(within(answered).queryByTestId("review-long-stay")).toBeNull()
     expect(within(answered).getByText(/The water pump was replaced/)).toBeTruthy()
     expect(within(answered).queryByRole("button", { name: "Respond" })).toBeNull()
-    expect(within(open).getByText(/^Stayed Jun 2022 – Jan 2024$/)).toBeTruthy()
+    expect(within(open).getByTestId("review-long-stay").textContent).toBe("Stayed 1+ yr")
     expect(within(open).getByRole("button", { name: "Respond" })).toBeTruthy()
+    // D-169: no stay dates and no year on any card the landlord sees.
+    for (const item of items) {
+      expect(item.textContent).not.toMatch(/Stayed \w{3} \d{4}|Tenant, \d{4}/)
+    }
   })
 
   it("shows each reviewer by label with the badges they hold, never by name (D-168)", async () => {
@@ -70,26 +75,25 @@ describe("PropertyReviews", () => {
       {
         ...first,
         author: {
-          label: "Tenant, 2024",
+          label: "Verified tenant",
           badges: { google: true, id: true, agreement: true },
         },
       },
-      { ...second, author: { label: "Tenant, 2022", badges: { google: true, id: false } } },
+      { ...second, author: { label: "Tenant", badges: { google: true, id: false } } },
     ]
     renderReviews()
 
     const [all, some] = await screen.findAllByRole("listitem")
-    expect(within(all).getByTestId("review-author").textContent).toBe("Tenant, 2024")
+    expect(within(all).getByTestId("review-author").textContent).toBe("Verified tenant")
     expect(within(all).getByText("Google verified")).toBeTruthy()
     expect(within(all).getByText("ID verified")).toBeTruthy()
     expect(within(all).getByText("Agreement verified")).toBeTruthy()
-    expect(within(some).getByTestId("review-author").textContent).toBe("Tenant, 2022")
+    expect(within(some).getByTestId("review-author").textContent).toBe("Tenant")
     expect(within(some).getByText("Google verified")).toBeTruthy()
     expect(within(some).queryByText("ID verified")).toBeNull()
     // No agreement status in the data: no badge slot at all.
     expect(within(some).queryByText("Agreement verified")).toBeNull()
     // The person tick is gone: the three badges replace it.
-    expect(screen.queryByText("Verified tenant")).toBeNull()
     expect(screen.queryByText("Tenant not verified yet")).toBeNull()
   })
 

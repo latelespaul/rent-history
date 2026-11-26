@@ -43,7 +43,7 @@ export function shortName(displayName: string): string {
 
 /**
  * The hint under every name field (D-168): other people never see a name, only an anonymous
- * label such as "Tenant, 2024" or "Owner".
+ * label such as "Verified tenant" or "Owner", never a year (D-169).
  */
 export const NAME_NOT_SHOWN =
-  "Never shown to other people. Your reviews show “Tenant, 2024” (the year your stay started) or “Owner”."
+  "Never shown to other people. Your reviews show “Verified tenant” or “Owner”, never your name or the dates of your stay."

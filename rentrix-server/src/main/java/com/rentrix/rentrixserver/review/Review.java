@@ -38,6 +38,11 @@ import java.util.Map;
 @Setter
 public class Review extends PublicEntity {
 	
+	/** A random id (D-169): a UUIDv7 would tell anyone who sees the review when it was written, to the millisecond. */
+	public Review() {
+		useRandomPublicId();
+	}
+	
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "tenancy_id", nullable = false)
 	private Tenancy tenancy;

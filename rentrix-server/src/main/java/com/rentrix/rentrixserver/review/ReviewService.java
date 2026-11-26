@@ -25,6 +25,7 @@ import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
 import com.rentrix.rentrixserver.tenancy.TenancyParty;
 import com.rentrix.rentrixserver.tenancy.TenancyRepository;
+import com.rentrix.rentrixserver.tenancy.TenancyService;
 import com.rentrix.rentrixserver.tenancy.TenancyStatus;
 import com.rentrix.rentrixserver.tenancy.dto.PartyRef;
 import com.rentrix.rentrixserver.user.PublicLabels;
@@ -38,7 +39,9 @@ import com.rentrix.rentrixserver.verification.ApprovalGuard;
 import com.rentrix.rentrixserver.verification.VerificationState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +51,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -435,7 +439,7 @@ public class ReviewService {
 		boolean admin = caller != null && caller.hasRole(Role.ADMIN);
 		Property property = visibleProperty(propertyId, caller);
 		Page<Review> page = reviews.findByPropertyIdAndDirectionAndStatus(property.getId(),
-			ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED, pageable);
+			ReviewDirection.TENANT_TO_PROPERTY, ReviewStatus.PUBLISHED, unordered(pageable));
 		return views(page, me, admin);
 	}
 
@@ -456,7 +460,7 @@ public class ReviewService {
 	public PageResponse<ReviewView> about(User subject, ReviewDirection direction, User viewer, boolean admin,
 		Pageable pageable) {
 		Page<Review> page = reviews.findBySubjectUserIdAndDirectionAndStatus(subject.getId(), direction,
-			ReviewStatus.PUBLISHED, pageable);
+			ReviewStatus.PUBLISHED, unordered(pageable));
 		return views(page, viewer, admin);
 	}
 
@@ -475,7 +479,9 @@ public class ReviewService {
 
 	/**
 	 * {@code GET /me/reviews/received?as=LANDLORD|TENANT}: published reviews about the caller, plus the ones still
-	 * awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs.
+	 * awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs. Ordered by the random
+	 * review id only (D-169): posting order would tell the subject which ex-tenant wrote which, and rating order would
+	 * place a pending review's hidden rating among the published ones.
 	 */
 	public PageResponse<ReviewView> received(AuthenticatedUser caller, TenancyParty as, Pageable pageable) {
 		User me = currentUser(caller);
@@ -484,7 +490,7 @@ public class ReviewService {
 			: EnumSet.of(as == TenancyParty.LANDLORD ? ReviewDirection.TENANT_TO_LANDLORD
 			: ReviewDirection.LANDLORD_TO_TENANT);
 		Page<Review> page = reviews.findBySubjectUserIdAndDirectionInAndStatusIn(me.getId(), directions,
-			EnumSet.of(ReviewStatus.PUBLISHED, ReviewStatus.AWAITING_REVEAL), pageable);
+			EnumSet.of(ReviewStatus.PUBLISHED, ReviewStatus.AWAITING_REVEAL), unordered(pageable));
 		boolean admin = caller.hasRole(Role.ADMIN);
 		Map<Long, ReviewResponse> replies = responsesOf(page.getContent());
 		return PageResponse.of(page, r -> r.getStatus() == ReviewStatus.AWAITING_REVEAL
@@ -529,6 +535,15 @@ public class ReviewService {
 	}
 
 	// -------------------------------------------------------------- helpers
+	
+	/**
+	 * A review list's order (D-169) must not give away who posted when: equal ratings, or every review of an unsorted
+	 * list, are ordered by the random review id, never by the row or posting order.
+	 */
+	static Pageable unordered(Pageable pageable) {
+		return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+			pageable.getSort().and(Sort.by(Sort.Direction.ASC, "publicId")));
+	}
 
 	private void publish(Review review, Instant now) {
 		review.setStatus(ReviewStatus.PUBLISHED);
@@ -804,8 +819,8 @@ public class ReviewService {
 		if (reply != null && (reply.getStatus() == ResponseStatus.PUBLISHED || responder || admin)) {
 			User replier = reply.getAuthor();
 			response = new ReviewView.Response(reply.getBody(), label(r, replier),
-				isSelf(replier, me) || admin ? PublicNames.of(replier) : null, reply.getCreatedAt(),
-				responder || admin ? reply.getEditUntil() : null);
+				isSelf(replier, me) || admin ? PublicNames.of(replier) : null,
+				responder || admin ? reply.getCreatedAt() : null, responder || admin ? reply.getEditUntil() : null);
 		}
 		boolean published = r.getStatus() == ReviewStatus.PUBLISHED;
 		ReviewView.Actions actions = new ReviewView.Actions(
@@ -832,10 +847,13 @@ public class ReviewService {
 			authorLine(r, me, admin),
 			r.getSubjectUser() == null ? null : person(r, r.getSubjectUser(), me, admin),
 			propertyRef(r.getProperty()),
-			period(r.getTenancy()),
+			// D-169: the stay and the exact times only for the author and admins; others get the month and "edited".
+			privileged ? period(r.getTenancy()) : null,
+			month(r.getPublishedAt()),
+			r.getLastEditedAt() != null ? Boolean.TRUE : null,
 			privileged ? r.getSubmittedAt() : null,
-			r.getPublishedAt(),
-			r.getLastEditedAt(),
+			privileged ? r.getPublishedAt() : null,
+			privileged ? r.getLastEditedAt() : null,
 			privileged ? r.getEditUntil() : null,
 			privileged ? r.getHiddenReason() : null,
 			response,
@@ -843,24 +861,31 @@ public class ReviewService {
 			VerificationState.of(r.getVerificationStatus()));
 	}
 
-	/** A review about the caller that still awaits reveal: no ratings, text or author (D-46). */
+	/**
+	 * A review about the caller that still awaits reveal: no ratings, text or author (D-46), and no stay, which would
+	 * name the tenancy and so the author (D-169).
+	 */
 	private ReviewView pending(Review r) {
 		return new ReviewView(r.getPublicId(), r.getDirection(), r.getStatus(), null, null, null, null, null, null,
-			null, null, null, null, null, null, null, propertyRef(r.getProperty()), period(r.getTenancy()), null, null, null, null, null, null,
-			ReviewView.Actions.NONE, null);
+			null, null, null, null, null, null, null, propertyRef(r.getProperty()), null, null, null, null, null, null,
+			null, null, null, ReviewView.Actions.NONE, null);
 	}
 
 	/**
-	 * The author line (D-168): an anonymous label and the three badges, the name only for the author and admins, the
-	 * id for admins only. "Agreement verified" comes from this review's tenancy.
+	 * The author line (D-168, D-169): an anonymous label with no year, the coarse "Stayed 1+ yr" badge of a tenant
+	 * author and the three badges, the name only for the author and admins, the id for admins only. "Agreement
+	 * verified" comes from this review's tenancy.
 	 */
 	private ReviewView.Author authorLine(Review r, User me, boolean admin) {
 		User author = r.getAuthor();
 		if (deleted(author)) {
-			return new ReviewView.Author(null, PublicNames.DELETED_USER, null, TrustBadges.NONE);
+			return new ReviewView.Author(null, PublicNames.DELETED_USER, null, null, TrustBadges.NONE);
 		}
+		Tenancy tenancy = r.getTenancy();
+		boolean longStay = isTenant(tenancy, author) && r.getSubmittedAt() != null && PublicLabels.longStay(
+			tenancy.getStartDate(), tenancy.getEndDate(), LocalDate.ofInstant(r.getSubmittedAt(), ZoneOffset.UTC));
 		return new ReviewView.Author(admin ? author.getPublicId() : null, label(r, author),
-			isSelf(author, me) || admin ? PublicNames.of(author) : null,
+			longStay ? Boolean.TRUE : null, isSelf(author, me) || admin ? PublicNames.of(author) : null,
 			identity.trustBadges(author, r.getTenancy().getEvidenceLevel() == EvidenceLevel.DOCUMENT));
 	}
 
@@ -873,14 +898,35 @@ public class ReviewService {
 			isSelf(user, me) || admin ? PublicNames.of(user) : null);
 	}
 
-	/** How {@code user} shows on {@code r} (D-168): the tenancy's tenant as "Tenant, <start year>", else "Owner". */
+	/**
+	 * How {@code user} shows on {@code r} (D-168, D-169): the tenancy's tenant as "Verified tenant" or "Tenant", else
+	 * "Owner"; never a year.
+	 */
 	private static String label(Review r, User user) {
 		if (deleted(user)) {
 			return PublicNames.DELETED_USER;
 		}
 		Tenancy tenancy = r.getTenancy();
-		return tenancy.getTenant() != null && tenancy.getTenant().getId().equals(user.getId())
-			? PublicLabels.tenant(tenancy.getStartDate()) : PublicLabels.OWNER;
+		return isTenant(tenancy, user) ? PublicLabels.tenant(verifiedStay(tenancy)) : PublicLabels.OWNER;
+	}
+	
+	private static boolean isTenant(Tenancy tenancy, User user) {
+		return tenancy.getTenant() != null && tenancy.getTenant().getId().equals(user.getId());
+	}
+	
+	/**
+	 * "Verified tenant" (D-169): the landlord confirmed the stay or started it (D-142), a rental agreement backs it, or
+	 * the team verified it. A tenant's one-sided record, such as a home whose landlord is not on the platform, is
+	 * plain "Tenant".
+	 */
+	static boolean verifiedStay(Tenancy tenancy) {
+		return TenancyService.mutual(tenancy) || tenancy.getEvidenceLevel() == EvidenceLevel.DOCUMENT
+			|| tenancy.getVerificationStatus() == VerificationState.VERIFIED;
+	}
+	
+	/** Month and year in UTC, never the day or time (D-169); null for null. */
+	static YearMonth month(Instant at) {
+		return at == null ? null : YearMonth.from(at.atZone(ZoneOffset.UTC));
 	}
 
 	private static boolean isSelf(User user, User me) {

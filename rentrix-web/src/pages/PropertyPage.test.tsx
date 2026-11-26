@@ -133,7 +133,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { label: "Tenant, 2024" },
+        author: { label: "Verified tenant" },
         actions: { edit: false, withdraw: false, respond: false, editResponse: false },
       },
     ]
@@ -165,7 +165,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { label: "Tenant, 2024" },
+        author: { label: "Verified tenant" },
       },
     ]
     renderPage()
@@ -189,7 +189,7 @@ describe("PropertyPage", () => {
         id: "r1",
         ratingOverall: 4,
         body: "Water supply was steady.",
-        author: { label: "Tenant, 2024" },
+        author: { label: "Verified tenant" },
         actions: { edit: true, withdraw: true, respond: false, editResponse: false },
       },
     ]

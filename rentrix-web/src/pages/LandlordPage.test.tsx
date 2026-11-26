@@ -41,7 +41,7 @@ vi.mock("@/api/reviews", async (importOriginal) => ({
         ratingOverall: 4,
         criteria: { RESPONSIVENESS: 5, PRIVACY: 4 },
         wouldRecommend: true,
-        author: { label: "Tenant, 2024" },
+        author: { label: "Verified tenant" },
         verification: "UNVERIFIED",
       },
     ],

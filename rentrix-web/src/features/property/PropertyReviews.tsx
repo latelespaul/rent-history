@@ -18,7 +18,7 @@ import {
 import { criterionLabel } from "@/features/review/form"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import type { PropertyReview, RatingSummary } from "@/types/api"
-import { dayLabel, listedReviewCount, monthLabel } from "./labels"
+import { listedReviewCount, monthLabel } from "./labels"
 import { Stars } from "./Rating"
 import { ReviewTick } from "./ReviewTick"
 import { TrustBadges } from "./TrustBadges"
@@ -235,7 +235,7 @@ function CriteriaList({ review }: { review: PropertyReview }) {
   )
 }
 
-/** Who replied, by label only (D-168): "the owner", or e.g. "Tenant, 2024". */
+/** Who replied, by label only (D-168): "the owner", or "Verified tenant" / "Tenant". */
 function replier(label: string | undefined): string {
   return !label || label === "Owner" ? "the owner" : label
 }
@@ -258,16 +258,15 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
             Your review
           </Badge>
         )}
-        {/* Never the name (D-168): "Tenant, 2024" or "Owner", the same label everyone sees. */}
+        {/*
+          Never the name (D-168) and never a year or stay date (D-169): "Verified tenant", "Tenant" or
+          "Owner", the same label everyone sees, so the landlord cannot tell which tenant wrote it.
+        */}
         <span className="font-semibold text-ink-900" data-testid="review-author">
           {review.author?.label ?? "Tenant"}
         </span>
+        {review.author?.longStay && <Badge data-testid="review-long-stay">Stayed 1+ yr</Badge>}
         <TrustBadges badges={review.author?.badges} />
-        {review.period && (
-          <span className="text-ink-500" data-testid="review-stay">
-            Stayed {monthLabel(review.period.from)} – {monthLabel(review.period.to) ?? "now"}
-          </span>
-        )}
         {review.verification && <ReviewTick state={review.verification} />}
       </p>
       {rating !== undefined && (
@@ -303,11 +302,12 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
         </p>
       )}
       <CriteriaList review={review} />
-      {(review.publishedAt || review.editedAt) && (
+      {/* Month and year only, never the day (D-169). */}
+      {(review.publishedMonth || review.edited) && (
         <p className="text-xs text-ink-500" data-testid="review-dates">
-          {review.publishedAt && `Published ${monthLabel(review.publishedAt)}`}
-          {review.publishedAt && review.editedAt && " · "}
-          {review.editedAt && `edited ${dayLabel(review.editedAt)}`}
+          {review.publishedMonth && `Published ${monthLabel(review.publishedMonth)}`}
+          {review.publishedMonth && review.edited && " · "}
+          {review.edited && "edited"}
         </p>
       )}
       {review.response && (

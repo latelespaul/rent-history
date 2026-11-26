@@ -703,12 +703,14 @@ export interface PropertyReview {
   cons?: string
   textHidden?: boolean
   /**
-   * Never the name (D-168): `label` is "Tenant, 2024" (the stay's start year) or "Owner";
-   * `shortName` only for the author and admins.
+   * Never the name (D-168) and never a year (D-169): `label` is "Verified tenant", "Tenant" or
+   * "Owner"; `longStay` true shows the coarse "Stayed 1+ yr" badge; `shortName` only for the author
+   * and admins.
    */
   author?: {
     id?: string
     label: string
+    longStay?: boolean
     shortName?: string
     badges?: TrustBadges
   }
@@ -716,13 +718,19 @@ export interface PropertyReview {
   subject?: { id?: string; label: string; shortName?: string }
   /** The reviewed home; no unit label (D-57). */
   property?: { id: string; buildingName: string; locality: string; city: CityRef }
+  /** The stay, only for the author and admins (D-169): it would tell the landlord who wrote it. */
   period?: { from: string; to?: string }
+  /** "2026-11": the month it was published, for everyone; never the day or time (D-169). */
+  publishedMonth?: string
+  /** True once the author edited it; the date only on `editedAt`, for the author and admins. */
+  edited?: boolean
+  /** Exact times, only for the author and admins (D-169). */
   publishedAt?: string
   editedAt?: string
   /** The subject's one public reply. */
   response?: {
     body: string
-    /** "Owner" or "Tenant, 2024" (D-168); `authorShortName` only for the responder and admins. */
+    /** "Owner", "Verified tenant" or "Tenant" (D-168); `authorShortName` only for the responder and admins. */
     authorLabel?: string
     authorShortName?: string
     createdAt?: string

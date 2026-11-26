@@ -27,7 +27,7 @@ public class UserProfileController {
 		return profiles.get(id, caller);
 	}
 	
-	/** {@code GET /users/{id}/reviews?as=LANDLORD|TENANT&page=&size=&sort=newest|rating}. */
+	/** {@code GET /users/{id}/reviews?as=LANDLORD|TENANT&page=&size=&sort=rating} (no "newest", D-169). */
 	@GetMapping("/users/{id}/reviews")
 	public PageResponse<ReviewView> reviews(@PathVariable UUID id,
 		@RequestParam(required = false, name = "as") TenancyParty as, @RequestParam(required = false) Integer page,

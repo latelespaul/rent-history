@@ -245,7 +245,7 @@ test("edit a published review: saved after the warning, shows edited and not ver
     await dialog.getByTestId("confirm-dialog-ok").click()
     const edited = page.getByTestId("property-review").filter({ hasText: "came back late" })
     await expect(edited.getByTestId("tick-unverified")).toBeVisible()
-    await expect(edited.getByTestId("review-dates")).toContainText(/edited \d/)
+    await expect(edited.getByTestId("review-dates")).toHaveText(/^Published \w{3} \d{4} · edited$/)
     await shot("10-review-edited")
   })
   await tenant.api.dispose()

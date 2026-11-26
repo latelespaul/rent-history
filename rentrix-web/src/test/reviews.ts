@@ -2,7 +2,8 @@ import type { PropertyReview } from "@/types/api"
 
 /**
  * Two reviews exactly as `GET /properties/{id}/reviews` returned them for the property's landlord
- * (dev seed, Demo Residency A): one already answered, one the landlord may still answer.
+ * (dev seed, Demo Residency A): one already answered, one the landlord may still answer. No stay
+ * dates or exact times: the landlord is not the author (D-169).
  */
 export const RECORDED_REVIEWS: PropertyReview[] = [
   {
@@ -15,7 +16,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     ratingC: 5,
     body: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
     author: {
-      label: "Tenant, 2024",
+      label: "Verified tenant",
       badges: {
         google: false,
         id: true,
@@ -30,10 +31,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
         name: "Bangalore",
       },
     },
-    period: {
-      from: "2024-03",
-    },
-    publishedAt: "2024-06-09T10:00:00Z",
+    publishedMonth: "2024-06",
     response: {
       body: "Thank you for the feedback. The water pump was replaced after you moved out and the lift is now serviced every quarter.",
       authorLabel: "Owner",
@@ -57,7 +55,8 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
     ratingC: 5,
     body: "Well maintained building with a working lift and good security. Shops and buses are a short walk away.",
     author: {
-      label: "Tenant, 2024",
+      label: "Verified tenant",
+      longStay: true,
       badges: {
         google: false,
         id: true,
@@ -72,11 +71,7 @@ export const RECORDED_REVIEWS: PropertyReview[] = [
         name: "Bangalore",
       },
     },
-    period: {
-      from: "2022-06",
-      to: "2024-01",
-    },
-    publishedAt: "2024-02-05T10:00:00Z",
+    publishedMonth: "2024-02",
     actions: {
       edit: false,
       withdraw: false,
