@@ -869,7 +869,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/auth/config` | public: `{googleClientId, devLogin: bool}` so the web needs no build-time Google config (D-76) |
-| POST | `/auth/google` | `{idToken, ref?}` → verifies the Google ID token (D-70), finds or creates the user, returns `{accessToken, user, needsOnboarding}` + refresh cookie. `ref` (≤ 32 chars) is an invite code, counted only when this call creates the user (D-172); the reply is the same either way |
+| POST | `/auth/google` | `{idToken, ref?}` → verifies the Google ID token (D-70), finds or creates the user, returns `{accessToken, user, needsOnboarding}` + refresh cookie. `ref` (≤ 32 chars) is an invite code, counted only when this call creates the user (D-173); the reply is the same either way |
 | POST | `/auth/refresh` | uses refresh cookie, rotates it |
 | POST | `/auth/logout` | revokes current refresh token |
 | GET | `/auth/dev-users` | **`dev`/`test` profile only** (D-77): seed users for the login picker (no seed admins, D-155) |

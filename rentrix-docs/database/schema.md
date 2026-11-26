@@ -496,7 +496,7 @@ The foreign key is a table constraint inside `CREATE TABLE`, which MySQL enforce
 
 ## 10. Invite friends (D-173)
 
-One random share code per user and one row per person who signed up through it (design note [`../design/invite-friends.md`](../design/invite-friends.md)). Neither table has a `public_id`: no row is addressed from outside. Migration `V20`.
+One random share code per user and one row per person who signed up through it (design note [`../design/invite-friends.md`](../design/invite-friends.md)). Neither table has a `public_id`: no row is addressed from outside. Migration `V21`.
 
 ```sql
 CREATE TABLE invite_codes (
