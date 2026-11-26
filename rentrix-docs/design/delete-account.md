@@ -41,6 +41,7 @@ write, job and sign-in must respect; that is not simple here. The warning says i
 | Verification applications and their events | rows deleted |
 | Sessions: every `refresh_tokens` row | deleted, so every device is signed out; live access tokens are refused at once (D-160) |
 | Share links, enquiries the user sent, stored idempotent replies (they can echo the profile) | rows deleted |
+| Invite friends: the user's invite code and every referral naming them as inviter or invitee (D-173) | rows deleted, so a friend's deletion lowers the count |
 | Owner contact (name, email, phone) the user typed for homes they added | cleared |
 | Invites the user sent that are still waiting (`PENDING_CONFIRMATION`) | tenancy `CANCELLED`, invite email cleared, invite tokens deleted |
 | Pending tenancy requests where the user is the other party | `CANCELLED` (nobody can confirm them any more) |

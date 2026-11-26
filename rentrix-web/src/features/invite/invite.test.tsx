@@ -103,7 +103,9 @@ describe("Help the next tenant card", () => {
   it("opens the sheet while the link loads, then fills it in", async () => {
     const share = stubShare(async () => {})
     let answer: (value: { code: string; joined: number }) => void = () => {}
-    vi.mocked(fetchInvite).mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)))
+    vi.mocked(fetchInvite).mockImplementationOnce(
+      () => new Promise((resolve) => (answer = resolve)),
+    )
     render(<InviteCard />, { loaded: false })
     await userEvent.setup().click(screen.getByTestId("invite-card"))
     const sheet = await screen.findByTestId("invite-sheet")
