@@ -31,10 +31,13 @@ async function openHome(page: Page) {
 }
 
 /**
- * The hero (bar the search box and the sample screen, which hold KNOWN_RULES elements) and the
- * problem section pass every rule, colour contrast included (landing visual redesign, PR 1).
+ * The hero (bar the search box and the sample screen, which hold KNOWN_RULES elements), the
+ * problem, how it works and the two side cards pass every rule, colour contrast included (landing
+ * visual redesign, PRs 1 and 2).
  */
-test("home hero and problem pass every WCAG 2.1 AA rule, contrast included", async ({ page }) => {
+test("home hero, problem, how it works and audience pass every WCAG 2.1 AA rule, contrast included", async ({
+  page,
+}) => {
   await openHome(page)
   await expect(page.getByRole("list", { name: "Live cities" })).toBeVisible()
   const hero = 'section[aria-labelledby="hero-title"]'
@@ -42,6 +45,8 @@ test("home hero and problem pass every WCAG 2.1 AA rule, contrast included", asy
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .include(hero)
     .include("#problem")
+    .include("#how")
+    .include("#audience")
     .exclude(`${hero} form[role="search"]`)
     .exclude(`${hero} figure`)
     .analyze()

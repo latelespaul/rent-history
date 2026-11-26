@@ -8,7 +8,7 @@
   "cornerRadius": 2,
   "padding": 2,
   "opticalBalance": true,
-  "iconCount": 60,
+  "iconCount": 62,
   "icons": [
     "agreement",
     "alert",
@@ -36,6 +36,7 @@
     "filter",
     "flag",
     "home",
+    "id-card",
     "info",
     "key",
     "landlord",
@@ -50,6 +51,7 @@
     "message",
     "owner-key",
     "pencil",
+    "phone",
     "plus",
     "rent-receipt",
     "reply",
@@ -74,7 +76,9 @@
   "portedFromLucide": {
     "document-x": "file-x",
     "badge-check": "badge-check",
-    "map-pin-check": "map-pin-check"
+    "map-pin-check": "map-pin-check",
+    "phone": "smartphone",
+    "id-card": "id-card"
   },
   "licences": {
     "own": "project licence",

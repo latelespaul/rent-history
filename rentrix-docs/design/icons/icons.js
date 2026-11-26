@@ -88,11 +88,16 @@
     // --- Ported from Lucide (ISC), redrawn on this grid at stroke 1.75 (see PORTED below)
     'document-x': ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'm9.5 12.5 5 5', 'm14.5 12.5-5 5'],
     'badge-check': ['M4 8.6a4 4 0 0 1 4.6-4.6 4 4 0 0 1 6.8 0A4 4 0 0 1 20 8.6a4 4 0 0 1 0 6.8 4 4 0 0 1-4.6 4.6 4 4 0 0 1-6.8 0A4 4 0 0 1 4 15.4a4 4 0 0 1 0-6.8z', 'm9 12 2 2 4-4'],
-    'map-pin-check': ['M19 10.5a7 7 0 0 0-14-1C5 14.8 12 21 12 21s1-.9 2.3-2.3', 'M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z', 'm15.5 18 2 2 4-4']
+    'map-pin-check': ['M19 10.5a7 7 0 0 0-14-1C5 14.8 12 21 12 21s1-.9 2.3-2.3', 'M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z', 'm15.5 18 2 2 4-4'],
+    phone: ['M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z', 'M11 17.5h2'],
+    'id-card': ['M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z', 'M9 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z', 'M6.2 16a3 3 0 0 1 5.6 0', 'M15 10.5h3', 'M15 14h3']
   };
 
   /** Icons ported from Lucide (ISC, https://lucide.dev): our name -> Lucide name. */
-  var PORTED = { 'document-x': 'file-x', 'badge-check': 'badge-check', 'map-pin-check': 'map-pin-check' };
+  var PORTED = {
+    'document-x': 'file-x', 'badge-check': 'badge-check', 'map-pin-check': 'map-pin-check',
+    phone: 'smartphone', 'id-card': 'id-card'
+  };
 
   function svg(name, size) {
     var paths = ICONS[name];

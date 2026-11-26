@@ -143,6 +143,13 @@
     <path d="M5 9v11h14V9"/>
     <path d="M10 20v-6h4v6"/>
   </symbol>
+  <symbol id="rx-id-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/>
+    <path d="M9 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+    <path d="M6.2 16a3 3 0 0 1 5.6 0"/>
+    <path d="M15 10.5h3"/>
+    <path d="M15 14h3"/>
+  </symbol>
   <symbol id="rx-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/>
     <path d="M12 11v5"/>
@@ -208,6 +215,10 @@
   <symbol id="rx-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/>
     <path d="m13.5 6.5 4 4"/>
+  </symbol>
+  <symbol id="rx-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+    <path d="M11 17.5h2"/>
   </symbol>
   <symbol id="rx-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 5v14"/>

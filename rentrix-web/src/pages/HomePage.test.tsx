@@ -121,11 +121,73 @@ describe("HomePage", { timeout: 20_000 }, () => {
       expect.arrayContaining(["Any one", "By our team", "Verified by Doorway Living"]),
     )
     expect(texts("summary", region("faq"))).toHaveLength(5)
-    // step 1 no longer says sign-in is needed to search (captain 2026-11-25)
-    expect(region("how").textContent).toMatch(
-      /Searching homes and reading reviews needs no account/,
-    )
-    expect(region("how").textContent).not.toMatch(/That is all it takes to search/)
+  })
+
+  it("shows how it works as three titled steps with chips, no body text", () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    renderHome()
+
+    const how = region("how")
+    expect(texts("ol > li h3", how)).toEqual([
+      "Sign in with Google",
+      "Verify once, add your home",
+      "Rate each other",
+    ])
+    expect(how.querySelectorAll("ol p")).toHaveLength(0)
+    expect(texts('ul[aria-label="Pick a side"] li', how)).toEqual(["Tenant", "Landlord", "Both"])
+    expect(texts('ul[aria-label="Verify with any one"] li', how)).toEqual([
+      "Phone",
+      "Aadhaar",
+      "LinkedIn",
+    ])
+    for (const svg of how.querySelectorAll("ol svg"))
+      expect(svg.closest("[aria-hidden=true]")).not.toBeNull()
+    // searching needs no account (captain 2026-11-25): one line under the steps says so
+    expect(texts("p", how)).toEqual(["Search and read reviews with no account."])
+  })
+
+  it("shows each side as four icon tiles, one side at a time on the I rent / I own toggle", () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    renderHome()
+
+    const audience = region("audience")
+    const tiles = (id: string) => texts(`#${id} li`, audience)
+    expect(tiles("for-tenants")).toEqual([
+      "Check the landlord",
+      "Know the home",
+      "See real rents",
+      "Build your record",
+    ])
+    expect(tiles("for-landlords")).toEqual([
+      "Check a tenant",
+      "List your homes",
+      "Reply to reviews",
+      "Earn the green tick",
+    ])
+    expect(audience.querySelectorAll("li svg[aria-hidden=true]")).toHaveLength(8)
+    expect(audience.querySelectorAll("p")).toHaveLength(0)
+    expect(
+      [...audience.querySelectorAll("article a")].map((a) => [
+        a.textContent,
+        a.getAttribute("href"),
+      ]),
+    ).toEqual([
+      ["Search homes", "/search"],
+      ["List your home", "/login"],
+    ])
+
+    const list = audience.querySelector('[role="tablist"]')!
+    expect(list.getAttribute("aria-label")).toBe("Choose your side")
+    const [rent, own] = [...list.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+    expect([rent?.textContent, own?.textContent]).toEqual(["I rent", "I own"])
+    // both cards stay in the page (from 1024 px both show); the toggle marks one active
+    const panel = (id: string) => audience.querySelector(`#${id}`)!.closest('[role="tabpanel"]')!
+    expect(panel("for-tenants").getAttribute("data-state")).toBe("active")
+    expect(panel("for-landlords").getAttribute("data-state")).toBe("inactive")
+    fireEvent.mouseDown(own!, { button: 0 })
+    expect(own!.getAttribute("aria-selected")).toBe("true")
+    expect(panel("for-tenants").getAttribute("data-state")).toBe("inactive")
+    expect(panel("for-landlords").getAttribute("data-state")).toBe("active")
   })
 
   it("puts the search box in the hero, open to anyone, and sends a search to /search", async () => {
@@ -222,12 +284,13 @@ describe("HomePage", { timeout: 20_000 }, () => {
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
     ])
-    // besides the hero search (city picker, Search), the only buttons scroll the preview row
+    // besides the hero search (city picker, Search), the only buttons are the side toggle and
+    // the preview row's scroll buttons
     expect(
-      [...document.querySelectorAll("main button:not(form[role=search] button)")].map((b) =>
-        b.getAttribute("aria-label"),
+      [...document.querySelectorAll("main button:not(form[role=search] button)")].map(
+        (b) => b.getAttribute("aria-label") ?? b.textContent,
       ),
-    ).toEqual(["Previous cards", "Next cards"])
+    ).toEqual(["I rent", "I own", "Previous cards", "Next cards"])
   })
 
   it("previews the top-rated published homes, linked to their pages", async () => {
