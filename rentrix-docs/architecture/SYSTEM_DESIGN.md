@@ -925,7 +925,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/societies/{id}/towers` | towers and wings, for the property form pickers (landlord sees own `PENDING` rows too) |
 | GET | `/societies/{id}/summary` | public: flats, listed reviews, pooled verified rating; `rentRange` signed-in only (D-166) |
 | GET | `/properties/grouped?…` | public: `GET /properties` filters, a society with 2+ matching homes as one row, `totalHomes` (D-166) |
-| GET | `/search/suggestions?city=&q=&society=` | public: societies (with a named tower), areas and open flats the search box text names, typos allowed (D-164); with `society`, that society's towers and open flats (D-167) |
+| GET | `/search/suggestions?city=&q=&society=` | public; `city` as for `GET /properties` (one or several codes, D-174): societies (with a named tower), areas and open flats the search box text names, typos allowed (D-164); with `society`, that society's towers and open flats (D-167) |
 | GET | `/stats` | real counts: published properties, confirmed tenancies, published reviews, per active city: `{publishedProperties, confirmedTenancies, publishedReviews, cities: [{city, publishedProperties, confirmedTenancies, publishedReviews}]}` (`city` is the code; every active city has a row, zeros included). Until B4 serves it the web shows no counts (D-03) |
 
 **Properties**
