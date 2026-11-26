@@ -95,6 +95,14 @@ export function launchNames(cities: City[]): string[] {
 }
 
 /**
+ * Short names for the home page's city chips, in API order: a city on its own, or its region
+ * once, at its first city ("Delhi NCR"), without the member list of launchNames.
+ */
+export function chipNames(cities: City[]): string[] {
+  return [...new Set(cities.map((city) => city.region || city.name))]
+}
+
+/**
  * The launch line built from the active list (D-85): names up to LAUNCH_COPY_MAX_NAMES (6)
  * entries from launchNames ("Live in A and B; other cities on request"), counts cities beyond
  * ("Live in 9 cities; other cities on request"). Never says "only".

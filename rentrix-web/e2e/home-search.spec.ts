@@ -36,6 +36,18 @@ async function searchInFirstScreen(page: Page) {
   return form
 }
 
+test("the first phone screen shows the headline, the search box and the Google button", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "the 390 px phone layout only")
+  await page.goto("/")
+  await expect(page.getByRole("heading", { level: 1 })).toBeInViewport({ ratio: 1 })
+  await searchInFirstScreen(page)
+  await expect(
+    page.getByRole("link", { name: "Sign in / Sign up with Google" }).first(),
+  ).toBeInViewport({ ratio: 1 })
+})
+
 test("the signed-out home page has the search box in the first screen", async ({
   page,
 }, testInfo) => {

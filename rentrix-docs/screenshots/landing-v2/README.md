@@ -9,8 +9,13 @@ hero is the Vite dev server's overlay, not part of the app. Design: `rentrix-doc
 | `landing-390.png` | `/` at 390 px wide (phone, 2x), full page |
 | `landing-1440.png` | `/` at 1440 px wide, full page |
 
-Top to bottom: sticky header with section links and "Sign in"; hero (headline, subline, "Sign in /
-Sign up with Google", "See how it works", a sample app screen marked "Sample screen"); the problem;
+*Updated by the visual redesign, PR 1 (hero + problem, 2026-11-26; before/after in
+[`../landing-visual/`](../landing-visual/)).*
+
+Top to bottom: sticky header with section links and "Sign in"; hero (live city chips from
+`GET /cities`, headline, the search box, three icon badges, "Sign in / Sign up with Google", "See how
+it works" on desktop only, one privacy line, a sample app screen marked "Sample screen"); the problem
+as three icon tiles and a "keeps the record" banner;
 how it works in 3 steps; for tenants and for landlords; trust and verification (phone OTP required,
 green tick "Verified by Doorway Living", optional Aadhaar/PAN and LinkedIn badges); a swipeable row
 of the top-rated published homes from `GET /properties` (seed rows carry "Demo data", no rent) between

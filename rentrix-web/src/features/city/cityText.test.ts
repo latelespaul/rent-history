@@ -2,6 +2,7 @@ import type { City } from "@/types/api"
 import { describe, expect, it } from "vitest"
 import { LAUNCH_CITIES, NINE_CITIES, SEED_STATS, byName } from "@/test/cities"
 import {
+  chipNames,
   filterCities,
   highlight,
   launchCopy,
@@ -101,6 +102,7 @@ describe("launchCopy", () => {
       "Mumbai",
       "Pune",
     ])
+    expect(chipNames(seven)).toEqual(["Bangalore", "Delhi NCR", "Hyderabad", "Mumbai", "Pune"])
     expect(launchCopy(seven)).toBe(
       "Live in Bangalore, Delhi NCR (Delhi · Gurugram · Noida), Hyderabad, Mumbai and Pune; other cities on request",
     )

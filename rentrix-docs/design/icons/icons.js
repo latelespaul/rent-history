@@ -1,11 +1,11 @@
 /*
- * Rentrix icon set (v1) — single source of truth.
+ * Rentrix / Doorway Living icon set (v1, extended in v2) — single source of truth.
  * Grid 24×24, 2 px safe padding, stroke 1.75, round caps and joins,
  * no fills (except the star "on" state, filled by CSS), currentColor only.
  *
  * Used three ways:
- *  1. tools/build-icons.mjs reads this file and writes icons/<name>.svg
- *     plus icons/sprite.svg (for the React app to import later).
+ *  1. tools/build-icons.mjs reads this file and writes icons/<name>.svg,
+ *     icons/sprite.svg, icons/style-spec.json and icons/preview.html.
  *  2. Mockups load it as a classic <script>; every <i data-icon="name"></i>
  *     is replaced by an inline <svg>, so icons inherit text colour.
  *  3. icons.html shows the sheet.
@@ -72,8 +72,27 @@
     mail: ['M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z', 'm3 7 9 6 9-6'],
     info: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z', 'M12 11v5', 'M12 7.5v.01'],
     alert: ['M12 3.5 2.5 20h19z', 'M12 10v4.5', 'M12 17.5v.01'],
-    code: ['m8 7-5 5 5 5', 'm16 7 5 5-5 5', 'm14 4-4 16']
+    code: ['m8 7-5 5 5 5', 'm16 7 5 5-5 5', 'm14 4-4 16'],
+
+    // --- Doorway set (v2, 2026-11-25): rental glyphs drawn for Doorway Living on the same grid
+    'rent-receipt': ['M6 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1z', 'M9 7h6', 'M9 10h6', 'M12.5 17 9 14h1.5a3.5 3.5 0 0 0 0-7'],
+    'society-gate': ['M3 21V6.5L4.5 5 6 6.5V21', 'M18 21V6.5L19.5 5 21 6.5V21', 'M6 9h12', 'M6 17h12', 'M10 9v8', 'M14 9v8'],
+    'owner-key': ['M3 11 12 4l9 7', 'M5 9.5V20h14V9.5', 'M10 13a2 2 0 1 0 0 4 2 2 0 0 0 0-4z', 'M12 15h4.5', 'M15 15v2'],
+    'review-card': ['M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
+      'm12 6 1.17 2.39 2.66.4-1.94 1.85.45 2.61L12 12.03l-2.34 1.22.45-2.61-1.94-1.85 2.66-.4z', 'M8.5 16.5h7', 'M10 18.5h4'],
+    agreement: ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'M9 10.5h6', 'M8.5 17.5c1.5-2 2.5-2 3 0s2 1 3.5-.5'],
+    'verified-tenant': ['M10 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z', 'M2.5 21a7.5 7.5 0 0 1 15 0', 'm15.5 11 2 2 4-4'],
+    'city-bangalore': ['M3 21h18', 'M5 21v-8h14v8', 'M9 21v-5', 'M12 21v-5', 'M15 21v-5', 'M8 13a4 4 0 0 1 8 0', 'M12 9V5.5'],
+    'city-pune': ['M3 21h18', 'M5 21V8l2-1.5L9 8v13', 'M15 21V8l2-1.5L19 8v13', 'M9 11h6', 'M10 21v-4a2 2 0 0 1 4 0v4'],
+
+    // --- Ported from Lucide (ISC), redrawn on this grid at stroke 1.75 (see PORTED below)
+    'document-x': ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z', 'M14 3v5h5', 'm9.5 12.5 5 5', 'm14.5 12.5-5 5'],
+    'badge-check': ['M4 8.6a4 4 0 0 1 4.6-4.6 4 4 0 0 1 6.8 0A4 4 0 0 1 20 8.6a4 4 0 0 1 0 6.8 4 4 0 0 1-4.6 4.6 4 4 0 0 1-6.8 0A4 4 0 0 1 4 15.4a4 4 0 0 1 0-6.8z', 'm9 12 2 2 4-4'],
+    'map-pin-check': ['M19 10.5a7 7 0 0 0-14-1C5 14.8 12 21 12 21s1-.9 2.3-2.3', 'M12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z', 'm15.5 18 2 2 4-4']
   };
+
+  /** Icons ported from Lucide (ISC, https://lucide.dev): our name -> Lucide name. */
+  var PORTED = { 'document-x': 'file-x', 'badge-check': 'badge-check', 'map-pin-check': 'map-pin-check' };
 
   function svg(name, size) {
     var paths = ICONS[name];
@@ -85,7 +104,7 @@
       paths.map(function (d) { return '<path d="' + d + '"/>'; }).join('') + '</svg>';
   }
 
-  var api = { ICONS: ICONS, svg: svg };
+  var api = { ICONS: ICONS, PORTED: PORTED, svg: svg };
 
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
