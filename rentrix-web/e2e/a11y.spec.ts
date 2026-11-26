@@ -32,14 +32,15 @@ async function openHome(page: Page) {
 
 /**
  * The hero (bar the search box and the sample screen, which hold KNOWN_RULES elements), the
- * problem, how it works and the two side cards pass every rule, colour contrast included (landing
- * visual redesign, PRs 1 and 2).
+ * problem, how it works, the two side cards, the dark trust band and the city tiles pass every
+ * rule, colour contrast included (landing visual redesign, PRs 1 to 3).
  */
-test("home hero, problem, how it works and audience pass every WCAG 2.1 AA rule, contrast included", async ({
+test("home hero, problem, how it works, audience, trust and coverage pass every WCAG 2.1 AA rule, contrast included", async ({
   page,
 }) => {
   await openHome(page)
   await expect(page.getByRole("list", { name: "Live cities" })).toBeVisible()
+  await expect(page.locator("#coverage li a").first()).toBeVisible()
   const hero = 'section[aria-labelledby="hero-title"]'
   const { violations } = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -47,6 +48,8 @@ test("home hero, problem, how it works and audience pass every WCAG 2.1 AA rule,
     .include("#problem")
     .include("#how")
     .include("#audience")
+    .include("#trust")
+    .include("#coverage")
     .exclude(`${hero} form[role="search"]`)
     .exclude(`${hero} figure`)
     .analyze()

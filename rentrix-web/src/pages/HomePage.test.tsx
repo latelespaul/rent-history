@@ -89,15 +89,15 @@ describe("HomePage", { timeout: 20_000 }, () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
-    await waitFor(() => expect(texts("h2")).toContain("Where we are live."), { timeout: 10_000 })
+    await waitFor(() => expect(texts("h2")).toContain("Live in 2 cities."), { timeout: 10_000 })
     expect(texts("h1")).toEqual(["Check the home, the landlord and the tenant."])
     expect(texts("h2")).toEqual([
       "Renting runs on trust nobody can check.",
       "Three steps, a few minutes.",
       "One place, two points of view.",
-      "Open to everyone. Verified where it counts.",
+      "Verified where it counts.",
       "Cards straight from the app.",
-      "Where we are live.",
+      "Live in 2 cities.",
       "Questions, answered.",
       "Rent with your eyes open.",
     ])
@@ -112,14 +112,6 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(texts("p", problem)).toEqual(["Doorway Living keeps the record."])
     expect(texts("h3", region("audience"))).toEqual(["For tenants", "For landlords"])
     expect(region("how").querySelectorAll("ol > li")).toHaveLength(3)
-    const trust = texts("h3", region("trust")).join(" | ")
-    expect(trust).toMatch(/Phone OTP/)
-    expect(trust).toMatch(/Green tick/)
-    expect(trust).toMatch(/Aadhaar/)
-    expect(trust).toMatch(/LinkedIn/)
-    expect(texts("span", region("trust"))).toEqual(
-      expect.arrayContaining(["Any one", "By our team", "Verified by Doorway Living"]),
-    )
     expect(texts("summary", region("faq"))).toHaveLength(5)
   })
 
@@ -355,18 +347,59 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(texts("article [data-variant=success]", preview)).toEqual([])
   })
 
-  it("shows each live city with its first localities from GET /areas", async () => {
+  it("shows trust as a three-stage ladder of the real badges, a caption each, no paragraph", () => {
     h.state = { status: "anonymous", user: null } as AuthState
     renderHome()
 
-    await waitFor(() => expect(texts("li a", region("coverage"))).toContain("Baner"), {
+    const trust = region("trust")
+    expect(texts("ol > li h3", trust)).toEqual([
+      "Post at once",
+      "Verify once",
+      "Checked by our team",
+    ])
+    // the badges are the app's own: grey "Not verified yet", "ID verified", the green tick
+    expect(texts("[data-slot=badge]", trust)).toEqual([
+      "Not verified yet",
+      "ID verified",
+      "Verified by Doorway Living",
+    ])
+    expect(texts('ul[aria-label="Verify with any one"] li', trust)).toEqual([
+      "Phone",
+      "Aadhaar",
+      "LinkedIn",
+    ])
+    expect(texts("p", trust)).toEqual(["Others never see your numbers."])
+    for (const svg of trust.querySelectorAll("svg"))
+      expect(svg.closest("[aria-hidden=true]")).not.toBeNull()
+    // no stay dates or years on any badge (D-169)
+    expect(trust.textContent).not.toMatch(/\b(19|20)\d{2}\b/)
+  })
+
+  it("shows each live city from GET /cities as one tile linking to its search", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    renderHome()
+
+    await waitFor(() => expect(document.getElementById("coverage")).not.toBeNull(), {
       timeout: 10_000,
     })
     const coverage = region("coverage")
-    expect(texts("h3", coverage)).toEqual(["Bangalore", "Pune"])
-    expect(h.areaCalls.sort()).toEqual(["BLR", "PNQ"])
-    const chip = [...coverage.querySelectorAll("li a")].find((a) => a.textContent === "HSR Layout")
-    expect(chip?.getAttribute("href")).toBe("/search?city=BLR&locality=HSR%20Layout")
+    expect(
+      [...coverage.querySelectorAll("li a")].map((a) => [a.textContent, a.getAttribute("href")]),
+    ).toEqual([
+      ["BangaloreLive", "/search?city=BLR"],
+      ["PuneLive", "/search?city=PNQ"],
+    ])
+    // no locality chips on / (the search box covers locality, society and PIN)
+    expect(h.areaCalls).toEqual([])
+  })
+
+  it("counts the cities in the coverage title from GET /cities", async () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    vi.mocked(fetchCities).mockResolvedValueOnce(NINE_CITIES)
+    renderHome()
+
+    await waitFor(() => expect(texts("h2")).toContain("Live in 9 cities."), { timeout: 10_000 })
+    expect(region("coverage").querySelectorAll("li a")).toHaveLength(9)
   })
 
   it("hides the whole coverage section when GET /cities fails", async () => {
@@ -376,7 +409,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
 
     await waitFor(() => expect(client.getQueryState(["cities"])?.status).toBe("error"))
     expect(document.getElementById("coverage")).toBeNull()
-    expect(texts("h2")).not.toContain("Where we are live.")
+    expect(texts("h2")).not.toContain("Live in 2 cities.")
     expect(document.body.textContent).not.toMatch(/More cities are on the way/)
   })
 
