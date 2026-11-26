@@ -5,7 +5,8 @@ import java.util.List;
 
 /**
  * The parameters of the review form (D-157), each rated 1–5 stars and each optional. Every parameter belongs to one
- * direction: the tenant rates the home on the first nine and the landlord on the last five.
+ * direction: the tenant rates the home on the first nine and the landlord on the next five; the owner rates the
+ * tenant on the last five (LT-6).
  */
 public enum ReviewCriterion {
 	
@@ -22,7 +23,12 @@ public enum ReviewCriterion {
 	DEPOSIT_RETURN(ReviewDirection.TENANT_TO_LANDLORD),
 	TRANSPARENCY(ReviewDirection.TENANT_TO_LANDLORD),
 	PRIVACY(ReviewDirection.TENANT_TO_LANDLORD),
-	BEHAVIOUR(ReviewDirection.TENANT_TO_LANDLORD);
+	BEHAVIOUR(ReviewDirection.TENANT_TO_LANDLORD),
+	RENT_ON_TIME(ReviewDirection.LANDLORD_TO_TENANT),
+	CARE_OF_HOME(ReviewDirection.LANDLORD_TO_TENANT),
+	COMMUNICATION(ReviewDirection.LANDLORD_TO_TENANT),
+	HOUSE_RULES(ReviewDirection.LANDLORD_TO_TENANT),
+	MOVE_OUT(ReviewDirection.LANDLORD_TO_TENANT);
 	
 	private final ReviewDirection direction;
 	
@@ -34,7 +40,7 @@ public enum ReviewCriterion {
 		return direction;
 	}
 	
-	/** The parameters of one direction, in form order; none for {@code LANDLORD_TO_TENANT}. */
+	/** The parameters of one direction, in form order. */
 	public static List<ReviewCriterion> of(ReviewDirection direction) {
 		return Arrays.stream(values()).filter(c -> c.direction == direction).toList();
 	}

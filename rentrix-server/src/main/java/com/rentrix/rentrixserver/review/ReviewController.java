@@ -57,13 +57,14 @@ public class ReviewController {
 		return ResponseEntity.created(URI.create("/api/v1/reviews/" + created.id())).body(created);
 	}
 	
-	/** D-157: the tenant's review form, the home and the landlord reviews saved together. */
+	/** D-157: the tenant's review form, the home and the landlord reviews saved together; D-170: the owner's. */
 	@PostMapping("/tenancies/{id}/review-form")
 	@Idempotent
 	public ResponseEntity<ReviewFormView> form(@PathVariable UUID id, @RequestBody ReviewFormRequest request,
 		@AuthenticationPrincipal AuthenticatedUser caller) {
 		ReviewFormView written = reviews.form(id, request, caller);
-		ReviewView first = written.home() != null ? written.home() : written.landlord();
+		ReviewView first = written.home() != null ? written.home()
+			: written.landlord() != null ? written.landlord() : written.tenant();
 		return ResponseEntity.created(URI.create("/api/v1/reviews/" + first.id())).body(written);
 	}
 	

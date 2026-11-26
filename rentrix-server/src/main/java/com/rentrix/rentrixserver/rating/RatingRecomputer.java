@@ -55,9 +55,15 @@ public class RatingRecomputer {
 	private final RatingAggregateRepository aggregates;
 	private final RatingProperties properties;
 
-	/** The hook: call after a review's status, ratings or counting changed, inside the same transaction. */
+	/**
+	 * The hook: call after a review's status, ratings or counting changed, inside the same transaction. A person
+	 * review with no subject (its tenancy has no linked tenant yet, landlord-adds-tenant LT-5) feeds no row.
+	 */
 	@Transactional(propagation = Propagation.MANDATORY)
 	public void reviewChanged(Review review) {
+		if (unlinked(review)) {
+			return;
+		}
 		markCounting(group(review));
 		recomputeSubjects(review);
 	}
@@ -79,7 +85,7 @@ public class RatingRecomputer {
 	 */
 	@Transactional
 	public int recomputeAll() {
-		List<Review> all = source.allWithTenancy();
+		List<Review> all = source.allWithTenancy().stream().filter(r -> !unlinked(r)).toList();
 		Map<String, List<Review>> groups = all.stream().collect(Collectors.groupingBy(RatingRecomputer::groupKey));
 		groups.values().forEach(this::markCounting);
 		int rows = 0;
@@ -103,6 +109,12 @@ public class RatingRecomputer {
 			case LANDLORD_TO_TENANT -> recompute(RatingSubjectType.TENANT, review.getSubjectUser().getId());
 			case TENANT_TO_PROPERTY -> recompute(RatingSubjectType.PROPERTY, review.getProperty().getId());
 		}
+	}
+
+	/** A person review whose subject or tenant is not set: it never counts and has no pair group (D-44). */
+	private static boolean unlinked(Review r) {
+		return r.getDirection() != ReviewDirection.TENANT_TO_PROPERTY
+			&& (r.getSubjectUser() == null || r.getTenancy().getTenant() == null);
 	}
 
 	private List<Review> group(Review review) {

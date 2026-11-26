@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
+import com.rentrix.rentrixserver.rating.RatingRecomputer;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.tenancy.Tenancy;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,6 +65,9 @@ class ReviewFormApiTest {
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	@Autowired
+	RatingRecomputer recomputer;
 
 	private Property home(User landlord) {
 		return data.property(landlord, "BLR", "Koramangala", PropertyStatus.PUBLISHED);
@@ -258,6 +263,115 @@ class ReviewFormApiTest {
 		assertThat(jdbc.queryForList("select criteria from review_revisions order by revision_no", String.class))
 			.containsExactly("RESPONSIVENESS=4,DEPOSIT_RETURN=4,TRANSPARENCY=4,PRIVACY=4,BEHAVIOUR=4",
 				"RESPONSIVENESS=4,DEPOSIT_RETURN=4,TRANSPARENCY=4,PRIVACY=4,BEHAVIOUR=4");
+	}
+
+	private static final String TENANT_ALL = """
+		{"RENT_ON_TIME": %1$d, "CARE_OF_HOME": %1$d, "COMMUNICATION": %1$d, "HOUSE_RULES": %1$d, "MOVE_OUT": %1$d}""";
+
+	private static String tenantPart(int rating) {
+		return """
+			{"tenant": {"ratingOverall": %d, "criteria": %s, "wouldRecommend": true,
+			            "body": "Paid on time every month and kept the home clean."}}
+			""".formatted(rating, TENANT_ALL.formatted(rating));
+	}
+
+	@Test
+	void theOwnerReviewsTheTenantWithTheTenantPartBehindTheReveal() throws Exception {
+		User landlord = data.approved("Lata Landlord", Role.LANDLORD);
+		User tenant = data.approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+
+		mvc.perform(get("/me/review-tasks").header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$", hasSize(1)))
+			.andExpect(jsonPath("$[0].direction").value("LANDLORD_TO_TENANT"))
+			.andExpect(jsonPath("$[0].counterparty.shortName").value("Tara T."));
+
+		String json = form(landlord, tenancy, tenantPart(4))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.home").doesNotExist())
+			.andExpect(jsonPath("$.landlord").doesNotExist())
+			.andExpect(jsonPath("$.tenant.direction").value("LANDLORD_TO_TENANT"))
+			.andExpect(jsonPath("$.tenant.status").value("AWAITING_REVEAL"))
+			.andExpect(jsonPath("$.tenant.formReview").value(true))
+			.andExpect(jsonPath("$.tenant.criteria.RENT_ON_TIME").value(4))
+			.andExpect(jsonPath("$.tenant.criteria.MOVE_OUT").value(4))
+			.andExpect(jsonPath("$.tenant.wouldRecommend").value(true))
+			.andReturn().getResponse().getContentAsString();
+		Review review = reviews.findByPublicId(UUID.fromString(JsonPath.read(json, "$.tenant.id"))).orElseThrow();
+		assertThat(review.getCriteria()).hasSize(5).containsEntry(ReviewCriterion.HOUSE_RULES, 4);
+		assertThat(review.getSubjectUser().getId()).isEqualTo(tenant.getId());
+		mvc.perform(get("/me/review-tasks").header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$", hasSize(0)));
+
+		// the tenant sees only that a review waits, then their landlord review reveals both (D-46)
+		mvc.perform(get("/me/reviews/received").param("as", "TENANT").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items", hasSize(1)))
+			.andExpect(jsonPath("$.items[0].status").value("AWAITING_REVEAL"))
+			.andExpect(jsonPath("$.items[0].criteria").doesNotExist());
+		form(tenant, tenancy, full(4, 5)).andExpect(status().isCreated())
+			.andExpect(jsonPath("$.landlord.status").value("PUBLISHED"));
+		mvc.perform(get("/me/reviews/received").param("as", "TENANT").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items[0].status").value("PUBLISHED"))
+			.andExpect(jsonPath("$.items[0].criteria.CARE_OF_HOME").value(4))
+			.andExpect(jsonPath("$.items[0].body").value("Paid on time every month and kept the home clean."));
+		mvc.perform(get("/users/" + tenant.getPublicId()).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.tenantRating.reviewCount").value(1));
+	}
+
+	@Test
+	void theTenantPartTakesNoProsOrConsAndOnlyTheOwnerWritesIt() throws Exception {
+		User landlord = data.approved("Lata Landlord", Role.LANDLORD);
+		User tenant = data.approved("Tara Tenant", Role.TENANT);
+		Tenancy tenancy = active(home(landlord), tenant);
+
+		form(landlord, tenancy, """
+			{"tenant": {"ratingOverall": 4, "criteria": {"RENT_ON_TIME": 4, "PRIVACY": 3},
+			            "pros": "Quiet", "cons": "Late once"}}
+			""")
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[*].field", containsInAnyOrder("tenant.criteria.PRIVACY", "tenant.pros",
+				"tenant.cons")))
+			.andExpect(jsonPath("$.errors[?(@.field == 'tenant.pros')].code").value("not_allowed"))
+			.andExpect(jsonPath("$.errors[?(@.field == 'tenant.criteria.PRIVACY')].code").value("wrong_direction"));
+		form(landlord, tenancy, "{}").andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[0].field").value("tenant"));
+		// each side writes only its own parts (D-37)
+		form(landlord, tenancy, homeOnly(4)).andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("wrong_direction"));
+		form(tenant, tenancy, tenantPart(4)).andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.code").value("wrong_direction"));
+		assertThat(reviews.findByTenancyId(tenancy.getId())).isEmpty();
+	}
+
+	@Test
+	void aTenancyWithNoLinkedTenantGivesAnUnnamedTaskAndAReviewThatCountsNowhere() throws Exception {
+		User landlord = data.approved("Lata Landlord", Role.LANDLORD);
+		Tenancy tenancy = active(home(landlord), null);
+
+		mvc.perform(get("/me/review-tasks").header("Authorization", support.bearer(landlord)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$", hasSize(1)))
+			.andExpect(jsonPath("$[0].direction").value("LANDLORD_TO_TENANT"))
+			.andExpect(jsonPath("$[0].counterparty.id").doesNotExist())
+			.andExpect(jsonPath("$[0].counterparty.shortName").value("Your tenant"));
+
+		String json = form(landlord, tenancy, tenantPart(2)).andExpect(status().isCreated())
+			.andExpect(jsonPath("$.tenant.status").value("AWAITING_REVEAL"))
+			.andExpect(jsonPath("$.tenant.subject").doesNotExist())
+			.andReturn().getResponse().getContentAsString();
+		String id = JsonPath.read(json, "$.tenant.id");
+		// edit and withdraw run the recompute, which skips a review with no subject
+		mvc.perform(patch("/reviews/" + id).header("Authorization", support.bearer(landlord))
+				.contentType(MediaType.APPLICATION_JSON).content("""
+					{"ratingOverall": 3, "body": "Paid late twice in the first year."}"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.ratingOverall").value(3));
+		recomputer.recomputeAll();
+		mvc.perform(delete("/reviews/" + id)
+				.header("Authorization", support.bearer(landlord)))
+			.andExpect(status().isNoContent());
+		assertThat(jdbc.queryForObject("select count(*) from rating_aggregates where subject_type = 'TENANT'",
+			Integer.class)).isZero();
 	}
 
 	@Test

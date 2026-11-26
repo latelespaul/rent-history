@@ -172,13 +172,23 @@ export default function MyTenanciesPage() {
         )}
 
         {side === "TENANT" && (
-          <MyReviews
-            kind="written"
-            side="TENANT"
-            title="Reviews you wrote"
-            empty="Review a home and its landlord from your tenancy."
-            testId="tenant-reviews-written"
-          />
+          <>
+            <MyReviews
+              kind="written"
+              side="TENANT"
+              title="Reviews you wrote"
+              empty="Review a home and its landlord from your tenancy."
+              testId="tenant-reviews-written"
+            />
+            {/* The owners' reviews of the caller as a tenant (landlord-adds-tenant S1). */}
+            <MyReviews
+              kind="received"
+              side="TENANT"
+              title="Reviews about you"
+              empty="Reviews your owners write about you as a tenant show here."
+              testId="tenant-reviews-received"
+            />
+          </>
         )}
       </Container>
     </main>

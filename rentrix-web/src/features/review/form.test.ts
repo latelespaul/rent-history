@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest"
 import {
   clearDraft,
+  draftKey,
   emptyDraft,
   HOME_CRITERIA,
   LANDLORD_CRITERIA,
@@ -12,6 +13,7 @@ import {
   saveDraft,
   sectionOfField,
   sectionsFor,
+  TENANT_CRITERIA,
   toRequest,
   workedOutOverall,
 } from "./form"
@@ -122,5 +124,50 @@ describe("review form (D-157)", () => {
     expect(recommendShare(undefined)).toBeNull()
     expect(recommendShare({ answered: 2, yes: 2 })).toBeNull()
     expect(recommendShare({ answered: 3, yes: 2 })).toBe("67% would recommend")
+  })
+
+  it("gives the owner one part, the tenant's five questions, with no pros or cons (D-170)", () => {
+    expect(TENANT_CRITERIA.map((c) => c.key)).toEqual([
+      "RENT_ON_TIME",
+      "CARE_OF_HOME",
+      "COMMUNICATION",
+      "HOUSE_RULES",
+      "MOVE_OUT",
+    ])
+    const parts = { home: false, landlord: false, tenant: true }
+    expect(sectionsFor(parts)).toEqual(["stay", "tenant", "overall", "check"])
+
+    const draft = emptyDraft()
+    expect(missingOverall(draft, parts)).toEqual({
+      "tenant.ratingOverall": "Pick an overall rating for the tenant.",
+    })
+    draft.tenant = {
+      ratings: { RENT_ON_TIME: 5, MOVE_OUT: 4 },
+      comment: " Always paid on time. ",
+      ownOverall: null,
+      recommend: true,
+    }
+    draft.pros = "Never sent"
+    expect(toRequest(draft, parts)).toEqual({
+      tenant: {
+        ratingOverall: 5,
+        criteria: { RENT_ON_TIME: 5, MOVE_OUT: 4 },
+        wouldRecommend: true,
+        body: "Always paid on time.",
+      },
+    })
+    expect(sectionOfField("tenant.criteria.MOVE_OUT")).toBe("tenant")
+    expect(sectionOfField("tenant.body")).toBe("tenant")
+    expect(sectionOfField("tenant.ratingOverall")).toBe("overall")
+  })
+
+  it("keeps the owner's draft apart from the tenant's on one device", () => {
+    expect(draftKey("t1")).toBe("t1")
+    expect(draftKey("t1", "LANDLORD")).toBe("t1:LANDLORD")
+    const owner = { ...emptyDraft(), step: 2 }
+    saveDraft(draftKey("t1", "LANDLORD"), owner)
+    expect(localStorage.getItem("rx-review-draft:t1:LANDLORD")).not.toBeNull()
+    expect(loadDraft(draftKey("t1"))).toBeNull()
+    expect(loadDraft(draftKey("t1", "LANDLORD"))?.step).toBe(2)
   })
 })

@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { ApiError } from "@/api/errors"
 import { saveMode } from "@/features/mode/mode"
-import type { CurrentUser, PropertyReview, Tenancy } from "@/types/api"
+import type { CurrentUser, PropertyReview, ReviewTask, Tenancy } from "@/types/api"
 import { page } from "@/test/properties"
 import MyTenanciesPage from "./MyTenanciesPage"
 
@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   tenancies: [] as Tenancy[],
   confirm: null as unknown as Error | null,
   written: [] as PropertyReview[],
+  tasks: [] as ReviewTask[],
 }))
 
 vi.mock("@/features/auth/authContext", async (importOriginal) => ({
@@ -35,10 +36,13 @@ vi.mock("@/api/reviews", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/reviews")>()),
   fetchMyWrittenReviews: vi.fn(async () => page(api.written)),
   fetchMyReceivedReviews: vi.fn(async () => page([])),
+  fetchReviewTasks: vi.fn(async () => api.tasks),
 }))
 
 const { declineTenancy, fetchMyTenancies } = await import("@/api/tenancies")
 const { fetchMyWrittenReviews } = await import("@/api/reviews")
+
+const PUNE = { code: "PNQ", name: "Pune" }
 
 const LANDLORD: CurrentUser = {
   id: "u-landlord",
@@ -114,6 +118,7 @@ beforeEach(() => {
     }),
   ]
   api.confirm = null
+  api.tasks = []
 })
 afterEach(cleanup)
 
@@ -201,5 +206,24 @@ describe("MyTenanciesPage modes (PLAN R10)", () => {
     expect(await screen.findByText("Tenancies on the homes you own.")).toBeTruthy()
     expect(vi.mocked(fetchMyTenancies).mock.calls.at(-1)?.[0]).toMatchObject({ role: "LANDLORD" })
     expect(screen.queryByTestId("tenant-reviews-written")).toBeNull()
+  })
+
+  it("shows Review your tenant in Owner mode while the owner's review task is open (D-170)", async () => {
+    api.tasks = [
+      {
+        tenancyId: "t2",
+        direction: "LANDLORD_TO_TENANT",
+        property: { id: "p2", buildingName: "Demo Heights F", locality: "Baner", city: PUNE },
+        counterparty: { id: "u-tenant", shortName: "Demo T." },
+        period: { from: "2026-10" },
+        otherSideWaiting: false,
+      },
+    ]
+    renderPage()
+    const link = await screen.findByTestId("tenancy-review-tenant")
+    expect(link.getAttribute("href")).toBe("/tenancies/t2/review")
+    expect(link.closest("article")?.textContent).toContain("Demo Heights F")
+    // Only the tenancy with the task gets it.
+    expect(screen.getAllByTestId("tenancy-review-tenant")).toHaveLength(1)
   })
 })

@@ -4,11 +4,11 @@ import java.util.Map;
 
 /**
  * {@code POST /tenancies/{id}/review-form} (D-157): the tenant's review form, the home part and, when the landlord can
- * be reviewed, the landlord part, saved together or not at all. Every field is checked by the service, which answers
- * one {@code 422 validation_failed} with a field error per broken rule ({@code home.criteria.PARKING},
- * {@code landlord.ratingOverall}, {@code home.pros}).
+ * be reviewed, the landlord part, saved together or not at all; or the owner's form, the tenant part (LT-6). Every
+ * field is checked by the service, which answers one {@code 422 validation_failed} with a field error per broken rule
+ * ({@code home.criteria.PARKING}, {@code landlord.ratingOverall}, {@code home.pros}, {@code tenant.pros}).
  */
-public record ReviewFormRequest(Part home, Part landlord) {
+public record ReviewFormRequest(Part home, Part landlord, Part tenant) {
 	
 	/**
 	 * One review of the form. {@code ratingOverall} is required (1–5); every parameter rating is optional (1–5);
