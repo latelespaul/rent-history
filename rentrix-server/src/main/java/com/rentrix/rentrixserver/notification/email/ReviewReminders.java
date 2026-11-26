@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * The admin "send review reminder" (D-172): one email per user, never BCC, to every user who may get mail
  * ({@link MailSendRepository#campaignRecipients}), by default only those who have not written a review yet. Each
- * delivered email is recorded under the campaign, so a second run mails only who was missed or failed. Emails go one
+ * delivered email is recorded, so a second run mails only who was missed or failed. Emails go one
  * by one with {@code app.mail.send-interval} between them, under Resend's per-second limit. One run at a time.
  */
 @Slf4j
@@ -52,13 +52,12 @@ public class ReviewReminders {
 	}
 	
 	/**
-	 * @param campaign          the {@code mail_sends} campaign, {@link #CAMPAIGN} unless a new round is wanted
 	 * @param onlyWithoutReview skip users who have written a review
 	 * @param dryRun            count the recipients, send nothing
 	 */
-	public Result run(String campaign, boolean onlyWithoutReview, boolean dryRun) {
+	public Result run(boolean onlyWithoutReview, boolean dryRun) {
 		if (dryRun) {
-			return new Result(true, email.delivers(), recipients(campaign, onlyWithoutReview).size(), 0, 0);
+			return new Result(true, email.delivers(), recipients(onlyWithoutReview).size(), 0, 0);
 		}
 		if (!email.delivers()) {
 			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "mail_disabled",
@@ -68,21 +67,21 @@ public class ReviewReminders {
 			throw ApiException.conflict("reminder_running", "A reminder is being sent right now. Try again later.");
 		}
 		try {
-			return send(campaign, recipients(campaign, onlyWithoutReview));
+			return send(recipients(onlyWithoutReview));
 		} finally {
 			running.set(false);
 		}
 	}
 	
-	private List<MailMessages.Recipient> recipients(String campaign, boolean onlyWithoutReview) {
+	private List<MailMessages.Recipient> recipients(boolean onlyWithoutReview) {
 		return readOnly.execute(status -> (onlyWithoutReview
-			? sends.campaignRecipientsWithoutReview(campaign, UnclaimedLandlord.EMAIL)
-			: sends.campaignRecipients(campaign, UnclaimedLandlord.EMAIL)).stream()
+			? sends.campaignRecipientsWithoutReview(CAMPAIGN, UnclaimedLandlord.EMAIL)
+			: sends.campaignRecipients(CAMPAIGN, UnclaimedLandlord.EMAIL)).stream()
 			.map(user -> new MailMessages.Recipient(user.getPublicId(), user.getEmail(), user.getDisplayName()))
 			.toList());
 	}
 	
-	private Result send(String campaign, List<MailMessages.Recipient> recipients) {
+	private Result send(List<MailMessages.Recipient> recipients) {
 		int sent = 0;
 		int failed = 0;
 		for (int i = 0; i < recipients.size(); i++) {
@@ -99,11 +98,11 @@ public class ReviewReminders {
 			}
 			transactions.executeWithoutResult(status -> {
 				User user = users.findByPublicId(to.publicId()).orElseThrow();
-				sends.save(new MailSend(user, campaign));
+				sends.save(new MailSend(user, CAMPAIGN));
 			});
 			sent++;
 		}
-		log.info("Review reminder '{}': {} recipients, {} sent, {} failed", campaign, recipients.size(), sent, failed);
+		log.info("Review reminder: {} recipients, {} sent, {} failed", recipients.size(), sent, failed);
 		return new Result(false, true, recipients.size(), sent, failed);
 	}
 	

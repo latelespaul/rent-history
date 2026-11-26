@@ -19,19 +19,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The unsubscribe link of every welcome and reminder email (D-172), anonymous: {@code GET} (the link, one click)
- * and {@code POST} (the mail app's one-click unsubscribe, RFC 8058) set {@code users.mail_opt_out_at} for the user
- * the signed token names and answer a small HTML page. A forged or broken token changes nothing ({@code 400}).
+ * The unsubscribe link of every welcome and reminder email (D-172), anonymous. {@code GET} (the link) changes
+ * nothing: it answers a small page with one Confirm button, so mail scanners that open links unsubscribe nobody.
+ * {@code POST} (that button, and the mail app's one-click unsubscribe, RFC 8058) sets {@code users.mail_opt_out_at}
+ * for the user the signed token names. A forged or broken token changes nothing ({@code 400}).
  */
 @RestController
 public class UnsubscribeController {
-	
+
 	private final UnsubscribeTokens tokens;
 	private final UserRepository users;
 	private final Clock clock;
 	private final String brand;
 	private final String webBaseUrl;
-	
+
 	public UnsubscribeController(UnsubscribeTokens tokens, UserRepository users, Clock clock, BrandProperties brand,
 		@Value("${app.web.base-url:}") String webBaseUrl) {
 		this.tokens = tokens;
@@ -40,33 +41,39 @@ public class UnsubscribeController {
 		this.brand = brand.name();
 		this.webBaseUrl = MailProperties.stripSlash(webBaseUrl);
 	}
-	
+
 	@GetMapping(value = "/mail/unsubscribe", produces = MediaType.TEXT_HTML_VALUE)
-	@Transactional
-	public ResponseEntity<String> unsubscribeLink(@RequestParam(required = false) String token) {
-		return unsubscribe(token);
+	public ResponseEntity<String> confirm(@RequestParam(required = false) String token) {
+		if (tokens.verify(token).isEmpty()) {
+			return broken();
+		}
+		String form = "<form method=\"post\" action=\"unsubscribe\"><input type=\"hidden\" name=\"token\" value=\""
+			+ escape(token) + "\"><button type=\"submit\">Confirm</button></form>";
+		return page(HttpStatus.OK, "Stop " + brand + " emails?",
+			"You will get no more welcome or reminder emails. Emails about your own tenancies and reviews still "
+				+ "arrive.", form);
 	}
-	
+
 	@PostMapping(value = "/mail/unsubscribe", produces = MediaType.TEXT_HTML_VALUE)
 	@Transactional
-	public ResponseEntity<String> oneClick(@RequestParam(required = false) String token) {
-		return unsubscribe(token);
-	}
-	
-	private ResponseEntity<String> unsubscribe(String token) {
+	public ResponseEntity<String> unsubscribe(@RequestParam(required = false) String token) {
 		Optional<UUID> publicId = tokens.verify(token);
 		if (publicId.isEmpty()) {
-			return page(HttpStatus.BAD_REQUEST, "This link does not work",
-				"The unsubscribe link is broken. Open it again from the email, or contact us.");
+			return broken();
 		}
 		users.findByPublicId(publicId.get()).filter(user -> user.getMailOptOutAt() == null)
 			.ifPresent(user -> user.setMailOptOutAt(clock.instant().truncatedTo(ChronoUnit.MILLIS)));
 		return page(HttpStatus.OK, "You are unsubscribed",
 			brand + " will not send you welcome or reminder emails any more. Emails about your own tenancies "
-				+ "and reviews still arrive.");
+				+ "and reviews still arrive.", "");
 	}
-	
-	private ResponseEntity<String> page(HttpStatus status, String title, String text) {
+
+	private ResponseEntity<String> broken() {
+		return page(HttpStatus.BAD_REQUEST, "This link does not work",
+			"The unsubscribe link is broken. Open it again from the email, or contact us.", "");
+	}
+
+	private ResponseEntity<String> page(HttpStatus status, String title, String text, String form) {
 		String html = """
 			<!doctype html>
 			<html lang="en">
@@ -76,15 +83,16 @@ public class UnsubscribeController {
 			color:#1f2933;line-height:1.5">
 			<h1 style="font-size:1.25rem">%s</h1>
 			<p>%s</p>
+			%s
 			<p><a href="%s/">Go to %s</a></p>
 			</body>
 			</html>
-			""".formatted(escape(title), escape(title), escape(text), escape(webBaseUrl), escape(brand));
+			""".formatted(escape(title), escape(title), escape(text), form, escape(webBaseUrl), escape(brand));
 		return ResponseEntity.status(status).contentType(MediaType.TEXT_HTML).body(html);
 	}
-	
+
 	private static String escape(String text) {
 		return HtmlUtils.htmlEscape(text, "UTF-8");
 	}
-	
+
 }

@@ -34,6 +34,7 @@ import static com.rentrix.rentrixserver.support.AdminConsole.adminBearer;
 import static com.rentrix.rentrixserver.support.AdminConsole.adminHost;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -68,11 +69,6 @@ class MailCampaignTest {
 	@Autowired
 	RecordingEmailSender mail;
 	
-	/** Its own campaign per test: the suite shares one database, so other tests' users are recipients too. */
-	private static String campaign() {
-		return "review-reminder-" + UUID.randomUUID().toString().substring(0, 8);
-	}
-	
 	private ResultActions remind(String body) throws Exception {
 		User admin = data.user("Mail Admin", Role.ADMIN);
 		return mvc.perform(post("/admin/mail/review-reminder").with(adminHost())
@@ -80,9 +76,10 @@ class MailCampaignTest {
 			.contentType(MediaType.APPLICATION_JSON).content(body));
 	}
 	
-	private ResultActions remind(String campaign, boolean dryRun, boolean onlyWithoutReview) throws Exception {
+	/** The suite shares one database and one reminder, so tests assert per-user outcomes, not totals. */
+	private ResultActions remind(boolean dryRun, boolean onlyWithoutReview) throws Exception {
 		return remind("""
-			{"campaign":"%s","dryRun":%s,"onlyWithoutReview":%s}""".formatted(campaign, dryRun, onlyWithoutReview));
+			{"dryRun":%s,"onlyWithoutReview":%s}""".formatted(dryRun, onlyWithoutReview));
 	}
 	
 	private User reviewer(String name) {
@@ -130,7 +127,6 @@ class MailCampaignTest {
 	
 	@Test
 	void theReminderSkipsReviewersOptedOutAndAlreadyMailedUsers() throws Exception {
-		String campaign = campaign();
 		User fresh = data.verified("Reminder Fresh", Role.TENANT);
 		User reviewer = reviewer("Reminder Reviewer");
 		User optedOut = data.verified("Reminder Opted Out", Role.TENANT);
@@ -138,16 +134,15 @@ class MailCampaignTest {
 		users.save(optedOut);
 		User unverified = data.user("Reminder Unverified", Role.TENANT);
 		
-		String dry = remind(campaign, true, true).andExpect(status().isOk())
+		String dry = remind(true, true).andExpect(status().isOk())
 			.andExpect(jsonPath("$.dryRun").value(true))
 			.andExpect(jsonPath("$.sent").value(0))
 			.andReturn().getResponse().getContentAsString();
 		assertThat(dry).doesNotContain("@");
 		assertThat(mail.to(fresh.getEmail())).isEmpty();
 		
-		String sent = remind(campaign, false, true).andExpect(status().isOk())
+		String sent = remind(false, true).andExpect(status().isOk())
 			.andExpect(jsonPath("$.dryRun").value(false))
-			.andExpect(jsonPath("$.failed").value(0))
 			.andReturn().getResponse().getContentAsString();
 		assertThat(sent).doesNotContain("@");
 		EmailMessage reminder = mail.last(fresh.getEmail());
@@ -159,31 +154,34 @@ class MailCampaignTest {
 		assertThat(mail.to(optedOut.getEmail())).isEmpty();
 		assertThat(mail.to(unverified.getEmail())).isEmpty();
 		
-		// A second run of the same campaign mails nobody twice.
-		remind(campaign, false, true).andExpect(status().isOk()).andExpect(jsonPath("$.recipients").value(0));
+		assertThat(sends.existsByUserAndCampaign(fresh, ReviewReminders.CAMPAIGN)).isTrue();
+		
+		// A second run mails nobody twice.
+		remind(false, true).andExpect(status().isOk());
 		assertThat(mail.to(fresh.getEmail())).hasSize(1);
 		
 		// Without the filter, the reviewer gets it too, once.
-		remind(campaign, false, false).andExpect(status().isOk()).andExpect(jsonPath("$.failed").value(0));
+		remind(false, false).andExpect(status().isOk());
+		remind(false, false).andExpect(status().isOk());
 		assertThat(mail.to(reviewer.getEmail())).hasSize(1);
+		assertThat(mail.to(optedOut.getEmail())).isEmpty();
 		assertThat(mail.to(fresh.getEmail())).hasSize(1);
 	}
 	
 	@Test
 	void aFailedEmailIsNotRecordedSoTheNextRunRetriesIt() throws Exception {
-		String campaign = campaign();
 		User bouncing = data.verified("Reminder Bounce", Role.TENANT);
 		mail.failFor(bouncing.getEmail());
 		try {
-			remind(campaign, false, true).andExpect(status().isOk())
-				.andExpect(jsonPath("$.failed").value(1));
+			remind(false, true).andExpect(status().isOk());
 		} finally {
 			mail.stopFailing(bouncing.getEmail());
 		}
-		assertThat(sends.existsByUserAndCampaign(bouncing, campaign)).isFalse();
-		remind(campaign, true, true).andExpect(status().isOk()).andExpect(jsonPath("$.recipients").value(1));
-		remind(campaign, false, true).andExpect(status().isOk()).andExpect(jsonPath("$.sent").value(1));
+		assertThat(mail.to(bouncing.getEmail())).isEmpty();
+		assertThat(sends.existsByUserAndCampaign(bouncing, ReviewReminders.CAMPAIGN)).isFalse();
+		remind(false, true).andExpect(status().isOk());
 		assertThat(mail.to(bouncing.getEmail())).hasSize(1);
+		assertThat(sends.existsByUserAndCampaign(bouncing, ReviewReminders.CAMPAIGN)).isTrue();
 	}
 	
 	@Test
@@ -191,7 +189,6 @@ class MailCampaignTest {
 		remind("{}").andExpect(status().isOk())
 			.andExpect(jsonPath("$.dryRun").value(true))
 			.andExpect(jsonPath("$.mailEnabled").value(true));
-		remind("{\"campaign\":\"welcome\"}").andExpect(status().isUnprocessableContent());
 	}
 	
 	@Test
@@ -215,14 +212,25 @@ class MailCampaignTest {
 	}
 	
 	@Test
-	void theUnsubscribeLinkOptsTheUserOutAndTheReminderSkipsThem() throws Exception {
+	void theUnsubscribeLinkAsksFirstAndTheConfirmOptsTheUserOut() throws Exception {
 		User user = data.verified("Unsubscribe Me", Role.TENANT);
-		mvc.perform(get("/mail/unsubscribe").param("token", tokens.issue(user.getPublicId())))
+		String token = tokens.issue(user.getPublicId());
+		for (int i = 0; i < 2; i++) {
+			mvc.perform(get("/mail/unsubscribe").param("token", token))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+				.andExpect(content().string(containsString("Stop Doorway Living emails?")))
+				.andExpect(content().string(containsString("<form method=\"post\" action=\"unsubscribe\">")))
+				.andExpect(content().string(containsString("Confirm")))
+				.andExpect(content().string(not(containsString("You are unsubscribed"))));
+		}
+		assertThat(users.findById(user.getId()).orElseThrow().getMailOptOutAt()).isNull();
+		mvc.perform(post("/mail/unsubscribe").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+				.param("token", token))
 			.andExpect(status().isOk())
-			.andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
 			.andExpect(content().string(containsString("You are unsubscribed")));
 		assertThat(users.findById(user.getId()).orElseThrow().getMailOptOutAt()).isNotNull();
-		remind(campaign(), false, true).andExpect(status().isOk());
+		remind(false, true).andExpect(status().isOk());
 		assertThat(mail.to(user.getEmail())).isEmpty();
 	}
 	
@@ -245,6 +253,10 @@ class MailCampaignTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(content().string(containsString("This link does not work")));
 		mvc.perform(get("/mail/unsubscribe")).andExpect(status().isBadRequest());
+		mvc.perform(post("/mail/unsubscribe").param("token", forged))
+			.andExpect(status().isBadRequest())
+			.andExpect(content().string(containsString("This link does not work")));
+		mvc.perform(post("/mail/unsubscribe")).andExpect(status().isBadRequest());
 		assertThat(users.findById(target.getId()).orElseThrow().getMailOptOutAt()).isNull();
 	}
 	

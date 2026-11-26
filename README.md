@@ -67,7 +67,7 @@ Behind a reverse proxy (Caddy on the VM, Render) the API honours `X-Forwarded-Pr
 
 ### Email (Resend)
 
-The API sends email through [Resend](https://resend.com) from `hello@doorwayliving.in` (SYSTEM_DESIGN D-172): tenancy and review notices, a welcome email on sign-up with a "Rate your landlord" link, and the admin console's **Mail** page, which sends a review reminder (one email per user, never BCC). Welcome and reminder emails carry an unsubscribe link. Set on the API (names only; the key comes from your secret store, never from git):
+The API sends email through [Resend](https://resend.com) from `hello@doorwayliving.in` (SYSTEM_DESIGN D-172): tenancy and review notices, a welcome email on sign-up with a "Rate your landlord" link, and the admin console's **Mail** page, which sends a review reminder (one email per user, never BCC). Welcome and reminder emails carry an unsubscribe link: it opens a page with one **Confirm** button (opening the link alone changes nothing, so mail scanners cannot unsubscribe anyone), and the mail app's one-click unsubscribe works too. Set on the API (names only; the key comes from your secret store, never from git):
 
 ```sh
 RESEND_API_KEY=…                                   # secret; empty = mail off (emails only go to the log)
