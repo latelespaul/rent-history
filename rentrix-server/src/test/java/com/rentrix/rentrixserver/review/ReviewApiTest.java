@@ -5,6 +5,8 @@ import com.rentrix.rentrixserver.property.Property;
 import com.rentrix.rentrixserver.property.PropertyStatus;
 import com.rentrix.rentrixserver.property.PropertyTestSupport;
 import com.rentrix.rentrixserver.rating.RatingRecomputer;
+import com.rentrix.rentrixserver.security.AccessTokenService;
+import com.rentrix.rentrixserver.support.AdminConsole;
 import com.rentrix.rentrixserver.support.IntegrationTest;
 import com.rentrix.rentrixserver.support.TestData;
 import com.rentrix.rentrixserver.tenancy.EvidenceLevel;
@@ -83,6 +85,9 @@ class ReviewApiTest {
 
 	@Autowired
 	RatingRecomputer recomputer;
+	
+	@Autowired
+	AccessTokenService tokens;
 
 	@Autowired
 	JdbcTemplate jdbc;
@@ -572,9 +577,9 @@ class ReviewApiTest {
 					"/users/" + landlord.getPublicId() + "/reviews", "/users/" + landlord.getPublicId()));
 			}
 			if (isLandlord) {
-				// (Not his own review of the tenant: as its author he sees its times.)
-				paths.addAll(java.util.List.of("/me/reviews/received?as=LANDLORD",
-					"/users/" + tenant.getPublicId() + "/reviews?as=TENANT"));
+				// Not his own review of the tenant (GET /reviews/{id}, /users/{tenant}/reviews?as=TENANT): as its
+				// author he sees its stay and times.
+				paths.add("/me/reviews/received?as=LANDLORD");
 			}
 			for (String path : paths) {
 				String json = json(path, bearer);
@@ -608,7 +613,10 @@ class ReviewApiTest {
 			.andExpect(jsonPath("$.items[0].period.from").value(start.toString().substring(0, 7)))
 			.andExpect(jsonPath("$.items[0].period.to").value(end.toString().substring(0, 7)))
 			.andExpect(jsonPath("$.items[0].submittedAt").exists());
-		mvc.perform(get("/reviews/" + home).header("Authorization", support.bearer(admin)))
+		// An admin reads it in the admin console (§13.3): its host and an admin session.
+		mvc.perform(get("/reviews/" + home).with(AdminConsole.adminHost())
+				.header("Authorization", AdminConsole.adminBearer(tokens, admin)))
+			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.period.from").value(start.toString().substring(0, 7)))
 			.andExpect(jsonPath("$.publishedAt").exists())
 			.andExpect(jsonPath("$.editedAt").exists())
