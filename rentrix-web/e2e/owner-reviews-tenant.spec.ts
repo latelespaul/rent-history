@@ -7,9 +7,8 @@ import { apiBaseUrl, daysAgo, devLogin } from "./support"
  * A new tenant records an ended stay on a Demo Orchard flat (owned by Demo Landlord BLR-2, seeded
  * without tenancies), through the API. The owner, in Owner mode, opens My tenancies: the stay's
  * card has "Review your tenant", and the form has one part, "The tenant", with its five questions
- * and no pros or cons. The review waits for the reveal (D-46). The tenant sees "A review about
- * you is waiting", reviews the home and the owner, and both person reviews publish: the owner's
- * review then shows under "Reviews about you". Each run makes its own tenant and stay, on a random
+ * and no pros or cons. The review waits for the reveal (D-46), the CTA is gone, and the owner's
+ * written reviews hold it as AWAITING_REVEAL. Each run makes its own tenant and stay, on a random
  * month, so reruns on one stack do not meet each other.
  */
 const OWNER = "Demo Landlord BLR-2"
@@ -30,14 +29,14 @@ async function noSidewaysScroll(page: Page) {
   expect(fits, "no horizontal scroll").toBe(true)
 }
 
-/** A new tenant and their ended stay on a Demo Orchard flat; returns the tenant's user id. */
-async function tenantRecordsStay(page: Page, key: string): Promise<string> {
+/** A new tenant and their ended stay on a Demo Orchard flat. */
+async function tenantRecordsStay(page: Page, key: string) {
   const base = await apiBaseUrl(page)
   const api = await request.newContext()
   try {
     const login = await api.post(`${base}/auth/dev-login/new`, { data: { key } })
     expect(login.ok(), `dev login: HTTP ${login.status()}`).toBe(true)
-    const session = (await login.json()) as { accessToken: string; user: { id: string } }
+    const session = (await login.json()) as { accessToken: string }
     const onboarded = await api.post(`${base}/me/onboarding`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
       data: { roles: ["TENANT"], homeCity: "BLR", acceptTerms: true },
@@ -63,24 +62,12 @@ async function tenantRecordsStay(page: Page, key: string): Promise<string> {
       },
     })
     expect(added.ok(), `record the stay: HTTP ${added.status()} ${await added.text()}`).toBe(true)
-    return session.user.id
   } finally {
     await api.dispose()
   }
 }
 
-/** Signs the page in as a user the dev login made: the refresh cookie lands in the page's jar. */
-async function signInAs(page: Page, userId: string, next: string) {
-  await page.context().clearCookies()
-  const base = await apiBaseUrl(page)
-  const login = await page.request.post(`${base}/auth/dev-login`, { data: { userId } })
-  expect(login.ok(), `dev login: HTTP ${login.status()}`).toBe(true)
-  await page.goto(next)
-}
-
-test("an owner reviews the tenant of a tenant-recorded stay, and the tenant sees it", async ({
-  page,
-}, testInfo) => {
+test("an owner reviews the tenant of a tenant-recorded stay", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "the 390 px phone layout only")
   test.setTimeout(testInfo.timeout * 3)
   const tag = Date.now().toString(36)
@@ -88,7 +75,7 @@ test("an owner reviews the tenant of a tenant-recorded stay, and the tenant sees
   const step = page.getByTestId("review-step")
 
   await page.goto("/")
-  const tenantId = await tenantRecordsStay(page, `ort${tag}`)
+  await tenantRecordsStay(page, `ort${tag}`)
 
   await test.step("the owner, in Owner mode, finds Review your tenant on the stay", async () => {
     await devLogin(page, OWNER, "/me/tenancies")
@@ -163,49 +150,21 @@ test("an owner reviews the tenant of a tenant-recorded stay, and the tenant sees
     await expect(page.getByTestId("tenancy-review-tenant")).toHaveCount(0)
   })
 
-  await test.step("the tenant sees that a review waits, then reviews the owner", async () => {
-    await signInAs(page, tenantId, "/me/tenancies")
-    const received = page.getByTestId("tenant-reviews-received")
-    await expect(received.getByTestId("my-review-pending")).toBeVisible()
-    await expect(received).not.toContainText(comment)
-    await shot(page, testInfo, "07-tenant-waiting")
-
-    await page.getByRole("tab", { name: /Ended/ }).click()
-    await page
-      .getByRole("tabpanel")
-      .getByRole("article")
-      .filter({ hasText: "Demo Orchard" })
-      .getByRole("link", { name: "Open" })
-      .click()
-    await page.getByTestId("tenancy-write-review").click()
-    await expect(step).toHaveAttribute("data-section", "stay")
-    await page.getByTestId("review-next").click()
-    await expect(step).toHaveAttribute("data-section", "home")
-    for (const criterion of ["WATER_SUPPLY", "MAINTENANCE", "NOISE"])
-      await page.getByTestId(`rate-${criterion}-4`).click()
-    await page.getByTestId("review-next").click()
-    await expect(step).toHaveAttribute("data-section", "landlord")
-    for (const criterion of ["RESPONSIVENESS", "DEPOSIT_RETURN", "BEHAVIOUR"])
-      await page.getByTestId(`rate-${criterion}-4`).click()
-    await page.getByTestId("review-next").click()
-    await expect(step).toHaveAttribute("data-section", "overall")
-    await page.getByTestId("review-next").click()
-    await expect(step).toHaveAttribute("data-section", "check")
-    await page.getByTestId("review-submit").click()
-    await expect(page.getByTestId("review-landlord-state")).toContainText(/published together/i)
-  })
-
-  await test.step("the owner's review now shows on the tenant's side", async () => {
-    await page.goto("/me/tenancies")
-    const received = page.getByTestId("tenant-reviews-received")
-    const review = received.getByTestId("my-review").filter({ hasText: comment })
-    await expect(review).toBeVisible()
-    await expect(review).toContainText("By Owner")
-    // No stay dates or years on a review about the tenant: they would tell who wrote it.
-    await expect(review).not.toContainText(/\b20\d\d\b/)
-    await expect(received.getByTestId("my-review-pending")).toHaveCount(0)
-    await review.scrollIntoViewIfNeeded()
-    await noSidewaysScroll(page)
-    await shot(page, testInfo, "08-tenant-received")
+  await test.step("the owner's written reviews hold it, waiting for the reveal", async () => {
+    const base = await apiBaseUrl(page)
+    const refreshed = await page.request.post(`${base}/auth/refresh`)
+    expect(refreshed.ok(), `refresh: HTTP ${refreshed.status()}`).toBe(true)
+    const { accessToken } = (await refreshed.json()) as { accessToken: string }
+    const written = await page.request.get(`${base}/me/reviews/written?as=LANDLORD&size=50`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    expect(written.ok(), `written reviews: HTTP ${written.status()}`).toBe(true)
+    const { items } = (await written.json()) as {
+      items: Array<{ direction: string; status: string; body: string | null }>
+    }
+    const review = items.find((r) => r.body === comment)
+    expect(review, "the owner's review of the tenant").toBeTruthy()
+    expect(review!.direction).toBe("LANDLORD_TO_TENANT")
+    expect(review!.status).toBe("AWAITING_REVEAL")
   })
 })

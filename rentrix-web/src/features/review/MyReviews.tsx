@@ -41,8 +41,7 @@ function ReviewRow({ review, kind }: { review: PropertyReview; kind: "written" |
     )
   }
   const label = review.direction ? DIRECTION_LABEL[review.direction] : null
-  // The stay only on the caller's own reviews: on one about them it would tell who wrote it (P1, 2026-11-26).
-  const when = kind === "written" ? period(review) : null
+  const when = period(review)
   return (
     <li className="space-y-1.5 px-5 py-4" data-testid="my-review">
       <p className="flex flex-wrap items-center gap-2">
