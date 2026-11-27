@@ -8,6 +8,7 @@ import type { ChangeRequestInput } from "@/types/api"
 const BLOCKED = new Set([
   "confirmed_by_other_side",
   "tenancy_has_reviews",
+  "owner_has_records",
   "home_in_use",
   "location_locked",
   "starting_rent",

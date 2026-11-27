@@ -343,9 +343,10 @@ function Submitted({ result, tenancy }: { result: ReviewFormResult; tenancy: Ten
         <figure className="mt-3 space-y-1 rounded-lg border border-line p-4">
           <p className="font-semibold text-ink-900">Tenant: {tenant.ratingOverall} / 5</p>
           <p className="text-sm text-ink-500" data-testid="review-tenant-state">
+            {/* D-175: the tenant never sees it; only other owners and our team do. */}
             {tenant.status === "PUBLISHED"
-              ? "Published together with your tenant’s review of you."
-              : "Hidden until your tenant reviews you, or for 14 days, so neither side can react to the other."}
+              ? "Published for other owners. Your tenant never sees it."
+              : "Your tenant never sees it. Other owners see it once your tenant reviews you, or after 14 days."}
           </p>
         </figure>
       )}
@@ -584,8 +585,8 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
               `How was ${tenantName} as a tenant? Rate what you know. Skip the rest.`,
             )}
             <p className="rounded-lg bg-sunk p-3 text-sm text-ink-700" data-testid="review-reveal">
-              Hidden until your tenant reviews you too, or for 14 days, so neither side can react to
-              the other.
+              Your tenant never sees this review. Other owners see it once your tenant reviews you
+              too, or after 14 days.
             </p>
           </>
         )}
@@ -680,7 +681,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
           <div className="space-y-3">
             <p className="text-sm text-ink-500">
               {owner
-                ? "Check your answers. Only the tenant and their landlords can read it, without your full name."
+                ? "Check your answers. Only owners and our team can read it, never the tenant, and without your full name."
                 : "Check your answers. Reviews are public, without your full name."}
             </p>
             {(["home", "landlord", "tenant"] as const)

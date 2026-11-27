@@ -56,7 +56,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -479,18 +478,20 @@ public class ReviewService {
 	}
 
 	/**
-	 * {@code GET /me/reviews/received?as=LANDLORD|TENANT}: published reviews about the caller, plus the ones still
-	 * awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs. Ordered by the random
-	 * review id only (D-169): posting order would tell the subject which ex-tenant wrote which, and rating order would
-	 * place a pending review's hidden rating among the published ones.
+	 * {@code GET /me/reviews/received?as=LANDLORD|TENANT}: published reviews about the caller as landlord, plus the
+	 * ones still awaiting reveal as bare "pending" entries (D-46), so they know a review waits for theirs. Ordered by
+	 * the random review id only (D-169): posting order would tell the subject which ex-tenant wrote which, and rating
+	 * order would place a pending review's hidden rating among the published ones. The owners' reviews of the caller
+	 * as tenant are never listed, not even as a pending entry or in the count (D-175), so {@code as=TENANT} is always
+	 * empty.
 	 */
 	public PageResponse<ReviewView> received(AuthenticatedUser caller, TenancyParty as, Pageable pageable) {
 		User me = currentUser(caller);
-		Collection<ReviewDirection> directions = as == null
-			? EnumSet.of(ReviewDirection.TENANT_TO_LANDLORD, ReviewDirection.LANDLORD_TO_TENANT)
-			: EnumSet.of(as == TenancyParty.LANDLORD ? ReviewDirection.TENANT_TO_LANDLORD
-			: ReviewDirection.LANDLORD_TO_TENANT);
-		Page<Review> page = reviews.findBySubjectUserIdAndDirectionInAndStatusIn(me.getId(), directions,
+		if (as == TenancyParty.TENANT) {
+			return PageResponse.of(Page.<Review>empty(pageable), r -> view(r, me, false));
+		}
+		Page<Review> page = reviews.findBySubjectUserIdAndDirectionInAndStatusIn(me.getId(),
+			EnumSet.of(ReviewDirection.TENANT_TO_LANDLORD),
 			EnumSet.of(ReviewStatus.PUBLISHED, ReviewStatus.AWAITING_REVEAL), unordered(pageable));
 		boolean admin = caller.hasRole(Role.ADMIN);
 		Map<Long, ReviewResponse> replies = responsesOf(page.getContent());
@@ -517,7 +518,9 @@ public class ReviewService {
 					&& UnclaimedLandlord.is(tenancy.getLandlord())) {
 					continue;
 				}
-				Review counter = direction == ReviewDirection.TENANT_TO_PROPERTY ? null : written.get(counterOf(direction));
+				// D-175: only the owner hears that the other side's review waits; a tenant learns nothing of the
+				// owner's review of them.
+				Review counter = direction == ReviewDirection.LANDLORD_TO_TENANT ? written.get(counterOf(direction)) : null;
 				User counterparty = switch (direction) {
 					case TENANT_TO_LANDLORD -> tenancy.getLandlord();
 					case LANDLORD_TO_TENANT -> tenancy.getTenant();
@@ -554,8 +557,14 @@ public class ReviewService {
 		notifier.published(review);
 	}
 
-	/** Who may read a review (§10): author and admins always (except withdrawn); others only once published. */
+	/**
+	 * Who may read a review (§10): author and admins always (except withdrawn); others only once published. An owner's
+	 * review of a tenant goes only to the owners D-54 allows and admins, never to the tenant it is about (D-175).
+	 */
 	private boolean visible(Review review, User me, boolean admin) {
+		if (aboutTenant(review, me)) {
+			return false;
+		}
 		if (admin) {
 			return true;
 		}
@@ -569,7 +578,13 @@ public class ReviewService {
 			return false;
 		}
 		return review.getDirection() != ReviewDirection.LANDLORD_TO_TENANT
-			|| review.getSubjectUser() != null && access.canSeeTenant(me, review.getSubjectUser(), false);
+			|| review.getSubjectUser() != null && access.canReadTenantReviews(me, review.getSubjectUser(), false);
+	}
+	
+	/** D-175: {@code review} is an owner's review of {@code me} as tenant, which {@code me} never sees in any form. */
+	private static boolean aboutTenant(Review review, User me) {
+		return review.getDirection() == ReviewDirection.LANDLORD_TO_TENANT && me != null
+			&& review.getSubjectUser() != null && review.getSubjectUser().getId().equals(me.getId());
 	}
 
 	/** {@link #visible} with the row locked, for a write. */

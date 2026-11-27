@@ -254,8 +254,14 @@ export function clearDraft(id: string) {
   }
 }
 
-/** "80% would recommend", from 3 answers on (D-52, D-158); null below that. */
-export function recommendShare(recommend?: { answered: number; yes: number }): string | null {
+/**
+ * "80% would recommend", from 3 answers on (D-52, D-158); null below that. A tenant's share reads
+ * "80% would rent to them again".
+ */
+export function recommendShare(
+  recommend?: { answered: number; yes: number },
+  phrase = "would recommend",
+): string | null {
   if (!recommend || recommend.answered < 3) return null
-  return `${Math.round((recommend.yes / recommend.answered) * 100)}% would recommend`
+  return `${Math.round((recommend.yes / recommend.answered) * 100)}% ${phrase}`
 }

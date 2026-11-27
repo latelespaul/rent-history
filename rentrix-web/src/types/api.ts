@@ -359,7 +359,10 @@ export interface ReviewTask {
   otherSideWaiting: boolean
 }
 
-/** `GET /users/{id}`: the landlord part for every signed-in caller (D-55). */
+/**
+ * `GET /users/{id}`: the landlord part for every signed-in caller (D-55); the tenant part only for
+ * the owners D-54 allows and admins, never for the tenant themself (D-175).
+ */
 export interface UserProfile {
   id: string
   /** "Owner" or "Tenant", never the name (D-168). */
@@ -370,6 +373,8 @@ export interface UserProfile {
   badges?: TrustBadges
   landlordRating?: RatingDetail
   listedHomes?: number
+  /** Rating as tenant, with "The tenant by topic" and "would rent to them again" (D-175). */
+  tenantRating?: RatingDetail
 }
 
 /** Location row state (§5.17): `PENDING` is a landlord's proposal, shown "Pending review" (D-109). */

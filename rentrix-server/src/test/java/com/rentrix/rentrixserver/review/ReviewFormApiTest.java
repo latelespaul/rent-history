@@ -303,19 +303,20 @@ class ReviewFormApiTest {
 		mvc.perform(get("/me/review-tasks").header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$", hasSize(0)));
 
-		// the tenant sees only that a review waits, then their landlord review reveals both (D-46)
+		// the tenant never sees it, not even as waiting (D-175); their landlord review reveals both (D-46)
 		mvc.perform(get("/me/reviews/received").param("as", "TENANT").header("Authorization", support.bearer(tenant)))
-			.andExpect(jsonPath("$.items", hasSize(1)))
-			.andExpect(jsonPath("$.items[0].status").value("AWAITING_REVEAL"))
-			.andExpect(jsonPath("$.items[0].criteria").doesNotExist());
+			.andExpect(jsonPath("$.items", hasSize(0)));
 		form(tenant, tenancy, full(4, 5)).andExpect(status().isCreated())
 			.andExpect(jsonPath("$.landlord.status").value("PUBLISHED"));
 		mvc.perform(get("/me/reviews/received").param("as", "TENANT").header("Authorization", support.bearer(tenant)))
+			.andExpect(jsonPath("$.items", hasSize(0)));
+		mvc.perform(get("/users/" + tenant.getPublicId()).header("Authorization", support.bearer(landlord)))
+			.andExpect(jsonPath("$.tenantRating.reviewCount").value(1));
+		mvc.perform(get("/users/" + tenant.getPublicId() + "/reviews").param("as", "TENANT")
+				.header("Authorization", support.bearer(landlord)))
 			.andExpect(jsonPath("$.items[0].status").value("PUBLISHED"))
 			.andExpect(jsonPath("$.items[0].criteria.CARE_OF_HOME").value(4))
 			.andExpect(jsonPath("$.items[0].body").value("Paid on time every month and kept the home clean."));
-		mvc.perform(get("/users/" + tenant.getPublicId()).header("Authorization", support.bearer(landlord)))
-			.andExpect(jsonPath("$.tenantRating.reviewCount").value(1));
 	}
 
 	@Test

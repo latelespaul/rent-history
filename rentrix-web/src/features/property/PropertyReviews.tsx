@@ -298,7 +298,13 @@ export function ReviewItem({ review, propertyId }: { review: PropertyReview; pro
             review.wouldRecommend ? "text-success-600" : "text-ink-700",
           )}
         >
-          {review.wouldRecommend ? "Would recommend" : "Would not recommend"}
+          {review.direction === "LANDLORD_TO_TENANT"
+            ? review.wouldRecommend
+              ? "Would rent to them again"
+              : "Would not rent to them again"
+            : review.wouldRecommend
+              ? "Would recommend"
+              : "Would not recommend"}
         </p>
       )}
       {review.body ? (

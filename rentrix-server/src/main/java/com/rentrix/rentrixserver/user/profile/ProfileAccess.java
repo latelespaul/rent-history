@@ -21,6 +21,8 @@ import java.util.List;
  *   <li>D-54: tenants are not searchable. A tenant profile and the reviews about them as tenant are visible to the
  *       tenant, to landlords of their tenancies (confirmed, or requested by the tenant), to a landlord holding an
  *       open enquiry from them, and to admins. Share links (PLAN B7) open it through their own endpoint.</li>
+ *   <li>D-175: the reviews owners wrote about a tenant, with their count and rating, go only to the owners D-54
+ *       allows and to admins: never to the tenant they are about, another tenant or a signed-out visitor.</li>
  * </ul>
  */
 @Component
@@ -49,6 +51,14 @@ public class ProfileAccess {
 		return repository.landlordOfTenant(viewer.getId(), tenant.getId(), CONFIRMED,
 			TenancyStatus.PENDING_CONFIRMATION, TenancyParty.TENANT)
 			|| repository.openEnquiry(viewer.getId(), tenant.getId(), EnquiryStatus.OPEN, clock.instant());
+	}
+	
+	/**
+	 * D-175: may {@code viewer} read the owners' reviews about {@code tenant}, their count and their rating? Only an
+	 * owner D-54 allows, or an admin; never the tenant themself, whatever their roles.
+	 */
+	public boolean canReadTenantReviews(User viewer, User tenant, boolean admin) {
+		return !viewer.getId().equals(tenant.getId()) && canSeeTenant(viewer, tenant, admin);
 	}
 	
 	public long listedHomes(User landlord) {

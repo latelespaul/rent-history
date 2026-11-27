@@ -10,7 +10,8 @@ import java.util.UUID;
 /**
  * {@code GET /users/{id}}: the parts of a person's profile the caller may see. The landlord part (rating as landlord,
  * listed homes) is there for every signed-in caller when the person is a landlord (D-55); the tenant part (rating as
- * tenant) only under D-54. The two reputations are never mixed (D-18). The person shows as {@code label}, "Owner" or
+ * tenant, with the five parameter averages and "would rent to them again", landlord-adds-tenant S2) only to the owners
+ * D-54 allows and admins (D-175): the tenant sees their own profile without it. The two reputations are never mixed (D-18). The person shows as {@code label}, "Owner" or
  * "Tenant", never by name; {@code shortName} only for the person and admins (D-168). Only the three yes/no badges are
  * shown (D-168); never an email, phone or which ID method was used (D-57). PLAN B16 adds {@code homesRating}.
  */

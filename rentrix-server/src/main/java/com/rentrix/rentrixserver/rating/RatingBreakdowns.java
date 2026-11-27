@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Per-parameter averages of the review form (D-158), for a home page and a landlord page. Computed at read time over
- * one subject's counted reviews, the same ones as its headline rating (§9: published, counting, and green-tick only in
+ * Per-parameter averages of the review form (D-158), for a home page, a landlord page and a tenant profile. Computed
+ * at read time over one subject's counted reviews, the same ones as its headline rating (§9: published, counting, and green-tick only in
  * the {@code verified} headline mode, D-135), so nothing stored has to be kept in step (D-33). Every parameter of the
  * subject's direction is listed in form order with its rating count; its average comes from
  * {@value RatingDetail#MIN_REVIEWS_FOR_AVERAGE} ratings on (D-52), and so does the "would you recommend" share,
@@ -39,6 +39,18 @@ public class RatingBreakdowns {
 	/** The landlord's five parameters (TENANT_TO_LANDLORD). */
 	public RatingDetail forLandlord(RatingDetail rating, Long userId) {
 		ReviewDirection direction = ReviewDirection.TENANT_TO_LANDLORD;
+		return rating.withBreakdown(
+			criteria(direction, source.personCriteria(userId, direction, ReviewStatus.PUBLISHED,
+				properties.verifiedOnly())),
+			recommend(source.personRecommend(userId, direction, ReviewStatus.PUBLISHED, properties.verifiedOnly())));
+	}
+	
+	/**
+	 * The tenant's five parameters (LANDLORD_TO_TENANT, D-170). Only for a viewer who may read the owners' reviews of
+	 * the tenant (D-175).
+	 */
+	public RatingDetail forTenant(RatingDetail rating, Long userId) {
+		ReviewDirection direction = ReviewDirection.LANDLORD_TO_TENANT;
 		return rating.withBreakdown(
 			criteria(direction, source.personCriteria(userId, direction, ReviewStatus.PUBLISHED,
 				properties.verifiedOnly())),

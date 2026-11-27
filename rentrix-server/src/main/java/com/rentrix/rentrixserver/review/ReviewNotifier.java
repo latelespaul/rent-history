@@ -10,8 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * "Reviews published" email (D-65) to the person a review is about, or to the home's landlord for a property review.
- * It names the home and links to the web app; never the text, the rating or the author.
+ * "Reviews published" email (D-65) to the landlord a review is about, or to the home's landlord for a property review;
+ * never to a tenant about an owner's review of them (D-175). It names the home and links to the web app; never the
+ * text, the rating or the author.
  */
 @Component
 class ReviewNotifier {
@@ -27,6 +28,10 @@ class ReviewNotifier {
 	}
 	
 	void published(Review review) {
+		// D-175: an owner's review of a tenant is never shown to that tenant, so it never tells them it was published.
+		if (review.getDirection() == ReviewDirection.LANDLORD_TO_TENANT) {
+			return;
+		}
 		User to = review.getDirection() == ReviewDirection.TENANT_TO_PROPERTY
 			? review.getProperty().getLandlord() : review.getSubjectUser();
 		if (to == null || to.getEmail() == null || to.getDeletedAt() != null || UnclaimedLandlord.is(to)) {

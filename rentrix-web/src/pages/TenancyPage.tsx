@@ -174,7 +174,21 @@ export default function TenancyPage() {
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-ink-500">Other side</dt>
-              <dd className="font-semibold text-ink-900">{counterparty(tenancy)}</dd>
+              <dd className="font-semibold text-ink-900">
+                {counterparty(tenancy)}
+                {/* The owner of a confirmed tenancy may open the tenant's profile (D-54, S2). */}
+                {tenancy.myRole === "LANDLORD" &&
+                  tenancy.tenant &&
+                  (tenancy.status === "ACTIVE" || tenancy.status === "ENDED") && (
+                    <Link
+                      to={`/u/${tenancy.tenant.id}`}
+                      className="ml-2 text-sm font-medium text-teal-700 underline-offset-2 hover:underline"
+                      data-testid="tenant-profile-link"
+                    >
+                      Tenant profile
+                    </Link>
+                  )}
+              </dd>
             </div>
             <div>
               <dt className="text-ink-500">Requested by</dt>

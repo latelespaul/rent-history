@@ -110,7 +110,7 @@ test("an owner reviews the tenant of a tenant-recorded stay", async ({ page }, t
     for (const [criterion, stars] of Object.entries(TENANT))
       await page.getByTestId(`rate-${criterion}-${stars}`).click()
     await page.getByLabel(/anything else about the tenant/i).fill(comment)
-    await expect(page.getByTestId("review-reveal")).toContainText(/hidden until your tenant/i)
+    await expect(page.getByTestId("review-reveal")).toContainText(/your tenant never sees/i)
     await noSidewaysScroll(page)
     await shot(page, testInfo, "03-tenant-part")
     await page.getByTestId("review-save-draft").click()
@@ -143,7 +143,7 @@ test("an owner reviews the tenant of a tenant-recorded stay", async ({ page }, t
     const written = (await (await answer).json()) as { tenant?: { status: string } }
     expect(written.tenant?.status).toBe("AWAITING_REVEAL")
     const submitted = page.getByTestId("review-submitted")
-    await expect(submitted.getByTestId("review-tenant-state")).toContainText(/hidden until/i)
+    await expect(submitted.getByTestId("review-tenant-state")).toContainText(/never sees it/i)
     await noSidewaysScroll(page)
     await shot(page, testInfo, "06-submitted")
     await submitted.getByTestId("review-view-tenancy").click()
