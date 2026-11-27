@@ -229,7 +229,7 @@ What a viewer sees of the stays themselves (the period is the part that could id
 | Viewer | Stays listed | ① home review | ② review of the owner | ③ review of the tenant | Tenant identity |
 |---|---|---|---|---|---|
 | Signed out | none | full, in today's list (D-161) | not shown | not shown | never |
-| Signed in, no relation | with a published review; year range | full | full once published (D-55) | `{exists}`: "The owner reviewed this tenant. Only the tenant and their landlords can read it." | never |
+| Signed in, no relation | with a published review; year range | full | full once published (D-55) | `{exists}`: "The owner reviewed this tenant. Only owners and our team can read it." | never |
 | The stay's tenant | their own in full; others as "no relation" | full; "Your review" actions | full; their own review with actions | never, not even a "waiting" entry (D-175) | themselves |
 | The home's owner | all stays on the home, in full | full; reply action | full; reply action | full; "Your review" actions | after "Tenant confirmed": short name |
 | A landlord D-54 allows (an open enquiry from this tenant, or this tenant's landlord elsewhere) | as "no relation" | full | full | full | never on the home page; the tenant profile shows it |

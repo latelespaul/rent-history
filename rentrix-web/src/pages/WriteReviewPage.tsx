@@ -681,7 +681,7 @@ function ReviewForm({ tenancy, parts }: { tenancy: Tenancy; parts: Parts }) {
           <div className="space-y-3">
             <p className="text-sm text-ink-500">
               {owner
-                ? "Check your answers. Only the tenant and their landlords can read it, without your full name."
+                ? "Check your answers. Only owners and our team can read it, never the tenant, and without your full name."
                 : "Check your answers. Reviews are public, without your full name."}
             </p>
             {(["home", "landlord", "tenant"] as const)
