@@ -47,7 +47,7 @@ export const reviewKeys = {
   tasks: ["reviews", "tasks"] as const,
   propertyRating: (id: string) => ["properties", "rating", id] as const,
   user: (id: string) => ["users", id] as const,
-  userReviews: (id: string) => ["users", id, "reviews"] as const,
+  userReviews: (id: string, as: TenancyParty = "LANDLORD") => ["users", id, "reviews", as] as const,
 }
 
 /** `POST /tenancies/{id}/review-form` (D-157): the home and the landlord review, both or neither. */
@@ -65,15 +65,18 @@ export function fetchPropertyRating(id: string, signal?: AbortSignal) {
   return api.get<RatingDetail>(`/properties/${encodeURIComponent(id)}/rating`, { signal })
 }
 
-/** `GET /users/{id}`: a landlord's profile (signed in, D-55). */
+/** `GET /users/{id}`: a person's profile (signed in; landlord D-55, tenant D-54 and D-175). */
 export function fetchUserProfile(id: string, signal?: AbortSignal) {
   return api.get<UserProfile>(`/users/${encodeURIComponent(id)}`, { signal })
 }
 
-/** `GET /users/{id}/reviews`: the published reviews the landlord received. */
-export function fetchUserReviews(id: string, signal?: AbortSignal) {
+/**
+ * `GET /users/{id}/reviews?as=`: the published reviews the person received as landlord, or as
+ * tenant from their owners (only for the owners D-54 allows and admins, D-175).
+ */
+export function fetchUserReviews(id: string, as: TenancyParty = "LANDLORD", signal?: AbortSignal) {
   return api.get<Page<PropertyReview>>(`/users/${encodeURIComponent(id)}/reviews`, {
-    query: { size: 50 },
+    query: { as, size: 50 },
     signal,
   })
 }

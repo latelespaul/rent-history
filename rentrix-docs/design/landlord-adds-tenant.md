@@ -1,6 +1,6 @@
 # Landlord adds tenant (design note)
 
-Status: **design; slice S1 built** (2026-11-26, SYSTEM_DESIGN D-170). Date: 2026-11-24. Captain's asks: 2026-11-24 19:30 IST, and the addendum of the same day (OPEN 47 / 53).
+Status: **design; slices S1 and S2 built** (S1 2026-11-26, SYSTEM_DESIGN D-170; S2 2026-11-27, D-175). Date: 2026-11-24. Captain's asks: 2026-11-24 19:30 IST, and the addendum of the same day (OPEN 47 / 53).
 Build waits for the stabilisation pass (OPEN 46). Then it ships as the small PRs of §9, each through no-mistakes, DEV first; master releases to LIVE.
 
 This note is written for a developer who joins the codebase today. It maps the captain's model onto the code that exists (§2), lists only the smallest changes that close each gap (§3), decides each scenario (§4–§7), and orders the work into PRs that ship one at a time (§9). It extends SYSTEM_DESIGN §5.4, §6, §7 and §10 and the review form note [`review-form.md`](review-form.md). Rules there stay unless a line below says otherwise.
@@ -17,7 +17,7 @@ Decisions proposed here are labelled **LT-1 … LT-12**. Each build PR records t
 4. No account matches? The tenancy keeps `tenant_id = NULL`: that is the **unclaimed tenant**. The tenant claims it later by signing in with that email or by verifying that phone.
 5. The owner reviews the tenant with the existing review form: a new `tenant` part, `LANDLORD_TO_TENANT`, with 5 parameters.
 6. A review about a tenant goes public only when the tenant stands behind the tenancy: they added it, confirmed it, or the team verified it. Then the double-blind reveal of D-46 runs as today.
-7. The tenant profile (`/u/:id`, tenant side) shows the tenant's rating, parameter averages and the reviews from owners, to the people D-54 allows.
+7. The tenant profile (`/u/:id`, tenant side) shows the tenant's rating, parameter averages and the reviews from owners, to the owners D-54 allows and admins. Never to the tenant they are about, another tenant or a signed-out visitor (captain's option B, D-175).
 8. The home page gets one "Stays at this home" list for signed-in viewers: per tenancy, the home review, the owner review and the tenant review, each with its existing visibility rule. Outsiders see only stays with a published review, as a year range. Signed-out viewers see no stays, only the home reviews (as today's rent history, which is signed-in only). The two parties of a stay always see it in full.
 
 ---
@@ -230,7 +230,7 @@ What a viewer sees of the stays themselves (the period is the part that could id
 |---|---|---|---|---|---|
 | Signed out | none | full, in today's list (D-161) | not shown | not shown | never |
 | Signed in, no relation | with a published review; year range | full | full once published (D-55) | `{exists}`: "The owner reviewed this tenant. Only the tenant and their landlords can read it." | never |
-| The stay's tenant | their own in full; others as "no relation" | full; "Your review" actions | full; their own review with actions | full once published; while it waits only "A review about you is waiting" (D-46) | themselves |
+| The stay's tenant | their own in full; others as "no relation" | full; "Your review" actions | full; their own review with actions | never, not even a "waiting" entry (D-175) | themselves |
 | The home's owner | all stays on the home, in full | full; reply action | full; reply action | full; "Your review" actions | after "Tenant confirmed": short name |
 | A landlord D-54 allows (an open enquiry from this tenant, or this tenant's landlord elsewhere) | as "no relation" | full | full | full | never on the home page; the tenant profile shows it |
 | Admin (admin host only) | all, in full | full | full | full | full |
@@ -360,9 +360,9 @@ API tests in `rentrix-server` for each rule above, and Playwright e2e at 390 px 
 | Spec (slice) | Checks |
 |---|---|
 | `owner-reviews-tenant.spec.ts` (S1) | Owner mode → tenancy → "Review your tenant" → 5 parameters → overall → submit → "Waiting for the other side"; tenant reviews the owner → both publish; owner's "Reviews you wrote of tenants" lists it; no horizontal scroll at 390 px |
-| `tenant-profile.spec.ts` (S2) | owner with access opens `/u/:id` and sees "What owners say"; a stranger gets the not-found page (D-54, D-60); the tenant sees their own |
+| `tenant-profile.spec.ts` (S2) | owner with access opens `/u/:id` and sees "What owners say"; a stranger gets the not-found page (D-54, D-60); the tenant sees their own profile with no owner reviews (D-175) |
 | `add-tenant.spec.ts` (S3) | add with no contact and no dates → `ACTIVE`, "Not linked yet", "Dates not given"; add with a seeded tenant's email → the owner still sees the masked email; tenant signs in → "Is this you?" → "Yes, I rented it" → "Tenant confirmed" and the owner sees the short name; "Not me" → unlinked; old "Invite a tenant" deep link still works |
-| `tenant-review-backing.spec.ts` (S3) | owner reviews an unlinked tenant → "Waiting for the other side" and nothing on the tenant's side; after link and "Yes, I rented it" the tenant sees "A review about you is waiting"; the tenant reviews the owner → both publish. The 14-day path is an API test (the reveal job is called directly, D-08) |
+| `tenant-review-backing.spec.ts` (S3) | owner reviews an unlinked tenant → "Waiting for the other side" and nothing on the tenant's side; after link and "Yes, I rented it" the tenant still sees nothing of it (D-175); the tenant reviews the owner → both publish. The 14-day path is an API test (the reveal job is called directly, D-08) |
 | `claim-later.spec.ts` (S4) | owner adds an email with no account; a new user signs up with it → linked; the tenant's "Add your home" on that home → "Your owner already added this stay"; "I own it" → "Add your tenant (optional)" |
 | `undated-stay.spec.ts` (S3) | an owner adds a tenant with no dates; the stay's card, tenancy page and edit page render at 390 px with "Dates not given" and no error |
 | `home-stays.spec.ts` (S5) | the §7 matrix: signed out sees no stays and no periods; a signed-in stranger sees only reviewed stays, as year ranges, with no "Current"; the tenant and the owner see their stays in full; the tenant's name never appears for outsiders; `#reviews` still opens the author's review |

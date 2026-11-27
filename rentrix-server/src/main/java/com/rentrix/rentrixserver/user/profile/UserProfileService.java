@@ -66,7 +66,8 @@ public class UserProfileService {
 			identity.trustBadges(person, agreementBacked(person, landlord)),
 			landlord ? breakdowns.forLandlord(rating(RatingSubjectType.LANDLORD, person), person.getId()) : null,
 			landlord ? access.listedHomes(person) : null,
-			tenant ? rating(RatingSubjectType.TENANT, person) : null);
+			tenant && tenantReviewsReadable(me, person, admin)
+				? breakdowns.forTenant(rating(RatingSubjectType.TENANT, person), person.getId()) : null);
 	}
 	
 	/** {@code GET /users/{id}/reviews?as=LANDLORD|TENANT} (landlord by default), with the profile's visibility. */
@@ -75,7 +76,8 @@ public class UserProfileService {
 		User person = person(userId);
 		boolean admin = caller.hasRole(Role.ADMIN);
 		if (as == TenancyParty.TENANT) {
-			if (!tenantVisible(me, person, admin)) {
+			// D-175: the tenant themself gets the same 404 as a stranger, so not even the list's existence shows.
+			if (!tenantReviewsReadable(me, person, admin)) {
 				throw ApiException.notFound("User");
 			}
 			return reviews.about(person, ReviewDirection.LANDLORD_TO_TENANT, me, admin, pageable);
@@ -97,6 +99,11 @@ public class UserProfileService {
 	
 	private boolean tenantVisible(User me, User person, boolean admin) {
 		return person.hasRole(Role.TENANT) && access.canSeeTenant(me, person, admin);
+	}
+	
+	/** D-175: the owners' reviews of a tenant, their count and rating, only for the owners D-54 allows and admins. */
+	private boolean tenantReviewsReadable(User me, User person, boolean admin) {
+		return person.hasRole(Role.TENANT) && access.canReadTenantReviews(me, person, admin);
 	}
 	
 	private RatingDetail rating(RatingSubjectType type, User person) {

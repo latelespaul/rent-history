@@ -543,7 +543,14 @@ public class TenancyService {
 		List<Review> written = reviews.findByTenancyId(tenancy.getId()).stream()
 			.filter(r -> r.getDeletedAt() == null && r.getStatus() != ReviewStatus.WITHDRAWN)
 			.toList();
-		if (written.stream().anyMatch(r -> !r.getAuthor().getId().equals(me.getId()))) {
+		List<Review> theirs = written.stream().filter(r -> !r.getAuthor().getId().equals(me.getId())).toList();
+		// D-175: a tenant never learns that the owner reviewed them, so that refusal does not name a review.
+		if (!theirs.isEmpty() && theirs.stream().allMatch(r -> r.getDirection() == ReviewDirection.LANDLORD_TO_TENANT)) {
+			throw ApiException.conflict("owner_has_records",
+				"The owner keeps this tenancy on their side too, so it cannot be deleted. Edit it, or ask our team to "
+					+ "remove it.");
+		}
+		if (!theirs.isEmpty()) {
 			throw ApiException.conflict("tenancy_has_reviews",
 				"The other side reviewed this tenancy, so it cannot be deleted. Edit it, or ask our team to remove it.");
 		}

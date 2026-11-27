@@ -11,14 +11,17 @@ export function RatingBreakdown({
   rating,
   title,
   testId,
+  recommendPhrase,
 }: {
   rating: RatingDetail | undefined
   title: string
   testId: string
+  /** The share's wording; "would recommend" by default. */
+  recommendPhrase?: string
 }) {
   const criteria = rating?.criteria ?? []
   if (!criteria.some((c) => c.ratingCount > 0)) return null
-  const share = recommendShare(rating?.recommend)
+  const share = recommendShare(rating?.recommend, recommendPhrase)
   return (
     <div className="space-y-2" data-testid={testId}>
       <h3 className="text-sm font-semibold text-ink-900">{title}</h3>

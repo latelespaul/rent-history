@@ -66,6 +66,16 @@ function ReviewRow({ review, kind }: { review: PropertyReview; kind: "written" |
         {when && <span className="num">{when}</span>}
         {review.status === "AWAITING_REVEAL" && <Badge>Waiting for the other side</Badge>}
         <ReviewTick state={review.verification} />
+        {/* The owner's own review of a tenant links to that tenant's profile (landlord-adds-tenant S2). */}
+        {kind === "written" && review.direction === "LANDLORD_TO_TENANT" && review.subject?.id && (
+          <Link
+            to={`/u/${review.subject.id}`}
+            className="font-medium text-teal-700 underline-offset-2 hover:underline"
+            data-testid="tenant-profile-link"
+          >
+            Tenant profile
+          </Link>
+        )}
       </p>
     </li>
   )
