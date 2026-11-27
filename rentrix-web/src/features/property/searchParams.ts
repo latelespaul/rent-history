@@ -18,7 +18,7 @@ export const SORTS = [
 
 export const DEFAULT_SORT = "top_rated"
 
-/** Filter chips for type; `ROOM` and `PG` stay separate because the API filters one type. */
+/** Filter chips for type; several may be picked at once and a home matches any of them. */
 export const TYPE_OPTIONS: ReadonlyArray<{ value: PropertyType; label: string }> = [
   { value: "APARTMENT", label: "Apartment" },
   { value: "INDEPENDENT_HOUSE", label: "House" },
@@ -62,6 +62,18 @@ const KEYS = [
 
 const TYPES = new Set<string>(TYPE_OPTIONS.map((t) => t.value))
 const SORT_VALUES = new Set<string>(SORTS.map((s) => s.value))
+
+/**
+ * A multi-value filter from the URL: a comma list (`type=APARTMENT,VILLA`) or repeated params, upper-cased,
+ * unknown values dropped, repeats removed, in the order given. Empty when nothing valid is left.
+ */
+function listParam(values: string[], allowed: Set<string>): string[] {
+  const picked = values
+    .flatMap((v) => v.split(","))
+    .map((v) => v.trim().toUpperCase())
+    .filter((v) => allowed.has(v))
+  return [...new Set(picked)]
+}
 
 function intParam(value: string | null, min: number, max: number): number | undefined {
   if (value === null || !/^\d+$/.test(value)) return undefined
@@ -126,8 +138,8 @@ function textParam(value: string | null): string | undefined {
  * URL cannot turn into a `400`. The URL's `page` is 1-based for people; the API's is 0-based.
  */
 export function searchFromParams(params: URLSearchParams): PropertySearch {
-  const type = params.get("type")?.toUpperCase()
-  const homeSize = params.get("homeSize")?.toUpperCase()
+  const type = listParam(params.getAll("type"), TYPES)
+  const homeSize = listParam(params.getAll("homeSize"), SIZES)
   const sort = params.get("sort")
   const page = intParam(params.get("page"), 1, 10_000)
   return {
@@ -139,8 +151,8 @@ export function searchFromParams(params: URLSearchParams): PropertySearch {
       ? params.get("society")!
       : undefined,
     q: textParam(params.get("q")),
-    type: type && TYPES.has(type) ? type : undefined,
-    homeSize: homeSize && SIZES.has(homeSize) ? homeSize : undefined,
+    type: type.length > 0 ? type : undefined,
+    homeSize: homeSize.length > 0 ? homeSize : undefined,
     bedrooms: intParam(params.get("bedrooms"), 0, 20),
     minRating: ratingParam(params.get("minRating")),
     sort: sort && SORT_VALUES.has(sort) && sort !== DEFAULT_SORT ? sort : undefined,
@@ -150,7 +162,9 @@ export function searchFromParams(params: URLSearchParams): PropertySearch {
 }
 
 /** The filters a person sets, as the URL holds them (page 1-based, defaults left out). */
-export type SearchFilters = Partial<Record<(typeof KEYS)[number], string | number | undefined>>
+export type SearchFilters = Partial<
+  Record<(typeof KEYS)[number], string | number | string[] | undefined>
+>
 
 /**
  * Applies `changes` to the current URL params and returns the new ones. Any filter change resets
@@ -159,8 +173,10 @@ export type SearchFilters = Partial<Record<(typeof KEYS)[number], string | numbe
 export function withFilters(current: URLSearchParams, changes: SearchFilters): URLSearchParams {
   const next = new URLSearchParams(current)
   for (const [key, value] of Object.entries(changes)) {
-    if (value === undefined || value === "") next.delete(key)
-    else next.set(key, String(value))
+    // a list is written as one comma-separated param; an empty one removes it
+    const text = Array.isArray(value) ? value.join(",") : value
+    if (text === undefined || text === "") next.delete(key)
+    else next.set(key, String(text))
   }
   if (!("page" in changes)) next.delete("page")
   if (next.get("page") === "1") next.delete("page")
@@ -184,4 +200,11 @@ export function activeFilterCount(search: PropertySearch): number {
     search.bedrooms,
     search.minRating,
   ].filter((v) => v !== undefined).length
+}
+
+/** `values` with `value` switched on or off, for a multi-select chip group; undefined when none is left. */
+export function toggled(values: string[] | undefined, value: string): string[] | undefined {
+  const current = values ?? []
+  const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+  return next.length > 0 ? next : undefined
 }

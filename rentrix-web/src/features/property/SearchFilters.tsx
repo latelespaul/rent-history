@@ -5,6 +5,7 @@ import {
   RATING_OPTIONS,
   TYPE_OPTIONS,
   activeFilterCount,
+  toggled,
   type SearchFilters as Changes,
 } from "./searchParams"
 
@@ -79,14 +80,14 @@ export function SearchFilters({ search, onChange, className }: Props) {
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-semibold text-ink-900">Type</legend>
         <div className="flex flex-wrap gap-2">
-          <Chip pressed={!search.type} onClick={() => onChange({ type: undefined })}>
+          <Chip pressed={!search.type?.length} onClick={() => onChange({ type: undefined })}>
             Any
           </Chip>
           {TYPE_OPTIONS.map((t) => (
             <Chip
               key={t.value}
-              pressed={search.type === t.value}
-              onClick={() => onChange({ type: t.value })}
+              pressed={search.type?.includes(t.value) ?? false}
+              onClick={() => onChange({ type: toggled(search.type, t.value) })}
             >
               {t.label}
             </Chip>
@@ -98,7 +99,7 @@ export function SearchFilters({ search, onChange, className }: Props) {
         <legend className="mb-2 text-sm font-semibold text-ink-900">Home size</legend>
         <div className="flex flex-wrap gap-2">
           <Chip
-            pressed={search.homeSize === undefined && search.bedrooms === undefined}
+            pressed={!search.homeSize?.length && search.bedrooms === undefined}
             onClick={() => onChange({ homeSize: undefined, bedrooms: undefined })}
           >
             Any
@@ -106,8 +107,10 @@ export function SearchFilters({ search, onChange, className }: Props) {
           {HOME_SIZES.filter((s) => s.value !== "OTHER").map((s) => (
             <Chip
               key={s.value}
-              pressed={search.homeSize === s.value}
-              onClick={() => onChange({ homeSize: s.value, bedrooms: undefined })}
+              pressed={search.homeSize?.includes(s.value) ?? false}
+              onClick={() =>
+                onChange({ homeSize: toggled(search.homeSize, s.value), bedrooms: undefined })
+              }
             >
               {s.label}
             </Chip>

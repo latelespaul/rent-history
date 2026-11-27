@@ -52,7 +52,7 @@ export default function SocietyPage() {
   const flats = usePropertySearch({
     society: id,
     tower,
-    homeSize,
+    homeSize: homeSize ? [homeSize] : undefined,
     size: FLATS_PAGE,
     page: page > 1 ? page - 1 : undefined,
     sort: "newest",

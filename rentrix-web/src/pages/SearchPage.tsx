@@ -70,8 +70,14 @@ export default function SearchPage() {
   const pickedSociety =
     search.society && society.data ? { id: search.society, name: society.data.name } : null
 
+  // the lists are re-written from what the page understood, so repeated params collapse into one list and a
+  // chip switched off stays off
   const change = (changes: Changes) =>
-    navigate({ search: searchString(withFilters(params, changes)) })
+    navigate({
+      search: searchString(
+        withFilters(params, { type: parsed.type, homeSize: parsed.homeSize, ...changes }),
+      ),
+    })
   const page = (search.page ?? 0) + 1
   const data = results.data
   const total = data?.totalHomes ?? 0
@@ -156,7 +162,10 @@ export default function SearchPage() {
               {data?.items.map((item) =>
                 item.kind === "SOCIETY" ? (
                   <li key={`s-${item.society.id}`}>
-                    <SocietyResult society={item.society} homeSize={search.homeSize} />
+                    <SocietyResult
+                      society={item.society}
+                      homeSize={search.homeSize?.length === 1 ? search.homeSize[0] : undefined}
+                    />
                   </li>
                 ) : (
                   <li key={item.home.id}>
