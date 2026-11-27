@@ -7,6 +7,7 @@ import { ApprovalsPage } from "./ApprovalsPage"
 import { AuditLogPage } from "./AuditLogPage"
 import { MailPage } from "./MailPage"
 import { SmsRelayPage } from "./SmsRelayPage"
+import { TrafficPage } from "./TrafficPage"
 
 /** The admin host's routes (SYSTEM_DESIGN §13.3); the main site's pages are not here. */
 export const adminRoutes: RouteObject[] = [
@@ -21,6 +22,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "/sms-relay", element: <SmsRelayPage /> },
       { path: "/audit-log", element: <AuditLogPage /> },
       { path: "/mail", element: <MailPage /> },
+      { path: "/traffic", element: <TrafficPage /> },
       {
         path: "*",
         element: (
