@@ -116,8 +116,8 @@ describe("SearchPage", () => {
     await vi.waitFor(() =>
       expect(resultCalls().at(-1)).toMatchObject({
         city: "BLR",
-        type: "VILLA",
-        homeSize: "BHK3",
+        type: ["VILLA"],
+        homeSize: ["BHK3"],
         minRating: 4,
         sort: "newest",
       }),
@@ -125,6 +125,66 @@ describe("SearchPage", () => {
 
     await user.click(within(filters).getByRole("button", { name: "Clear" }))
     expect(router.state.location.search).toBe("?city=BLR&sort=newest")
+  })
+
+  it("multi-selects Type and Home size chips, with Any as the empty state", async () => {
+    const user = userEvent.setup()
+    const router = renderAt("/search?city=BLR")
+    await screen.findByRole("heading", { name: /in Bangalore/ })
+    const filters = screen.getByRole("region", { name: "Filters" })
+    const type = within(within(filters).getByRole("group", { name: "Type" }))
+    const size = within(within(filters).getByRole("group", { name: "Home size" }))
+    const pressed = (scope: typeof type, name: string) =>
+      scope.getByRole("button", { name }).getAttribute("aria-pressed")
+
+    expect(pressed(type, "Any")).toBe("true")
+    expect(type.queryByRole("button", { name: "Studio" })).toBeNull()
+    expect(size.getByRole("button", { name: "Studio" })).toBeTruthy()
+
+    await user.click(size.getByRole("button", { name: "1 BHK" }))
+    await user.click(size.getByRole("button", { name: "2 BHK" }))
+    await user.click(type.getByRole("button", { name: "Apartment" }))
+    await user.click(type.getByRole("button", { name: "House" }))
+    expect(pressed(size, "Any")).toBe("false")
+    expect(pressed(size, "1 BHK")).toBe("true")
+    expect(pressed(size, "2 BHK")).toBe("true")
+    expect(pressed(type, "Any")).toBe("false")
+    expect(router.state.location.search).toBe(
+      "?city=BLR&type=APARTMENT,INDEPENDENT_HOUSE&homeSize=BHK1,BHK2",
+    )
+    await vi.waitFor(() =>
+      expect(resultCalls().at(-1)).toMatchObject({
+        type: ["APARTMENT", "INDEPENDENT_HOUSE"],
+        homeSize: ["BHK1", "BHK2"],
+      }),
+    )
+
+    // deselecting one keeps the other; deselecting the last turns Any back on
+    await user.click(size.getByRole("button", { name: "1 BHK" }))
+    expect(pressed(size, "1 BHK")).toBe("false")
+    expect(pressed(size, "2 BHK")).toBe("true")
+    await user.click(size.getByRole("button", { name: "2 BHK" }))
+    expect(pressed(size, "Any")).toBe("true")
+    expect(router.state.location.search).toBe("?city=BLR&type=APARTMENT,INDEPENDENT_HOUSE")
+
+    // Any clears its group; Clear resets everything
+    await user.click(type.getByRole("button", { name: "Any" }))
+    expect(router.state.location.search).toBe("?city=BLR")
+    await user.click(size.getByRole("button", { name: "Studio" }))
+    await user.click(type.getByRole("button", { name: "PG" }))
+    await user.click(within(filters).getByRole("button", { name: "Clear" }))
+    expect(router.state.location.search).toBe("?city=BLR")
+  })
+
+  it("keeps an old single-value link working and reads type=STUDIO as the Studio size", async () => {
+    renderAt("/search?city=BLR&type=villa&homeSize=BHK3")
+    const filters = await screen.findByRole("region", { name: "Filters" })
+    expect(
+      within(filters).getByRole("button", { name: "Villa" }).getAttribute("aria-pressed"),
+    ).toBe("true")
+    expect(
+      within(filters).getByRole("button", { name: "3 BHK" }).getAttribute("aria-pressed"),
+    ).toBe("true")
   })
 
   it("sends the search box as q, so a society name or a PIN code finds the home (D-162)", async () => {
