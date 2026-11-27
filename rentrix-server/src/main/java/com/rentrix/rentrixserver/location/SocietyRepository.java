@@ -19,12 +19,12 @@ public interface SocietyRepository extends JpaRepository<Society, Long>, JpaSpec
 	
 	Optional<Society> findByAreaAndNameKey(Area area, String nameKey);
 	
-	/** Every society of one city, the candidates of {@link PlaceMatcher} (D-164); the caller drops unlisted ones. */
+	/** Every society of the given cities, the candidates of {@link PlaceMatcher} (D-164); the caller drops unlisted ones. */
 	@Query("select s from Society s join fetch s.area join fetch s.city c left join fetch s.createdBy"
-		+ " where c.code = :city order by s.id")
-	List<Society> findCandidatesInCity(@Param("city") String city, Pageable limit);
+		+ " where c.code in :cities order by s.id")
+	List<Society> findCandidatesInCities(@Param("cities") Collection<String> cities, Pageable limit);
 	
-	/** {@link #findCandidatesInCity} for every live city. */
+	/** {@link #findCandidatesInCities} for every live city. */
 	@Query("select s from Society s join fetch s.area join fetch s.city c left join fetch s.createdBy"
 		+ " where c.live = true order by s.id")
 	List<Society> findCandidatesInLiveCities(Pageable limit);

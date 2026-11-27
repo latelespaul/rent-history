@@ -40,19 +40,17 @@ public class SearchSuggestionService {
 	private final CityService cities;
 	private final LocationService locations;
 	
-	public SearchSuggestions suggest(String cityCode, String text, AuthenticatedUser caller) {
-		if (cityCode != null) {
-			cities.requireLive(cityCode);
-		}
+	public SearchSuggestions suggest(List<String> cityCodes, String text, AuthenticatedUser caller) {
+		cityCodes = cities.liveSearchCodes(cityCodes);
 		if (String.join("", NameMatch.words(text)).length() < MIN_LETTERS) {
 			return SearchSuggestions.NONE;
 		}
 		PlaceMatcher.Query query = PlaceMatcher.Query.parse(text);
 		// "Sector 21 Heights" ends in a number too: the whole text is tried as a place name first
-		List<PlaceMatcher.SocietyHit> societies = matcher.societies(cityCode, PlaceMatcher.Query.whole(text), caller,
+		List<PlaceMatcher.SocietyHit> societies = matcher.societies(cityCodes, PlaceMatcher.Query.whole(text), caller,
 			MAX_SOCIETIES);
 		List<PlaceMatcher.SocietyHit> named = query.unit() == null ? List.of()
-			: matcher.societies(cityCode, query, caller, MAX_SOCIETIES);
+			: matcher.societies(cityCodes, query, caller, MAX_SOCIETIES);
 		if (!PlaceMatcher.unitFirst(named, societies, query.unit())) {
 			named = List.of();
 		}
@@ -61,7 +59,7 @@ public class SearchSuggestionService {
 		if (societies.isEmpty()) {
 			societies = named;
 		}
-		List<SearchSuggestions.AreaSuggestion> areas = matcher.areas(cityCode, text, caller, MAX_AREAS).stream()
+		List<SearchSuggestions.AreaSuggestion> areas = matcher.areas(cityCodes, text, caller, MAX_AREAS).stream()
 			.map(hit -> new SearchSuggestions.AreaSuggestion(hit.area().getPublicId(), hit.area().getName(),
 				CityRef.of(hit.area().getCity())))
 			.toList();

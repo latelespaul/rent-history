@@ -9,7 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -23,6 +25,9 @@ import java.util.stream.Stream;
 public class CityService {
 	
 	static final String NOT_LIVE_DETAIL = "We are not live in this city yet.";
+	
+	/** How many cities one search may name ({@code ?city=BLR,PNQ}); the rest are ignored. */
+	public static final int MAX_SEARCH_CITIES = 20;
 	
 	private static final Pattern PINCODE = Pattern.compile("\\d{6}");
 	private static final Pattern WORD_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
@@ -73,6 +78,37 @@ public class CityService {
 		if (code == null || !cities.existsByCodeAndLiveTrue(code)) {
 			throw notLive();
 		}
+	}
+	
+	/**
+	 * The city codes of a search's {@code city} parameter (captain 2026-11-27): comma-separated (a repeated
+	 * {@code city=} arrives joined the same way), trimmed, upper-cased, without blanks or repeats, at most
+	 * {@link #MAX_SEARCH_CITIES}. Null or blank is the empty list, i.e. every live city.
+	 */
+	public static List<String> searchCodes(String city) {
+		if (city == null || city.isBlank()) {
+			return List.of();
+		}
+		return Stream.of(city.split(",")).map(String::trim).filter(code -> !code.isEmpty())
+			.map(code -> code.toUpperCase(Locale.ROOT)).distinct().limit(MAX_SEARCH_CITIES).toList();
+	}
+	
+	/**
+	 * The live cities among a search's {@code codes}, in the given order; unknown and not-live codes are dropped
+	 * (captain 2026-11-27). An empty list stays empty (every live city), but when codes were named and none of them
+	 * is live the search is {@code 422 city_not_live}, as for one city (D-20).
+	 */
+	public List<String> liveSearchCodes(List<String> codes) {
+		if (codes.isEmpty()) {
+			return codes;
+		}
+		Set<String> live = cities.findAllById(codes).stream().filter(City::isLive).map(City::getCode)
+			.collect(Collectors.toSet());
+		List<String> kept = codes.stream().filter(live::contains).toList();
+		if (kept.isEmpty()) {
+			throw notLive();
+		}
+		return kept;
 	}
 	
 	/**

@@ -1,5 +1,6 @@
 package com.rentrix.rentrixserver.search;
 
+import com.rentrix.rentrixserver.city.CityService;
 import com.rentrix.rentrixserver.common.error.ApiException;
 import com.rentrix.rentrixserver.common.error.ApiProblem;
 import com.rentrix.rentrixserver.security.AuthenticatedUser;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /** {@code GET /search/suggestions?city=&q=} (D-164): public, like {@code GET /properties} (D-162). */
@@ -25,7 +25,7 @@ public class SearchSuggestionController {
 	
 	/**
 	 * {@code q} is what the box holds so far: a society or area name (typos allowed), optionally a tower, and
-	 * optionally a flat number at the end. {@code city} is a live city code; without it every live city. With
+	 * optionally a flat number at the end. {@code city} is one live city code or several, comma-separated, as for {@code GET /properties}; without it every live city. With
 	 * {@code society} (a picked society's id) the text is a flat number or a tower of that society (D-167).
 	 */
 	@GetMapping("/search/suggestions")
@@ -40,8 +40,7 @@ public class SearchSuggestionController {
 			// the second step of the box: a society is picked, the text is a flat number or a tower (D-167)
 			return service.suggestInSociety(society, q, caller);
 		}
-		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
-		return service.suggest(cityCode, q, caller);
+		return service.suggest(CityService.searchCodes(city), q, caller);
 	}
 	
 }

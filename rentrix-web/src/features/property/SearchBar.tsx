@@ -16,14 +16,17 @@ export interface PickedSociety {
 }
 
 interface Props {
-  city: string | null
+  /** The picked city codes; empty searches every city (captain 2026-11-27). */
+  cities: string[]
   /** The words in the box: an area, society or building name, a street or a PIN code. */
   query: string
   /** The society the search is narrowed to (`society=` in the URL), shown as a chip. */
   society?: PickedSociety | null
-  onCityChange: (code: string) => void
+  onCitiesChange: (codes: string[]) => void
   /** A text search; `society` when a society is picked (the text is then its flat number). */
-  onSubmit: (value: { city: string | null; query: string; society?: string }) => void
+  onSubmit: (value: { cities: string[]; query: string; society?: string }) => void
+  /** What the city field says with no city picked. */
+  cityPlaceholder?: string
   className?: string
 }
 
@@ -40,14 +43,22 @@ interface Option {
 }
 
 /**
- * City picker + one search box + Search (mockups `home.html`, `search.html`). The box finds a home
+ * City picker (any number of cities) + one search box + Search (mockups `home.html`, `search.html`). The box finds a home
  * by its area, society, building, street or PIN code, sent as `q` (D-162), and suggests societies
  * (typos allowed), areas and flats while typing (D-164). Two-step pick (D-167): choosing a society
  * turns the box into "[Prestige Lakeside ×] Flat no…", which then suggests that society's flat
  * numbers and towers; Search with a flat number looks for it in that society, Search with none
  * opens the society page. A flat opens its home page, a tower its society page on that tower.
  */
-export function SearchBar({ city, query, society, onCityChange, onSubmit, className }: Props) {
+export function SearchBar({
+  cities,
+  query,
+  society,
+  onCitiesChange,
+  onSubmit,
+  cityPlaceholder,
+  className,
+}: Props) {
   const navigate = useNavigate()
   const { ready, viewer } = useSignedIn()
   const [text, setText] = useState(query)
@@ -58,7 +69,9 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const input = useRef<HTMLInputElement>(null)
-  const hints = useLocalityHints(city ?? undefined)
+  // the API takes the codes comma-separated, like the URL
+  const city = cities.join(",") || undefined
+  const hints = useLocalityHints(city)
   const listId = useId()
 
   // The URL changed the search (back button, "Clear"): show the new value.
@@ -81,8 +94,7 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
     open && ready && (picked !== null || typed.replace(/[^\p{L}\p{N}]/gu, "").length >= 2)
   const suggestions = useQuery({
     queryKey: searchKeys.suggestions(city ?? "", picked?.id ?? "", typed, viewer),
-    queryFn: ({ signal }) =>
-      fetchSuggestions({ city: city ?? undefined, q: typed, society: picked?.id }, signal),
+    queryFn: ({ signal }) => fetchSuggestions({ city, q: typed, society: picked?.id }, signal),
     enabled: asking,
     staleTime: 1000 * 30,
   })
@@ -137,7 +149,7 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
       pick: () => {
         setText(a.name)
         setOpen(false)
-        onSubmit({ city: city ?? a.city.code, query: a.name })
+        onSubmit({ cities: cities.length ? cities : [a.city.code], query: a.name })
       },
     })),
   ]
@@ -158,7 +170,7 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
       navigate(`/s/${encodeURIComponent(picked.id)}`)
       return
     }
-    onSubmit({ city, query: words, society: picked?.id })
+    onSubmit({ cities, query: words, society: picked?.id })
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -193,11 +205,13 @@ export function SearchBar({ city, query, society, onCityChange, onSubmit, classN
       )}
     >
       <CityPicker
+        multiple
         label="City"
-        value={city}
-        onChange={(code) => {
+        placeholder={cityPlaceholder}
+        value={cities}
+        onChange={(codes) => {
           setPicked(null)
-          onCityChange(code)
+          onCitiesChange(codes)
         }}
         className="sm:w-72"
       />

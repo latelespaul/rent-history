@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { fetchSociety, locationKeys } from "@/api/locations"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState } from "@/components/ui/states"
@@ -15,23 +15,50 @@ import {
   DEFAULT_SORT,
   SORTS,
   activeFilterCount,
+  cityTokens,
+  knownCities,
   searchFromParams,
+  searchString,
   withFilters,
   type SearchFilters as Changes,
 } from "@/features/property/searchParams"
 import { useGroupedSearch, useSignedIn } from "@/features/property/useProperties"
 
+/** "Bangalore", "Bangalore and Pune", "Bangalore, Pune and Delhi"; more than three is "4 cities". */
+function cityList(names: string[]): string {
+  if (names.length > 3) return `${names.length} cities`
+  return names.length > 1
+    ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`
+    : (names[0] ?? "")
+}
+
 /**
  * Search results (DESIGN.md screen 2): every filter lives in the URL, so `GET /properties/grouped`
- * is called with exactly what the address bar shows. A society with 2+ matching homes is one card
+ * is called with exactly what the address bar shows. `city=` may name several cities
+ * (`?city=BLR,PNQ`, captain 2026-11-27): homes in any of them; unknown ones are ignored. A society with 2+ matching homes is one card
  * that opens its page (D-166); every other home is its own card. Cities come only from `GET /cities`.
  */
 export default function SearchPage() {
-  const [params, setParams] = useSearchParams()
-  const search = useMemo(() => searchFromParams(params), [params])
-  const results = useGroupedSearch(search)
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
   const cities = useCities()
-  const cityName = cities.data?.find((c) => c.code === search.city)?.name
+  const parsed = useMemo(() => searchFromParams(params), [params])
+  const tokens = useMemo(() => cityTokens(parsed.city), [parsed.city])
+  // only cities the list knows are searched; without the list (it failed) the API drops unknown codes
+  const picked = useMemo(
+    () => (cities.data ? knownCities(tokens, cities.data) : tokens),
+    [cities.data, tokens],
+  )
+  const search = useMemo(
+    () => ({ ...parsed, city: picked.join(",") || undefined }),
+    [parsed, picked],
+  )
+  // a URL naming cities waits for the list, so an unknown name never reaches the API
+  const results = useGroupedSearch(search, tokens.length === 0 || !cities.isPending)
+  const cityNames = picked
+    .map((code) => cities.data?.find((c) => c.code === code)?.name)
+    .filter((name): name is string => Boolean(name))
+  const cityName = cityList(cityNames)
   const { ready, viewer } = useSignedIn()
   // the society a two-step pick narrowed the search to (D-167): its name for the chip
   const society = useQuery({
@@ -43,7 +70,8 @@ export default function SearchPage() {
   const pickedSociety =
     search.society && society.data ? { id: search.society, name: society.data.name } : null
 
-  const change = (changes: Changes) => setParams((prev) => withFilters(prev, changes))
+  const change = (changes: Changes) =>
+    navigate({ search: searchString(withFilters(params, changes)) })
   const page = (search.page ?? 0) + 1
   const data = results.data
   const total = data?.totalHomes ?? 0
@@ -53,12 +81,13 @@ export default function SearchPage() {
     <main className="mx-auto max-w-page space-y-8 px-4 py-8 nav:px-6">
       <h1 className="sr-only">Search homes</h1>
       <SearchBar
-        city={search.city ?? null}
+        cities={picked}
         query={search.q ?? search.locality ?? ""}
         society={pickedSociety}
-        onCityChange={(code) => change({ city: code, society: undefined })}
-        onSubmit={({ city, query, society }) =>
-          change({ city: city ?? undefined, q: query, society, locality: undefined })
+        cityPlaceholder="All cities"
+        onCitiesChange={(codes) => change({ city: codes.join(","), society: undefined })}
+        onSubmit={({ cities: codes, query, society }) =>
+          change({ city: codes.join(","), q: query, society, locality: undefined })
         }
       />
 

@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -243,6 +244,50 @@ class PropertySearchTest {
 			.andExpect(jsonPath("$.code").value("city_not_live"));
 		mvc.perform(get("/properties").param("city", "NOPE"))
 			.andExpect(jsonPath("$.code").value("city_not_live"));
+	}
+	
+	/** {@code city} may name several cities (captain 2026-11-27): homes in any of them; unknown codes are ignored. */
+	@Test
+	void searchesAnyOfSeveralCitiesAndIgnoresUnknownOnes() throws Exception {
+		support.city("ZQT", "Second Search City", true);
+		support.city("ZQU", "Third Search City", true);
+		support.city("ZQX", "Dormant Search City", false);
+		home("First Home", "Area", PropertyType.APARTMENT, 1, PropertyStatus.PUBLISHED);
+		inCity(home("Second Home", "Area", PropertyType.APARTMENT, 1, PropertyStatus.PUBLISHED), "ZQT");
+		inCity(home("Third Home", "Area", PropertyType.APARTMENT, 1, PropertyStatus.PUBLISHED), "ZQU");
+		mvc.perform(get("/properties").param("city", CITY + ",zqt"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.page.totalItems").value(2))
+			.andExpect(jsonPath("$.items[*].buildingName", containsInAnyOrder("Second Home", "First Home")));
+		// a repeated parameter is the same list
+		mvc.perform(get("/properties").param("city", CITY).param("city", "ZQU"))
+			.andExpect(jsonPath("$.items[*].buildingName", containsInAnyOrder("Third Home", "First Home")));
+		// one city still works as before
+		mvc.perform(get("/properties").param("city", "ZQT"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Second Home")));
+		// unknown, not-live, blank and repeated codes are dropped, not errors
+		mvc.perform(get("/properties").param("city", " ZQT , NOPE,, ZQX ,zqt"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Second Home")));
+		// only when no named city is live is the search 422, as for one city
+		mvc.perform(get("/properties").param("city", "NOPE,ZQX"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.code").value("city_not_live"));
+		mvc.perform(get("/properties/grouped").param("city", CITY + ",ZQT,ZQU,NOPE"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalHomes").value(3));
+		// text search stays inside the picked cities
+		mvc.perform(get("/properties/grouped").param("city", "ZQT,ZQU").param("q", "home"))
+			.andExpect(jsonPath("$.totalHomes").value(2));
+		mvc.perform(get("/search/suggestions").param("city", "ZQT,NOPE").param("q", "zz"))
+			.andExpect(status().isOk());
+		mvc.perform(get("/search/suggestions").param("city", "NOPE").param("q", "zz"))
+			.andExpect(jsonPath("$.code").value("city_not_live"));
+	}
+	
+	private void inCity(Property home, String code) {
+		home.setCity(data.city(code));
+		properties.saveAndFlush(home);
 	}
 	
 	@Test

@@ -37,7 +37,7 @@ import { GoogleCta } from "@/features/landing/GoogleCta"
 import { LandingCoverage } from "@/features/landing/LandingCoverage"
 import { GreenTick, LandingPreview } from "@/features/landing/LandingPreview"
 import { SearchBar } from "@/features/property/SearchBar"
-import { withFilters } from "@/features/property/searchParams"
+import { searchString, withFilters } from "@/features/property/searchParams"
 import { BRAND } from "@/lib/brand"
 import { cn } from "@/lib/utils"
 
@@ -156,20 +156,18 @@ function Coverage() {
  */
 function HeroSearch() {
   const navigate = useNavigate()
-  const [city, setCity] = useState<string | null>(null)
+  const [cities, setCities] = useState<string[]>([])
   return (
     <SearchBar
-      city={city}
+      cities={cities}
       query=""
-      onCityChange={setCity}
-      onSubmit={({ city: picked, query, society }) =>
+      onCitiesChange={setCities}
+      onSubmit={({ cities: picked, query, society }) =>
         navigate({
           pathname: "/search",
-          search: withFilters(new URLSearchParams(), {
-            city: picked ?? undefined,
-            q: query,
-            society,
-          }).toString(),
+          search: searchString(
+            withFilters(new URLSearchParams(), { city: picked.join(","), q: query, society }),
+          ),
         })
       }
     />

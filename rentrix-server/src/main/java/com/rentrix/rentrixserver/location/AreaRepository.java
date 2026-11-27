@@ -21,11 +21,11 @@ public interface AreaRepository extends JpaRepository<Area, Long>, JpaSpecificat
 	
 	boolean existsByDemoTrue();
 	
-	/** Every area of one city, the suggestion candidates of {@link PlaceMatcher} (D-164). */
-	@Query("select a from Area a join fetch a.city c left join fetch a.createdBy where c.code = :city order by a.id")
-	List<Area> findCandidatesInCity(@Param("city") String city, Pageable limit);
+	/** Every area of the given cities, the suggestion candidates of {@link PlaceMatcher} (D-164). */
+	@Query("select a from Area a join fetch a.city c left join fetch a.createdBy where c.code in :cities order by a.id")
+	List<Area> findCandidatesInCities(@Param("cities") Collection<String> cities, Pageable limit);
 	
-	/** {@link #findCandidatesInCity} for every live city. */
+	/** {@link #findCandidatesInCities} for every live city. */
 	@Query("select a from Area a join fetch a.city c left join fetch a.createdBy where c.live = true order by a.id")
 	List<Area> findCandidatesInLiveCities(Pageable limit);
 	

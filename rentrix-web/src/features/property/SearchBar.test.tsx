@@ -24,8 +24,8 @@ vi.mock("@/features/property/useProperties", async (importOriginal) => ({
   useLocalityHints: () => ({ data: [] }),
 }))
 vi.mock("@/features/city/CityPicker", () => ({
-  CityPicker: ({ onChange }: { onChange: (code: string) => void }) => (
-    <button type="button" onClick={() => onChange("PNQ")}>
+  CityPicker: ({ onChange }: { onChange: (codes: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(["BLR", "PNQ"])}>
       Pick Pune
     </button>
   ),
@@ -74,13 +74,15 @@ beforeEach(() => {
   api.calls = []
 })
 
-function renderBar(onSubmit = vi.fn(), onCityChange = vi.fn()) {
+function renderBar(onSubmit = vi.fn(), onCitiesChange = vi.fn(), cities = ["BLR"]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(
     [
       {
         path: "/search",
-        element: <SearchBar city="BLR" query="" onCityChange={onCityChange} onSubmit={onSubmit} />,
+        element: (
+          <SearchBar cities={cities} query="" onCitiesChange={onCitiesChange} onSubmit={onSubmit} />
+        ),
       },
       { path: "*", element: <p>elsewhere</p> },
     ],
@@ -91,7 +93,7 @@ function renderBar(onSubmit = vi.fn(), onCityChange = vi.fn()) {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
-  return { router, onSubmit, onCityChange }
+  return { router, onSubmit, onCitiesChange }
 }
 
 describe("the two-step search box (D-167)", () => {
@@ -130,7 +132,7 @@ describe("the two-step search box (D-167)", () => {
 
     // Enter without picking a suggestion searches that society for the typed flat number
     await user.keyboard("{Escape}{Enter}")
-    expect(onSubmit).toHaveBeenCalledWith({ city: "BLR", query: "12", society: LAKESIDE.id })
+    expect(onSubmit).toHaveBeenCalledWith({ cities: ["BLR"], query: "12", society: LAKESIDE.id })
     expect(router.state.location.pathname).toBe("/search")
   })
 
@@ -151,19 +153,31 @@ describe("the two-step search box (D-167)", () => {
 
   it("drops a picked society when the city changes", async () => {
     const user = userEvent.setup()
-    const onCityChange = vi.fn()
-    renderBar(vi.fn(), onCityChange)
+    const onCitiesChange = vi.fn()
+    renderBar(vi.fn(), onCitiesChange)
     await user.type(screen.getByRole("combobox"), "lakeside")
     await user.click(await screen.findByRole("option", { name: /Prestige Lakeside/ }))
     expect(screen.getByTestId("society-chip")).toBeTruthy()
 
     await user.click(screen.getByRole("button", { name: "Pick Pune" }))
 
-    expect(onCityChange).toHaveBeenCalledWith("PNQ")
+    expect(onCitiesChange).toHaveBeenCalledWith(["BLR", "PNQ"])
     expect(screen.queryByTestId("society-chip")).toBeNull()
     expect(
       screen.getByRole("combobox", { name: /Locality, society, building or PIN/ }),
     ).toBeTruthy()
+  })
+
+  it("asks for suggestions in every picked city, comma-separated", async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    renderBar(onSubmit, vi.fn(), ["BLR", "PNQ"])
+    await user.type(screen.getByRole("combobox"), "lak")
+    await screen.findByRole("option", { name: /Prestige Lakeside/ })
+    expect(api.calls.at(-1)).toMatchObject({ city: "BLR,PNQ", q: "lak" })
+
+    await user.keyboard("{Escape}{Enter}")
+    expect(onSubmit).toHaveBeenCalledWith({ cities: ["BLR", "PNQ"], query: "lak" })
   })
 
   it("opens the society page when Search is pressed with no flat number", async () => {

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest"
-import { PAGE_SIZE, activeFilterCount, searchFromParams, withFilters } from "./searchParams"
+import { LAUNCH_CITIES } from "@/test/cities"
+import {
+  PAGE_SIZE,
+  activeFilterCount,
+  cityTokens,
+  knownCities,
+  searchFromParams,
+  searchString,
+  withFilters,
+} from "./searchParams"
 
 const params = (qs: string) => new URLSearchParams(qs)
 
@@ -72,5 +81,25 @@ describe("activeFilterCount", () => {
   it("counts filters beyond the city", () => {
     expect(activeFilterCount(searchFromParams(params("city=BLR")))).toBe(0)
     expect(activeFilterCount(searchFromParams(params("city=BLR&type=STUDIO&bedrooms=1")))).toBe(2)
+  })
+})
+
+describe("several cities (captain 2026-11-27)", () => {
+  it("splits city= on commas, drops blanks and repeats, upper-cases", () => {
+    expect(cityTokens(" blr, ,PNQ,Blr ")).toEqual(["BLR", "PNQ"])
+    expect(cityTokens(null)).toEqual([])
+    expect(searchFromParams(params("city=blr,pnq")).city).toBe("BLR,PNQ")
+    expect(cityTokens(Array.from({ length: 30 }, (_, i) => `C${i}`).join(","))).toHaveLength(20)
+  })
+
+  it("keeps known cities by code, name or alias and ignores the rest", () => {
+    expect(knownCities(["BENGALURU", "pune", "GOA", "BLR"], LAUNCH_CITIES)).toEqual(["BLR", "PNQ"])
+    expect(knownCities(["GOA"], LAUNCH_CITIES)).toEqual([])
+  })
+
+  it("writes several cities as one readable city= value", () => {
+    const next = withFilters(params("type=VILLA"), { city: "BLR,PNQ" })
+    expect(searchString(next)).toBe("?city=BLR,PNQ&type=VILLA")
+    expect(searchString(new URLSearchParams())).toBe("")
   })
 })
