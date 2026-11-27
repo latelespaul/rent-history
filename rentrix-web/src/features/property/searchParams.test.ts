@@ -59,10 +59,10 @@ describe("searchFromParams", () => {
     expect(search.homeSize).toEqual(["BHK1", "BHK2"])
   })
 
-  it("reads an old type=STUDIO link as the Studio home size", () => {
+  it("keeps type=STUDIO as a Type filter, apart from the Studio home size", () => {
     const search = searchFromParams(params("type=STUDIO&homeSize=BHK1"))
-    expect(search.type).toBeUndefined()
-    expect(search.homeSize).toEqual(["BHK1", "STUDIO"])
+    expect(search.type).toEqual(["STUDIO"])
+    expect(search.homeSize).toEqual(["BHK1"])
   })
 
   it("leaves the default sort and page 1 out of the query", () => {

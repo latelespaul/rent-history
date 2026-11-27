@@ -18,14 +18,12 @@ export const SORTS = [
 
 export const DEFAULT_SORT = "top_rated"
 
-/**
- * Filter chips for type. There is no Studio chip: a studio is a home size (every `STUDIO` type home also has
- * the `STUDIO` size, V14), and an old `type=STUDIO` link is read as that size.
- */
+/** Filter chips for type; several may be picked at once and a home matches any of them. */
 export const TYPE_OPTIONS: ReadonlyArray<{ value: PropertyType; label: string }> = [
   { value: "APARTMENT", label: "Apartment" },
   { value: "INDEPENDENT_HOUSE", label: "House" },
   { value: "VILLA", label: "Villa" },
+  { value: "STUDIO", label: "Studio" },
   { value: "ROOM", label: "Room" },
   { value: "PG", label: "PG" },
 ]
@@ -63,7 +61,6 @@ const KEYS = [
 ] as const
 
 const TYPES = new Set<string>(TYPE_OPTIONS.map((t) => t.value))
-const LEGACY_STUDIO_TYPE = "STUDIO"
 const SORT_VALUES = new Set<string>(SORTS.map((s) => s.value))
 
 /**
@@ -141,14 +138,8 @@ function textParam(value: string | null): string | undefined {
  * URL cannot turn into a `400`. The URL's `page` is 1-based for people; the API's is 0-based.
  */
 export function searchFromParams(params: URLSearchParams): PropertySearch {
-  const rawTypes = params.getAll("type")
-  // an old `type=STUDIO` link means the Studio home size, the only place Studio is offered
-  const studioLink = listParam(rawTypes, new Set([LEGACY_STUDIO_TYPE])).length > 0
-  const type = listParam(rawTypes, TYPES)
-  const homeSize = listParam(
-    [...params.getAll("homeSize"), ...(studioLink ? ["STUDIO"] : [])],
-    SIZES,
-  )
+  const type = listParam(params.getAll("type"), TYPES)
+  const homeSize = listParam(params.getAll("homeSize"), SIZES)
   const sort = params.get("sort")
   const page = intParam(params.get("page"), 1, 10_000)
   return {

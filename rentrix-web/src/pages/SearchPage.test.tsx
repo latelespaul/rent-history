@@ -138,7 +138,7 @@ describe("SearchPage", () => {
       scope.getByRole("button", { name }).getAttribute("aria-pressed")
 
     expect(pressed(type, "Any")).toBe("true")
-    expect(type.queryByRole("button", { name: "Studio" })).toBeNull()
+    expect(type.getByRole("button", { name: "Studio" })).toBeTruthy()
     expect(size.getByRole("button", { name: "Studio" })).toBeTruthy()
 
     await user.click(size.getByRole("button", { name: "1 BHK" }))
@@ -176,7 +176,7 @@ describe("SearchPage", () => {
     expect(router.state.location.search).toBe("?city=BLR")
   })
 
-  it("keeps an old single-value link working and reads type=STUDIO as the Studio size", async () => {
+  it("keeps an old single-value link working", async () => {
     renderAt("/search?city=BLR&type=villa&homeSize=BHK3")
     const filters = await screen.findByRole("region", { name: "Filters" })
     expect(
@@ -185,6 +185,18 @@ describe("SearchPage", () => {
     expect(
       within(filters).getByRole("button", { name: "3 BHK" }).getAttribute("aria-pressed"),
     ).toBe("true")
+  })
+
+  it("reads an old type=STUDIO link as the Studio Type chip, not the Studio size", async () => {
+    renderAt("/search?city=BLR&type=STUDIO")
+    const filters = await screen.findByRole("region", { name: "Filters" })
+    const type = within(within(filters).getByRole("group", { name: "Type" }))
+    const size = within(within(filters).getByRole("group", { name: "Home size" }))
+    expect(type.getByRole("button", { name: "Studio" }).getAttribute("aria-pressed")).toBe("true")
+    expect(size.getByRole("button", { name: "Studio" }).getAttribute("aria-pressed")).toBe("false")
+    await vi.waitFor(() =>
+      expect(resultCalls().at(-1)).toMatchObject({ type: ["STUDIO"], homeSize: undefined }),
+    )
   })
 
   it("sends the search box as q, so a society name or a PIN code finds the home (D-162)", async () => {

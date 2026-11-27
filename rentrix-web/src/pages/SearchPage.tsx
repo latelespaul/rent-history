@@ -70,8 +70,8 @@ export default function SearchPage() {
   const pickedSociety =
     search.society && society.data ? { id: search.society, name: society.data.name } : null
 
-  // the lists are re-written from what the page understood, so an old `type=STUDIO` link becomes the Studio
-  // size and a chip switched off stays off
+  // the lists are re-written from what the page understood, so repeated params collapse into one list and a
+  // chip switched off stays off
   const change = (changes: Changes) =>
     navigate({
       search: searchString(
