@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query"
 import { Link, useParams } from "react-router-dom"
 import { isApiError } from "@/api/errors"
+import { useAuth } from "@/features/auth/authContext"
 import { fetchUserProfile, fetchUserReviews, reviewKeys } from "@/api/reviews"
 import { LandlordIcon, TenantIcon } from "@/components/ui/icons.gen"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,8 @@ import type { Page, PropertyReview, RatingDetail } from "@/types/api"
  */
 export default function LandlordPage() {
   const { id = "" } = useParams()
+  const { state } = useAuth()
+  const ownTenantPage = state.user?.id === id && !!state.user?.roles.includes("TENANT")
   const profile = useQuery({
     queryKey: reviewKeys.user(id),
     queryFn: ({ signal }) => fetchUserProfile(id, signal),
@@ -143,7 +146,7 @@ export default function LandlordPage() {
         </>
       )}
 
-      {self && !person.tenantRating && (
+      {ownTenantPage && !person.tenantRating && (
         <p className="text-sm text-ink-500" data-testid="own-tenant-reviews-note">
           Owners&apos; reviews of a tenant are shown only to owners and our team, never to the
           tenant they are about.

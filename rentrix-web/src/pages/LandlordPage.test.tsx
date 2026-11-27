@@ -25,9 +25,11 @@ const PROFILE: UserProfile = {
   },
 }
 
+let signedIn = makeUser()
+
 vi.mock("@/features/auth/authContext", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/auth/authContext")>()),
-  useAuth: () => ({ state: { status: "signedIn", user: makeUser() }, acceptSession: vi.fn() }),
+  useAuth: () => ({ state: { status: "signedIn", user: signedIn }, acceptSession: vi.fn() }),
 }))
 vi.mock("@/api/reviews", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/reviews")>()),
@@ -51,7 +53,10 @@ vi.mock("@/api/reviews", async (importOriginal) => ({
 
 const { default: LandlordPage } = await import("./LandlordPage")
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  signedIn = makeUser()
+})
 
 describe("landlord page (D-158)", () => {
   it("shows the landlord's per-parameter averages from 3 ratings and their reviews", async () => {
@@ -169,6 +174,7 @@ describe("tenant profile (landlord-adds-tenant S2, D-175)", () => {
       memberSince: "2023-06",
     })
     vi.mocked(api.fetchUserReviews).mockClear()
+    signedIn = makeUser({ id: "t7", roles: ["TENANT"] })
     renderAt("/u/t7")
 
     expect(await screen.findByText("Tara T. (you)")).toBeTruthy()
@@ -176,5 +182,18 @@ describe("tenant profile (landlord-adds-tenant S2, D-175)", () => {
     expect(screen.queryByTestId("tenant-rating")).toBeNull()
     expect(screen.queryByTestId("tenant-reviews")).toBeNull()
     expect(api.fetchUserReviews).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["an admin opening a landlord who is not a tenant", "admin-1", ["ADMIN"]],
+    ["a landlord with no tenant role opening their own page", "l5", ["LANDLORD"]],
+  ] as const)("does not show the tenant note to %s", async (_case, userId, roles) => {
+    const api = await import("@/api/reviews")
+    vi.mocked(api.fetchUserProfile).mockResolvedValueOnce({ ...PROFILE, shortName: "Lalit L." })
+    signedIn = makeUser({ id: userId, roles: [...roles] })
+    renderAt("/u/l5")
+
+    expect(await screen.findByText("Lalit L. (you)")).toBeTruthy()
+    expect(screen.queryByTestId("own-tenant-reviews-note")).toBeNull()
   })
 })
