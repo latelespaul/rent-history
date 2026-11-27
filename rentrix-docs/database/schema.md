@@ -531,3 +531,23 @@ CREATE INDEX ix_referrals_inviter ON referrals (inviter_id);
 | the owner of a code at sign-up | `uq_invite_codes_code` |
 | "N friends joined" | `ix_referrals_inviter` |
 | has this new user been counted | `uq_referrals_invitee` |
+
+## 11. Traffic counter (D-175)
+
+Daily aggregates only (V22). No user id, IP, user agent, invite code or cookie is stored, so no row can be joined to users, reviews or tenancies. `visitor_hash` is SHA-256 of a daily random salt kept in memory only, the IP and the user agent; the rules are in D-175.
+
+```sql
+CREATE TABLE page_view_daily (
+    seen_on         DATE          NOT NULL,
+    path            VARCHAR(120)  NOT NULL,   -- normalised route, ids as {id}
+    source          VARCHAR(40)   NOT NULL,   -- invite, a utm_source, a referrer site, internal or direct
+    views           BIGINT        NOT NULL,
+    CONSTRAINT pk_page_view_daily PRIMARY KEY (seen_on, path, source)
+);
+
+CREATE TABLE visitor_daily (
+    seen_on         DATE          NOT NULL,
+    visitor_hash    CHAR(64)      NOT NULL,
+    CONSTRAINT pk_visitor_daily PRIMARY KEY (seen_on, visitor_hash)
+);
+```

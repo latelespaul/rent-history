@@ -902,6 +902,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/me/identity/truecaller/{requestId}` | D-138: `{requestId, status, masked?, reason?}`, status `PENDING`, `INVOKED`, `VERIFYING`, `VERIFIED`, `REJECTED`, `FAILED` or `EXPIRED`; another user's request `404` |
 | POST | `/auth/truecaller/callback` | D-138: anonymous, Truecaller's server only; always `200` for a JSON object (unknown, expired or used nonces are ignored), `400` otherwise |
 | GET, POST | `/mail/unsubscribe?token=` | D-172: anonymous; `GET` (the unsubscribe link) changes nothing and answers an HTML page with one Confirm button that `POST`s the token; `POST` (that button and the mail app's one-click unsubscribe, RFC 8058) sets `users.mail_opt_out_at` for the token's user and answers a "You are unsubscribed" page; a forged or missing token `400` on either, nothing changes |
+| POST | `/metrics/pageview` | D-175: anonymous, no cookie; `{path, referrer, source}` (at most 200, 300 and 40 characters); rate limited per IP (60/min); always `204` |
 | POST | `/me/identity/pan` | `{panNumber, documentId}` → `PAN` `PENDING`; format check, keeps last 4 + HMAC only (D-102) |
 | POST | `/me/identity/aadhaar` | `{last4, documentId, consent: true}` → `AADHAAR` `PENDING`; anything but 4 digits `422`, 12 digits `422 aadhaar_full_number_refused` (D-103) |
 | PUT / DELETE | `/me/identity/linkedin` | `{url}` → `LINKEDIN` `PENDING` (normalised, never fetched, D-93); delete removes it |
@@ -1021,6 +1022,7 @@ Base path `/api/v1`. JSON only (`application/json`), except uploads (`multipart/
 | GET | `/admin/cities` | all cities, active and inactive |
 | POST | `/admin/cities` | `{code, name, aliases[], state, pincodePrefixes[]}` → created inactive (D-83) |
 | PATCH | `/admin/cities/{code}` | `{live?, name?, aliases?, state?, pincodePrefixes?}`; deactivation needs `reason`. *Built (W9 PR 2)*: only `{live: true}`, to approve a city someone typed (D-143), audited `ACTIVATE_CITY`; anything else `422 action_not_allowed` |
+| GET | `/admin/traffic` | D-175: today, 7-day and 30-day views and visitors, top 5 pages and sources of 30 days |
 | GET | `/admin/audit?targetType=&targetRef=&adminId=&action=` | audit log |
 
 **Ops**: `GET /actuator/health` (public, no details), probes `GET /actuator/health/liveness` and `GET /actuator/health/readiness` (readiness group includes the DB; the API container health check uses readiness), `GET /v3/api-docs` + Swagger UI only when the `dev` or `test` profile is explicitly active (D-64).
