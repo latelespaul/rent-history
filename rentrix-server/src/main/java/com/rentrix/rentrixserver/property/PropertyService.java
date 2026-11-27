@@ -318,8 +318,8 @@ public class PropertyService {
 	
 	private static PropertySearchCriteria copy(PropertySearchCriteria c, Long areaId, Long societyId, Long towerId,
 		Boolean standalone) {
-		return new PropertySearchCriteria(c.cityCode(), c.localityPrefix(), c.type(), c.bedrooms(), c.minRating(),
-			c.text(), areaId, societyId, towerId, standalone, c.homeSize());
+		return new PropertySearchCriteria(c.cityCode(), c.localityPrefix(), c.types(), c.bedrooms(), c.minRating(),
+			c.text(), areaId, societyId, towerId, standalone, c.homeSizes(), c.textPlaces());
 	}
 	
 	private static ApiException locationMismatch(String field, String detail) {

@@ -16,10 +16,11 @@ import { isApiError } from "./errors"
 export interface PropertySearch {
   city?: string
   locality?: string
-  type?: string
+  /** Any of these property types (repeated `type=` params). */
+  type?: string[]
   bedrooms?: number
   /** Home size (captain 2026-11-23 17:18), e.g. `BHK2`. */
-  homeSize?: string
+  homeSize?: string[]
   minRating?: number
   q?: string
   /** One society's homes, and one tower of it (D-112): the society page's list. */

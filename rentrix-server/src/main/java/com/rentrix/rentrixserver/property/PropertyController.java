@@ -74,7 +74,7 @@ public class PropertyController {
 	public PageResponse<PropertyCard> search(@AuthenticationPrincipal AuthenticatedUser caller,
 		@RequestParam(required = false) String city,
 		@RequestParam(required = false) String locality,
-		@RequestParam(required = false) String type,
+		@RequestParam(required = false) List<String> type,
 		@RequestParam(required = false) Integer bedrooms,
 		@RequestParam(required = false) BigDecimal minRating,
 		@RequestParam(required = false) String q,
@@ -82,7 +82,7 @@ public class PropertyController {
 		@RequestParam(required = false) UUID society,
 		@RequestParam(required = false) UUID tower,
 		@RequestParam(required = false) Boolean standalone,
-		@RequestParam(required = false) String homeSize,
+		@RequestParam(required = false) List<String> homeSize,
 		@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size,
 		@RequestParam(required = false) String sort) {
@@ -101,7 +101,7 @@ public class PropertyController {
 	public GroupedPage searchGrouped(@AuthenticationPrincipal AuthenticatedUser caller,
 		@RequestParam(required = false) String city,
 		@RequestParam(required = false) String locality,
-		@RequestParam(required = false) String type,
+		@RequestParam(required = false) List<String> type,
 		@RequestParam(required = false) Integer bedrooms,
 		@RequestParam(required = false) BigDecimal minRating,
 		@RequestParam(required = false) String q,
@@ -109,7 +109,7 @@ public class PropertyController {
 		@RequestParam(required = false) UUID society,
 		@RequestParam(required = false) UUID tower,
 		@RequestParam(required = false) Boolean standalone,
-		@RequestParam(required = false) String homeSize,
+		@RequestParam(required = false) List<String> homeSize,
 		@RequestParam(required = false) Integer page,
 		@RequestParam(required = false) Integer size,
 		@RequestParam(required = false) String sort) {
@@ -126,17 +126,18 @@ public class PropertyController {
 	}
 	
 	/** The validated filters shared by both searches; location ids stay for the service to resolve. */
-	private static PropertySearchCriteria criteria(String city, String locality, String type, Integer bedrooms,
-		BigDecimal minRating, String q, UUID society, UUID tower, Boolean standalone, String homeSize) {
+	private static PropertySearchCriteria criteria(String city, String locality, List<String> type,
+		Integer bedrooms, BigDecimal minRating, String q, UUID society, UUID tower, Boolean standalone,
+		List<String> homeSize) {
 		List<ApiProblem.FieldError> errors = new ArrayList<>();
 		String localityKey = text("locality", locality, 120, errors);
 		String textKey = text("q", q, MAX_TEXT, errors);
-		PropertyType propertyType = propertyType(type, errors);
+		List<PropertyType> propertyTypes = choices("type", type, PropertyType.class, errors);
 		if (bedrooms != null && (bedrooms < 0 || bedrooms > PropertyLimits.MAX_ROOMS)) {
 			errors.add(new ApiProblem.FieldError("bedrooms", "range",
 				"Must be between 0 and " + PropertyLimits.MAX_ROOMS + "."));
 		}
-		HomeSize sizeFilter = homeSize(homeSize, errors);
+		List<HomeSize> sizeFilter = choices("homeSize", homeSize, HomeSize.class, errors);
 		if (minRating != null && (minRating.compareTo(MIN_RATING) < 0 || minRating.compareTo(MAX_RATING) > 0)) {
 			errors.add(new ApiProblem.FieldError("minRating", "range", "Must be between 1 and 5."));
 		}
@@ -148,8 +149,8 @@ public class PropertyController {
 			throw ApiException.validation(errors);
 		}
 		String cityCode = city == null || city.isBlank() ? null : city.trim().toUpperCase(Locale.ROOT);
-		return new PropertySearchCriteria(cityCode, localityKey, propertyType, bedrooms, minRating, textKey, null,
-			null, null, null, sizeFilter);
+		return new PropertySearchCriteria(cityCode, localityKey, propertyTypes, bedrooms, minRating, textKey, null,
+			null, null, null, sizeFilter, null);
 	}
 	
 	private static Pageable pageable(Integer page, Integer size, String sort) {
@@ -207,30 +208,34 @@ public class PropertyController {
 		return key;
 	}
 	
-	private static PropertyType propertyType(String value, List<ApiProblem.FieldError> errors) {
-		if (value == null || value.isBlank()) {
-			return null;
+	/**
+	 * The values of a repeated ({@code type=A&type=B}) or comma-separated ({@code type=A,B}) filter, as enum
+	 * constants without repeats; one bad value is a {@code not_allowed} error and a blank list is no filter.
+	 */
+	private static <E extends Enum<E>> List<E> choices(String field, List<String> values, Class<E> type,
+		List<ApiProblem.FieldError> errors) {
+		List<E> chosen = new ArrayList<>();
+		if (values == null) {
+			return chosen;
 		}
-		try {
-			return PropertyType.valueOf(value.trim().toUpperCase(Locale.ROOT));
-		} catch (IllegalArgumentException e) {
-			errors.add(new ApiProblem.FieldError("type", "not_allowed",
-				"Use one of " + List.of(PropertyType.values()) + "."));
-			return null;
+		for (String raw : values) {
+			for (String part : raw.split(",")) {
+				if (part.isBlank()) {
+					continue;
+				}
+				try {
+					E value = Enum.valueOf(type, part.trim().toUpperCase(Locale.ROOT));
+					if (!chosen.contains(value)) {
+						chosen.add(value);
+					}
+				} catch (IllegalArgumentException e) {
+					errors.add(new ApiProblem.FieldError(field, "not_allowed",
+						"Use one of " + List.of(type.getEnumConstants()) + "."));
+					return chosen;
+				}
+			}
 		}
-	}
-	
-	private static HomeSize homeSize(String value, List<ApiProblem.FieldError> errors) {
-		if (value == null || value.isBlank()) {
-			return null;
-		}
-		try {
-			return HomeSize.valueOf(value.trim().toUpperCase(Locale.ROOT));
-		} catch (IllegalArgumentException e) {
-			errors.add(new ApiProblem.FieldError("homeSize", "not_allowed",
-				"Use one of " + List.of(HomeSize.values()) + "."));
-			return null;
-		}
+		return chosen;
 	}
 	
 }

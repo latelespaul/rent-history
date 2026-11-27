@@ -75,17 +75,17 @@ public final class PropertySearchQuery {
 			sql.append(" AND p.locality_key LIKE ? ESCAPE '").append(LIKE_ESCAPE).append("'");
 			params.add(escapeLike(criteria.localityPrefix()) + "%");
 		}
-		if (criteria.type() != null) {
-			sql.append(" AND p.property_type = ?");
-			params.add(criteria.type().name());
+		if (!criteria.types().isEmpty()) {
+			sql.append(" AND p.property_type IN (").append(placeholders(criteria.types().size())).append(")");
+			criteria.types().forEach(t -> params.add(t.name()));
 		}
 		if (criteria.bedrooms() != null) {
 			sql.append(" AND p.bedrooms = ?");
 			params.add(criteria.bedrooms());
 		}
-		if (criteria.homeSize() != null) {
-			sql.append(" AND p.home_size = ?");
-			params.add(criteria.homeSize().name());
+		if (!criteria.homeSizes().isEmpty()) {
+			sql.append(" AND p.home_size IN (").append(placeholders(criteria.homeSizes().size())).append(")");
+			criteria.homeSizes().forEach(h -> params.add(h.name()));
 		}
 		if (criteria.minRating() != null) {
 			sql.append(" AND ra.review_count >= ? AND ra.average >= ?");

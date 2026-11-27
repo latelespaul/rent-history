@@ -13,7 +13,8 @@ import java.util.List;
 public record PropertySearchCriteria(
 	String cityCode,
 	String localityPrefix,
-	PropertyType type,
+	/** Any of these types (OR); empty means every type. */
+	List<PropertyType> types,
 	Integer bedrooms,
 	BigDecimal minRating,
 	String text,
@@ -21,8 +22,8 @@ public record PropertySearchCriteria(
 	Long societyId,
 	Long towerId,
 	Boolean standalone,
-	/** {@code GET /properties?homeSize=} (captain 2026-11-23 17:18). */
-	HomeSize homeSize,
+	/** {@code GET /properties?homeSize=}, any of these (OR); empty means every size (captain 2026-11-23 17:18). */
+	List<HomeSize> homeSizes,
 	/** What the service resolved {@code text} to (D-164); null searches the text alone. */
 	TextPlaces textPlaces
 ) {
@@ -44,22 +45,29 @@ public record PropertySearchCriteria(
 		
 	}
 	
+	public PropertySearchCriteria {
+		types = types == null ? List.of() : List.copyOf(types);
+		homeSizes = homeSizes == null ? List.of() : List.copyOf(homeSizes);
+	}
+	
+	/** One type and one size, as before the filters took lists. */
 	public PropertySearchCriteria(String cityCode, String localityPrefix, PropertyType type, Integer bedrooms,
 		BigDecimal minRating, String text, Long areaId, Long societyId, Long towerId, Boolean standalone,
 		HomeSize homeSize) {
-		this(cityCode, localityPrefix, type, bedrooms, minRating, text, areaId, societyId, towerId, standalone, homeSize,
-			null);
+		this(cityCode, localityPrefix, type == null ? List.of() : List.of(type), bedrooms, minRating, text, areaId,
+			societyId, towerId, standalone, homeSize == null ? List.of() : List.of(homeSize), null);
 	}
 	
 	public PropertySearchCriteria(String cityCode, String localityPrefix, PropertyType type, Integer bedrooms,
 		BigDecimal minRating, String text, Long areaId, Long societyId, Long towerId, Boolean standalone) {
-		this(cityCode, localityPrefix, type, bedrooms, minRating, text, areaId, societyId, towerId, standalone, null);
+		this(cityCode, localityPrefix, type, bedrooms, minRating, text, areaId, societyId, towerId, standalone,
+			(HomeSize) null);
 	}
 	
 	/** The same filters with {@code text} resolved to {@code places}. */
 	public PropertySearchCriteria withTextPlaces(TextPlaces places) {
-		return new PropertySearchCriteria(cityCode, localityPrefix, type, bedrooms, minRating, text, areaId, societyId,
-			towerId, standalone, homeSize, places);
+		return new PropertySearchCriteria(cityCode, localityPrefix, types, bedrooms, minRating, text, areaId, societyId,
+			towerId, standalone, homeSizes, places);
 	}
 	
 	/** Filters without location hierarchy ids. */

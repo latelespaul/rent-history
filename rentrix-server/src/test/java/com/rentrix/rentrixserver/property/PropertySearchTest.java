@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -120,6 +121,48 @@ class PropertySearchTest {
 			.andExpect(jsonPath("$.page.totalItems").value(0));
 		mvc.perform(get("/properties").param("city", CITY).param("locality", "kora").param("type", "VILLA"))
 			.andExpect(jsonPath("$.items[*].buildingName", contains("Beta Villa")));
+	}
+	
+	@Test
+	void typeAndHomeSizeTakeSeveralValuesAndMatchAnyOfThem() throws Exception {
+		sized(home("Flat One", "Area", PropertyType.APARTMENT, 1, PropertyStatus.PUBLISHED), HomeSize.BHK1);
+		sized(home("Flat Two", "Area", PropertyType.APARTMENT, 2, PropertyStatus.PUBLISHED), HomeSize.BHK2);
+		sized(home("House Two", "Area", PropertyType.INDEPENDENT_HOUSE, 2, PropertyStatus.PUBLISHED), HomeSize.BHK2);
+		sized(home("Villa Three", "Area", PropertyType.VILLA, 3, PropertyStatus.PUBLISHED), HomeSize.BHK3);
+		// OR within a group: repeated, comma-separated and the old single value all work, in any case
+		mvc.perform(get("/properties").param("city", CITY).param("type", "apartment", "VILLA"))
+			.andExpect(jsonPath("$.page.totalItems").value(3));
+		mvc.perform(get("/properties").param("city", CITY).param("type", "apartment,villa"))
+			.andExpect(jsonPath("$.page.totalItems").value(3));
+		mvc.perform(get("/properties").param("city", CITY).param("type", "VILLA"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("Villa Three")));
+		mvc.perform(get("/properties").param("city", CITY).param("homeSize", "BHK1", "bhk3"))
+			.andExpect(jsonPath("$.page.totalItems").value(2));
+		mvc.perform(get("/properties").param("city", CITY).param("homeSize", "BHK1,BHK2,BHK2"))
+			.andExpect(jsonPath("$.page.totalItems").value(3));
+		mvc.perform(get("/properties").param("city", CITY).param("homeSize", "BHK2"))
+			.andExpect(jsonPath("$.page.totalItems").value(2));
+		// AND across groups and with the other filters
+		mvc.perform(get("/properties").param("city", CITY).param("type", "APARTMENT", "VILLA")
+				.param("homeSize", "BHK2", "BHK3"))
+			.andExpect(jsonPath("$.items[*].buildingName", containsInAnyOrder("Flat Two", "Villa Three")));
+		mvc.perform(get("/properties").param("city", CITY).param("type", "APARTMENT,INDEPENDENT_HOUSE")
+				.param("homeSize", "BHK2").param("q", "house"))
+			.andExpect(jsonPath("$.items[*].buildingName", contains("House Two")));
+		// the grouped search takes lists too
+		mvc.perform(get("/properties/grouped").param("city", CITY).param("homeSize", "BHK1,BHK3"))
+			.andExpect(jsonPath("$.totalHomes").value(2));
+		// blank values are no filter; one bad value fails the whole request, naming the field
+		mvc.perform(get("/properties").param("city", CITY).param("type", "").param("homeSize", " , "))
+			.andExpect(jsonPath("$.page.totalItems").value(4));
+		mvc.perform(get("/properties").param("type", "VILLA,castle").param("homeSize", "BHK2", "3BHK"))
+			.andExpect(status().isUnprocessableContent())
+			.andExpect(jsonPath("$.errors[*].field", contains("type", "homeSize")));
+	}
+	
+	private Property sized(Property property, HomeSize size) {
+		property.setHomeSize(size);
+		return properties.saveAndFlush(property);
 	}
 	
 	@Test
