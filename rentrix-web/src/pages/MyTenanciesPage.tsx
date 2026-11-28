@@ -61,7 +61,9 @@ export default function MyTenanciesPage() {
                 Invite a tenant
               </Link>
             ) : (
-              <Link to="/search">
+              // "Which home did you rent?" first, then the tenancy form (captain 2026-11-28); a
+              // landlord in Tenant mode records as the tenant, not the invite form.
+              <Link to="/tenancies/new?as=tenant" data-testid="record-tenancy">
                 <PlusIcon />
                 Record a tenancy
               </Link>

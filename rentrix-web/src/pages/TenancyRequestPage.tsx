@@ -13,6 +13,7 @@ import { useAuth } from "@/features/auth/authContext"
 import { placeLine, propertyTitle } from "@/features/property/labels"
 import { useProperty } from "@/features/property/useProperties"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
+import { PickHome } from "@/features/tenancy/PickHome"
 import { today, wholeNumber } from "@/features/tenancy/labels"
 import {
   checkTenancyForm,
@@ -60,9 +61,10 @@ function Field({
 
 /**
  * Record a tenancy (`/tenancies/new`, DESIGN.md "record-a-tenancy form"). A landlord invites a
- * tenant by email from one of their listed homes (D-34); a tenant opens it from a property page
- * (`?property=`) and the landlord confirms within 14 days. Both sides then see it in
- * `/me/tenancies`. What the user typed is kept in the tab (`useSessionDraft`), so a detour to
+ * tenant by email from one of their listed homes (D-34); a tenant picks the home first ("Which
+ * home did you rent?", or `?property=` from a property page) and the landlord confirms within 14
+ * days. `?as=tenant` (My tenancies in Tenant mode) records as the tenant even for a landlord. Both
+ * sides then see it in `/me/tenancies`. What the user typed is kept in the tab (`useSessionDraft`), so a detour to
  * verify the phone does not lose it.
  */
 export default function TenancyRequestPage() {
@@ -73,11 +75,13 @@ export default function TenancyRequestPage() {
   const isLandlord = roles.includes("LANDLORD")
   const mine = useMyProperties()
   const propertyParam = params.get("property") ?? ""
+  const asTenant = params.get("as") === "tenant"
   const listed = (mine.data?.items ?? []).filter(
     (p) => p.status === "PUBLISHED" || p.status === "ARCHIVED",
   )
   const ownsParam = listed.some((p) => p.id === propertyParam)
-  const asLandlord = isLandlord && (!propertyParam || ownsParam || !roles.includes("TENANT"))
+  const asLandlord =
+    isLandlord && !asTenant && (!propertyParam || ownsParam || !roles.includes("TENANT"))
   const target = useProperty(asLandlord ? "" : propertyParam)
 
   const [draft, setDraft, clearDraft] = useSessionDraft(`tenancy:${propertyParam}`, {
@@ -141,20 +145,10 @@ export default function TenancyRequestPage() {
   if (!asLandlord && !propertyParam) {
     return (
       <main>
-        <Container className="py-12">
-          <EmptyState
-            icon="tenancy"
-            title="Start from the home you rent"
-            description="Add your home: pick it if it is listed, or add it if it is not. Your tenancy shows at once."
-            action={
-              <>
-                <Button asChild>
-                  <Link to="/homes/new">Add your home</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link to="/search">Search homes</Link>
-                </Button>
-              </>
+        <Container className="max-w-[720px] py-8">
+          <PickHome
+            to={(id) =>
+              `/tenancies/new?property=${encodeURIComponent(id)}${asTenant ? "&as=tenant" : ""}`
             }
           />
         </Container>
