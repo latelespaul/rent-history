@@ -20,8 +20,8 @@ test("the owner's property card uses the full width at 390 px", async ({ page },
   await form.getByLabel("PIN code").fill("560034")
   await form.locator("#pf-area").fill("Koramangala")
   await form
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Koramangala/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Koramangala/ })
     .click()
   await form.getByLabel(/Building name/).fill(building)
   await form.getByRole("button", { name: "Save as draft" }).click()

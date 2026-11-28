@@ -18,13 +18,13 @@ test("the PIN code narrows the Areas list on Add property", async ({ page }) => 
   await form.getByLabel("City").selectOption({ label: "Bangalore" })
   await form.getByLabel("PIN code").fill("560034")
 
-  const areas = form.getByRole("list", { name: "Areas" })
-  await expect(areas.getByRole("button", { name: /^Koramangala/ })).toBeVisible()
-  await expect(areas.getByRole("button", { name: /^Agara/ })).toBeVisible()
+  const areas = form.getByRole("listbox", { name: "Areas" })
+  await expect(areas.getByRole("option", { name: /^Koramangala/ })).toBeVisible()
+  await expect(areas.getByRole("option", { name: /^Agara/ })).toBeVisible()
   // Areas of other PIN codes are gone, e.g. Adugodi (560030), first A–Z in the city.
-  await expect(areas.getByRole("button", { name: /^Adugodi/ })).toHaveCount(0)
+  await expect(areas.getByRole("option", { name: /^Adugodi/ })).toHaveCount(0)
 
-  await areas.getByRole("button", { name: /^Koramangala/ }).click()
+  await areas.getByRole("option", { name: /^Koramangala/ }).click()
   await form.getByLabel(/Building name/).fill(building)
   await form.getByRole("button", { name: "Save as draft" }).click()
   await expect(page).toHaveURL(/\/me\/properties\/[^/]+\/edit\?saved=1$/)
@@ -42,11 +42,11 @@ test("a PIN code with no area says so and still lets the user suggest one", asyn
   // A valid Bangalore-range PIN that no area in the V18 seed carries.
   await form.getByLabel("PIN code").fill("560999")
 
-  const areas = form.getByRole("list", { name: "Areas" })
-  await expect(areas.getByText("No area has PIN 560999 yet. Type the area name.")).toBeVisible()
-  await expect(areas.getByRole("button")).toHaveCount(0)
+  const areas = form.getByRole("listbox", { name: "Areas" })
+  await expect(form.getByText("No area has PIN 560999 yet. Type the area name.")).toBeVisible()
+  await expect(areas).toHaveCount(0)
 
   await form.locator("#pf-area").fill(area)
-  await expect(areas.getByRole("button", { name: `Suggest new area “${area}”` })).toBeVisible()
-  await expect(areas.getByText(/No area has PIN/)).toHaveCount(0)
+  await expect(areas.getByRole("option", { name: `Suggest new area “${area}”` })).toBeVisible()
+  await expect(form.getByText(/No area has PIN/)).toHaveCount(0)
 })

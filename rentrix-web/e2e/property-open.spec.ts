@@ -39,8 +39,8 @@ test.describe("open the home after a review (390 px, touch)", () => {
       await page.locator("#ah-city").selectOption({ label: "Bangalore" })
       await page.locator("#pf-area").fill("HSR")
       await page
-        .getByRole("list", { name: "Areas" })
-        .getByRole("button", { name: /^HSR Layout/ })
+        .getByRole("listbox", { name: "Areas" })
+        .getByRole("option", { name: /^HSR Layout/ })
         .click()
       await page.locator("#pf-society-find").fill(society)
       await page.getByTestId("pf-society-matches").getByTestId("pf-society-add-typed").click()

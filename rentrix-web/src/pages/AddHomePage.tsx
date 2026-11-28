@@ -29,7 +29,12 @@ import { HomeSizeChips } from "@/features/home/HomeSizeChips"
 import { NextSteps } from "@/features/home/NextSteps"
 import { stepsLeft, stepsLeftLabel } from "@/features/home/steps"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
-import { EMPTY_DRAFT, type LocationDraft } from "@/features/landlord/locationDraft"
+import {
+  cityAfterPick,
+  EMPTY_DRAFT,
+  pincodeAfterPick,
+  type LocationDraft,
+} from "@/features/landlord/locationDraft"
 import { placeLine, propertyTitle, rupees, typeLabel, unitLine } from "@/features/property/labels"
 import { ActionError } from "@/features/tenancy/ApprovalPrompt"
 import { today } from "@/features/tenancy/labels"
@@ -278,17 +283,24 @@ export default function AddHomePage() {
     }))
   }
 
-  /** A new area fills in its main PIN code, unless the user typed one (firstmate 2026-11-23 14:51). */
+  /** A new area fills in its main PIN code and, with no city picked yet, its city. */
   const setLocation = (location: LocationDraft) => {
-    clearErrors("location")
-    setDraft((current) => {
-      const area = location.area
-      const before = current.location.area
-      const changed = area.kind === "pick" && (before.kind !== "pick" || before.id !== area.id)
-      const main = area.kind === "pick" ? area.pincodes?.[0] : undefined
-      if (!changed || !main || current.pincodeTyped) return { ...current, location }
-      return { ...current, location, pincode: main }
+    const filled = (current: HomeDraft): HomeDraft => ({
+      ...current,
+      location,
+      city: cityAfterPick(current.location, location, current.city),
+      pincode: pincodeAfterPick(
+        current.location,
+        location,
+        current.pincode,
+        Boolean(current.pincodeTyped),
+      ),
     })
+    const next = filled(draft)
+    clearErrors("location")
+    if (next.city !== draft.city) clearErrors("city")
+    if (next.pincode !== draft.pincode) clearErrors("pincode")
+    setDraft(filled)
     setPinWarning(null)
   }
 
@@ -513,9 +525,10 @@ export default function AddHomePage() {
                   </Field>
                 </>
               )}
-              {draft.city && draft.city !== OTHER_CITY && (
+              {draft.city !== OTHER_CITY && (
                 <LocationPickers
                   city={draft.city}
+                  pincode={draft.pincode}
                   value={draft.location}
                   onChange={setLocation}
                   error={error("area")}

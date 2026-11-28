@@ -66,8 +66,8 @@ test.describe("post with no verification (390 px)", () => {
       await page.locator("#ah-city").selectOption({ label: "Pune" })
       await page.locator("#pf-area").fill("Baner")
       await page
-        .getByRole("list", { name: "Areas" })
-        .getByRole("button", { name: /^Baner/ })
+        .getByRole("listbox", { name: "Areas" })
+        .getByRole("option", { name: /^Baner/ })
         .click()
       await page.locator("#ah-building").fill(building)
       await page.getByLabel("Flat / house no.").fill(`V-${tag.slice(-3)}`)

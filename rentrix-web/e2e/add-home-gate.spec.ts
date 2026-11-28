@@ -159,8 +159,8 @@ async function fillAddress(page: Page, s: Scenario, pincode: string) {
   await expect(page.getByText(/No area matches/)).toHaveCount(0)
   await page.locator("#pf-area").fill(s.area)
   await page
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: new RegExp(`^${s.area}`) })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: new RegExp(`^${s.area}`) })
     .click()
   // The area fills in its main PIN code, and lists the others when it has several.
   if (s.autoPincode) await expect(page.getByLabel("PIN code")).toHaveValue(s.autoPincode)

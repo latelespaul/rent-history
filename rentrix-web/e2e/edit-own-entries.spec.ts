@@ -30,8 +30,8 @@ async function addHome(page: Page, building: string, unit: string, movedIn: stri
   await page.locator("#ah-city").selectOption({ label: "Pune" })
   await page.locator("#pf-area").fill("Baner")
   await page
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Baner/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Baner/ })
     .click()
   await page.locator("#ah-building").fill(building)
   await page.getByLabel("Flat / house no.").fill(unit)
@@ -100,8 +100,8 @@ test("edit an unverified tenancy, then a verified one: warning, saved, back in t
     await page.locator("#ah-city").selectOption({ label: "Pune" })
     await page.locator("#pf-area").fill("Baner")
     await page
-      .getByRole("list", { name: "Areas" })
-      .getByRole("button", { name: /^Baner/ })
+      .getByRole("listbox", { name: "Areas" })
+      .getByRole("option", { name: /^Baner/ })
       .click()
     await page.locator("#ah-building").fill(building)
     await page.getByLabel("Flat / house no.").fill(`E-${tag.slice(-3)}`)

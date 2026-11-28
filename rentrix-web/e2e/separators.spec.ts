@@ -44,8 +44,8 @@ test("a tenant's tenancy card and review row never start a line with a separator
   await page.locator("#ah-city").selectOption({ label: "Pune" })
   await page.locator("#pf-area").fill("Baner")
   await page
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Baner/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Baner/ })
     .click()
   await page.locator("#ah-building").fill(building)
   await page.getByLabel("Flat / house no.").fill(`S-${tag.slice(-3)}`)
@@ -92,8 +92,8 @@ test("the owner's property card shows the flat without a leading separator", asy
   await form.getByLabel("PIN code").fill("560034")
   await form.locator("#pf-area").fill("Koramangala")
   await form
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Koramangala/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Koramangala/ })
     .click()
   await form.getByLabel(/Building name/).fill(building)
   await form.getByLabel(/Flat or house number/).fill("K-12")

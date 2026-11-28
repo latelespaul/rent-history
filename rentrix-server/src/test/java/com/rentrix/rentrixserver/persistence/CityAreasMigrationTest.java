@@ -120,6 +120,41 @@ class CityAreasMigrationTest {
 		assertThat(jdbc.queryForList(all)).as("V18 run again changes nothing").isEqualTo(migrated);
 	}
 
+	/** V23 (captain 2026-11-28) keeps V18's rules for the other five live cities. */
+	@Test
+	void moreCityAreasSkipActiveAndDemoPlacesAndActivatePendingOnes(@TempDir Path dir) {
+		SQLiteDataSource dataSource = new SQLiteDataSource();
+		dataSource.setUrl("jdbc:sqlite:" + dir.resolve("v23.db"));
+		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+
+		flyway(dataSource, "22").migrate();
+		jdbc.update("insert into users (id, public_id, display_name, status, is_demo, created_at, updated_at) values"
+			+ " (?, '00000000-0000-7000-8000-000000000100', 'Proposer', 'ACTIVE', false, current_timestamp,"
+			+ " current_timestamp)", PROPOSER);
+		// a demo Versova, and a user's PENDING Secunderabad with a PIN India Post does not give it
+		jdbc.update(ROW, 9007199254740102L, "00000000-0000-7000-8000-000000000102", "MUM", "Versova", "versova", null,
+			"ACTIVE", null, true);
+		jdbc.update(ROW, 9007199254740104L, "00000000-0000-7000-8000-000000000104", "HYD", "secunderabad",
+			"secunderabad", null, "PENDING", PROPOSER, false);
+		jdbc.update(PIN, 9007199254740104L, "500001");
+
+		assertThat(flyway(dataSource, "latest").migrate().success).isTrue();
+
+		assertThat(jdbc.queryForList("select id || ':' || name from areas where city_code = 'MUM'"
+			+ " and name_key in ('versova', 'vesava')", String.class)).containsExactly("9007199254740102:Versova");
+		assertThat(jdbc.queryForList("select id, name, aliases, status, created_by from areas where city_code = 'HYD'"
+			+ " and name_key = 'secunderabad'")).containsExactly(
+			row(9007199254740104L, "Secunderabad", null, "ACTIVE", PROPOSER));
+		assertThat(pins(jdbc, "HYD", "secunderabad")).containsExactly("500003");
+		assertThat(jdbc.queryForList("select id from areas where id in (401, 458)", Long.class)).isEmpty();
+
+		String all = "select a.id, a.name, a.aliases, a.status, a.created_by, a.is_demo, p.pincode from areas a"
+			+ " left join area_pincodes p on p.area_id = a.id order by a.id, p.pincode";
+		List<Map<String, Object>> migrated = jdbc.queryForList(all);
+		new ResourceDatabasePopulator(new ClassPathResource("db/migration/V23__more_city_areas.sql")).execute(dataSource);
+		assertThat(jdbc.queryForList(all)).as("V23 run again changes nothing").isEqualTo(migrated);
+	}
+
 	private static List<String> pins(JdbcTemplate jdbc, String city, String nameKey) {
 		return jdbc.queryForList("select p.pincode from areas a join area_pincodes p on p.area_id = a.id"
 			+ " where a.city_code = ? and a.name_key = ? order by p.pincode", String.class, city, nameKey);

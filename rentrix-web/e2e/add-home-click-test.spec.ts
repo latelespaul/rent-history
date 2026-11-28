@@ -34,15 +34,17 @@ test("a new tenant adds a Hyderabad flat in Tower 4 · Wing B, tagged pending re
 
   await test.step("bug 3: Hyderabad lists its areas, with no empty 'No area matches'", async () => {
     await page.locator("#ah-city").selectOption({ label: "Hyderabad" })
-    const areas = page.getByRole("list", { name: "Areas" })
-    await expect(areas.getByRole("button", { name: /^Gachibowli/ })).toBeVisible()
+    // the list opens under the area box once it has focus
+    await page.locator("#pf-area").click()
+    const areas = page.getByRole("listbox", { name: "Areas" })
+    await expect(areas.getByRole("option", { name: /^Gachibowli/ })).toBeVisible()
     await expect(page.getByText(/No area matches/)).toHaveCount(0)
     // Bug 2: the hint no longer promises an admin check before names show.
     await expect(page.getByText(/before they show publicly/)).toHaveCount(0)
     await expect(page.getByText(/new names show at once, tagged “Pending review”/)).toBeVisible()
     await shot("step1-hyderabad-areas")
     await page.locator("#pf-area").fill("Gachi")
-    await areas.getByRole("button", { name: /^Gachibowli/ }).click()
+    await areas.getByRole("option", { name: /^Gachibowli/ }).click()
   })
 
   await test.step("bug 1: a new society, tower '4' and an empty wing name stop on step 1", async () => {

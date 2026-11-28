@@ -17,8 +17,10 @@ export interface PickedLevel {
   id: string
   name: string
   status: LocationStatus
-  /** An area's PIN codes, for the PIN autofill in "Add your home". */
+  /** An area's PIN codes, for the PIN autofill on pick. */
   pincodes?: string[]
+  /** An area's city code, for the city autofill when the form has no city yet. */
+  city?: string
 }
 
 /** A proposal typed in the form; saved `PENDING` and shown "Pending review" (D-109). */
@@ -68,6 +70,38 @@ export function draftFromLocation(location: PropertyLocation | undefined): Locat
     tower: pick(location.tower),
     wing: pick(location.wing),
   }
+}
+
+/** The area newly picked in `next`, or null when the area did not change to a picked one. */
+function newlyPicked(before: LocationDraft, next: LocationDraft): PickedLevel | null {
+  const area = next.area
+  if (area.kind !== "pick") return null
+  return before.area.kind === "pick" && before.area.id === area.id ? null : area
+}
+
+/**
+ * The form's PIN code after an area change (captain 2026-11-28: picking an area fills its PIN
+ * code). A newly picked area fills its main PIN code, unless the form's PIN is one of the area's
+ * or one the user typed (firstmate 2026-11-23 14:51); the user can still change it.
+ */
+export function pincodeAfterPick(
+  before: LocationDraft,
+  next: LocationDraft,
+  pincode: string,
+  typed: boolean,
+): string {
+  const area = newlyPicked(before, next)
+  const main = area?.pincodes?.[0]
+  if (!area || !main) return pincode
+  const current = pincode.trim()
+  if (area.pincodes!.includes(current) || (typed && current)) return pincode
+  return main
+}
+
+/** The form's city after an area change: a newly picked area fills it only while it is empty. */
+export function cityAfterPick(before: LocationDraft, next: LocationDraft, city: string): string {
+  if (city) return city
+  return newlyPicked(before, next)?.city ?? city
 }
 
 /** True when the area is set, the one level the API requires. */
