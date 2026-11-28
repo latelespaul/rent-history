@@ -171,6 +171,35 @@ describe("area suggestions in Add your home", () => {
     expect(pinBox().value).toBe("560095")
   })
 
+  it("switching the city never offers the last city's areas", async () => {
+    renderPage()
+    const user = userEvent.setup({ delay: null })
+    await screen.findByRole("option", { name: "Bangalore" })
+    await user.selectOptions(citySelect(), "PNQ")
+    await user.type(areaBox(), "ban")
+    await screen.findByRole("option", { name: /^Baner/ })
+
+    // hold Bangalore's answer, so the list shows what it holds while that search loads
+    let release = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const search = vi.mocked(locations.searchAreas)
+    const answer = search.getMockImplementation()!
+    search.mockImplementation(async (city, text, signal) => {
+      if (city === "BLR") await held
+      return answer(city, text, signal)
+    })
+
+    await user.selectOptions(citySelect(), "BLR")
+    await waitFor(() =>
+      expect(search).toHaveBeenCalledWith("BLR", "ban", expect.anything()),
+    )
+    expect(screen.queryByRole("option", { name: /^Baner|^Balewadi/ })).toBeNull()
+    release()
+    expect(await screen.findByText("No area matches “ban”.")).toBeTruthy()
+    expect(screen.queryByRole("option", { name: /^Baner|^Balewadi/ })).toBeNull()
+    search.mockImplementation(answer)
+  })
+
   it("calls only a whole 6-digit number a PIN when nothing matches", async () => {
     renderPage()
     const user = userEvent.setup({ delay: null })
