@@ -190,9 +190,7 @@ describe("area suggestions in Add your home", () => {
     })
 
     await user.selectOptions(citySelect(), "BLR")
-    await waitFor(() =>
-      expect(search).toHaveBeenCalledWith("BLR", "ban", expect.anything()),
-    )
+    await waitFor(() => expect(search).toHaveBeenCalledWith("BLR", "ban", expect.anything()))
     expect(screen.queryByRole("option", { name: /^Baner|^Balewadi/ })).toBeNull()
     release()
     expect(await screen.findByText("No area matches “ban”.")).toBeTruthy()
