@@ -27,7 +27,7 @@ import {
 import type { HomeErrors } from "@/features/home/addHome"
 import { HomeSizeChips } from "@/features/home/HomeSizeChips"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
-import type { LocationDraft } from "@/features/landlord/locationDraft"
+import { pincodeAfterPick, type LocationDraft } from "@/features/landlord/locationDraft"
 import { propertyTitle } from "@/features/property/labels"
 import { useProperty } from "@/features/property/useProperties"
 import { isBlocked } from "@/features/edit/blocked"
@@ -80,10 +80,20 @@ function EditForm({ property }: { property: PropertyDetail }) {
     setErrors((e) => ({ ...e, [key]: undefined, form: undefined }))
     if (key === "pincode") setPinWarning(null)
   }
+  // True once the user typed the PIN code: a later area pick no longer replaces it.
+  const pinTyped = useRef(false)
+  /** A new area fills in its main PIN code (captain 2026-11-28). */
   const setLocation = (location: LocationDraft) => {
-    setDraft((d) => ({ ...d, location }))
+    const pincode = pincodeAfterPick(draft.location, location, draft.pincode, pinTyped.current)
+    if (pincode !== draft.pincode) setPinWarning(null)
+    setDraft((d) => ({
+      ...d,
+      location,
+      pincode: pincodeAfterPick(d.location, location, d.pincode, pinTyped.current),
+    }))
     setErrors((e) => ({
       ...e,
+      ...(pincode !== draft.pincode ? { pincode: undefined } : {}),
       area: undefined,
       society: undefined,
       tower: undefined,
@@ -211,7 +221,10 @@ function EditForm({ property }: { property: PropertyDetail }) {
             inputMode="numeric"
             maxLength={6}
             value={draft.pincode}
-            onChange={(e) => set("pincode", e.target.value)}
+            onChange={(e) => {
+              pinTyped.current = true
+              set("pincode", e.target.value)
+            }}
             className="h-11"
             aria-invalid={Boolean(error("pincode"))}
           />

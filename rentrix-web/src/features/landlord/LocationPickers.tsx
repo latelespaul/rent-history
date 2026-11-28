@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchSocieties, fetchTowers, locationKeys, searchAreas } from "@/api/locations"
 import { Badge } from "@/components/ui/badge"
@@ -7,6 +7,7 @@ import { MapPinIcon, PlusIcon } from "@/components/ui/icons.gen"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useSignedIn } from "@/features/property/useProperties"
+import { cn } from "@/lib/utils"
 import type { LocationStatus, SocietyKind, TowerKind } from "@/types/api"
 import { setLevel, type LocationDraft } from "./locationDraft"
 
@@ -51,16 +52,49 @@ function LevelError({ id, error }: { id: string; error?: string }) {
   )
 }
 
+/** Wait this long after the last key before asking for areas (as the search box does). */
+const DEBOUNCE_MS = 200
+
+/** One row of the area list: an existing area, or the typed name as a new one. */
+interface AreaOption {
+  key: string
+  label: string
+  detail?: string
+  pick: () => void
+}
+
+/**
+ * The area field (captain 2026-11-28): type an area name or a 6-digit PIN code and pick from the
+ * list under the box, by tap or by arrow keys and Enter. A picked area keeps its id, so search
+ * and grouping use the one canonical name, and it brings its PIN codes and city for the form to
+ * fill in. With no city picked yet, the list holds the matching areas of every live city.
+ */
 function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
   const { viewer } = useSignedIn()
   const [text, setText] = useState("")
+  const [typed, setTyped] = useState("")
+  const [focused, setFocused] = useState(false)
+  const [closed, setClosed] = useState(false)
+  const [active, setActive] = useState(-1)
+  const input = useRef<HTMLInputElement>(null)
+  const listId = useId()
   const pin = pincode?.trim() ?? ""
+  const pinOfForm = /^\d{6}$/.test(pin) ? pin : ""
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTyped(text.trim()), DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [text])
+
   // What the box holds, else the form's PIN code when it is a whole one.
-  const search = text.trim() || (/^\d{6}$/.test(pin) ? pin : "")
+  const search = typed || pinOfForm
   const areas = useQuery({
     queryKey: locationKeys.areas(city, search, viewer),
     queryFn: ({ signal }) => searchAreas(city, search, signal),
-    enabled: Boolean(city) && value.area.kind === "none" && !disabled,
+    // with no city, only a typed name or PIN: the first areas A–Z of every city say nothing
+    enabled: value.area.kind === "none" && !disabled && (Boolean(city) || search.length > 0),
+    // the last list stays while the next one loads, so the list does not blink at each key
+    placeholderData: (previous) => previous,
     staleTime: 30_000,
   })
   const { area } = value
@@ -86,79 +120,150 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
     )
   }
 
-  const typed = text.trim()
-  const exact = areas.data?.some((a) => a.name.toLowerCase() === typed.toLowerCase())
+  const words = text.trim()
+  // the list answers what the box holds now, not a few keys ago
+  const settled =
+    typed === words && areas.isSuccess && !areas.isFetching && !areas.isPlaceholderData
+  const found = areas.data ?? []
+  const exact = found.some((a) => a.name.toLowerCase() === words.toLowerCase())
+  const options: AreaOption[] = found.map((a) => ({
+    key: a.id,
+    label: a.name,
+    detail: [
+      a.pincodes.length > 0 ? `PIN ${a.pincodes.slice(0, 3).join(", ")}` : "",
+      city ? "" : a.city.name,
+      a.status === "PENDING" ? "Pending review" : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    pick: () =>
+      onChange(
+        setLevel(value, "area", {
+          kind: "pick",
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          pincodes: a.pincodes,
+          city: a.city.code,
+        }),
+      ),
+  }))
+  // Only once the search answered: a tap before that would propose an area that exists. A new
+  // area needs its city.
+  if (city && words.length >= 2 && !/^\d+$/.test(words) && settled && !exact)
+    options.push({
+      key: "new",
+      label: `Suggest new area “${words}”`,
+      pick: () => onChange(setLevel(value, "area", { kind: "new", name: words, extra: {} })),
+    })
+
+  // Open while the box has focus, or when the form's PIN code lists its areas.
+  const open = !closed && (focused || (!words && pinOfForm !== ""))
+  const expanded = open && options.length > 0
+  const optionId = (i: number) => `${listId}-o${i}`
+  let message = ""
+  if (open && settled && found.length === 0) {
+    if (words && !/^\d+$/.test(words)) message = `No area matches “${words}”.`
+    else if (search) message = `No area has PIN ${search} yet. Type the area name.`
+  }
+
+  function pick(option: AreaOption) {
+    setActive(-1)
+    option.pick()
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault()
+      setClosed(false)
+      if (options.length === 0) return
+      const step = event.key === "ArrowDown" ? 1 : -1
+      setActive((i) => (i + step + options.length) % options.length)
+    } else if (event.key === "Enter" && expanded) {
+      // Enter picks; it never sends the form while the list is open
+      event.preventDefault()
+      if (active >= 0 && options[active]) pick(options[active])
+    } else if (event.key === "Escape" && expanded) {
+      event.preventDefault()
+      setClosed(true)
+      setActive(-1)
+    }
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="relative space-y-2">
       <Input
         id="pf-area"
+        ref={input}
+        role="combobox"
+        aria-expanded={expanded}
+        aria-controls={expanded ? `${listId}-list` : undefined}
+        aria-autocomplete="list"
+        aria-activedescendant={expanded && active >= 0 ? optionId(active) : undefined}
+        autoComplete="off"
         value={text}
-        disabled={disabled || !city}
-        placeholder={city ? "Type an area name or a 6-digit PIN code" : "Pick a city first"}
-        onChange={(e) => setText(e.target.value)}
+        disabled={disabled}
+        placeholder={
+          city ? "Type an area name or a 6-digit PIN code" : "Type your area or 6-digit PIN code"
+        }
+        onChange={(e) => {
+          setText(e.target.value)
+          setClosed(false)
+          setActive(-1)
+        }}
+        onFocus={() => {
+          setFocused(true)
+          setClosed(false)
+        }}
+        onBlur={() =>
+          setTimeout(() => {
+            if (document.activeElement !== input.current) setFocused(false)
+          }, 150)
+        }
+        onKeyDown={onKeyDown}
         className="h-10"
         aria-describedby="pf-area-hint"
       />
-      {city && (
-        <ul aria-label="Areas" className="flex flex-wrap gap-2">
-          {areas.data?.map((a) => (
-            <li key={a.id}>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  onChange(
-                    setLevel(value, "area", {
-                      kind: "pick",
-                      id: a.id,
-                      name: a.name,
-                      status: a.status,
-                      pincodes: a.pincodes,
-                    }),
-                  )
-                }
-              >
-                {a.name}
-                <span className="font-normal text-ink-500">
-                  {a.pincodes.slice(0, 2).join(", ")}
-                </span>
-                {a.status === "PENDING" && <span className="text-warn-600">· Pending</span>}
-              </Button>
-            </li>
+      {expanded && (
+        <div
+          id={`${listId}-list`}
+          role="listbox"
+          aria-label="Areas"
+          // on a phone the list sits in the form and pushes the next fields down; wider, it hangs
+          // over them
+          className="z-30 max-h-72 w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg sm:absolute sm:top-10 sm:right-0 sm:left-0 sm:mt-1"
+        >
+          {options.map((option, i) => (
+            <div
+              key={option.key}
+              id={optionId(i)}
+              role="option"
+              aria-selected={i === active}
+              aria-label={option.detail ? `${option.label}, ${option.detail}` : option.label}
+              data-testid="area-option"
+              // mousedown, not click: the box's blur would close the list first
+              onMouseDown={(event) => {
+                event.preventDefault()
+                pick(option)
+              }}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-2 px-3 py-1.5",
+                i === active ? "bg-teal-50" : "hover:bg-paper",
+              )}
+            >
+              {option.key === "new" && <PlusIcon size={16} className="text-ink-500" />}
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold text-ink-900">{option.label}</span>
+                {option.detail && <span className="text-xs text-ink-500">{option.detail}</span>}
+              </span>
+            </div>
           ))}
-          {typed.length > 0 && areas.isSuccess && areas.data.length === 0 && (
-            <li className="text-sm text-ink-500">No area matches “{typed}”.</li>
-          )}
-          {typed.length === 0 &&
-            search.length > 0 &&
-            areas.isSuccess &&
-            areas.data.length === 0 && (
-              <li className="text-sm text-ink-500">
-                No area has PIN {search} yet. Type the area name.
-              </li>
-            )}
-          {/* Only once the search answered: a tap before that would propose an area that exists. */}
-          {typed.length >= 2 &&
-            !/^\d+$/.test(typed) &&
-            areas.isSuccess &&
-            !areas.isFetching &&
-            !exact && (
-              <li>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    onChange(setLevel(value, "area", { kind: "new", name: typed, extra: {} }))
-                  }
-                >
-                  <PlusIcon />
-                  Suggest new area “{typed}”
-                </Button>
-              </li>
-            )}
-        </ul>
+        </div>
+      )}
+      {message && (
+        <p role="status" className="text-sm text-ink-500">
+          {message}
+        </p>
       )}
     </div>
   )

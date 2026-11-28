@@ -29,8 +29,8 @@ test("the next steps after adding a home: skip both, then review from My tenanci
     await page.locator("#ah-city").selectOption({ label: "Pune" })
     await page.locator("#pf-area").fill("Baner")
     await page
-      .getByRole("list", { name: "Areas" })
-      .getByRole("button", { name: /^Baner/ })
+      .getByRole("listbox", { name: "Areas" })
+      .getByRole("option", { name: /^Baner/ })
       .click()
     await page.locator("#ah-building").fill(building)
     await page.getByLabel("Flat / house no.").fill(`N-${tag.slice(-3)}`)
@@ -107,8 +107,8 @@ test("a home left years ago can be reviewed from the next-steps screen", async (
   await page.locator("#ah-city").selectOption({ label: "Pune" })
   await page.locator("#pf-area").fill("Baner")
   await page
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Baner/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Baner/ })
     .click()
   await page.locator("#ah-building").fill(building)
   await page.getByLabel("Flat / house no.").fill(`O-${tag.slice(-3)}`)

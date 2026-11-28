@@ -232,6 +232,23 @@ class LocationApiTest {
 	}
 	
 	@Test
+	void otherLiveCitiesFindMoreAreasByNameOrPincode() throws Exception {
+		// V23 (captain 2026-11-28): typing an area suggests it, and typing a PIN suggests that PIN's areas
+		mvc.perform(get("/areas").param("city", "MUM").param("q", "vile"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[*].name", contains("Vile Parle East", "Vile Parle West")))
+			.andExpect(jsonPath("$.items[1].pincodes", contains("400056")));
+		mvc.perform(get("/areas").param("city", "HYD").param("q", "lingampalli"))
+			.andExpect(jsonPath("$.items[*].name", contains("Lingampally")));
+		mvc.perform(get("/areas").param("city", "HYD").param("pincode", "500075"))
+			.andExpect(jsonPath("$.items[*].name", contains("Kokapet", "Narsingi")));
+		// with no city, a PIN finds its areas in every live city, each with its city to fill in
+		mvc.perform(get("/areas").param("pincode", "110057"))
+			.andExpect(jsonPath("$.items[*].name", contains("Vasant Vihar")))
+			.andExpect(jsonPath("$.items[0].city.code").value("DEL"));
+	}
+	
+	@Test
 	void hiddenAreaLeavesListsButKeepsItsPropertiesReadable() throws Exception {
 		Area hidden = locations.area(CITY, "Hidden Area", null, LocationStatus.HIDDEN, null, "100020");
 		Property home = locations.home(landlord, "Hidden Home", PropertyStatus.PUBLISHED, hidden, null, null, null);

@@ -28,8 +28,8 @@ test("a typed society name and an 'Other' home size save, show and filter", asyn
     await page.locator("#ah-city").selectOption({ label: "Pune" })
     await page.locator("#pf-area").fill("Baner")
     await page
-      .getByRole("list", { name: "Areas" })
-      .getByRole("button", { name: /^Baner/ })
+      .getByRole("listbox", { name: "Areas" })
+      .getByRole("option", { name: /^Baner/ })
       .click()
     await page.locator("#pf-society-find").fill(society)
     const matches = page.getByTestId("pf-society-matches")

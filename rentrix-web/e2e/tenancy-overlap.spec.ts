@@ -76,8 +76,8 @@ test("landlord adds a home, invites a tenant who confirms, and a second tenancy 
     await form.getByLabel("PIN code").fill(cast.pincode)
     await page.locator("#pf-area").fill(cast.area)
     await form
-      .getByRole("list", { name: "Areas" })
-      .getByRole("button", { name: new RegExp(`^${cast.area}`) })
+      .getByRole("listbox", { name: "Areas" })
+      .getByRole("option", { name: new RegExp(`^${cast.area}`) })
       .click()
     await form.getByLabel(/Building name/).fill(building)
     await form.getByRole("button", { name: "Save as draft" }).click()

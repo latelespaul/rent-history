@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useRef, useState, type FormEvent, type ReactNode } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { createProperty, submitProperty, updateProperty } from "@/api/properties"
@@ -13,7 +13,12 @@ import { EmptyState, ErrorState } from "@/components/ui/states"
 import { Textarea } from "@/components/ui/textarea"
 import { useCities } from "@/features/city/useCities"
 import { LocationPickers } from "@/features/landlord/LocationPickers"
-import { EMPTY_DRAFT } from "@/features/landlord/locationDraft"
+import {
+  cityAfterPick,
+  EMPTY_DRAFT,
+  pincodeAfterPick,
+  type LocationDraft,
+} from "@/features/landlord/locationDraft"
 import {
   checkForm,
   EMPTY_FORM,
@@ -79,6 +84,16 @@ function PropertyForm({ property }: { property?: PropertyDetail }) {
   const editable = locationEditable(status)
   const set = <K extends keyof PropertyFormValues>(key: K, value: PropertyFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }))
+  // True once the owner typed the PIN code: a later area pick no longer replaces it.
+  const pinTyped = useRef(false)
+  /** A new area fills in its main PIN code and, with no city picked yet, its city. */
+  const setLocation = (location: LocationDraft) =>
+    setValues((v) => ({
+      ...v,
+      location,
+      city: cityAfterPick(v.location, location, v.city),
+      pincode: pincodeAfterPick(v.location, location, v.pincode, pinTyped.current),
+    }))
 
   const save = useMutation({
     mutationFn: () =>
@@ -159,7 +174,10 @@ function PropertyForm({ property }: { property?: PropertyDetail }) {
               maxLength={6}
               value={values.pincode}
               disabled={!editable}
-              onChange={(e) => set("pincode", e.target.value)}
+              onChange={(e) => {
+                pinTyped.current = true
+                set("pincode", e.target.value)
+              }}
               className="h-10"
             />
           </Field>
@@ -168,7 +186,7 @@ function PropertyForm({ property }: { property?: PropertyDetail }) {
           city={values.city}
           pincode={values.pincode}
           value={values.location}
-          onChange={(location) => set("location", location)}
+          onChange={setLocation}
           disabled={!editable}
           error={locationError}
         />

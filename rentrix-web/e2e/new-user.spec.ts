@@ -18,8 +18,8 @@ test("a new landlord picks the role, adds a property and sees its page", async (
   await form.getByLabel("PIN code").fill("560034")
   await page.locator("#pf-area").fill("Koramangala")
   await form
-    .getByRole("list", { name: "Areas" })
-    .getByRole("button", { name: /^Koramangala/ })
+    .getByRole("listbox", { name: "Areas" })
+    .getByRole("option", { name: /^Koramangala/ })
     .click()
   await form.getByLabel(/Building name/).fill(building)
   await form.getByRole("button", { name: "Save as draft" }).click()
@@ -61,8 +61,8 @@ test("a new tenant adds their home, records the tenancy, reviews it and finds it
     await page.locator("#ah-city").selectOption({ label: "Bangalore" })
     await page.locator("#pf-area").fill("Koramangala")
     await page
-      .getByRole("list", { name: "Areas" })
-      .getByRole("button", { name: /^Koramangala/ })
+      .getByRole("listbox", { name: "Areas" })
+      .getByRole("option", { name: /^Koramangala/ })
       .click()
     await page.locator("#pf-society").selectOption({ label: "+ Add a society…" })
     await page.getByLabel("New society name").fill(society)
