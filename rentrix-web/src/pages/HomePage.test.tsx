@@ -6,6 +6,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import type { PropertySearch } from "@/api/properties"
 import type { AuthState } from "@/features/auth/authContext"
 import { fetchCities } from "@/api/cities"
+import { CONTACT } from "@/lib/contact"
 import { LAUNCH_CITIES, NINE_CITIES } from "@/test/cities"
 import { card, page } from "@/test/properties"
 import { makeUser } from "@/test/users"
@@ -18,7 +19,8 @@ const h = vi.hoisted(() => ({
   areaCalls: [] as string[],
 }))
 
-vi.mock("@/features/auth/authContext", () => ({
+vi.mock("@/features/auth/authContext", async () => ({
+  AuthContext: (await import("react")).createContext(null),
   useAuth: () => ({ state: h.state }),
 }))
 vi.mock("@/api/cities", () => ({
@@ -100,6 +102,7 @@ describe("HomePage", { timeout: 20_000 }, () => {
       "Live in 2 cities.",
       "Questions, answered.",
       "Rent with your eyes open.",
+      "Say hello.",
     ])
     // the problem is three icon tiles of a few words each and one banner, with no paragraph
     const problem = region("problem")
@@ -281,12 +284,12 @@ describe("HomePage", { timeout: 20_000 }, () => {
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
     ])
-    // besides the hero search (city picker, Search), the only buttons are the side toggle and
-    // the preview row's scroll buttons
+    // besides the hero search (city picker, Search) and the Contact us form, the only buttons are
+    // the side toggle and the preview row's scroll buttons
     expect(
-      [...document.querySelectorAll("main button:not(form[role=search] button)")].map(
-        (b) => b.getAttribute("aria-label") ?? b.textContent,
-      ),
+      [
+        ...document.querySelectorAll("main button:not(form[role=search] button, #contact button)"),
+      ].map((b) => b.getAttribute("aria-label") ?? b.textContent),
     ).toEqual(["I rent", "I own", "Previous cards", "Next cards"])
   })
 
@@ -411,6 +414,22 @@ describe("HomePage", { timeout: 20_000 }, () => {
     expect(document.getElementById("coverage")).toBeNull()
     expect(texts("h2")).not.toContain("Live in 2 cities.")
     expect(document.body.textContent).not.toMatch(/More cities are on the way/)
+  })
+
+  it("ends with Contact us: LinkedIn and email cards from lib/contact and the message form", () => {
+    h.state = { status: "anonymous", user: null } as AuthState
+    renderHome()
+    const contact = document.getElementById("contact")!
+    expect(contact.querySelector("h2")?.textContent).toBe("Say hello.")
+    expect(contact.querySelector('[data-testid="contact-linkedin"]')?.getAttribute("href")).toBe(
+      CONTACT.linkedinUrl,
+    )
+    expect(contact.querySelector('[data-testid="contact-mail"]')?.getAttribute("href")).toBe(
+      `mailto:${CONTACT.email}`,
+    )
+    expect(contact.querySelector('[data-testid="feedback-form"]')).toBeTruthy()
+    // the last section of the page, right above the footer
+    expect(document.querySelector("main")!.lastElementChild).toBe(contact)
   })
 
   it("sends a signed-in user into the app", () => {

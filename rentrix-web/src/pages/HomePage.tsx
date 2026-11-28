@@ -32,6 +32,8 @@ import { useAuth } from "@/features/auth/authContext"
 import { AuthPending } from "@/features/auth/RequireAuth"
 import { chipNames } from "@/features/city/cityText"
 import { useCities } from "@/features/city/useCities"
+import { ContactCards } from "@/features/contact/ContactCards"
+import { FeedbackForm } from "@/features/contact/FeedbackForm"
 import { AppMock } from "@/features/landing/AppMock"
 import { GoogleCta } from "@/features/landing/GoogleCta"
 import { LandingCoverage } from "@/features/landing/LandingCoverage"
@@ -661,6 +663,13 @@ export default function HomePage() {
             </div>
           </Container>
         </section>
+
+        <Section id="contact" eyebrow="Contact us" title="Say hello." className="pt-0 lg:pt-0">
+          <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-start lg:gap-8">
+            <ContactCards />
+            <FeedbackForm />
+          </div>
+        </Section>
       </main>
 
       <footer className="border-t border-line py-7 text-sm text-ink-500">

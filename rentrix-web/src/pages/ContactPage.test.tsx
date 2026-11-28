@@ -62,7 +62,13 @@ describe("contact page", () => {
     )
     expect(within(main).getByText("Not verified yet")).toBeTruthy()
     expect(within(main).getByText("Verified by Doorway Living")).toBeTruthy()
-    expect(within(main).queryByRole("textbox")).toBeNull()
+  })
+
+  it("has the same message form as the landing", () => {
+    renderContact()
+    const form = within(screen.getByRole("main")).getByTestId("feedback-form")
+    expect(within(form).getByLabelText(/^Message/)).toBeTruthy()
+    expect(within(form).getByRole("button", { name: "Bug" })).toBeTruthy()
   })
 
   it("is linked as Contact us from the footer", () => {

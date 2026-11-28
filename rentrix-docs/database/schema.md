@@ -551,3 +551,26 @@ CREATE TABLE visitor_daily (
     CONSTRAINT pk_visitor_daily PRIMARY KEY (seen_on, visitor_hash)
 );
 ```
+
+## 12. Feedback
+
+Messages from the "Contact us" form (V24). Name and email are optional; nothing links a row to a user. A filled honeypot stores nothing.
+
+```sql
+CREATE TABLE feedback (
+    id              BIGINT            NOT NULL,
+    name            VARCHAR(80),
+    email           VARCHAR(320),               -- only for a reply
+    type            VARCHAR(16)       NOT NULL, -- FEEDBACK, BUG, IDEA, OTHER
+    message         VARCHAR(2000)     NOT NULL,
+    created_at      ${timestamp_type} NOT NULL,
+    updated_at      ${timestamp_type} NOT NULL,
+    CONSTRAINT pk_feedback PRIMARY KEY (id)
+);
+
+CREATE INDEX ix_feedback_created ON feedback (created_at);
+```
+
+| Query | Index |
+|---|---|
+| admin list, newest first | `ix_feedback_created` |

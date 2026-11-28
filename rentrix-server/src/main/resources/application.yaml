@@ -133,6 +133,9 @@ app:
     # (LIVE and DEV serve the API there).
     api-base-url: ${APP_API_BASE_URL:}
     send-interval: 600ms                  # between two reminder emails: under Resend's per-second limit
+  feedback:
+    # Where "Contact us" messages are emailed (best effort; they are always stored for the admin console).
+    to: ${FEEDBACK_TO:hello@doorwayliving.in}
   scheduling:
     enabled: ${SCHEDULING_ENABLED:true}   # in-process jobs behind scheduled_job_lock (D-08)
   seed:

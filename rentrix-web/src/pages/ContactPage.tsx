@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/icon"
 import { MailIcon } from "@/components/ui/icons.gen"
 import { launchCopy } from "@/features/city/cityText"
 import { useCities } from "@/features/city/useCities"
+import { FeedbackForm } from "@/features/contact/FeedbackForm"
 import { BRAND } from "@/lib/brand"
 import { CONTACT, visibleSocialLinks } from "@/lib/contact"
 
@@ -41,8 +42,9 @@ function ContactRow({
 }
 
 /**
- * `/contact`, open to everyone: the team email (mailto only, no form), the social accounts that
- * have a URL, and a short "About" of what the site is and what the review ticks mean.
+ * `/contact`, open to everyone: the team email, the social accounts that have a URL, the same
+ * short message form as the landing's "Contact us", and an "About" of what the site is and what
+ * the review ticks mean.
  */
 export default function ContactPage() {
   const cities = useCities()
@@ -77,6 +79,13 @@ export default function ContactPage() {
             ))}
           </ul>
         </Section>
+
+        <section aria-labelledby="contact-form-title" className="space-y-4">
+          <h2 id="contact-form-title" className="text-xl font-semibold text-ink-900">
+            Send us a message
+          </h2>
+          <FeedbackForm />
+        </section>
 
         <Section title={`About ${BRAND.name}`}>
           <div className="space-y-3 text-ink-700">
