@@ -88,13 +88,16 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
 
   // What the box holds, else the form's PIN code when it is a whole one.
   const search = typed || pinOfForm
+  // with no city, only a typed name or PIN: the first areas A–Z of every city say nothing
+  const enabled = value.area.kind === "none" && !disabled && (Boolean(city) || search.length > 0)
   const areas = useQuery({
     queryKey: locationKeys.areas(city, search, viewer),
     queryFn: ({ signal }) => searchAreas(city, search, signal),
-    // with no city, only a typed name or PIN: the first areas A–Z of every city say nothing
-    enabled: value.area.kind === "none" && !disabled && (Boolean(city) || search.length > 0),
-    // the last list stays while the next one loads, so the list does not blink at each key
-    placeholderData: (previous) => previous,
+    enabled,
+    // the last list of the same city stays while the next one loads, so it does not blink at
+    // each key; another city's areas never stay
+    placeholderData: (previous, previousQuery) =>
+      enabled && previousQuery?.queryKey[2] === city ? previous : undefined,
     staleTime: 30_000,
   })
   const { area } = value
@@ -124,7 +127,7 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
   // the list answers what the box holds now, not a few keys ago
   const settled =
     typed === words && areas.isSuccess && !areas.isFetching && !areas.isPlaceholderData
-  const found = areas.data ?? []
+  const found = (areas.data ?? []).filter((a) => !city || a.city.code === city)
   const exact = found.some((a) => a.name.toLowerCase() === words.toLowerCase())
   const options: AreaOption[] = found.map((a) => ({
     key: a.id,
@@ -163,8 +166,9 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
   const optionId = (i: number) => `${listId}-o${i}`
   let message = ""
   if (open && settled && found.length === 0) {
-    if (words && !/^\d+$/.test(words)) message = `No area matches “${words}”.`
-    else if (search) message = `No area has PIN ${search} yet. Type the area name.`
+    // only a whole 6-digit PIN is "a PIN"; part of one is just text that matched nothing
+    if (/^\d{6}$/.test(search)) message = `No area has PIN ${search} yet. Type the area name.`
+    else if (words) message = `No area matches “${words}”.`
   }
 
   function pick(option: AreaOption) {
