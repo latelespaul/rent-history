@@ -25,6 +25,16 @@ function renderForm(wrap?: (children: ReactNode) => ReactNode) {
   render(<QueryClientProvider client={client}>{wrap ? wrap(form) : form}</QueryClientProvider>)
 }
 
+const asha = {
+  id: "u1",
+  displayName: "Asha Rao",
+  shortName: "Asha R.",
+  email: "asha@example.test",
+  emailVerified: true,
+  roles: ["TENANT"],
+  status: "ACTIVE",
+} as CurrentUser
+
 const field = (name: RegExp) => screen.getByLabelText(name) as HTMLInputElement
 
 describe("FeedbackForm", () => {
@@ -71,18 +81,26 @@ describe("FeedbackForm", () => {
   })
 
   it("prefills the name and email of a signed-in user", () => {
-    const user = {
-      id: "u1",
-      displayName: "Asha Rao",
-      shortName: "Asha R.",
-      email: "asha@example.test",
-      emailVerified: true,
-      roles: ["TENANT"],
-      status: "ACTIVE",
-    } as CurrentUser
-    const auth = { state: { status: "signedIn", user } } as AuthContextValue
+    const auth = { state: { status: "signedIn", user: asha } } as AuthContextValue
     renderForm((children) => <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>)
     expect(field(/^Name/).value).toBe("Asha Rao")
+    expect(field(/^Email/).value).toBe("asha@example.test")
+  })
+
+  it("prefills once the session resolves after loading, keeping what was typed", () => {
+    const client = new QueryClient()
+    const tree = (state: AuthContextValue["state"]) => (
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={{ state } as AuthContextValue}>
+          <FeedbackForm />
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    )
+    const { rerender } = render(tree({ status: "loading", user: null } as AuthContextValue["state"]))
+    expect(field(/^Name/).value).toBe("")
+    fireEvent.change(field(/^Name/), { target: { value: "A. Rao" } })
+    rerender(tree({ status: "signedIn", user: asha } as AuthContextValue["state"]))
+    expect(field(/^Name/).value).toBe("A. Rao")
     expect(field(/^Email/).value).toBe("asha@example.test")
   })
 })

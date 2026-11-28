@@ -1,4 +1,4 @@
-import { useContext, useId, useState, type FormEvent } from "react"
+import { useContext, useEffect, useId, useState, type FormEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { FEEDBACK_MESSAGE_MAX, sendFeedback, type FeedbackType } from "@/api/feedback"
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,14 @@ export function FeedbackForm({ className }: { className?: string }) {
   const [type, setType] = useState<FeedbackType>("FEEDBACK")
   const [message, setMessage] = useState("")
   const [website, setWebsite] = useState("")
+  const userId = user?.id
+  const userName = user?.displayName ?? ""
+  const userEmail = user?.email ?? ""
+  useEffect(() => {
+    if (!userId) return
+    setName((current) => current || userName)
+    setEmail((current) => current || userEmail)
+  }, [userId, userName, userEmail])
   const send = useMutation({
     mutationFn: () =>
       sendFeedback({
