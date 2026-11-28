@@ -5,6 +5,7 @@ import { AdminLoginPage } from "./AdminLoginPage"
 import { AdminShell } from "./AdminShell"
 import { ApprovalsPage } from "./ApprovalsPage"
 import { AuditLogPage } from "./AuditLogPage"
+import { FeedbackPage } from "./FeedbackPage"
 import { MailPage } from "./MailPage"
 import { SmsRelayPage } from "./SmsRelayPage"
 import { TrafficPage } from "./TrafficPage"
@@ -23,6 +24,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "/audit-log", element: <AuditLogPage /> },
       { path: "/mail", element: <MailPage /> },
       { path: "/traffic", element: <TrafficPage /> },
+      { path: "/feedback", element: <FeedbackPage /> },
       {
         path: "*",
         element: (

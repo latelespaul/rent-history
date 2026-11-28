@@ -1,6 +1,7 @@
 import { createApiClient } from "@/api/client"
 import { adminApiBaseUrl } from "@/lib/config"
-import type { AuthConfig, AuthSession, CurrentUser } from "@/types/api"
+import type { FeedbackType } from "@/api/feedback"
+import type { AuthConfig, AuthSession, CurrentUser, Page } from "@/types/api"
 
 /**
  * The admin console's own API client (SYSTEM_DESIGN §13.3). It talks to the same API as the main
@@ -28,6 +29,7 @@ export const adminKeys = {
   queue: ["admin", "queue"] as const,
   editHistory: (type: string, id: string) => ["admin", "edit-history", type, id] as const,
   traffic: ["admin", "traffic"] as const,
+  feedback: (page: number) => ["admin", "feedback", page] as const,
   auditLog: (action: string | null, page: number) => ["admin", "audit-log", action, page] as const,
 }
 
@@ -251,4 +253,17 @@ export interface TrafficSummary {
 
 export function fetchTraffic(signal?: AbortSignal): Promise<TrafficSummary> {
   return adminApi.get<TrafficSummary>("/admin/traffic", { signal })
+}
+
+/** One "Contact us" message, as `GET /admin/feedback` lists it; name and email are optional. */
+export interface FeedbackEntry {
+  name: string | null
+  email: string | null
+  type: FeedbackType
+  message: string
+  createdAt: string
+}
+
+export function fetchFeedback(page: number, signal?: AbortSignal): Promise<Page<FeedbackEntry>> {
+  return adminApi.get<Page<FeedbackEntry>>("/admin/feedback", { query: { page, size: 50 }, signal })
 }

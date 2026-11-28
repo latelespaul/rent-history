@@ -20,7 +20,8 @@ import java.util.Arrays;
 /**
  * Onboarding gate (D-73): a signed-in caller whose token holds neither {@code TENANT} nor {@code LANDLORD}
  * has not picked a role yet and may only call {@code GET /me}, {@code POST /me/onboarding},
- * {@code DELETE /me}, {@code /auth/**} and the public reads; anything else is
+ * {@code DELETE /me}, {@code /auth/**}, the public reads and the anonymous writes (the page view beacon and the
+ * "Contact us" form); anything else is
  * {@code 403 onboarding_required}. Admin console sessions are not held here: {@link AdminHostFilter} limits them.
  * The check reads only the token's {@code roles} claim, which onboarding refreshes (D-62).
  */
@@ -55,6 +56,10 @@ public class OnboardingFilter extends OncePerRequestFilter {
 		}
 		if (path.equals("/me/onboarding")) {
 			return HttpMethod.POST.matches(method);
+		}
+		if (HttpMethod.POST.matches(method)
+			&& Arrays.stream(SecurityConfig.PUBLIC_POST).anyMatch(pattern -> PATHS.match(pattern, path))) {
+			return true;
 		}
 		return HttpMethod.GET.matches(method)
 			&& Arrays.stream(SecurityConfig.PUBLIC_GET).anyMatch(pattern -> PATHS.match(pattern, path));

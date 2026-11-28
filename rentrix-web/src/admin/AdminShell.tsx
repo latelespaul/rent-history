@@ -12,7 +12,7 @@ interface AdminNavItem {
   icon: IconName
 }
 
-/** The console's pages: the approvals queue first (W9), reports, the OTP relay, the audit log, mail, then traffic. */
+/** The console's pages: the approvals queue first (W9), reports, the OTP relay, the audit log, mail, traffic, then feedback. */
 const ADMIN_NAV: AdminNavItem[] = [
   { to: "/approvals", label: "Approvals", icon: "shield-check" },
   { to: "/reports", label: "Reports", icon: "flag" },
@@ -20,6 +20,7 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: "/audit-log", label: "Audit log", icon: "clock" },
   { to: "/mail", label: "Mail", icon: "mail" },
   { to: "/traffic", label: "Traffic", icon: "chart" },
+  { to: "/feedback", label: "Feedback", icon: "reply" },
 ]
 
 /**
@@ -96,12 +97,13 @@ export function AdminShell() {
       >
         <ul className="mx-auto flex max-w-md">
           {ADMIN_NAV.map((item) => (
-            <li key={item.to} className="flex-1">
+            <li key={item.to} className="min-w-0 flex-1">
               <NavLink
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    "flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold no-underline hover:no-underline",
+                    // Seven pages share a 390 px phone, so labels are 11 px and may wrap.
+                    "flex h-16 flex-col items-center justify-center gap-1 px-0.5 text-center text-[11px] leading-tight font-semibold no-underline hover:no-underline",
                     isActive ? "text-teal-700" : "text-ink-700",
                   )
                 }
