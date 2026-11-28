@@ -163,8 +163,9 @@ function AreaPicker({ city, value, onChange, disabled, pincode }: Props) {
   const optionId = (i: number) => `${listId}-o${i}`
   let message = ""
   if (open && settled && found.length === 0) {
-    if (words && !/^\d+$/.test(words)) message = `No area matches “${words}”.`
-    else if (search) message = `No area has PIN ${search} yet. Type the area name.`
+    // only a whole 6-digit PIN is "a PIN"; part of one is just text that matched nothing
+    if (/^\d{6}$/.test(search)) message = `No area has PIN ${search} yet. Type the area name.`
+    else if (words) message = `No area matches “${words}”.`
   }
 
   function pick(option: AreaOption) {

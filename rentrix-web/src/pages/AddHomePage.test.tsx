@@ -170,4 +170,19 @@ describe("area suggestions in Add your home", () => {
     await user.click(option)
     expect(pinBox().value).toBe("560095")
   })
+
+  it("calls only a whole 6-digit number a PIN when nothing matches", async () => {
+    renderPage()
+    const user = userEvent.setup({ delay: null })
+    await screen.findByRole("option", { name: "Bangalore" })
+    await user.selectOptions(citySelect(), "BLR")
+
+    // part of a PIN, e.g. a pause while typing it
+    await user.type(areaBox(), "56099")
+    expect(await screen.findByText("No area matches “56099”.")).toBeTruthy()
+    expect(screen.queryByText(/No area has PIN/)).toBeNull()
+
+    await user.type(areaBox(), "9")
+    expect(await screen.findByText("No area has PIN 560999 yet. Type the area name.")).toBeTruthy()
+  })
 })
