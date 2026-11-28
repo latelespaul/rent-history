@@ -199,6 +199,13 @@ describe("MyTenanciesPage modes (PLAN R10)", () => {
     expect(screen.queryByRole("group", { name: "Side" })).toBeNull()
   })
 
+  it("sends Record a tenancy to the pick-a-home step, never to plain search (captain 2026-11-28)", async () => {
+    api.user = BOTH
+    renderPage()
+    const record = await screen.findByRole("link", { name: /Record a tenancy/ })
+    expect(record.getAttribute("href")).toBe("/tenancies/new?as=tenant")
+  })
+
   it("lists the landlord side and no tenant reviews in Owner mode", async () => {
     api.user = BOTH
     saveMode(BOTH.id, "OWNER")

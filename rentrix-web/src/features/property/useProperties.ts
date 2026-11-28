@@ -13,12 +13,16 @@ import { useAuth } from "@/features/auth/authContext"
 /** How many homes the locality hints read (the API's largest page, D-59). */
 export const HINT_SAMPLE = 50
 
-/** `GET /properties` for the current filters; the old page stays on screen while the next loads. */
-export function usePropertySearch(search: PropertySearch) {
+/**
+ * `GET /properties` for the current filters; the old page stays on screen while the next loads.
+ * `enabled: false` waits, e.g. until the user asks.
+ */
+export function usePropertySearch(search: PropertySearch, enabled = true) {
   return useQuery({
     queryKey: propertyKeys.search(search),
     queryFn: ({ signal }) => searchProperties(search, signal),
     placeholderData: keepPreviousData,
+    enabled,
   })
 }
 
