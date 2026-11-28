@@ -96,7 +96,9 @@ describe("FeedbackForm", () => {
         </AuthContext.Provider>
       </QueryClientProvider>
     )
-    const { rerender } = render(tree({ status: "loading", user: null } as AuthContextValue["state"]))
+    const { rerender } = render(
+      tree({ status: "loading", user: null } as AuthContextValue["state"]),
+    )
     expect(field(/^Name/).value).toBe("")
     fireEvent.change(field(/^Name/), { target: { value: "A. Rao" } })
     rerender(tree({ status: "signedIn", user: asha } as AuthContextValue["state"]))

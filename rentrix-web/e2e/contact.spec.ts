@@ -5,7 +5,7 @@ import { devLogin } from "./support"
  * The Contact / About page (`/contact`), at 390 px and desktop:
  * - open signed out, and linked as "Contact us" from the footer and the account menu;
  * - the email is a mailto link and LinkedIn opens the company page; social entries with no URL
- *   yet (Instagram, X) are not drawn; there is no contact form;
+ *   yet (Instagram, X) are not drawn; the short message form is on the page;
  * - the page never scrolls sideways. It is attached as a screenshot for a visual check.
  */
 
@@ -22,7 +22,7 @@ async function expectContactPage(page: Page) {
   await expect(linkedin).toHaveAttribute("target", "_blank")
   await expect(main.getByTestId("contact-social")).toHaveCount(1)
   await expect(main.getByText(/Instagram|Twitter/)).toHaveCount(0)
-  await expect(main.getByRole("textbox")).toHaveCount(0)
+  await expect(main.getByTestId("feedback-form")).toBeVisible()
   await expect(main.getByTestId("contact-cities")).toContainText("Bangalore")
   await expect(main.getByText("Not verified yet")).toBeVisible()
 }

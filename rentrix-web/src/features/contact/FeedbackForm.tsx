@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useState, type FormEvent } from "react"
+import { useContext, useId, useState, type FormEvent } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { FEEDBACK_MESSAGE_MAX, sendFeedback, type FeedbackType } from "@/api/feedback"
 import { Button } from "@/components/ui/button"
@@ -34,11 +34,17 @@ export function FeedbackForm({ className }: { className?: string }) {
   const userId = user?.id
   const userName = user?.displayName ?? ""
   const userEmail = user?.email ?? ""
-  useEffect(() => {
-    if (!userId) return
-    setName((current) => current || userName)
-    setEmail((current) => current || userEmail)
-  }, [userId, userName, userEmail])
+  // The session may resolve after the first render (`/contact` opened directly): fill the fields
+  // that are still empty when the user appears, adjusting state during render instead of an effect.
+  const sessionKey = userId ? `${userId}\n${userName}\n${userEmail}` : ""
+  const [prefilledFor, setPrefilledFor] = useState(sessionKey)
+  if (sessionKey !== prefilledFor) {
+    setPrefilledFor(sessionKey)
+    if (userId) {
+      setName((current) => current || userName)
+      setEmail((current) => current || userEmail)
+    }
+  }
   const send = useMutation({
     mutationFn: () =>
       sendFeedback({
